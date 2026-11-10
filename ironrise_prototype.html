@@ -1,0 +1,381 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>IronRise — прототип</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0B0B12; --panel:#15151F; --panel2:#1D1D2A; --line:#2A2A3A;
+  --text:#F2F2F7; --muted:#9A9AB0; --lime:#C6FF3D; --violet:#8B5CFF; --pink:#FF4D8D; --orange:#FF9F1C; --cyan:#3DDCFF;
+  --page:#050508;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--page);color:var(--text);font-family:Inter,system-ui,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;gap:48px;padding:24px}
+.side{max-width:320px;color:var(--muted);font-size:14px;line-height:1.55}
+.side h1{font-family:Unbounded,sans-serif;color:var(--text);font-size:28px;margin-bottom:8px}
+.side h1 span{color:var(--lime)}
+.side .tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);color:var(--lime);font-size:12px;padding:4px 10px;border-radius:99px;margin-bottom:14px}
+.side ol{margin:14px 0 0 18px}
+.side li{margin-bottom:6px}
+.phone{width:390px;height:800px;background:var(--bg);border-radius:44px;border:10px solid #1a1a22;box-shadow:0 30px 80px rgba(139,92,255,.25);position:relative;overflow:hidden;display:flex;flex-direction:column}
+.status{height:34px;display:flex;justify-content:space-between;align-items:center;padding:0 24px;font-size:12px;font-weight:600;flex-shrink:0}
+.screen{flex:1;overflow-y:auto;padding:4px 18px 18px;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.tabbar{height:72px;display:flex;border-top:1px solid var(--line);background:var(--panel);flex-shrink:0}
+.tab{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;font-size:10px;color:var(--muted);cursor:pointer;border:none;background:none;font-family:inherit}
+.tab svg{width:22px;height:22px}
+.tab.on{color:var(--lime)}
+h2{font-family:Unbounded,sans-serif;font-size:20px;margin:6px 0 12px}
+h3{font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin:16px 0 8px;font-weight:600}
+.row{display:flex;align-items:center;gap:10px}
+.between{justify-content:space-between}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:14px}
+.chip{display:inline-flex;align-items:center;gap:4px;background:var(--panel2);border-radius:99px;padding:5px 10px;font-size:12px;font-weight:600}
+.btn{width:100%;border:none;border-radius:16px;padding:15px;font-weight:700;font-size:15px;cursor:pointer;font-family:inherit;background:var(--lime);color:#111}
+.btn.ghost{background:var(--panel2);color:var(--text)}
+.btn.violet{background:var(--violet);color:#fff}
+.btn:active{transform:scale(.98)}
+.hero{position:relative;border-radius:22px;padding:10px;background:radial-gradient(circle at 50% 40%,rgba(139,92,255,.35),transparent 65%),var(--panel);border:1px solid var(--line);text-align:center}
+.hero .lvl{position:absolute;top:12px;left:12px}
+.hero .pw{position:absolute;top:12px;right:12px}
+.bars{display:grid;grid-template-columns:1fr 1fr;gap:8px 14px;margin-top:6px}
+.bar label{display:flex;justify-content:space-between;font-size:12px;margin-bottom:4px}
+.bar label b{color:var(--lime)}
+.track{height:7px;background:var(--panel2);border-radius:9px;overflow:hidden}
+.fill{height:100%;background:linear-gradient(90deg,var(--violet),var(--lime));border-radius:9px;transition:width .6s}
+.fill.low{background:linear-gradient(90deg,var(--pink),var(--orange))}
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;text-align:center}
+.day{background:var(--panel2);border-radius:12px;padding:8px 0;font-size:11px;color:var(--muted)}
+.day .ic{font-size:16px;display:block;margin-top:3px}
+.day.done{background:rgba(198,255,61,.12);color:var(--lime)}
+.day.rest{background:rgba(61,220,255,.1);color:var(--cyan)}
+.day.today{outline:2px solid var(--lime)}
+.ex{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px;margin-bottom:8px}
+.ex .name{font-weight:600}
+.ex .meta{font-size:12px;color:var(--muted)}
+.pm{display:flex;align-items:center;gap:8px}
+.pm button{width:34px;height:34px;border-radius:11px;border:none;background:var(--panel2);color:var(--text);font-size:18px;cursor:pointer}
+.pm button.plus{background:var(--lime);color:#111}
+.pm .n{min-width:22px;text-align:center;font-weight:700}
+.watch{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#1f1238,#15151F);border:1px solid #3a2a66;border-radius:18px;padding:12px;margin-bottom:12px}
+.pulse{font-family:Unbounded;font-size:22px;color:var(--pink)}
+.beat{animation:beat 1s infinite}
+@keyframes beat{0%,100%{transform:scale(1)}15%{transform:scale(1.25)}}
+.gain{display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--line);font-size:14px}
+.gain:last-child{border:none}
+.plusxp{color:var(--lime);font-weight:700}
+.warn{background:rgba(255,77,141,.1);border:1px solid rgba(255,77,141,.4);color:#ffb3cc;border-radius:14px;padding:10px 12px;font-size:13px;margin-top:10px}
+.good{background:rgba(198,255,61,.08);border:1px solid rgba(198,255,61,.35);color:#e6ffb0;border-radius:14px;padding:10px 12px;font-size:13px;margin-top:10px}
+.friend{display:flex;align-items:center;gap:12px;padding:10px;border-radius:14px;background:var(--panel);border:1px solid var(--line);margin-bottom:8px;cursor:pointer}
+.friend:hover{border-color:var(--violet)}
+.ava{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-weight:700;font-family:Unbounded;font-size:14px}
+.arena{display:grid;grid-template-columns:1fr auto 1fr;align-items:end;gap:4px;background:radial-gradient(circle at 50% 100%,rgba(255,77,141,.25),transparent 70%),var(--panel);border:1px solid var(--line);border-radius:22px;padding:12px 8px}
+.arena .vs{font-family:Unbounded,Inter,sans-serif;font-size:22px;color:var(--pink);padding-bottom:80px}
+.hp{height:8px;background:var(--panel2);border-radius:9px;overflow:hidden;margin:6px 0 2px}
+.hp div{height:100%;background:var(--lime);transition:width .4s}
+.hp.op div{background:var(--pink)}
+.log{font-size:12px;color:var(--muted);height:110px;overflow-y:auto;margin-top:10px;line-height:1.6}
+.shake{animation:shake .35s}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.lb{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:14px;margin-bottom:6px;background:var(--panel)}
+.lb.me{background:rgba(198,255,61,.1);border:1px solid rgba(198,255,61,.4)}
+.lb .pos{width:22px;font-family:Unbounded;font-size:13px;color:var(--muted)}
+.lb .pts{margin-left:auto;font-weight:700}
+.seg{display:flex;background:var(--panel2);border-radius:12px;padding:3px;margin-bottom:12px}
+.seg button{flex:1;border:none;background:none;color:var(--muted);padding:8px;border-radius:9px;font-family:inherit;font-weight:600;font-size:13px;cursor:pointer}
+.seg button.on{background:var(--panel);color:var(--text)}
+.shop{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.item{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:10px;text-align:center;cursor:pointer}
+.item .sw{height:60px;border-radius:12px;margin-bottom:8px;display:flex;align-items:center;justify-content:center;font-size:28px}
+.item .pr{font-size:12px;color:var(--orange);font-weight:700;margin-top:4px}
+.item.own{border-color:var(--lime)}
+.bp{display:flex;gap:6px;overflow-x:auto;padding-bottom:4px}
+.bp div{min-width:52px;height:52px;border-radius:12px;background:var(--panel2);display:flex;align-items:center;justify-content:center;font-size:20px;position:relative}
+.bp div.got{background:rgba(198,255,61,.15)}
+.bp div.lock::after{content:"🔒";position:absolute;font-size:10px;bottom:2px;right:4px}
+.toast{position:absolute;left:50%;top:50px;transform:translateX(-50%) translateY(-120px);background:var(--lime);color:#111;font-weight:700;padding:10px 16px;border-radius:14px;font-size:13px;transition:transform .35s;z-index:9;white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.guild{background:linear-gradient(135deg,#2a1650,#15151F);border:1px dashed #5b3fa8;border-radius:18px;padding:14px;margin-top:12px;font-size:13px;color:var(--muted)}
+.goals{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.goal{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;font-size:13px;font-weight:600;cursor:pointer;text-align:left;color:var(--text);font-family:inherit}
+.goal.on{border-color:var(--lime);background:rgba(198,255,61,.08)}
+.colors{display:flex;gap:10px}
+.colors button{width:38px;height:38px;border-radius:12px;border:2px solid transparent;cursor:pointer}
+.colors button.on{border-color:#fff}
+.inp{width:100%;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:13px;color:var(--text);font-size:15px;font-family:inherit}
+@media (max-width:820px){.side{display:none}body{padding:0}.phone{width:100%;height:100vh;border:none;border-radius:0}}
+</style>
+</head>
+<body>
+<div class="side">
+  <span class="tag">Прототип · ранняя версия</span>
+  <h1>Iron<span>Rise</span></h1>
+  <p>Тренируйся в зале — прокачивай аватара — побеждай друзей в дуэлях.</p>
+  <ol>
+    <li>Создай героя: имя, цель, цвет формы.</li>
+    <li>На «Главной» посмотри аватар и стрик.</li>
+    <li>Нажми «Начать тренировку», добавь подходы.</li>
+    <li>Заверши тренировку и посмотри, какие части тела выросли.</li>
+    <li>Во вкладке «Дуэли» вызови друга.</li>
+    <li>Загляни в «Рейтинг» и «Магазин».</li>
+  </ol>
+  <p style="margin-top:14px;font-size:12px">Данные демонстрационные. Пульс с часов симулируется.</p>
+</div>
+
+<div class="phone">
+  <div class="toast" id="toast"></div>
+  <div class="status"><span>9:41</span><span>⌚ подключены · 87%</span></div>
+  <div class="screen" id="screen"></div>
+  <nav class="tabbar" id="tabbar"></nav>
+</div>
+
+<script>
+const PARTS = {chest:'Грудь',back:'Спина',arms:'Руки',legs:'Ноги',core:'Пресс',cardio:'Кардио'};
+const S = {
+  name:'Юра', parts:{chest:5,back:4,arms:6,legs:2,core:3,cardio:3},
+  xp:{chest:40,back:70,arms:20,legs:50,core:30,cardio:60},
+  streak:12, rating:1240, coins:350, wins:14,
+  outfit:'#8B5CFF', skin:'#F2C9A0', band:false, aura:true, owned:['violet'],
+  tab:'onboard', goal:'Регулярность', workout:null, lastSummary:null,
+  week:[{d:'Пн',s:'done'},{d:'Вт',s:'rest',c:true},{d:'Ср',s:'done'},{d:'Чт',s:'rest'},{d:'Пт',s:'done'},{d:'Сб',s:'done'},{d:'Вс',s:'today'}]
+};
+const EXERCISES = [
+  {id:'bench',n:'Жим лёжа',p:'chest',w:60,r:8},
+  {id:'row',n:'Тяга верхнего блока',p:'back',w:50,r:10},
+  {id:'squat',n:'Приседания со штангой',p:'legs',w:70,r:8},
+  {id:'curl',n:'Подъём на бицепс',p:'arms',w:14,r:12},
+  {id:'plank',n:'Планка, 60 сек',p:'core',w:0,r:1},
+];
+const FRIENDS = [
+  {n:'Даня_K',c:'#FF4D8D',lvl:{chest:6,back:5,arms:7,legs:3,core:3,cardio:2},streak:9,rating:1310},
+  {n:'Лиза.fit',c:'#3DDCFF',lvl:{chest:3,back:5,arms:3,legs:6,core:5,cardio:6},streak:21,rating:1405},
+  {n:'Тимур',c:'#FF9F1C',lvl:{chest:4,back:3,arms:4,legs:3,core:2,cardio:2},streak:4,rating:1120},
+];
+const SHOP = [
+  {id:'violet',n:'Форма «Неон»',e:'👕',col:'#8B5CFF',p:0},
+  {id:'lime',n:'Форма «Кислота»',e:'🟢',col:'#9BCF1E',p:120},
+  {id:'red',n:'Форма «Арена»',e:'🔥',col:'#E8364F',p:180},
+  {id:'band',n:'Повязка чемпиона',e:'🎽',p:90},
+  {id:'gold',n:'Золотой скин',e:'🏆',col:'#E6B422',p:450},
+  {id:'cyan',n:'Форма «Лёд»',e:'❄️',col:'#2FB8E0',p:150},
+];
+
+const $ = s=>document.querySelector(s);
+function toast(t){const el=$('#toast');el.textContent=t;el.classList.add('show');clearTimeout(el._t);el._t=setTimeout(()=>el.classList.remove('show'),1800)}
+function total(p){return Object.values(p).reduce((a,b)=>a+b,0)}
+function power(p,streak){return total(p)*10+Math.min(streak,30)*2}
+
+function avatar(p,{outfit=S.outfit,skin=S.skin,band=S.band,aura=S.aura,size=200,flip=false}={}){
+  const tw=56+p.chest*4+p.back*2, ww=40+p.core*2.4, at=11+p.arms*2.3, lt=14+p.legs*2.6;
+  const sx=100-tw/2, ex=100+tw/2;
+  const auraEl = aura?`<ellipse cx="100" cy="140" rx="${tw/2+40}" ry="120" fill="url(#g${flip?1:0})" opacity=".55"/>`:'';
+  return `<svg viewBox="0 0 200 270" width="${size}" height="${size*1.35}" style="${flip?'transform:scaleX(-1)':''}">
+  <defs><radialGradient id="g${flip?1:0}"><stop offset="0" stop-color="${outfit}" stop-opacity=".7"/><stop offset="1" stop-color="${outfit}" stop-opacity="0"/></radialGradient></defs>
+  ${auraEl}
+  <ellipse cx="100" cy="258" rx="60" ry="8" fill="#000" opacity=".4"/>
+  <line x1="${100-ww/4}" y1="160" x2="${100-ww/4-5}" y2="245" stroke="${skin}" stroke-width="${lt}" stroke-linecap="round"/>
+  <line x1="${100+ww/4}" y1="160" x2="${100+ww/4+5}" y2="245" stroke="${skin}" stroke-width="${lt}" stroke-linecap="round"/>
+  <rect x="${100-ww/2-lt/3}" y="146" width="${ww+lt*2/3}" height="${30}" rx="8" fill="#22222e"/>
+  <line x1="${sx+4}" y1="80" x2="${sx-14}" y2="150" stroke="${skin}" stroke-width="${at}" stroke-linecap="round"/>
+  <line x1="${ex-4}" y1="80" x2="${ex+14}" y2="150" stroke="${skin}" stroke-width="${at}" stroke-linecap="round"/>
+  <rect x="94" y="56" width="12" height="16" fill="${skin}"/>
+  <path d="M${sx},74 Q100,64 ${ex},74 L${100+ww/2},152 L${100-ww/2},152 Z" fill="${outfit}"/>
+  <path d="M${sx+6},78 L${sx+2},104" stroke="#fff" stroke-opacity=".2" stroke-width="3"/>
+  <text x="100" y="118" text-anchor="middle" font-family="Unbounded,Inter,sans-serif" font-size="16" fill="#fff" fill-opacity=".9" style="${flip?'transform:scaleX(-1);transform-origin:100px 0':''}">IR</text>
+  <circle cx="100" cy="40" r="21" fill="${skin}"/>
+  <path d="M79,36 Q82,16 100,17 Q120,16 121,34 Q110,26 98,28 Q86,28 79,36Z" fill="#2a1a12"/>
+  ${band?`<rect x="78" y="30" width="44" height="7" rx="3" fill="${'#C6FF3D'}"/>`:''}
+  <circle cx="92" cy="42" r="2.4" fill="#111"/><circle cx="108" cy="42" r="2.4" fill="#111"/>
+  <path d="M93,51 Q100,56 107,51" stroke="#111" stroke-width="2" fill="none" stroke-linecap="round"/>
+  </svg>`;
+}
+
+const ICONS={
+ home:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 11l9-7 9 7v9a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/></svg>',
+ workout:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 7v10M18 7v10M3 9v6M21 9v6M6 12h12"/></svg>',
+ duel:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 4l6 0 0 6-9 9-3-3zM4 14l6 6M3 21l3-3"/></svg>',
+ rank:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 21h8M12 17v4M7 4h10v5a5 5 0 0 1-10 0zM17 6h3a3 3 0 0 1-3 4M7 6H4a3 3 0 0 0 3 4"/></svg>',
+ shop:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 7h14l-1 13H6zM9 7a3 3 0 0 1 6 0"/></svg>'
+};
+const TABS=[['home','Главная'],['workout','Тренировка'],['duel','Дуэли'],['rank','Рейтинг'],['shop','Магазин']];
+
+function go(t){S.tab=t;render();$('#screen').scrollTop=0}
+function renderTabs(){$('#tabbar').innerHTML=TABS.map(([k,l])=>`<button class="tab ${S.tab===k?'on':''}" onclick="go('${k}')">${ICONS[k]}${l}</button>`).join('')}
+
+function barsHTML(p){
+  const avg=total(p)/6;
+  return `<div class="bars">${Object.keys(PARTS).map(k=>`<div class="bar"><label><span>${PARTS[k]}</span><b>ур. ${p[k]}</b></label><div class="track"><div class="fill ${p[k]<avg-1.5?'low':''}" style="width:${Math.min(100,S.xp[k])}%"></div></div></div>`).join('')}</div>`;
+}
+
+function home(){
+  const lvl=Math.floor(total(S.parts)/3);
+  const avg=total(S.parts)/6, weak=Object.keys(S.parts).filter(k=>S.parts[k]<avg-1.5);
+  return `<div class="row between"><div><div style="color:var(--muted);font-size:13px">Привет, ${S.name} 👋</div><h2 style="margin:2px 0 10px">Твой герой</h2></div>
+  <div class="row"><span class="chip">🔥 ${S.streak}</span><span class="chip" style="color:var(--orange)">🪙 ${S.coins}</span></div></div>
+  <div class="hero"><span class="chip lvl">Ур. ${lvl}</span><span class="chip pw">⚡ ${power(S.parts,S.streak)}</span>
+   ${avatar(S.parts,{size:170})}
+   ${barsHTML(S.parts)}
+  </div>
+  ${weak.length?`<div class="warn">⚠️ Перекос: ${weak.map(k=>PARTS[k].toLowerCase()).join(', ')} отстают. Пока баланс не выровнен, сила в дуэлях −10%. Сегодня советуем: приседания.</div>`:`<div class="good">✅ Баланс отличный: +5% к силе в дуэлях.</div>`}
+  <h3>Неделя</h3>
+  <div class="week">${S.week.map(w=>`<div class="day ${w.s}">${w.d}<span class="ic">${w.s==='done'?'💪':w.s==='rest'?(w.c?'🏃':'😴'):'•'}</span></div>`).join('')}</div>
+  <div style="font-size:12px;color:var(--muted);margin:8px 0 14px">😴 Дни отдыха не обнуляют стрик. 🏃 Пробежка с часов засчитывается как кардио.</div>
+  <button class="btn" onclick="startWorkout()">Начать тренировку</button>`;
+}
+
+let pulseTimer=null;
+function startWorkout(){
+  S.workout={start:Date.now(),sets:{},pulse:118};
+  go('workout');toast('Часы подключены ⌚');
+}
+function workout(){
+  if(!S.workout) return `<h2>Тренировка</h2><div class="card" style="text-align:center;padding:30px 16px"><div style="font-size:44px">🏋️</div><p style="color:var(--muted);margin:10px 0 18px">Начни тренировку — часы начнут считать пульс и время, а ты отмечай подходы.</p><button class="btn" onclick="startWorkout()">Начать</button></div>`;
+  const w=S.workout, done=Object.values(w.sets).reduce((a,b)=>a+b,0);
+  return `<h2>Тренировка</h2>
+  <div class="watch"><div style="font-size:30px">⌚</div><div style="flex:1"><div style="font-size:12px;color:var(--muted)">Данные с часов</div><div class="row"><span class="pulse beat" id="pulse">${w.pulse}</span><span style="color:var(--muted);font-size:12px">уд/мин</span></div></div>
+  <div style="text-align:right"><div style="font-size:12px;color:var(--muted)">Время</div><div style="font-family:Unbounded" id="timer">00:00</div></div></div>
+  ${EXERCISES.map(e=>`<div class="ex"><div class="row between"><div><div class="name">${e.n}</div><div class="meta">${PARTS[e.p]} · ${e.w?e.w+' кг × ':''}${e.r} ${e.id==='plank'?'раз':'повт.'}</div></div>
+  <div class="pm"><button onclick="setD('${e.id}',-1)">−</button><span class="n">${w.sets[e.id]||0}</span><button class="plus" onclick="setD('${e.id}',1)">+</button></div></div></div>`).join('')}
+  <div style="font-size:12px;color:var(--muted);margin:6px 0 12px">📷 Скоро: камера с ИИ сама посчитает повторы. Сейчас — ручной ввод + проверка пульсом.</div>
+  <button class="btn" ${done?'':'style="opacity:.4" disabled'} onclick="finish()">Завершить (${done} подх.)</button>`;
+}
+function setD(id,d){
+  const w=S.workout;const v=Math.max(0,(w.sets[id]||0)+d);
+  if(v>8){toast('Антифрод: больше 8 подходов — подозрительно');return}
+  w.sets[id]=v;render();
+}
+function tick(){
+  if(!S.workout||S.tab!=='workout')return;
+  const s=Math.floor((Date.now()-S.workout.start)/1000)+17*60;
+  const t=$('#timer');if(t)t.textContent=String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+  S.workout.pulse=Math.round(112+Math.random()*30);const p=$('#pulse');if(p)p.textContent=S.workout.pulse;
+}
+setInterval(tick,1000);
+
+function finish(){
+  const w=S.workout;const gains={};
+  EXERCISES.forEach(e=>{const n=w.sets[e.id]||0;if(n){gains[e.p]=(gains[e.p]||0)+n*18}});
+  const before={...S.parts};const ups=[];
+  const avg=total(S.parts)/6;const legsWeak=S.parts.legs<avg-1.5;
+  Object.entries(gains).forEach(([k,g])=>{
+    let bonus = (S.parts[k]<avg-1.5)?1.5:1;
+    g=Math.round(g*bonus);gains[k]=g;
+    S.xp[k]+=g;while(S.xp[k]>=100){S.xp[k]-=100;S.parts[k]++;ups.push(k)}
+  });
+  const pts=Object.values(gains).reduce((a,b)=>a+b,0);
+  S.coins+=Math.round(pts/5);S.streak++;S.week[6].s='done';
+  S.lastSummary={gains,ups,pts,coins:Math.round(pts/5),boostWeak:legsWeak&&gains.legs};
+  S.workout=null;S.tab='summary';render();
+}
+function summary(){
+  const s=S.lastSummary;
+  return `<h2>Тренировка завершена 🎉</h2>
+  <div class="hero">${avatar(S.parts,{size:150})}
+  <div style="font-family:Unbounded;font-size:26px;color:var(--lime)">+${s.pts} XP</div>
+  <div style="color:var(--muted);font-size:13px;margin-bottom:6px">🔥 Стрик: ${S.streak} дн. · 🪙 +${s.coins}</div></div>
+  <h3>Что прокачалось</h3>
+  <div class="card">${Object.entries(s.gains).map(([k,g])=>`<div class="gain"><span>${PARTS[k]} ${s.ups.includes(k)?'<span class="chip" style="background:var(--lime);color:#111;margin-left:6px">НОВЫЙ УР. '+S.parts[k]+'</span>':''}</span><span class="plusxp">+${g} XP</span></div>`).join('')}</div>
+  ${s.boostWeak?'<div class="good">⚖️ Бонус ×1.5 за отстающую группу: ноги догоняют остальное тело.</div>':''}
+  <div style="display:grid;gap:8px;margin-top:14px"><button class="btn violet" onclick="go('duel')">⚔️ Вызвать друга на дуэль</button><button class="btn ghost" onclick="go('home')">На главную</button></div>`;
+}
+
+let duelState=null;
+function duel(){
+  if(duelState) return arena();
+  return `<h2>Дуэли</h2>
+  <div class="card row" style="margin-bottom:12px"><div style="font-size:30px">⚔️</div><div style="font-size:13px;color:var(--muted)">Асинхронный бой: соперник не должен быть онлайн. Сила = уровни частей тела + стрик + баланс.</div></div>
+  <div class="row between" style="margin-bottom:8px"><span style="font-weight:600">Твоя сила</span><span class="chip">⚡ ${power(S.parts,S.streak)}</span></div>
+  <h3>Друзья</h3>
+  ${FRIENDS.map((f,i)=>`<div class="friend" onclick="fight(${i})"><div class="ava" style="background:${f.c}22;color:${f.c}">${f.n[0]}</div><div style="flex:1"><div style="font-weight:600">${f.n}</div><div style="font-size:12px;color:var(--muted)">⚡ ${power(f.lvl,f.streak)} · 🔥 ${f.streak} · ${f.rating} очк.</div></div><span class="chip" style="color:var(--pink)">Бой</span></div>`).join('')}
+  <div class="guild"><b style="color:var(--text)">Скоро: гильдии и войны кланов 🛡️</b><br>Объединяйся в команды до 5 человек, тренируйтесь вместе и получайте ×1.3 очков.</div>`;
+}
+function fight(i){
+  const f=FRIENDS[i];
+  duelState={f,me:100,op:100,log:[],done:false};render();
+  const myP=power(S.parts,S.streak), opP=power(f.lvl,f.streak);
+  const moves=['удар руками','бросок через спину','удар ногой','блок прессом','рывок на кардио'];
+  const keys=['arms','back','legs','core','cardio'];
+  let turn=0;
+  const iv=setInterval(()=>{
+    const meAtk=turn%2===0;const P=meAtk?myP:opP;const L=meAtk?S.parts:f.lvl;
+    const mi=Math.floor(Math.random()*5);
+    const dmg=Math.round((P/30)*(0.7+Math.random()*0.6)+L[keys[mi]]);
+    if(meAtk)duelState.op=Math.max(0,duelState.op-dmg);else duelState.me=Math.max(0,duelState.me-dmg);
+    duelState.log.unshift(`${meAtk?'🟢 Ты':'🔴 '+f.n}: ${moves[mi]} (−${dmg})`);
+    duelState.hit=meAtk?'op':'me';
+    turn++;
+    if(duelState.me<=0||duelState.op<=0){
+      clearInterval(iv);duelState.done=true;
+      const win=duelState.op<=0;duelState.win=win;
+      const d=win?24:-12;S.rating+=d;if(win){S.coins+=30;S.wins++}
+      duelState.log.unshift(win?`🏆 Победа! +24 к рейтингу, +30 🪙`:`💀 Поражение. −12 к рейтингу. Подкачай ${PARTS[Object.keys(S.parts).sort((a,b)=>S.parts[a]-S.parts[b])[0]].toLowerCase()} и возвращайся!`);
+    }
+    if(S.tab==='duel')render();
+  },650);
+}
+function arena(){
+  const d=duelState;
+  return `<h2>Арена</h2>
+  <div class="arena">
+   <div style="text-align:center" class="${d.hit==='me'&&!d.done?'shake':''}">${avatar(S.parts,{size:120})}<div style="font-weight:600;font-size:13px">${S.name}</div><div class="hp"><div style="width:${d.me}%"></div></div><div style="font-size:11px;color:var(--muted)">${d.me} HP</div></div>
+   <div class="vs">VS</div>
+   <div style="text-align:center" class="${d.hit==='op'&&!d.done?'shake':''}">${avatar(d.f.lvl,{size:120,outfit:d.f.c,skin:'#D9A47A',band:false,flip:true})}<div style="font-weight:600;font-size:13px">${d.f.n}</div><div class="hp op"><div style="width:${d.op}%"></div></div><div style="font-size:11px;color:var(--muted)">${d.op} HP</div></div>
+  </div>
+  <div class="log card">${d.log.map((l,i)=>`<div style="${i===0&&d.done?'color:var(--text);font-weight:600':''}">${l}</div>`).join('')||'Бой начинается…'}</div>
+  ${d.done?`<div style="display:grid;gap:8px;margin-top:12px"><button class="btn" onclick="duelState=null;go('rank')">Смотреть рейтинг</button><button class="btn ghost" onclick="duelState=null;render()">Новый бой</button></div>`:''}`;
+}
+
+let rankSeg='friends';
+function rank(){
+  let rows=[...FRIENDS.map(f=>({n:f.n,c:f.c,pts:f.rating,st:f.streak})),{n:S.name+' (ты)',c:'#C6FF3D',pts:S.rating,st:S.streak,me:true}];
+  if(rankSeg==='uni')rows=rows.concat([{n:'Арсений',c:'#aaa',pts:1690,st:33},{n:'Катя_run',c:'#aaa',pts:1580,st:27},{n:'Михаил',c:'#aaa',pts:1510,st:15},{n:'Вова',c:'#aaa',pts:980,st:2}]);
+  rows.sort((a,b)=>b.pts-a.pts);
+  const league=S.rating>=1300?'Серебро II':'Бронза I';
+  return `<h2>Рейтинг</h2>
+  <div class="card row between" style="margin-bottom:12px"><div><div style="font-size:12px;color:var(--muted)">Сезон 1 · осталось 23 дня</div><div style="font-family:Unbounded;font-size:17px;margin-top:2px">Лига: ${league}</div></div><div style="font-size:34px">🥈</div></div>
+  <div class="seg"><button class="${rankSeg==='friends'?'on':''}" onclick="rankSeg='friends';render()">Друзья</button><button class="${rankSeg==='uni'?'on':''}" onclick="rankSeg='uni';render()">Мой вуз</button></div>
+  ${rows.map((r,i)=>`<div class="lb ${r.me?'me':''}"><span class="pos">${i+1}</span><div class="ava" style="width:34px;height:34px;background:${r.c}22;color:${r.c}">${r.n[0]}</div><div><div style="font-weight:600;font-size:14px">${r.n}</div><div style="font-size:12px;color:var(--muted)">🔥 ${r.st} дн.</div></div><span class="pts">${r.pts}</span></div>`).join('')}
+  <div style="font-size:12px;color:var(--muted);margin-top:10px">Топ-10 сезона получают эксклюзивный скин и рамку профиля.</div>`;
+}
+
+function shop(){
+  return `<div class="row between"><h2>Магазин</h2><span class="chip" style="color:var(--orange)">🪙 ${S.coins}</span></div>
+  <div class="card" style="margin-bottom:14px"><div class="row between"><b>Батлпас · Сезон 1</b><span class="chip" style="color:var(--violet)">Премиум 299 ₽</span></div>
+  <div style="font-size:12px;color:var(--muted);margin:6px 0 10px">Награды открываются за тренировки, а не за деньги: платный трек добавляет косметику.</div>
+  <div class="bp">${['🎽','🪙','👟','🧢','🔥','🏅','🦾','👑'].map((e,i)=>`<div class="${i<3?'got':'lock'}">${e}</div>`).join('')}</div>
+  <div class="track" style="margin-top:8px"><div class="fill" style="width:34%"></div></div></div>
+  <h3>Косметика</h3>
+  <div class="shop">${SHOP.map(it=>{const own=S.owned.includes(it.id);const eq=(it.col&&S.outfit===it.col)||(it.id==='band'&&S.band);
+   return `<div class="item ${eq?'own':''}" onclick="buy('${it.id}')"><div class="sw" style="background:${it.col?it.col+'33':'#ffffff10'}">${it.e}</div><div style="font-size:13px;font-weight:600">${it.n}</div><div class="pr">${eq?'<span style="color:var(--lime)">Надето</span>':own?'<span style="color:var(--muted)">Надеть</span>':it.p?'🪙 '+it.p:'Бесплатно'}</div></div>`}).join('')}</div>
+  <div style="font-size:12px;color:var(--muted);margin-top:12px">Косметика не даёт преимущества в бою — только стиль. Монеты зарабатываются тренировками или покупаются.</div>`;
+}
+function buy(id){
+  const it=SHOP.find(x=>x.id===id);
+  if(!S.owned.includes(id)){ if(S.coins<it.p){toast('Не хватает монет — потренируйся 💪');return} S.coins-=it.p;S.owned.push(id);toast('Куплено: '+it.n)}
+  if(it.col)S.outfit=it.col;else if(id==='band')S.band=!S.band;
+  render();
+}
+
+function onboard(){
+  const goals=['Набрать массу','Стать сильнее','Похудеть','Регулярность'];
+  const cols=['#8B5CFF','#E8364F','#2FB8E0','#9BCF1E'];
+  return `<div style="text-align:center;margin-top:4px"><div style="font-family:Unbounded,sans-serif;font-size:24px">Iron<span style="color:var(--lime)">Rise</span></div><div style="color:var(--muted);font-size:13px;margin-top:4px">Шаг 1 из 1 · Создай своего героя</div></div>
+  <div class="hero" style="margin:12px 0">${avatar({chest:1,back:1,arms:1,legs:1,core:1,cardio:1},{size:120,aura:false,band:false})}<div style="font-size:12px;color:var(--muted);padding-bottom:6px">Так выглядит герой на старте. Каждая тренировка меняет его тело.</div></div>
+  <h3>Имя героя</h3><input class="inp" value="${S.name}" oninput="S.name=this.value||'Герой'">
+  <h3>Твоя цель</h3><div class="goals">${goals.map(g=>`<button class="goal ${S.goal===g?'on':''}" onclick="S.goal='${g}';render()">${g}</button>`).join('')}</div>
+  <h3>Цвет формы</h3><div class="colors">${cols.map(c=>`<button class="${S.outfit===c?'on':''}" style="background:${c}" onclick="S.outfit='${c}';render()"></button>`).join('')}</div>
+  <div style="font-size:12px;color:var(--muted);margin:14px 0">⌚ Подключим Apple Health / Health Connect, чтобы часы подтверждали тренировки. Приложение для 18+.</div>
+  <button class="btn" onclick="go('home');toast('Герой создан 💪')">Создать героя</button>`;
+}
+function render(){
+  const m={home,workout,duel,rank,shop,summary,onboard};
+  $('#screen').innerHTML=m[S.tab]();
+  if(S.tab==='onboard'){$('#tabbar').style.display='none'}else{$('#tabbar').style.display='flex';renderTabs()}
+}
+render();
+</script>
+</body>
+</html>

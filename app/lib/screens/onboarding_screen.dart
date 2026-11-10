@@ -1,0 +1,311 @@
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+
+import '../game/training_format.dart';
+import '../state/hero.dart';
+import '../state/providers.dart';
+import '../theme.dart';
+
+/// Онбординг: 18+ → герой и цель → формат тренировок → комплекция (необязательно).
+class OnboardingScreen extends ConsumerStatefulWidget {
+  const OnboardingScreen({super.key});
+
+  @override
+  ConsumerState<OnboardingScreen> createState() => _OnboardingScreenState();
+}
+
+class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
+  final _pages = PageController();
+  int _step = 0;
+  static const _stepCount = 4;
+
+  bool _isAdult = false;
+  final _nickname = TextEditingController();
+  Goal? _goal;
+  TrainingFormat _format = TrainingFormat.fullBody;
+  Set<int> _days = TrainingFormat.fullBody.defaultDays.toSet();
+  Sex? _sex;
+  final _height = TextEditingController();
+  final _weight = TextEditingController();
+  Experience? _experience;
+
+  @override
+  void dispose() {
+    _pages.dispose();
+    _nickname.dispose();
+    _height.dispose();
+    _weight.dispose();
+    super.dispose();
+  }
+
+  bool get _canContinue => switch (_step) {
+        0 => _isAdult,
+        1 => _nickname.text.trim().length >= 2 && _goal != null,
+        2 => _days.length >= minTrainingDaysPerWeek,
+        _ => true,
+      };
+
+  Future<void> _next() async {
+    FocusScope.of(context).unfocus();
+    if (_step < _stepCount - 1) {
+      setState(() => _step++);
+      await _pages.animateToPage(_step,
+          duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+      return;
+    }
+    final hero = HeroProfile.create(
+      nickname: _nickname.text.trim(),
+      goal: _goal!,
+      format: _format,
+      trainingDays: _days.toList()..sort(),
+      body: BodyStats(
+        sex: _sex,
+        heightCm: int.tryParse(_height.text),
+        weightKg: double.tryParse(_weight.text.replaceAll(',', '.')),
+        experience: _experience,
+      ),
+    );
+    await ref.read(heroProvider.notifier).save(hero);
+    if (mounted) context.go('/');
+  }
+
+  void _back() {
+    if (_step == 0) return;
+    setState(() => _step--);
+    _pages.animateToPage(_step,
+        duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                children: [
+                  if (_step > 0)
+                    IconButton(onPressed: _back, icon: const Icon(Icons.arrow_back))
+                  else
+                    const SizedBox(width: 48),
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(4),
+                      child: LinearProgressIndicator(
+                        value: (_step + 1) / _stepCount,
+                        minHeight: 6,
+                        backgroundColor: AppColors.surfaceHigh,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 48),
+                ],
+              ),
+              Expanded(
+                child: PageView(
+                  controller: _pages,
+                  physics: const NeverScrollableScrollPhysics(),
+                  children: [_ageStep(), _heroStep(), _formatStep(), _bodyStep()],
+                ),
+              ),
+              FilledButton(
+                onPressed: _canContinue ? _next : null,
+                child: Text(_step == _stepCount - 1 ? 'Создать героя' : 'Дальше'),
+              ),
+              if (_step == _stepCount - 1)
+                TextButton(onPressed: _next, child: const Text('Пропустить')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _title(String title, String subtitle) => Padding(
+        padding: const EdgeInsets.only(top: 24, bottom: 20),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style: Theme.of(context)
+                    .textTheme
+                    .headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w800)),
+            const SizedBox(height: 8),
+            Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
+          ],
+        ),
+      );
+
+  Widget _ageStep() => ListView(
+        children: [
+          const SizedBox(height: 40),
+          const Icon(Icons.local_fire_department, size: 72, color: AppColors.accent),
+          _title('IronRise',
+              'Каждая тренировка делает твоего героя сильнее. Пропустишь ноги — герой тоже.'),
+          CheckboxListTile(
+            value: _isAdult,
+            onChanged: (v) => setState(() => _isAdult = v ?? false),
+            title: const Text('Мне исполнилось 18 лет'),
+            controlAffinity: ListTileControlAffinity.leading,
+            contentPadding: EdgeInsets.zero,
+          ),
+        ],
+      );
+
+  Widget _heroStep() => ListView(
+        children: [
+          _title('Твой герой', 'Как его зовут и к чему он идёт?'),
+          TextField(
+            controller: _nickname,
+            maxLength: 20,
+            decoration: const InputDecoration(labelText: 'Ник'),
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 8),
+          for (final g in Goal.values)
+            _ChoiceTile(
+              selected: _goal == g,
+              title: g.label,
+              onTap: () => setState(() => _goal = g),
+            ),
+        ],
+      );
+
+  Widget _formatStep() => ListView(
+        children: [
+          _title('Как будешь тренироваться?',
+              'Отдых по графику не сбрасывает серию. Новичкам лучше начать с 3 тренировок в неделю.'),
+          for (final f in TrainingFormat.values)
+            _ChoiceTile(
+              selected: _format == f,
+              title: f.label,
+              subtitle: f.description,
+              onTap: () => setState(() {
+                _format = f;
+                _days = f.defaultDays.toSet();
+              }),
+            ),
+          const SizedBox(height: 16),
+          const Text('Дни тренировок', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (var i = 0; i < 7; i++)
+                FilterChip(
+                  label: Text(weekdayShort[i]),
+                  selected: _days.contains(i),
+                  onSelected: (on) => setState(() {
+                    on ? _days.add(i) : _days.remove(i);
+                    if (_format != TrainingFormat.custom &&
+                        !_setEquals(_days, _format.defaultDays.toSet())) {
+                      // Сдвиг дней сохраняет формат, если число тренировок не изменилось.
+                      if (_days.length != _format.defaultDays.length) {
+                        _format = TrainingFormat.custom;
+                      }
+                    }
+                  }),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            _days.length < minTrainingDaysPerWeek
+                ? 'Выберите минимум $minTrainingDaysPerWeek дня'
+                : 'Тренировок в неделю: ${_days.length}. Отдыхать подряд можно до ${maxRestDaysInRow(_days.toList())} дн.',
+            style: TextStyle(
+              color: _days.length < minTrainingDaysPerWeek
+                  ? Theme.of(context).colorScheme.error
+                  : AppColors.textSecondary,
+            ),
+          ),
+        ],
+      );
+
+  Widget _bodyStep() => ListView(
+        children: [
+          _title('Немного о тебе',
+              'Поможет подобрать нагрузку по силам. Можно заполнить позже.'),
+          SegmentedButton<Sex>(
+            segments: [
+              for (final s in Sex.values) ButtonSegment(value: s, label: Text(s.label)),
+            ],
+            selected: {?_sex},
+            emptySelectionAllowed: true,
+            onSelectionChanged: (v) => setState(() => _sex = v.isEmpty ? null : v.first),
+          ),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _height,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(labelText: 'Рост, см'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _weight,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  decoration: const InputDecoration(labelText: 'Вес, кг'),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text('Опыт тренировок', style: TextStyle(fontWeight: FontWeight.w700)),
+          const SizedBox(height: 8),
+          for (final e in Experience.values)
+            _ChoiceTile(
+              selected: _experience == e,
+              title: e.label,
+              onTap: () => setState(() => _experience = e),
+            ),
+        ],
+      );
+}
+
+bool _setEquals(Set<int> a, Set<int> b) => a.length == b.length && a.containsAll(b);
+
+class _ChoiceTile extends StatelessWidget {
+  const _ChoiceTile({
+    required this.selected,
+    required this.title,
+    required this.onTap,
+    this.subtitle,
+  });
+
+  final bool selected;
+  final String title;
+  final String? subtitle;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Material(
+        color: selected ? AppColors.accent.withValues(alpha: 0.15) : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(14),
+          side: BorderSide(color: selected ? AppColors.accent : Colors.transparent),
+        ),
+        child: ListTile(
+          onTap: onTap,
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          subtitle: subtitle == null
+              ? null
+              : Text(subtitle!, style: const TextStyle(color: AppColors.textSecondary)),
+          trailing: selected ? const Icon(Icons.check_circle, color: AppColors.accent) : null,
+        ),
+      ),
+    );
+  }
+}
