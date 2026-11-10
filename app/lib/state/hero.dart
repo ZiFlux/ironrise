@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import '../avatar/avatar_look.dart';
 import '../game/body_part.dart';
 import '../game/progression.dart';
 import '../game/training_format.dart';
@@ -63,6 +64,7 @@ class HeroProfile {
     required this.format,
     required this.trainingDays,
     required this.body,
+    required this.look,
     required this.xp,
     required this.streakDays,
   });
@@ -73,6 +75,7 @@ class HeroProfile {
     required TrainingFormat format,
     required List<int> trainingDays,
     required BodyStats body,
+    required AvatarSex avatarSex,
   }) =>
       HeroProfile(
         nickname: nickname,
@@ -80,6 +83,7 @@ class HeroProfile {
         format: format,
         trainingDays: trainingDays,
         body: body,
+        look: AvatarLook.starter(avatarSex),
         xp: {for (final p in BodyPart.values) p: 0},
         streakDays: 0,
       );
@@ -89,6 +93,7 @@ class HeroProfile {
   final TrainingFormat format;
   final List<int> trainingDays;
   final BodyStats body;
+  final AvatarLook look;
   final Map<BodyPart, int> xp;
   final int streakDays;
 
@@ -97,12 +102,14 @@ class HeroProfile {
   int get power => Progression.power(levels, streakDays);
   int get maxRestDays => maxRestDaysInRow(trainingDays);
 
-  HeroProfile copyWith({Map<BodyPart, int>? xp, int? streakDays}) => HeroProfile(
+  HeroProfile copyWith({Map<BodyPart, int>? xp, int? streakDays, AvatarLook? look}) =>
+      HeroProfile(
         nickname: nickname,
         goal: goal,
         format: format,
         trainingDays: trainingDays,
         body: body,
+        look: look ?? this.look,
         xp: xp ?? this.xp,
         streakDays: streakDays ?? this.streakDays,
       );
@@ -113,6 +120,7 @@ class HeroProfile {
         'format': format.name,
         'trainingDays': trainingDays,
         'body': body.toJson(),
+        'look': look.toJson(),
         'xp': {for (final e in xp.entries) e.key.name: e.value},
         'streakDays': streakDays,
       });
@@ -126,6 +134,9 @@ class HeroProfile {
       format: TrainingFormat.values.byName(j['format']),
       trainingDays: List<int>.from(j['trainingDays']),
       body: BodyStats.fromJson(j['body']),
+      look: j['look'] == null
+          ? AvatarLook.starter(AvatarSex.male)
+          : AvatarLook.fromJson(j['look']),
       xp: {for (final p in BodyPart.values) p: (xpJson[p.name] as int?) ?? 0},
       streakDays: j['streakDays'] ?? 0,
     );

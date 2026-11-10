@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'router.dart';
 import 'state/providers.dart';
+import 'state/settings.dart';
 import 'theme.dart';
 
 Future<void> main() async {
@@ -20,10 +21,11 @@ class IronRiseApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final accent = ref.watch(accentProvider);
     return MaterialApp.router(
       title: 'IronRise',
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(),
+      theme: buildTheme(accent.color),
       routerConfig: ref.watch(routerProvider),
     );
   }

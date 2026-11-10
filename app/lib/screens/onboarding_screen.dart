@@ -1,11 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../avatar/avatar_look.dart';
+import '../avatar/avatar_view.dart';
+import '../game/body_part.dart';
 import '../game/training_format.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/logo_mark.dart';
 
 /// Онбординг: 18+ → герой и цель → формат тренировок → комплекция (необязательно).
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -22,6 +27,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   bool _isAdult = false;
   final _nickname = TextEditingController();
+  AvatarSex _avatarSex = AvatarSex.male;
   Goal? _goal;
   TrainingFormat _format = TrainingFormat.fullBody;
   Set<int> _days = TrainingFormat.fullBody.defaultDays.toSet();
@@ -65,6 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         weightKg: double.tryParse(_weight.text.replaceAll(',', '.')),
         experience: _experience,
       ),
+      avatarSex: _avatarSex,
     );
     await ref.read(heroProvider.notifier).save(hero);
     if (mounted) context.go('/');
@@ -88,7 +95,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               Row(
                 children: [
                   if (_step > 0)
-                    IconButton(onPressed: _back, icon: const Icon(Icons.arrow_back))
+                    IconButton(
+                      onPressed: _back,
+                      tooltip: 'Назад',
+                      icon: const Icon(LucideIcons.chevronLeft, size: 20),
+                    )
                   else
                     const SizedBox(width: 48),
                   Expanded(
@@ -97,7 +108,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                       child: LinearProgressIndicator(
                         value: (_step + 1) / _stepCount,
                         minHeight: 6,
-                        backgroundColor: AppColors.surfaceHigh,
+                        backgroundColor: AppColors.raised,
                       ),
                     ),
                   ),
@@ -133,7 +144,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 style: Theme.of(context)
                     .textTheme
                     .headlineMedium
-                    ?.copyWith(fontWeight: FontWeight.w800)),
+                    ?.copyWith(fontWeight: FontWeight.w500)),
             const SizedBox(height: 8),
             Text(subtitle, style: const TextStyle(color: AppColors.textSecondary, fontSize: 15)),
           ],
@@ -143,9 +154,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Widget _ageStep() => ListView(
         children: [
           const SizedBox(height: 40),
-          const Icon(Icons.local_fire_department, size: 72, color: AppColors.accent),
+          const Align(alignment: Alignment.centerLeft, child: LogoMark(size: 72)),
           _title('IronRise',
-              'Каждая тренировка делает твоего героя сильнее. Пропустишь ноги — герой тоже.'),
+              'Каждая тренировка делает твоего героя сильнее. Пропустишь ноги — герой тоже'),
           CheckboxListTile(
             value: _isAdult,
             onChanged: (v) => setState(() => _isAdult = v ?? false),
@@ -158,7 +169,22 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _heroStep() => ListView(
         children: [
-          _title('Твой герой', 'Как его зовут и к чему он идёт?'),
+          _title('Твой герой', 'Как его зовут и к чему он идёт'),
+          Row(
+            children: [
+              for (final sex in AvatarSex.values) ...[
+                Expanded(
+                  child: _AvatarChoice(
+                    sex: sex,
+                    selected: _avatarSex == sex,
+                    onTap: () => setState(() => _avatarSex = sex),
+                  ),
+                ),
+                if (sex != AvatarSex.values.last) const SizedBox(width: 8),
+              ],
+            ],
+          ),
+          const SizedBox(height: 16),
           TextField(
             controller: _nickname,
             maxLength: 20,
@@ -190,7 +216,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
               }),
             ),
           const SizedBox(height: 16),
-          const Text('Дни тренировок', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Дни тренировок', style: TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           Wrap(
             spacing: 8,
@@ -260,7 +286,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          const Text('Опыт тренировок', style: TextStyle(fontWeight: FontWeight.w700)),
+          const Text('Опыт тренировок', style: TextStyle(fontWeight: FontWeight.w500)),
           const SizedBox(height: 8),
           for (final e in Experience.values)
             _ChoiceTile(
@@ -273,6 +299,52 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 }
 
 bool _setEquals(Set<int> a, Set<int> b) => a.length == b.length && a.containsAll(b);
+
+class _AvatarChoice extends StatelessWidget {
+  const _AvatarChoice({required this.sex, required this.selected, required this.onTap});
+
+  final AvatarSex sex;
+  final bool selected;
+  final VoidCallback onTap;
+
+  static final _starterLevels = {for (final p in BodyPart.values) p: 1};
+
+  @override
+  Widget build(BuildContext context) {
+    final label = sex == AvatarSex.male ? 'Герой' : 'Героиня';
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: label,
+      child: Material(
+        color: selected ? AppColors.raised : AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: selected ? Theme.of(context).colorScheme.primary : AppColors.hairline,
+          ),
+        ),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(12),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 12),
+            child: Column(
+              children: [
+                SizedBox(
+                  height: 148,
+                  child: AvatarView(levels: _starterLevels, look: AvatarLook.starter(sex)),
+                ),
+                const SizedBox(height: 8),
+                Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class _ChoiceTile extends StatelessWidget {
   const _ChoiceTile({
@@ -289,21 +361,22 @@ class _ChoiceTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: selected ? AppColors.accent.withValues(alpha: 0.15) : AppColors.surface,
+        color: selected ? AppColors.raised : AppColors.surface,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(14),
-          side: BorderSide(color: selected ? AppColors.accent : Colors.transparent),
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: selected ? accent : AppColors.hairline),
         ),
         child: ListTile(
           onTap: onTap,
-          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w500)),
           subtitle: subtitle == null
               ? null
               : Text(subtitle!, style: const TextStyle(color: AppColors.textSecondary)),
-          trailing: selected ? const Icon(Icons.check_circle, color: AppColors.accent) : null,
+          trailing: selected ? Icon(LucideIcons.check, size: 18, color: accent) : null,
         ),
       ),
     );

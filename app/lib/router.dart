@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -31,7 +32,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/workout',
               builder: (_, _) => const PlaceholderScreen(
                 title: 'Тренировка',
-                icon: Icons.fitness_center,
+                icon: LucideIcons.dumbbell,
                 text: 'Здесь будет запись подходов, таймер отдыха и пульс с часов.',
               ),
             ),
@@ -41,7 +42,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/duels',
               builder: (_, _) => const PlaceholderScreen(
                 title: 'Дуэли',
-                icon: Icons.sports_martial_arts,
+                icon: LucideIcons.swords,
                 text: 'Вызывай друзей на дуэль. Исход решает сила героя.',
               ),
             ),
@@ -51,7 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               path: '/rating',
               builder: (_, _) => const PlaceholderScreen(
                 title: 'Рейтинг',
-                icon: Icons.emoji_events_outlined,
+                icon: LucideIcons.trophy,
                 text: 'Таблица среди друзей появится вместе с дуэлями.',
               ),
             ),
@@ -78,11 +79,11 @@ class _Shell extends StatelessWidget {
         selectedIndex: shell.currentIndex,
         onDestinationSelected: (i) => shell.goBranch(i, initialLocation: i == shell.currentIndex),
         destinations: const [
-          NavigationDestination(icon: Icon(Icons.person_outline), selectedIcon: Icon(Icons.person), label: 'Герой'),
-          NavigationDestination(icon: Icon(Icons.fitness_center), label: 'Тренировка'),
-          NavigationDestination(icon: Icon(Icons.sports_martial_arts), label: 'Дуэли'),
-          NavigationDestination(icon: Icon(Icons.emoji_events_outlined), selectedIcon: Icon(Icons.emoji_events), label: 'Рейтинг'),
-          NavigationDestination(icon: Icon(Icons.settings_outlined), selectedIcon: Icon(Icons.settings), label: 'Профиль'),
+          NavigationDestination(icon: Icon(LucideIcons.user), label: 'Герой'),
+          NavigationDestination(icon: Icon(LucideIcons.dumbbell), label: 'Тренировка'),
+          NavigationDestination(icon: Icon(LucideIcons.swords), label: 'Дуэли'),
+          NavigationDestination(icon: Icon(LucideIcons.trophy), label: 'Рейтинг'),
+          NavigationDestination(icon: Icon(LucideIcons.slidersHorizontal), label: 'Профиль'),
         ],
       ),
     );
