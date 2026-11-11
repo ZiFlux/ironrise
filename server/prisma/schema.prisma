@@ -43,6 +43,8 @@ model User {
   xpEvents      XpEvent[]
   walletTx      WalletTx[]
   refreshTokens RefreshToken[]
+  inventory     InventoryItem[]
+  duels         Duel[]
 }
 
 model Profile {
@@ -141,4 +143,39 @@ model RefreshToken {
   createdAt DateTime  @default(now())
 
   @@index([userId])
+}
+
+/// Купленная косметика. Цены знает только сервер (src/game/shop.ts).
+model InventoryItem {
+  userId     String   @db.Uuid
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  itemId     String
+  acquiredAt DateTime @default(now())
+
+  @@id([userId, itemId])
+}
+
+/// Журнал дуэлей. Снимки бойцов и seed позволяют воспроизвести любой бой.
+model Duel {
+  id          String   @id @default(uuid()) @db.Uuid
+  attackerId  String   @db.Uuid
+  attacker    User     @relation(fields: [attackerId], references: [id], onDelete: Cascade)
+  /// bot — бот дня, user — другой игрок (позже).
+  opponentKind String
+  opponentId  String
+  /// YYYY-MM-DD в часовом поясе атакующего.
+  day         String
+  seed        Int
+  snapshotA   Json
+  snapshotD   Json
+  powerA      Int
+  powerD      Int
+  log         Json
+  attackerWon Boolean
+  coins       Int
+  createdAt   DateTime @default(now())
+
+  /// Один бой с одним соперником в день (ТЗ 4.5).
+  @@unique([attackerId, opponentId, day])
+  @@index([attackerId, day])
 }

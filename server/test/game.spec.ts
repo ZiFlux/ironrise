@@ -145,3 +145,39 @@ describe('дуэль', () => {
     expect(r1.log.length / 2).toBeLessThanOrEqual(10);
   });
 });
+
+import { botsForDay, mondayOf, weeklyLeague } from '../src/game/bots';
+import { SHOP_PRICES } from '../src/game/shop';
+
+describe('боты, лига, магазин', () => {
+  const player = { levels: partMap(() => 5), streakDays: 4 };
+
+  it('боты дня стабильны, их 4, от слабого к сильному', () => {
+    const a = botsForDay(player, '2026-11-11');
+    expect(a).toEqual(botsForDay(player, '2026-11-11'));
+    expect(a).toHaveLength(4);
+    expect(power(a[0].levels, 4)).toBeLessThan(power(a[3].levels, 4));
+    expect(botsForDay(player, '2026-11-12')[0].id).not.toBe(a[0].id);
+  });
+
+  it('понедельник недели', () => {
+    expect(mondayOf('2026-11-11')).toBe('2026-11-09');
+    expect(mondayOf('2026-11-09')).toBe('2026-11-09');
+    expect(mondayOf('2026-11-15')).toBe('2026-11-09');
+  });
+
+  it('лига: 8 участников, по убыванию, очки ботов растут к концу недели', () => {
+    const mon = weeklyLeague({ today: '2026-11-09', playerName: 'me', playerPoints: 0 });
+    const sun = weeklyLeague({ today: '2026-11-15', playerName: 'me', playerPoints: 0 });
+    expect(sun).toHaveLength(8);
+    const sum = (xs: typeof mon) => xs.reduce((s, e) => s + e.points, 0);
+    expect(sum(sun)).toBeGreaterThan(sum(mon));
+    for (let i = 1; i < sun.length; i++) expect(sun[i - 1].points).toBeGreaterThanOrEqual(sun[i].points);
+  });
+
+  it('в магазине 41 вещь, из них 27 платных — как в клиенте', () => {
+    const prices = Object.values(SHOP_PRICES);
+    expect(prices).toHaveLength(41);
+    expect(prices.filter((p) => p > 0)).toHaveLength(27);
+  });
+});

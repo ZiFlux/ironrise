@@ -3,6 +3,8 @@ import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
+import { EconomyController } from './economy/economy.controller';
+import { EconomyService } from './economy/economy.service';
 import { HeroService } from './hero/hero.service';
 import { PrismaService } from './prisma.service';
 import { WorkoutsController } from './workouts/workouts.controller';
@@ -28,7 +30,7 @@ const jwtSecret = () => {
       useFactory: () => ({ secret: jwtSecret(), signOptions: { expiresIn: '15m' } }),
     }),
   ],
-  controllers: [HealthController, AuthController, WorkoutsController],
-  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService],
+  controllers: [HealthController, AuthController, WorkoutsController, EconomyController],
+  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService],
 })
 export class AppModule {}

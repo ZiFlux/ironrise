@@ -6,7 +6,7 @@ import { currentStreak, maxRestDaysInRow } from '../game/streak';
 import { PrismaService } from '../prisma.service';
 
 /** Клиент Prisma или транзакция — у них одинаковые методы моделей. */
-type Db = Pick<PrismaService, 'profile' | 'avatarPart' | 'walletTx'>;
+type Db = Pick<PrismaService, 'profile' | 'avatarPart' | 'walletTx' | 'inventoryItem'>;
 
 export interface HeroState {
   nickname: string;
@@ -24,6 +24,8 @@ export interface HeroState {
   streakDays: number;
   lastActiveDay: string | null;
   coins: number;
+  /** Купленные вещи магазина (бесплатные есть у всех и сюда не входят). */
+  ownedItems: string[];
 }
 
 @Injectable()
@@ -68,6 +70,9 @@ export class HeroService {
       streakDays: streak,
       lastActiveDay: profile.lastActiveDay,
       coins: await this.coinsOf(userId, db),
+      ownedItems: (await db.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map(
+        (i) => i.itemId,
+      ),
     };
   }
 }
