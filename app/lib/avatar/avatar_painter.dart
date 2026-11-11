@@ -79,18 +79,21 @@ class AvatarPainter extends CustomPainter {
       (layers.deltLines, 0.1 + 0.45 * (frame.arms + frame.back) / 2),
       (layers.armLines, 0.08 + 0.4 * frame.arms),
     ];
-    final shine = style.paint(Colors.white.withValues(alpha: style.shine));
+    for (final (path, opacity) in lines) {
+      final depth = min(0.9, opacity * style.strength);
+      _paintShine(canvas, path, style, depth);
+      canvas.drawPath(path, style.paint(style.color.withValues(alpha: depth)));
+    }
+  }
+
+  /// Светлая грань рядом с линией. Ярче там, где рельеф глубже.
+  void _paintShine(Canvas canvas, Path path, _ReliefStyle style, double depth) {
+    final shine = style.paint(Colors.white.withValues(alpha: style.shine * depth / 0.9));
     canvas
       ..save()
-      ..translate(style.shineShift.dx, style.shineShift.dy);
-    for (final (path, _) in lines) {
-      canvas.drawPath(path, shine);
-    }
-    canvas.restore();
-    for (final (path, opacity) in lines) {
-      final alpha = min(0.9, opacity * style.strength);
-      canvas.drawPath(path, style.paint(style.color.withValues(alpha: alpha)));
-    }
+      ..translate(style.shineShift.dx, style.shineShift.dy)
+      ..drawPath(path, shine)
+      ..restore();
   }
 
   void _paintClothes(Canvas canvas) {
