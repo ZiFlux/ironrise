@@ -2,9 +2,11 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../game/body_part.dart';
 import '../game/program.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
+import 'hero.dart';
 import 'providers.dart';
 
 const _programKey = 'program_v1';
@@ -34,7 +36,13 @@ class UserProgram {
   final bool easeNext;
   final List<PainReport> painReports;
 
-  List<ProgramDay> get days => StartProgram.days(equipment);
+  ProgramPhase get phase => ProgramPhase.after(completedWorkouts);
+
+  /// Дни текущей фазы. «Старт» — всегда 3 тренировки в неделю, «База» — по формату.
+  List<ProgramDay> days(int sessionsPerWeek) => switch (phase) {
+    ProgramPhase.start => StartProgram.days(equipment),
+    ProgramPhase.base => BaseProgram.days(equipment, sessionsPerWeek),
+  };
 
   /// Зоны, которые сейчас бережём после «болит».
   Set<PainZone> avoidedZones(DateTime now) => {
@@ -42,15 +50,14 @@ class UserProgram {
       if (now.difference(r.at).inDays < Wellbeing.avoidDays) r.zone,
   };
 
-  /// План на сегодня с учётом облегчения и больных зон.
-  AdaptedDay adaptedToday(DateTime now) => Wellbeing.adapt(
-    days[nextDayIndex % days.length],
-    ease: easeNext,
-    avoid: avoidedZones(now),
-    equipment: equipment,
-  );
-
-  ProgramDay get today => adaptedToday(DateTime.now()).day;
+  /// План на сегодня: день фазы, точечное упражнение на отстающую часть («База»),
+  /// облегчение и больные зоны.
+  AdaptedDay planFor({required DateTime now, required int sessionsPerWeek, BodyPart? lagging}) {
+    final all = days(sessionsPerWeek);
+    var day = all[nextDayIndex % all.length];
+    if (phase == ProgramPhase.base) day = BaseProgram.withAccessories(day, lagging, equipment);
+    return Wellbeing.adapt(day, ease: easeNext, avoid: avoidedZones(now), equipment: equipment);
+  }
 
   ExerciseProgress progressOf(String exerciseId) =>
       progress[exerciseId] ?? const ExerciseProgress();
@@ -188,7 +195,7 @@ class ProgramNotifier extends Notifier<UserProgram> {
         final hard = state.hardInARow + 1;
         final ease = hard >= Wellbeing.hardInARowToEase;
         await _save(state.copyWith(hardInARow: ease ? 0 : hard, easeNext: ease || state.easeNext));
-        return WellbeingResponse(feeling: Feeling.hard, easeNext: ease, plan: ease ? state.adaptedToday(now) : null);
+        return WellbeingResponse(feeling: Feeling.hard, easeNext: ease, plan: ease ? planForHero(state, ref.read(heroProvider)) : null);
       case Feeling.pain:
         final where = zone ?? PainZone.other;
         final repeated = state.painReports.any(
@@ -199,7 +206,7 @@ class ProgramNotifier extends Notifier<UserProgram> {
             if (now.difference(r.at) < Wellbeing.repeatWindow) r,
           PainReport(where, now),
         ]));
-        return WellbeingResponse(feeling: Feeling.pain, zone: where, repeatedPain: repeated, plan: state.adaptedToday(now));
+        return WellbeingResponse(feeling: Feeling.pain, zone: where, repeatedPain: repeated, plan: planForHero(state, ref.read(heroProvider)));
     }
   }
 
@@ -210,6 +217,17 @@ class ProgramNotifier extends Notifier<UserProgram> {
 }
 
 final programProvider = NotifierProvider<ProgramNotifier, UserProgram>(ProgramNotifier.new);
+
+/// План следующей тренировки с учётом героя: формат тренировок и отстающая часть.
+AdaptedDay planForHero(UserProgram program, HeroProfile? hero) => program.planFor(
+  now: DateTime.now(),
+  sessionsPerWeek: hero?.trainingDays.length ?? 3,
+  lagging: hero?.lagging.firstOrNull,
+);
+
+final todayPlanProvider = Provider<AdaptedDay>(
+  (ref) => planForHero(ref.watch(programProvider), ref.watch(heroProvider)),
+);
 
 class LastPlanResultNotifier extends Notifier<PlanResult?> {
   @override

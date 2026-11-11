@@ -17,7 +17,7 @@ void main() {
     final program = c.read(programProvider.notifier);
     expect((await program.recordWellbeing(Feeling.hard)).easeNext, isFalse);
     expect((await program.recordWellbeing(Feeling.hard)).easeNext, isTrue);
-    expect(c.read(programProvider).today.exercises.every((e) => e.sets == 1), isTrue);
+    expect(c.read(todayPlanProvider).day.exercises.every((e) => e.sets == 1), isTrue);
   });
 
   test('«нормально» между ними сбрасывает счёт', () async {

@@ -33,6 +33,13 @@ class WorkoutScreen extends ConsumerWidget {
 
 // ---------- Тренировка не начата ----------
 
+/// «Фаза «Старт» · 5 из 12 тренировок» или «Фаза «База»».
+String _phaseLine(UserProgram program) => switch (program.phase) {
+  ProgramPhase.start =>
+    'Фаза «Старт» · ${program.completedWorkouts} из ${ProgramPhase.startWorkouts} тренировок',
+  ProgramPhase.base => 'Фаза «База»: 3 подхода и упражнение на отстающую часть',
+};
+
 class _StartView extends ConsumerWidget {
   const _StartView();
 
@@ -41,10 +48,12 @@ class _StartView extends ConsumerWidget {
     final rec = Recommendation.forLagging(
       ref.watch(heroProvider)?.lagging ?? const [],
     );
-    final adapted = ref.watch(programProvider).adaptedToday(DateTime.now());
+    final adapted = ref.watch(todayPlanProvider);
+    final program = ref.watch(programProvider);
     final today = adapted.day;
     final hint = [
       [for (final e in today.exercises) e.exercise.name].join(' · '),
+      _phaseLine(program),
       if (adapted.eased) 'План облегчён: на подход меньше',
       if (adapted.adjustments.isNotEmpty) 'Часть упражнений заменена, пока бережём больное место',
     ].join('\n');

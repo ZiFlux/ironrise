@@ -43,7 +43,7 @@ class TipsNotifier extends Notifier<DailyTip?> {
     final tip = TipPicker.pick(
       day: now,
       isTrainingDay: hero.trainingDays.contains(now.weekday - 1),
-      planExerciseIds: [for (final e in ref.read(programProvider).today.exercises) e.exerciseId],
+      planExerciseIds: [for (final e in ref.read(todayPlanProvider).day.exercises) e.exerciseId],
       lagging: hero.lagging.firstOrNull,
       recentTipIds: _recent,
     );

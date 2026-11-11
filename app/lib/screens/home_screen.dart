@@ -29,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
     if (hero == null) return const SizedBox.shrink();
 
     final recommendation = Recommendation.forLagging(hero.lagging);
-    final today = ref.watch(programProvider).today;
+    final today = ref.watch(todayPlanProvider).day;
     final isTrainingDay = hero.trainingDays.contains(
       DateTime.now().weekday - 1,
     );

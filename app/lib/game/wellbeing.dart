@@ -77,9 +77,6 @@ class Wellbeing {
     'bench_press': ['db_bench_press'],
   };
 
-  /// Нужен тренажёр или штанга: дома с гантелями не заменить ими.
-  static const _gymOnly = {'leg_press', 'lat_pulldown', 'back_extension', 'barbell_squat', 'bench_press'};
-
   static Set<String> loadedBy(PainZone zone) => _loads[zone] ?? const {};
 
   /// План дня с учётом облегчения и больных зон.
@@ -97,7 +94,7 @@ class Wellbeing {
       if (avoided.contains(planned.exerciseId)) {
         final substitute = (_substitutes[planned.exerciseId] ?? const <String>[])
             .where((id) => !avoided.contains(id) && !day.exercises.any((e) => e.exerciseId == id))
-            .where((id) => equipment == Equipment.gym || !_gymOnly.contains(id))
+            .where((id) => isAvailable(id, equipment))
             .firstOrNull;
         adjustments.add(PlanAdjustment(exerciseId: planned.exerciseId, replacementId: substitute));
         if (substitute == null) continue;

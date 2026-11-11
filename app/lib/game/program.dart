@@ -103,6 +103,136 @@ class StartProgram {
   };
 }
 
+/// Нужен тренажёр, штанга или турник: дома с гантелями недоступно.
+const _gymOnly = {
+  'barbell_squat', 'bench_press', 'lat_pulldown', 'leg_press', 'back_extension', 'pull_up', 'dips', 'hanging_leg_raise',
+};
+
+bool isAvailable(String exerciseId, Equipment equipment) =>
+    equipment == Equipment.gym || !_gymOnly.contains(exerciseId);
+
+/// Чем заменить упражнение зала дома с гантелями, по порядку предпочтения.
+const _homeAlternatives = <String, List<String>>{
+  'barbell_squat': ['bodyweight_squat', 'lunges'],
+  'bench_press': ['push_up', 'db_bench_press'],
+  'lat_pulldown': ['db_row'],
+  'leg_press': ['lunges', 'bodyweight_squat'],
+  'back_extension': ['romanian_deadlift'],
+  'pull_up': ['db_row'],
+  'dips': ['push_up'],
+  'hanging_leg_raise': ['crunches', 'plank'],
+};
+
+enum ProgramPhase {
+  start('Старт'),
+  base('База');
+
+  const ProgramPhase(this.label);
+  final String label;
+
+  /// Столько тренировок по плану длится «Старт» (≈ 4 недели по 3 тренировки).
+  static const startWorkouts = 12;
+
+  static ProgramPhase after(int completedPlanWorkouts) =>
+      completedPlanWorkouts < startWorkouts ? ProgramPhase.start : ProgramPhase.base;
+}
+
+/// Фаза «База» (недели 5–12): 3 подхода × 8–12, 2 повтора в запасе,
+/// дни по формату тренировок, точечное упражнение на отстающую часть.
+class BaseProgram {
+  const BaseProgram._();
+
+  static PlannedExercise _base(String id) =>
+      PlannedExercise(id, sets: 3, repsMin: 8, repsMax: 12, repsInReserve: 2);
+
+  static const _plank = PlannedExercise('plank', sets: 3, repsMin: 30, repsMax: 45, repsInReserve: 2);
+
+  static ProgramDay _day(String id, String title, List<String> exerciseIds) => ProgramDay(id, title, [
+    for (final e in exerciseIds) e == 'plank' ? _plank : _base(e),
+  ]);
+
+  static final _fullBody = [
+    _day('A', 'Тренировка А', ['barbell_squat', 'bench_press', 'lat_pulldown', 'plank']),
+    _day('B', 'Тренировка Б', ['romanian_deadlift', 'db_shoulder_press', 'db_row', 'lunges']),
+  ];
+
+  static final _upperLower = [
+    _day('U1', 'Верх 1', ['bench_press', 'lat_pulldown', 'db_shoulder_press', 'db_curl']),
+    _day('L1', 'Низ 1', ['barbell_squat', 'romanian_deadlift', 'lunges', 'plank']),
+    _day('U2', 'Верх 2', ['db_bench_press', 'db_row', 'push_up', 'french_press']),
+    _day('L2', 'Низ 2', ['leg_press', 'back_extension', 'bodyweight_squat', 'hanging_leg_raise']),
+  ];
+
+  /// День отстающей части: упражнения добираются под отстающую часть тела.
+  static final _focusDay = ProgramDay('F', 'День отстающей части', const []);
+
+  /// 3 тренировки в неделю — фулбоди, 4 — верх/низ, 5 и больше — ещё день отстающей части.
+  static List<ProgramDay> days(Equipment equipment, int sessionsPerWeek) {
+    final template = switch (sessionsPerWeek) {
+      <= 3 => _fullBody,
+      4 => _upperLower,
+      _ => [..._upperLower, _focusDay],
+    };
+    return [for (final day in template) forEquipment(day, equipment)];
+  }
+
+  /// Дома с гантелями упражнения зала заменяются доступными, без повторов внутри дня.
+  static ProgramDay forEquipment(ProgramDay day, Equipment equipment) {
+    if (equipment == Equipment.gym) return day;
+    final used = <String>{};
+    final exercises = <PlannedExercise>[];
+    for (final planned in day.exercises) {
+      final options = [planned.exerciseId, ...?_homeAlternatives[planned.exerciseId]];
+      final id = options.where((o) => isAvailable(o, equipment) && !used.contains(o)).firstOrNull;
+      if (id == null) continue;
+      used.add(id);
+      exercises.add(PlannedExercise(
+        id,
+        sets: planned.sets,
+        repsMin: planned.repsMin,
+        repsMax: planned.repsMax,
+        repsInReserve: planned.repsInReserve,
+      ));
+    }
+    return ProgramDay(day.id, day.title, exercises);
+  }
+
+  /// Точечное упражнение на отстающую часть: самое нагружающее её, доступное
+  /// и ещё не стоящее в этом дне. Кардио качается с часов, его не добавляем.
+  static PlannedExercise? accessoryFor(BodyPart lagging, ProgramDay day, Equipment equipment) {
+    if (lagging == BodyPart.cardio) return null;
+    final inDay = {for (final e in day.exercises) e.exerciseId};
+    final exercise = ExerciseCatalog.forPart(lagging)
+        .where((e) => isAvailable(e.id, equipment) && !inDay.contains(e.id))
+        .firstOrNull;
+    if (exercise == null) return null;
+    final seconds = exercise.unit == ExerciseUnit.seconds;
+    return PlannedExercise(
+      exercise.id,
+      sets: 2,
+      repsMin: seconds ? 30 : 10,
+      repsMax: seconds ? 45 : 15,
+      repsInReserve: 2,
+    );
+  }
+
+  /// День с точечными упражнениями: в обычный день одно в конец,
+  /// в день отстающей части — три.
+  static ProgramDay withAccessories(ProgramDay day, BodyPart? lagging, Equipment equipment) {
+    final isFocusDay = day.id == _focusDay.id;
+    var result = day;
+    if (lagging != null) {
+      for (var i = 0; i < (isFocusDay ? 3 : 1); i++) {
+        final extra = accessoryFor(lagging, result, equipment);
+        if (extra == null) break;
+        result = ProgramDay(result.id, result.title, [...result.exercises, extra]);
+      }
+    }
+    // День отстающей части, когда отставания нет, — обычная тренировка всего тела.
+    return result.exercises.isEmpty ? forEquipment(_fullBody.first, equipment) : result;
+  }
+}
+
 /// Прогресс в упражнении: рабочий вес (или цель повторов без веса) и недоборы подряд.
 class ExerciseProgress {
   const ExerciseProgress({this.workingWeight, this.repsBonus = 0, this.misses = 0});
