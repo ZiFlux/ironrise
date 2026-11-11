@@ -45,6 +45,8 @@ model User {
   refreshTokens RefreshToken[]
   inventory     InventoryItem[]
   duels         Duel[]
+  sentFriendRequests     Friendship[] @relation("FriendRequester")
+  receivedFriendRequests Friendship[] @relation("FriendAddressee")
 }
 
 model Profile {
@@ -160,7 +162,7 @@ model Duel {
   id          String   @id @default(uuid()) @db.Uuid
   attackerId  String   @db.Uuid
   attacker    User     @relation(fields: [attackerId], references: [id], onDelete: Cascade)
-  /// bot — бот дня, user — другой игрок (позже).
+  /// bot — бот дня, user — друг.
   opponentKind String
   opponentId  String
   /// YYYY-MM-DD в часовом поясе атакующего.
@@ -178,4 +180,24 @@ model Duel {
   /// Один бой с одним соперником в день (ТЗ 4.5).
   @@unique([attackerId, opponentId, day])
   @@index([attackerId, day])
+  /// Лента «кто на тебя нападал».
+  @@index([opponentKind, opponentId, createdAt])
+}
+
+enum FriendshipStatus {
+  pending
+  accepted
+}
+
+/// Заявка или дружба. Одна строка на пару: requester → addressee.
+model Friendship {
+  requesterId String           @db.Uuid
+  requester   User             @relation("FriendRequester", fields: [requesterId], references: [id], onDelete: Cascade)
+  addresseeId String           @db.Uuid
+  addressee   User             @relation("FriendAddressee", fields: [addresseeId], references: [id], onDelete: Cascade)
+  status      FriendshipStatus @default(pending)
+  createdAt   DateTime         @default(now())
+
+  @@id([requesterId, addresseeId])
+  @@index([addresseeId])
 }

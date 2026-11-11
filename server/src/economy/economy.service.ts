@@ -67,11 +67,6 @@ export class EconomyService {
     return this.hero.state(userId);
   }
 
-  private async today(userId: string): Promise<string> {
-    const p = await this.db.profile.findUniqueOrThrow({ where: { userId }, select: { timezone: true } });
-    return localDay(new Date(), p.timezone);
-  }
-
   /** Боты дня и итоги боёв с ними за сегодня. */
   async bots(userId: string) {
     const day = await this.today(userId);
@@ -122,25 +117,36 @@ export class EconomyService {
     });
   }
 
-  /** Недельная лига по настоящим тренировочным дням и победам. */
-  async league(userId: string) {
-    const day = await this.today(userId);
-    const monday = mondayOf(day);
-    const hero = await this.hero.state(userId);
+  /** Тренировочные дни и победы в дуэлях за неделю [monday; today]. */
+  async weeklyStats(userId: string, monday: string, today: string) {
     const trainedDays = (
       await this.db.workout.findMany({
-        where: { userId, day: { gte: monday, lte: day } },
+        where: { userId, day: { gte: monday, lte: today } },
         distinct: ['day'],
         select: { day: true },
       })
     ).length;
-    const wins = await this.db.duel.count({ where: { attackerId: userId, attackerWon: true, day: { gte: monday, lte: day } } });
-    const playerPoints = trainedDays * LEAGUE_WORKOUT_POINTS + wins * LEAGUE_WIN_POINTS;
+    const wins = await this.db.duel.count({
+      where: { attackerId: userId, attackerWon: true, day: { gte: monday, lte: today } },
+    });
+    return { trainedDays, wins, points: trainedDays * LEAGUE_WORKOUT_POINTS + wins * LEAGUE_WIN_POINTS };
+  }
+
+  /** Недельная лига по настоящим тренировочным дням и победам. */
+  async league(userId: string) {
+    const day = await this.today(userId);
+    const hero = await this.hero.state(userId);
+    const { trainedDays, wins, points } = await this.weeklyStats(userId, mondayOf(day), day);
     return {
       day,
       trainedDays,
       wins,
-      entries: weeklyLeague({ today: day, playerName: hero.nickname, playerPoints }),
+      entries: weeklyLeague({ today: day, playerName: hero.nickname, playerPoints: points }),
     };
+  }
+
+  async today(userId: string): Promise<string> {
+    const p = await this.db.profile.findUniqueOrThrow({ where: { userId }, select: { timezone: true } });
+    return localDay(new Date(), p.timezone);
   }
 }
