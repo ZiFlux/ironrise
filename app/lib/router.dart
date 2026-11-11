@@ -9,8 +9,8 @@ import 'screens/exercise_library_screen.dart';
 import 'screens/heart_rate_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/placeholder_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/rating_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
 import 'state/providers.dart';
@@ -67,14 +67,7 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(
-                path: '/rating',
-                builder: (_, _) => const PlaceholderScreen(
-                  title: 'Рейтинг',
-                  icon: LucideIcons.trophy,
-                  text: 'Таблица среди друзей появится вместе с дуэлями.',
-                ),
-              ),
+              GoRoute(path: '/rating', builder: (_, _) => const RatingScreen()),
             ],
           ),
           StatefulShellBranch(

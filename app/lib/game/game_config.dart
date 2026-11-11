@@ -61,4 +61,8 @@ class GameConfig {
   /// Монеты за дуэль с ботом.
   static const int duelWinCoins = 15;
   static const int duelLossCoins = 3;
+
+  /// Очки недельной лиги.
+  static const int leagueWorkoutPoints = 10;
+  static const int leagueWinPoints = 3;
 }

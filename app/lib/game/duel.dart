@@ -125,7 +125,7 @@ class DuelSimulator {
 class DuelBots {
   const DuelBots._();
 
-  static const _names = [
+  static const names = [
     'Кирпич', 'Штанга', 'Железный Лёха', 'Медведь', 'Пружина', 'Турник',
     'Гиря', 'Рельс', 'Фитоняша', 'Атлант', 'Бицепс', 'Блин 20',
   ];
@@ -136,7 +136,7 @@ class DuelBots {
   static List<Fighter> forDay(Fighter player, DateTime day) {
     final seed = day.year * 10000 + day.month * 100 + day.day;
     final rng = Random(seed);
-    final names = [..._names]..shuffle(rng);
+    final names = [...DuelBots.names]..shuffle(rng);
     return [
       for (final (i, ratio) in _ratios.indexed)
         Fighter(

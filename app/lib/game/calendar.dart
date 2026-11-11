@@ -29,6 +29,9 @@ String dayKey(DateTime d) =>
 
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
+/// Понедельник недели, в которую входит [d].
+DateTime mondayOf(DateTime d) => DateTime(d.year, d.month, d.day - (d.weekday - 1));
+
 class ActivityCalendar {
   const ActivityCalendar._();
 
