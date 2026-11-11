@@ -14,10 +14,10 @@ import 'screens/heart_rate_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/onboarding_screen.dart';
-import 'screens/profile_screen.dart';
 import 'screens/player_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/rating_screen.dart';
+import 'screens/settings_screen.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
@@ -50,10 +50,6 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'wardrobe',
                     builder: (_, _) => const WardrobeScreen(),
-                  ),
-                  GoRoute(
-                    path: 'player',
-                    builder: (_, _) => const PlayerScreen(),
                   ),
                   GoRoute(
                     path: 'notifications',
@@ -118,8 +114,12 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (_, _) => const ProfileScreen(),
+                builder: (_, _) => const PlayerScreen(),
                 routes: [
+                  GoRoute(
+                    path: 'settings',
+                    builder: (_, _) => const SettingsScreen(),
+                  ),
                   GoRoute(
                     path: 'heart-rate',
                     builder: (_, _) => const HeartRateScreen(),
@@ -156,7 +156,10 @@ class _Shell extends StatelessWidget {
         onDestinationSelected: (i) =>
             shell.goBranch(i, initialLocation: i == shell.currentIndex),
         destinations: const [
-          NavigationDestination(icon: Icon(LucideIcons.user), label: 'Герой'),
+          NavigationDestination(
+            icon: Icon(LucideIcons.personStanding),
+            label: 'Герой',
+          ),
           NavigationDestination(
             icon: Icon(LucideIcons.dumbbell),
             label: 'Тренировка',
@@ -167,7 +170,7 @@ class _Shell extends StatelessWidget {
             label: 'Рейтинг',
           ),
           NavigationDestination(
-            icon: Icon(LucideIcons.slidersHorizontal),
+            icon: Icon(LucideIcons.circleUser),
             label: 'Профиль',
           ),
         ],

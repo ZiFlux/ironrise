@@ -21,8 +21,10 @@ import '../state/settings.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 
-class ProfileScreen extends ConsumerWidget {
-  const ProfileScreen({super.key});
+/// Настройки и конфиденциальность: всё, что не про самого игрока.
+/// Вход — шестерёнка в профиле игрока.
+class SettingsScreen extends ConsumerWidget {
+  const SettingsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -30,21 +32,10 @@ class ProfileScreen extends ConsumerWidget {
     if (hero == null) return const SizedBox.shrink();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Профиль')),
+      appBar: AppBar(title: const Text('Настройки и конфиденциальность')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
-          Card(
-            child: ListTile(
-              onTap: () => context.go('/player'),
-              leading: const Icon(LucideIcons.user, size: 18, color: AppColors.textSecondary),
-              title: const Text('Профиль игрока'),
-              subtitle: const Text('Статистика, рекорды и уровень силы',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
-              trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
-            ),
-          ),
-          const SizedBox(height: 16),
           _HeroInfo(hero: hero),
           const SizedBox(height: 24),
           const _SectionLabel('Где тренируешься'),
@@ -491,6 +482,17 @@ class _DataSection extends ConsumerWidget {
             onTap: () => context.push('/privacy'),
             leading: const Icon(LucideIcons.shieldCheck, size: 18, color: AppColors.textSecondary),
             title: const Text('Политика конфиденциальности'),
+            trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            onTap: () => showLicensePage(
+              context: context,
+              applicationName: 'IronRise',
+              applicationLegalese: 'IronRise использует открытые библиотеки на условиях их лицензий',
+            ),
+            leading: const Icon(LucideIcons.scrollText, size: 18, color: AppColors.textSecondary),
+            title: const Text('Лицензии открытых библиотек'),
             trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
           ),
           const Divider(height: 1),

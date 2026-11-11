@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
@@ -23,7 +25,17 @@ class PlayerScreen extends ConsumerWidget {
     final days = DateTime.now().difference(hero.createdAt).inDays + 1;
 
     return Scaffold(
-      appBar: AppBar(title: Text(hero.nickname)),
+      appBar: AppBar(
+        title: Text(hero.nickname),
+        actions: [
+          IconButton(
+            tooltip: 'Настройки и конфиденциальность',
+            onPressed: () => context.go('/profile/settings'),
+            icon: const Icon(LucideIcons.settings, size: 20),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         children: [

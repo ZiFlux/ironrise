@@ -111,7 +111,7 @@ class _Header extends ConsumerWidget {
           children: [
             Expanded(
               child: InkWell(
-                onTap: () => context.go('/player'),
+                onTap: () => context.go('/profile'),
                 borderRadius: BorderRadius.circular(8),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
