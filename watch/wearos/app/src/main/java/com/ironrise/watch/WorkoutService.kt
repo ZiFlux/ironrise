@@ -10,37 +10,25 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
-import android.util.Log
+import android.os.PowerManager
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
-import androidx.health.services.client.ExerciseClient
-import androidx.health.services.client.ExerciseUpdateCallback
-import androidx.health.services.client.HealthServices
-import androidx.health.services.client.MeasureCallback
-import androidx.health.services.client.MeasureClient
-import androidx.health.services.client.data.Availability
-import androidx.health.services.client.data.DataPointContainer
-import androidx.health.services.client.data.DataType
-import androidx.health.services.client.data.DeltaDataType
-import androidx.health.services.client.data.ExerciseConfig
-import androidx.health.services.client.data.ExerciseLapSummary
-import androidx.health.services.client.data.ExerciseTrackedStatus
-import androidx.health.services.client.data.ExerciseType
-import androidx.health.services.client.data.ExerciseUpdate
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.guava.await
 import kotlinx.coroutines.launch
 
 /**
- * Силовая тренировка через Health Services: пульс каждую секунду и шаги.
- * Работает как foreground-сервис, поэтому пульс идёт и при погасшем экране.
+ * Тренировка на часах: пульс и шаги с аппаратных датчиков, отправка на телефон.
+ *
+ * Почему не Health Services: на Galaxy Watch (Wear OS 6) ExerciseClient принимает
+ * старт, но тренировку не запускает, а MeasureClient работает только при включённом
+ * экране. Датчики через SensorManager в foreground-сервисе с wake lock работают и с
+ * погасшим экраном.
  */
 class WorkoutService : LifecycleService(), SensorEventListener {
-    private val exercises: ExerciseClient by lazy { HealthServices.getClient(this).exerciseClient }
-    private val measure: MeasureClient by lazy { HealthServices.getClient(this).measureClient }
     private val phone by lazy { PhoneLink(this) }
     private val sensors by lazy { getSystemService(SensorManager::class.java) }
+    private var wakeLock: PowerManager.WakeLock? = null
 
     /** Показание счётчика шагов в начале тренировки: он считает с перезагрузки часов. */
     private var stepsAtStart: Float? = null
@@ -57,130 +45,73 @@ class WorkoutService : LifecycleService(), SensorEventListener {
     private fun start() {
         if (WorkoutStore.state.value.active) return
         goForeground()
-        lifecycleScope.launch {
-            try {
-                endLeftoverExercise()
-                exercises.setUpdateCallback(updates)
-                exercises.startExerciseAsync(exerciseConfig()).await()
-                // Основной источник пульса — прямая подписка на датчик. Тренировка через
-                // ExerciseClient на Galaxy Watch (Wear OS 6) принимает старт, но не идёт:
-                // статус остаётся «нет тренировки», обновления не приходят.
-                measure.registerMeasureCallback(DataType.HEART_RATE_BPM, directPulse)
-                startCountingSteps()
-                WorkoutStore.started(System.currentTimeMillis())
-                Log.i(TAG, "Тренировка: ${exercises.getCurrentExerciseInfoAsync().await().exerciseTrackedStatus}")
-            } catch (e: Exception) {
-                Log.e(TAG, "Health Services не запустил тренировку", e)
-                WorkoutStore.failed("Не удалось начать: ${e.message ?: "ошибка датчиков"}")
-                stopSelf()
-            }
+        val heartRate = sensors.getDefaultSensor(Sensor.TYPE_HEART_RATE)
+        if (heartRate == null) {
+            WorkoutStore.failed("На часах нет датчика пульса")
+            stopSelf()
+            return
         }
+        keepCpuAwake()
+        sensors.registerListener(this, heartRate, SensorManager.SENSOR_DELAY_NORMAL)
+        sensors.getDefaultSensor(Sensor.TYPE_STEP_COUNTER)?.let {
+            sensors.registerListener(this, it, SensorManager.SENSOR_DELAY_NORMAL)
+        }
+        WorkoutStore.started(System.currentTimeMillis())
     }
 
     private fun stop() {
+        releaseSensors()
+        WorkoutStore.stopped()
         lifecycleScope.launch {
-            try {
-                exercises.endExerciseAsync().await()
-            } catch (e: Exception) {
-                Log.w(TAG, "Тренировка уже завершена", e)
-            }
-            exercises.clearUpdateCallbackAsync(updates)
-            sensors.unregisterListener(this@WorkoutService)
-            stepsAtStart = null
-            try {
-                measure.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, directPulse).await()
-            } catch (e: Exception) {
-                Log.w(TAG, "Подписка на пульс уже снята", e)
-            }
-            WorkoutStore.stopped()
             phone.sendStopped()
             ServiceCompat.stopForeground(this@WorkoutService, ServiceCompat.STOP_FOREGROUND_REMOVE)
             stopSelf()
         }
     }
 
-    /** Тренировка нашего приложения могла остаться после падения или обновления. */
-    private suspend fun endLeftoverExercise() {
-        val current = exercises.getCurrentExerciseInfoAsync().await()
-        if (current.exerciseTrackedStatus == ExerciseTrackedStatus.OWNED_EXERCISE_IN_PROGRESS) {
-            exercises.endExerciseAsync().await()
+    override fun onDestroy() {
+        releaseSensors()
+        super.onDestroy()
+    }
+
+    private fun releaseSensors() {
+        sensors.unregisterListener(this)
+        stepsAtStart = null
+        wakeLock?.takeIf { it.isHeld }?.release()
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        when (event.sensor.type) {
+            Sensor.TYPE_HEART_RATE -> onPulse(event)
+            Sensor.TYPE_STEP_COUNTER -> event.values.firstOrNull()?.let(::onSteps)
         }
     }
 
-    /**
-     * Берём первый вид тренировки, где пульс поддерживается.
-     */
-    private suspend fun exerciseConfig(): ExerciseConfig {
-        val capabilities = exercises.getCapabilitiesAsync().await()
-        val supportedTypes = capabilities.supportedExerciseTypes
-        Log.i(TAG, "Поддерживаемые тренировки: $supportedTypes")
-        val type = PREFERRED_TYPES.firstOrNull { candidate ->
-            candidate in supportedTypes &&
-                DataType.HEART_RATE_BPM in capabilities.getExerciseTypeCapabilities(candidate).supportedDataTypes
-        } ?: throw IllegalStateException("часы не отдают пульс ни для одного вида тренировки")
-        val supportedData = capabilities.getExerciseTypeCapabilities(type).supportedDataTypes
-        Log.i(TAG, "Тренировка $type, данные: $supportedData")
-        return ExerciseConfig.builder(type)
-            .setDataTypes(setOf(DataType.HEART_RATE_BPM))
-            .setIsAutoPauseAndResumeEnabled(false)
-            .setIsGpsEnabled(false)
-            .build()
-    }
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
 
-    private val updates = object : ExerciseUpdateCallback {
-        override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
-            val metrics = update.latestMetrics
-            metrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value?.let(::onPulse)
-        }
-
-        override fun onLapSummaryReceived(lapSummary: ExerciseLapSummary) = Unit
-
-        override fun onRegistered() {
-            Log.i(TAG, "Приёмник обновлений зарегистрирован")
-        }
-
-        override fun onRegistrationFailed(throwable: Throwable) {
-            Log.e(TAG, "Не удалось подписаться на данные тренировки", throwable)
-        }
-
-        override fun onAvailabilityChanged(dataType: DataType<*, *>, availability: Availability) {
-            Log.d(TAG, "Доступность ${dataType.name}: $availability")
-        }
-    }
-
-    private val directPulse = object : MeasureCallback {
-        override fun onDataReceived(data: DataPointContainer) {
-            data.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value?.let(::onPulse)
-        }
-
-        override fun onAvailabilityChanged(dataType: DeltaDataType<*, *>, availability: Availability) {
-            Log.d(TAG, "Датчик пульса: $availability")
-        }
-    }
-
-    /** Пульс из любого источника: показать на часах и отправить на телефон. */
-    private fun onPulse(value: Double) {
-        val bpm = value.toInt()
-        if (bpm <= 0) return
+    /** Без контакта с кожей датчик шлёт нули или помечает данные ненадёжными. */
+    private fun onPulse(event: SensorEvent) {
+        val bpm = event.values.firstOrNull()?.toInt() ?: return
+        val unreliable = event.accuracy == SensorManager.SENSOR_STATUS_NO_CONTACT ||
+            event.accuracy == SensorManager.SENSOR_STATUS_UNRELIABLE
+        if (bpm <= 0 || unreliable) return
         WorkoutStore.pulse(bpm)
         lifecycleScope.launch {
             phone.sendPulse(bpm, WorkoutStore.state.value.steps, System.currentTimeMillis())
         }
     }
 
-    /** Шаги — с аппаратного счётчика: он работает на всех часах и почти не тратит заряд. */
-    private fun startCountingSteps() {
-        val counter = sensors.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
-        sensors.registerListener(this, counter, SensorManager.SENSOR_DELAY_NORMAL)
-    }
-
-    override fun onSensorChanged(event: SensorEvent) {
-        val total = event.values.firstOrNull() ?: return
+    private fun onSteps(total: Float) {
         val start = stepsAtStart ?: total.also { stepsAtStart = it }
         WorkoutStore.steps((total - start).toLong())
     }
 
-    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
+    /** Экран гаснет, а процессор и датчик продолжают работать до конца тренировки. */
+    private fun keepCpuAwake() {
+        wakeLock = getSystemService(PowerManager::class.java)
+            .newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "IronRise:workout")
+            .apply { acquire(MAX_WORKOUT_MS) }
+    }
 
     private fun goForeground() {
         val manager = getSystemService(NotificationManager::class.java)
@@ -206,17 +137,9 @@ class WorkoutService : LifecycleService(), SensorEventListener {
         private const val ACTION_STOP = "com.ironrise.watch.STOP"
         private const val CHANNEL_ID = "workout"
         private const val NOTIFICATION_ID = 1
-        private const val TAG = "IronRiseWorkout"
 
-        /** По порядку предпочтения: чем ближе к залу, тем лучше. */
-        private val PREFERRED_TYPES = listOf(
-            ExerciseType.STRENGTH_TRAINING,
-            ExerciseType.WEIGHTLIFTING,
-            ExerciseType.CALISTHENICS,
-            ExerciseType.WORKOUT,
-            ExerciseType.EXERCISE_CLASS,
-            ExerciseType.WALKING,
-        )
+        /** Страховка: если тренировку забыли завершить, датчик выключится сам. */
+        private const val MAX_WORKOUT_MS = 6 * 60 * 60 * 1000L
 
         fun start(context: Context) = context.startForegroundService(
             Intent(context, WorkoutService::class.java).setAction(ACTION_START),
