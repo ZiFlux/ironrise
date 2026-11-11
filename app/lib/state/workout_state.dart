@@ -27,7 +27,9 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
   }
 
   void start() {
-    if (state == null) _save(WorkoutSession(startedAt: DateTime.now()));
+    if (state != null) return;
+    _save(WorkoutSession(startedAt: DateTime.now()));
+    ref.read(heartRateProvider.notifier).startWatch();
   }
 
   void addExercise(Exercise exercise) {
@@ -58,7 +60,10 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     );
   }
 
-  void cancel() => _save(null);
+  void cancel() {
+    _save(null);
+    ref.read(heartRateProvider.notifier).stopWatch();
+  }
 
   /// Закрыть тренировку, проверить пульс, начислить герою итог.
   Future<WorkoutSummary?> finish() async {
@@ -67,6 +72,7 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     if (session == null || hero == null || session.totalSets == 0) return null;
 
     final finishedAt = DateTime.now();
+    ref.read(heartRateProvider.notifier).stopWatch();
     final live = ref
         .read(heartRateProvider.notifier)
         .samplesBetween(session.startedAt, finishedAt);

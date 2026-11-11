@@ -25,6 +25,9 @@ enum PulseSource { bluetooth, watch }
 /// Канал приёма сообщений от приложения IronRise на часах (MainActivity.kt).
 const _watchChannel = EventChannel('ironrise/watch');
 
+/// Команды приложению на часах: начать и закончить передачу пульса.
+const _watchControl = MethodChannel('ironrise/watch_control');
+
 /// Часы молчат дольше этого — считаем, что тренировка на них остановлена.
 const _watchSilenceLimit = Duration(seconds: 15);
 
@@ -93,6 +96,20 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
       );
     }
     return const HeartRateState();
+  }
+
+  /// Тренировка на телефоне началась: часы сами включают пульс, трогать их не нужно.
+  Future<void> startWatch() => _sendToWatch('start');
+
+  Future<void> stopWatch() => _sendToWatch('stop');
+
+  Future<void> _sendToWatch(String command) async {
+    if (!Platform.isAndroid) return;
+    try {
+      await _watchControl.invokeMethod<bool>(command);
+    } on PlatformException {
+      // Часов нет или нет Google Play Services: тренировка идёт и без них.
+    }
   }
 
   /// Пульс с приложения на часах. Bluetooth-датчик, если подключён, главнее.

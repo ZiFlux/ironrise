@@ -44,6 +44,8 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         setContentView(buildLayout())
         actionButton.setOnClickListener { onActionClick() }
+        // Открыли по уведомлению «Тренировка началась» — сразу включаем пульс.
+        if (intent.getBooleanExtra(EXTRA_AUTOSTART, false) && !WorkoutStore.state.value.active) onActionClick()
         lifecycleScope.launch {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { WorkoutStore.state.collect(::render) }
@@ -124,11 +126,12 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private companion object {
-        val BACKGROUND = Color.parseColor("#0F0F10")
-        val ACCENT = Color.parseColor("#C6FF3D")
-        val ON_ACCENT = Color.parseColor("#111111")
-        val SECONDARY = Color.parseColor("#A1A1A6")
-        val MUTED = Color.parseColor("#85858B")
+    companion object {
+        const val EXTRA_AUTOSTART = "autostart"
+        private val BACKGROUND = Color.parseColor("#0F0F10")
+        private val ACCENT = Color.parseColor("#C6FF3D")
+        private val ON_ACCENT = Color.parseColor("#111111")
+        private val SECONDARY = Color.parseColor("#A1A1A6")
+        private val MUTED = Color.parseColor("#85858B")
     }
 }

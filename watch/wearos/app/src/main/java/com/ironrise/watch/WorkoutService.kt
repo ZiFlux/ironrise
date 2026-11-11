@@ -6,6 +6,10 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ServiceInfo
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorEventListener
+import android.hardware.SensorManager
 import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -32,10 +36,14 @@ import kotlinx.coroutines.launch
  * Силовая тренировка через Health Services: пульс каждую секунду и шаги.
  * Работает как foreground-сервис, поэтому пульс идёт и при погасшем экране.
  */
-class WorkoutService : LifecycleService() {
+class WorkoutService : LifecycleService(), SensorEventListener {
     private val exercises: ExerciseClient by lazy { HealthServices.getClient(this).exerciseClient }
     private val measure: MeasureClient by lazy { HealthServices.getClient(this).measureClient }
     private val phone by lazy { PhoneLink(this) }
+    private val sensors by lazy { getSystemService(SensorManager::class.java) }
+
+    /** Показание счётчика шагов в начале тренировки: он считает с перезагрузки часов. */
+    private var stepsAtStart: Float? = null
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -58,6 +66,7 @@ class WorkoutService : LifecycleService() {
                 // ExerciseClient на Galaxy Watch (Wear OS 6) принимает старт, но не идёт:
                 // статус остаётся «нет тренировки», обновления не приходят.
                 measure.registerMeasureCallback(DataType.HEART_RATE_BPM, directPulse)
+                startCountingSteps()
                 WorkoutStore.started(System.currentTimeMillis())
                 Log.i(TAG, "Тренировка: ${exercises.getCurrentExerciseInfoAsync().await().exerciseTrackedStatus}")
             } catch (e: Exception) {
@@ -76,6 +85,8 @@ class WorkoutService : LifecycleService() {
                 Log.w(TAG, "Тренировка уже завершена", e)
             }
             exercises.clearUpdateCallbackAsync(updates)
+            sensors.unregisterListener(this@WorkoutService)
+            stepsAtStart = null
             try {
                 measure.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, directPulse).await()
             } catch (e: Exception) {
@@ -97,8 +108,7 @@ class WorkoutService : LifecycleService() {
     }
 
     /**
-     * Не на всех часах силовая тренировка отдаёт пульс (на Samsung — нет),
-     * поэтому берём первый вид тренировки, где пульс поддерживается. Шаги — если есть.
+     * Берём первый вид тренировки, где пульс поддерживается.
      */
     private suspend fun exerciseConfig(): ExerciseConfig {
         val capabilities = exercises.getCapabilitiesAsync().await()
@@ -110,10 +120,8 @@ class WorkoutService : LifecycleService() {
         } ?: throw IllegalStateException("часы не отдают пульс ни для одного вида тренировки")
         val supportedData = capabilities.getExerciseTypeCapabilities(type).supportedDataTypes
         Log.i(TAG, "Тренировка $type, данные: $supportedData")
-        val wanted = setOf(DataType.HEART_RATE_BPM, DataType.STEPS).filter { it in supportedData }.toSet()
-        Log.i(TAG, "Запрашиваем: $wanted")
         return ExerciseConfig.builder(type)
-            .setDataTypes(wanted)
+            .setDataTypes(setOf(DataType.HEART_RATE_BPM))
             .setIsAutoPauseAndResumeEnabled(false)
             .setIsGpsEnabled(false)
             .build()
@@ -122,8 +130,6 @@ class WorkoutService : LifecycleService() {
     private val updates = object : ExerciseUpdateCallback {
         override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
             val metrics = update.latestMetrics
-            val stepsDelta = metrics.getData(DataType.STEPS).sumOf { it.value }
-            if (stepsDelta > 0) WorkoutStore.steps(stepsDelta)
             metrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value?.let(::onPulse)
         }
 
@@ -161,6 +167,20 @@ class WorkoutService : LifecycleService() {
             phone.sendPulse(bpm, WorkoutStore.state.value.steps, System.currentTimeMillis())
         }
     }
+
+    /** Шаги — с аппаратного счётчика: он работает на всех часах и почти не тратит заряд. */
+    private fun startCountingSteps() {
+        val counter = sensors.getDefaultSensor(Sensor.TYPE_STEP_COUNTER) ?: return
+        sensors.registerListener(this, counter, SensorManager.SENSOR_DELAY_NORMAL)
+    }
+
+    override fun onSensorChanged(event: SensorEvent) {
+        val total = event.values.firstOrNull() ?: return
+        val start = stepsAtStart ?: total.also { stepsAtStart = it }
+        WorkoutStore.steps((total - start).toLong())
+    }
+
+    override fun onAccuracyChanged(sensor: Sensor, accuracy: Int) = Unit
 
     private fun goForeground() {
         val manager = getSystemService(NotificationManager::class.java)

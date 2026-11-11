@@ -23,7 +23,7 @@ object WorkoutStore {
 
     fun pulse(bpm: Int) = mutable.update { it.copy(bpm = bpm) }
 
-    fun steps(delta: Long) = mutable.update { it.copy(steps = it.steps + delta) }
+    fun steps(total: Long) = mutable.update { it.copy(steps = total) }
 
     fun stopped() = mutable.update { it.copy(active = false) }
 

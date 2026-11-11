@@ -28,9 +28,13 @@ class CardioNotifier extends Notifier<CardioSession?> {
   void start(CardioActivity activity) {
     if (state != null) return;
     _save(CardioSession(startedAt: DateTime.now(), activity: activity));
+    ref.read(heartRateProvider.notifier).startWatch();
   }
 
-  void cancel() => _save(null);
+  void cancel() {
+    _save(null);
+    ref.read(heartRateProvider.notifier).stopWatch();
+  }
 
   Future<WorkoutSummary?> finish() async {
     final session = state;
@@ -38,6 +42,7 @@ class CardioNotifier extends Notifier<CardioSession?> {
     if (session == null || hero == null) return null;
 
     final finishedAt = DateTime.now();
+    ref.read(heartRateProvider.notifier).stopWatch();
     final live = ref
         .read(heartRateProvider.notifier)
         .samplesBetween(session.startedAt, finishedAt);

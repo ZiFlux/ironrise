@@ -46,6 +46,10 @@ class PhoneLink(context: Context) {
     companion object {
         const val PATH_PULSE = "/ironrise/pulse"
         const val PATH_STOPPED = "/ironrise/stopped"
+
+        /** Команды от телефона (PhoneCommandService). */
+        const val PATH_START = "/ironrise/start"
+        const val PATH_STOP = "/ironrise/stop"
         private const val NODES_TTL_MS = 30_000L
         private const val TAG = "IronRisePhoneLink"
     }

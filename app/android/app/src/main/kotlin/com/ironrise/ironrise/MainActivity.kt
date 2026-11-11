@@ -5,6 +5,7 @@ import com.google.android.gms.wearable.Wearable
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
+import io.flutter.plugin.common.MethodChannel
 
 // Health Connect запрашивает разрешения через registerForActivityResult —
 // для этого нужна FragmentActivity (Android 14+).
@@ -15,6 +16,25 @@ class MainActivity : FlutterFragmentActivity() {
         super.configureFlutterEngine(flutterEngine)
         EventChannel(flutterEngine.dartExecutor.binaryMessenger, WATCH_CHANNEL)
             .setStreamHandler(WatchStream())
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, WATCH_CONTROL_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "start" -> sendToWatch(PATH_START, result)
+                    "stop" -> sendToWatch(PATH_STOP, result)
+                    else -> result.notImplemented()
+                }
+            }
+    }
+
+    /** Команда приложению на часах. Отвечает true, если хоть одни часы на связи. */
+    private fun sendToWatch(path: String, result: MethodChannel.Result) {
+        val messages = Wearable.getMessageClient(applicationContext)
+        Wearable.getNodeClient(applicationContext).connectedNodes
+            .addOnSuccessListener { nodes ->
+                nodes.forEach { messages.sendMessage(it.id, path, ByteArray(0)) }
+                result.success(nodes.isNotEmpty())
+            }
+            .addOnFailureListener { result.success(false) }
     }
 
     /**
@@ -43,5 +63,8 @@ class MainActivity : FlutterFragmentActivity() {
         const val WATCH_CHANNEL = "ironrise/watch"
         const val PATH_PULSE = "/ironrise/pulse"
         const val PATH_STOPPED = "/ironrise/stopped"
+        const val WATCH_CONTROL_CHANNEL = "ironrise/watch_control"
+        const val PATH_START = "/ironrise/start"
+        const val PATH_STOP = "/ironrise/stop"
     }
 }
