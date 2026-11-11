@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'net/push.dart';
 import 'router.dart';
 import 'state/providers.dart';
 import 'state/settings.dart';
@@ -28,6 +29,7 @@ class IronRiseApp extends ConsumerWidget {
       theme: buildTheme(accent.color),
       scrollBehavior: const _NoStretchScrollBehavior(),
       routerConfig: ref.watch(routerProvider),
+      scaffoldMessengerKey: messengerKey,
     );
   }
 }

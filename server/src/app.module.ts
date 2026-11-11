@@ -7,6 +7,8 @@ import { EconomyController } from './economy/economy.controller';
 import { EconomyService } from './economy/economy.service';
 import { HeroService } from './hero/hero.service';
 import { PrismaService } from './prisma.service';
+import { PushController } from './push/push.controller';
+import { PushService } from './push/push.service';
 import { SocialController } from './social/social.controller';
 import { SocialService } from './social/social.service';
 import { WorkoutsController } from './workouts/workouts.controller';
@@ -32,7 +34,7 @@ const jwtSecret = () => {
       useFactory: () => ({ secret: jwtSecret(), signOptions: { expiresIn: '15m' } }),
     }),
   ],
-  controllers: [HealthController, AuthController, WorkoutsController, EconomyController, SocialController],
-  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService],
+  controllers: [HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController],
+  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService, PushService],
 })
 export class AppModule {}

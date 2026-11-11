@@ -47,6 +47,7 @@ model User {
   duels         Duel[]
   sentFriendRequests     Friendship[] @relation("FriendRequester")
   receivedFriendRequests Friendship[] @relation("FriendAddressee")
+  devices                DeviceToken[]
 }
 
 model Profile {
@@ -67,6 +68,8 @@ model Profile {
   streakDays       Int       @default(0)
   /// YYYY-MM-DD в часовом поясе пользователя.
   lastActiveDay    String?
+  /// День, когда уже напомнили «серия под угрозой» (YYYY-MM-DD), чтобы не слать дважды.
+  streakReminderDay String?
   updatedAt        DateTime  @updatedAt
 }
 
@@ -200,4 +203,15 @@ model Friendship {
 
   @@id([requesterId, addresseeId])
   @@index([addresseeId])
+}
+
+/// FCM-токен устройства для пушей. Один пользователь — несколько устройств.
+model DeviceToken {
+  token     String   @id
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  platform  String
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
 }

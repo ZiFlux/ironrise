@@ -7,6 +7,7 @@ import '../game/anti_fraud.dart';
 import '../game/cardio.dart';
 import '../game/workout.dart';
 import '../net/api_client.dart';
+import '../net/push.dart';
 import 'providers.dart';
 import 'server_game.dart';
 
@@ -68,7 +69,31 @@ class AccountState {
   );
 }
 
-final apiProvider = Provider<ApiClient>((ref) => ApiClient(TokenStore()));
+const _serverUrlKey = 'server_url';
+
+/// Адрес сервера: введённый в приложении или заданный при сборке.
+class ServerUrlNotifier extends Notifier<String> {
+  @override
+  String build() =>
+      ref.read(prefsProvider).getString(_serverUrlKey) ?? apiBaseUrl;
+
+  Future<void> set(String input) async {
+    final url = normalizeServerUrl(input);
+    await ref.read(prefsProvider).setString(_serverUrlKey, url);
+    state = url;
+  }
+}
+
+final serverUrlProvider = NotifierProvider<ServerUrlNotifier, String>(
+  ServerUrlNotifier.new,
+);
+
+/// Один токен-стор на всё приложение: смена адреса не теряет вход.
+final _tokenStore = TokenStore();
+
+final apiProvider = Provider<ApiClient>(
+  (ref) => ApiClient(_tokenStore, baseUrl: ref.watch(serverUrlProvider)),
+);
 
 String newClientId() {
   final rnd = Random.secure();
@@ -106,6 +131,7 @@ class AccountNotifier extends Notifier<AccountState> {
       pending: _readOutbox().length,
     );
     if (s.signedIn && s.pending > 0) Future.microtask(sync);
+    if (s.signedIn) Future.microtask(() => setupPush(ref, _api));
     return s;
   }
 
@@ -214,9 +240,11 @@ class AccountNotifier extends Notifier<AccountState> {
     await ref.read(prefsProvider).setString(_emailKey, email.toLowerCase());
     state = state.copyWith(email: email.toLowerCase(), clearError: true);
     await sync();
+    await setupPush(ref, _api);
   }
 
   Future<void> logout() async {
+    await unregisterPush(_api);
     final refresh = await _api.tokens.readRefresh();
     if (refresh != null) {
       try {

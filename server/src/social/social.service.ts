@@ -8,6 +8,7 @@ import { Prisma } from '../generated/prisma/client';
 import { EconomyService } from '../economy/economy.service';
 import { HeroService, HeroState } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
+import { PushService } from '../push/push.service';
 
 /** Боёв с друзьями в день (ТЗ 4.5: «не больше N атак в день»). */
 export const FRIEND_DUELS_PER_DAY = 5;
@@ -35,7 +36,13 @@ export class SocialService {
     private readonly db: PrismaService,
     private readonly hero: HeroService,
     private readonly economy: EconomyService,
+    private readonly push: PushService,
   ) {}
+
+  private async nicknameOf(userId: string): Promise<string> {
+    const p = await this.db.profile.findUnique({ where: { userId }, select: { nickname: true } });
+    return p?.nickname ?? 'Игрок';
+  }
 
   /** Поиск по нику (без учёта регистра), себя не показываем. */
   async search(userId: string, query: string) {
@@ -76,7 +83,14 @@ export class SocialService {
       await this.accept(userId, target.userId);
       return { status: 'accepted', nickname: target.nickname };
     }
-    if (!existing) await this.db.friendship.create({ data: { requesterId: userId, addresseeId: target.userId } });
+    if (!existing) {
+      await this.db.friendship.create({ data: { requesterId: userId, addresseeId: target.userId } });
+      this.push.notify(target.userId, {
+        title: 'Заявка в друзья',
+        body: `${await this.nicknameOf(userId)} хочет добавить тебя в друзья`,
+        screen: 'friends',
+      });
+    }
     return { status: 'pending', nickname: target.nickname };
   }
 
@@ -86,6 +100,11 @@ export class SocialService {
       data: { status: 'accepted' },
     });
     if (count === 0) throw new NotFoundException('No such request');
+    this.push.notify(requesterId, {
+      title: 'Новый друг',
+      body: `${await this.nicknameOf(userId)} принял заявку. Можно вызывать на дуэль`,
+      screen: 'duels',
+    });
   }
 
   /** Отклонить заявку, отозвать свою или удалить из друзей. */
@@ -175,6 +194,13 @@ export class SocialService {
         },
       });
       await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
+      this.push.notify(friendId, {
+        title: result.attackerWon ? 'На тебя напали и победили' : 'Ты отбился!',
+        body: result.attackerWon
+          ? `${attacker.name} одолел тебя в дуэли. Вызови в ответ`
+          : `${attacker.name} напал, но твой герой выстоял`,
+        screen: 'duels',
+      });
       return { duelId: duel.id, attacker, defender, ...result, coins, hero: await this.hero.state(userId, tx) };
     });
   }

@@ -207,3 +207,14 @@ describe('образ и купленные вещи', () => {
     expect(wornItems({ sex: 'male' })).toBeNull();
   });
 });
+
+import { isStreakAtRisk } from '../src/game/streak';
+
+describe('напоминание о серии', () => {
+  it('Пн/Ср/Пт: после тренировки в понедельник под угрозой только четверг', () => {
+    const days = [0, 2, 4]; // лимит отдыха 2 дня
+    expect(isStreakAtRisk('2026-11-09', '2026-11-11', days)).toBe(false);
+    expect(isStreakAtRisk('2026-11-09', '2026-11-12', days)).toBe(true);
+    expect(isStreakAtRisk('2026-11-09', '2026-11-13', days)).toBe(false); // уже сгорела
+  });
+});

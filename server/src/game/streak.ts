@@ -41,3 +41,7 @@ export const maxRestDaysInRow = (days: number[]): number => {
   });
   return max;
 };
+
+/** Сегодня без активности серия сгорит завтра: отдых уже на пределе формата. */
+export const isStreakAtRisk = (lastActiveDay: string, today: string, scheduleDays: number[]): boolean =>
+  daysBetween(lastActiveDay, today) === maxRestDaysInRow(scheduleDays) + 1;
