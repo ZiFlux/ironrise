@@ -86,6 +86,7 @@ export class SocialService {
     if (!existing) {
       await this.db.friendship.create({ data: { requesterId: userId, addresseeId: target.userId } });
       this.push.notify(target.userId, {
+        type: 'friend_request',
         title: 'Заявка в друзья',
         body: `${await this.nicknameOf(userId)} хочет добавить тебя в друзья`,
         screen: 'friends',
@@ -101,6 +102,7 @@ export class SocialService {
     });
     if (count === 0) throw new NotFoundException('No such request');
     this.push.notify(requesterId, {
+      type: 'friend_accepted',
       title: 'Новый друг',
       body: `${await this.nicknameOf(userId)} принял заявку. Можно вызывать на дуэль`,
       screen: 'duels',
@@ -195,6 +197,7 @@ export class SocialService {
       });
       await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
       this.push.notify(friendId, {
+        type: 'attacked',
         title: result.attackerWon ? 'На тебя напали и победили' : 'Ты отбился!',
         body: result.attackerWon
           ? `${attacker.name} одолел тебя в дуэли. Вызови в ответ`

@@ -218,3 +218,20 @@ describe('напоминание о серии', () => {
     expect(isStreakAtRisk('2026-11-09', '2026-11-13', days)).toBe(false); // уже сгорела
   });
 });
+
+import { parseSettings } from '../src/push/settings';
+
+describe('настройки уведомлений', () => {
+  it('по умолчанию всё включено, напоминание в 19', () => {
+    expect(parseSettings({})).toEqual({
+      friend_request: true, friend_accepted: true, attacked: true, streak_risk: true, streakReminderHour: 19,
+    });
+  });
+
+  it('сохранённое выключение уважается, битые данные — умолчания', () => {
+    expect(parseSettings({ attacked: false, streakReminderHour: 21 }).attacked).toBe(false);
+    expect(parseSettings({ attacked: false, streakReminderHour: 21 }).streakReminderHour).toBe(21);
+    expect(parseSettings({ streakReminderHour: 3 }).streak_risk).toBe(true);
+    expect(parseSettings(null).friend_request).toBe(true);
+  });
+});

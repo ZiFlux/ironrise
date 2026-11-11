@@ -139,3 +139,53 @@ final serverAttacksProvider = FutureProvider.autoDispose<List<AttackOnMe>>((
       ),
   ];
 });
+
+class AppNotification {
+  const AppNotification({
+    required this.id,
+    required this.type,
+    required this.title,
+    required this.body,
+    required this.screen,
+    required this.read,
+    required this.createdAt,
+  });
+
+  final String id;
+  final String type;
+  final String title;
+  final String body;
+  final String screen;
+  final bool read;
+  final DateTime createdAt;
+
+  /// Куда вести по нажатию.
+  String get path => switch (screen) {
+    'friends' => '/duels/friends',
+    'duels' => '/duels',
+    _ => '/',
+  };
+}
+
+typedef NotificationFeed = ({List<AppNotification> items, int unread});
+
+final notificationsProvider = FutureProvider.autoDispose<NotificationFeed>((
+  ref,
+) async {
+  final j = await ref.read(apiProvider).get('/v1/notifications');
+  return (
+    unread: (j['unread'] as num).toInt(),
+    items: [
+      for (final n in j['items'] as List)
+        AppNotification(
+          id: n['id'] as String,
+          type: n['type'] as String,
+          title: n['title'] as String,
+          body: n['body'] as String,
+          screen: n['screen'] as String,
+          read: n['read'] as bool,
+          createdAt: DateTime.parse(n['createdAt'] as String).toLocal(),
+        ),
+    ],
+  );
+});

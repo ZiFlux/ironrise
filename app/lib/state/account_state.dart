@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/anti_fraud.dart';
@@ -8,6 +10,7 @@ import '../game/cardio.dart';
 import '../game/workout.dart';
 import '../net/api_client.dart';
 import '../net/push.dart';
+import 'health_state.dart';
 import 'providers.dart';
 import 'server_game.dart';
 
@@ -36,6 +39,7 @@ class AccountState {
     this.lastSyncedAt,
     this.error,
     this.rejected = 0,
+    this.awaitingWatchPulse = false,
   });
 
   /// null — аккаунта нет, приложение работает офлайн.
@@ -48,6 +52,9 @@ class AccountState {
   /// Сколько тренировок сервер отклонил (данные не прошли проверку).
   final int rejected;
 
+  /// Тренировка ждёт, пока часы передадут пульс в Health Connect.
+  final bool awaitingWatchPulse;
+
   bool get signedIn => email != null;
 
   AccountState copyWith({
@@ -59,6 +66,7 @@ class AccountState {
     String? error,
     bool clearError = false,
     int? rejected,
+    bool? awaitingWatchPulse,
   }) => AccountState(
     email: clearEmail ? null : email ?? this.email,
     pending: pending ?? this.pending,
@@ -66,6 +74,7 @@ class AccountState {
     lastSyncedAt: lastSyncedAt ?? this.lastSyncedAt,
     error: clearError ? null : error ?? this.error,
     rejected: rejected ?? this.rejected,
+    awaitingWatchPulse: awaitingWatchPulse ?? this.awaitingWatchPulse,
   );
 }
 
@@ -122,6 +131,10 @@ String deviceTimeZone() {
 /// их и становится источником правды для опыта и серии.
 class AccountNotifier extends Notifier<AccountState> {
   ApiClient get _api => ref.read(apiProvider);
+  Timer? _pulseRetry;
+
+  /// Как часто перепроверять Health Connect, пока тренировка ждёт пульс.
+  static const _pulseRetryEvery = Duration(minutes: 1);
 
   @override
   AccountState build() {
@@ -131,6 +144,14 @@ class AccountNotifier extends Notifier<AccountState> {
       pending: _readOutbox().length,
     );
     if (s.signedIn && s.pending > 0) Future.microtask(sync);
+    // Вернулись в приложение — отправить отложенное (например, ждавшее пульс с часов).
+    final lifecycle = AppLifecycleListener(
+      onResume: () {
+        if (state.signedIn && state.pending > 0) sync();
+      },
+    );
+    ref.onDispose(lifecycle.dispose);
+    ref.onDispose(() => _pulseRetry?.cancel());
     if (s.signedIn) Future.microtask(() => setupPush(ref, _api));
     return s;
   }
@@ -260,17 +281,52 @@ class AccountNotifier extends Notifier<AccountState> {
     state = state.copyWith(clearEmail: true, clearError: true);
   }
 
+  /// Приложение открыто, а пульс с часов ещё не пришёл — проверим снова позже.
+  void _schedulePulseRetry(bool waiting) {
+    _pulseRetry?.cancel();
+    state = state.copyWith(awaitingWatchPulse: waiting);
+    if (waiting) _pulseRetry = Timer(_pulseRetryEvery, sync);
+  }
+
+  /// Сколько ждать, пока Samsung Health и другие приложения часов передадут
+  /// пульс в Health Connect (обычно несколько минут).
+  static const _watchSyncWait = Duration(minutes: 10);
+
+  /// Тело запроса с пульсом из Health Connect, если живого пульса не было.
+  /// null — пульса пока нет, но он может появиться: отправку откладываем.
+  Future<Map<String, dynamic>?> _withWatchPulse(
+    Map<String, dynamic> body,
+  ) async {
+    final health = ref.read(healthProvider);
+    if ((body['pulse'] as List).isNotEmpty || !health.connected) return body;
+    final from = DateTime.parse(body['startedAt'] as String);
+    final to = DateTime.parse(body['finishedAt'] as String);
+    final pulse = await ref
+        .read(healthProvider.notifier)
+        .heartRateBetween(from, to);
+    final mayStillArrive = DateTime.now().difference(to) < _watchSyncWait;
+    if (pulse.isEmpty && mayStillArrive) return null;
+    return {...body, 'pulse': _pulseJson(pulse)};
+  }
+
   /// Отправить очередь по порядку, затем взять состояние героя с сервера.
   /// Нет сети — очередь ждёт; данные отклонены — тренировка снимается с очереди.
   Future<void> sync() async {
     if (!state.signedIn || state.syncing) return;
     state = state.copyWith(syncing: true, clearError: true);
     var rejected = 0;
+    var waitingForPulse = false;
     try {
       var jobs = _readOutbox();
       while (jobs.isNotEmpty) {
+        final body = await _withWatchPulse(jobs.first.body);
+        // Часы ещё не синхронизировались — подождём, тренировка останется в очереди.
+        if (body == null) {
+          waitingForPulse = true;
+          break;
+        }
         try {
-          await _api.post(jobs.first.path, jobs.first.body);
+          await _api.post(jobs.first.path, body);
         } on ApiException catch (e) {
           if (!e.isRejected) rethrow;
           rejected++;
@@ -284,10 +340,12 @@ class AccountNotifier extends Notifier<AccountState> {
       // Уровни изменились — боты дня и лига на сервере тоже.
       ref.invalidate(serverBotsProvider);
       ref.invalidate(serverLeagueProvider);
+      ref.invalidate(notificationsProvider);
       state = state.copyWith(
         lastSyncedAt: DateTime.now(),
         rejected: state.rejected + rejected,
       );
+      _schedulePulseRetry(waitingForPulse);
     } on ApiException catch (e) {
       if (e.status == 401) {
         // Refresh-токен отозван или истёк: просим войти заново, очередь сохраняется.

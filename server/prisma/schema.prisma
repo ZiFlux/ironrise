@@ -48,6 +48,7 @@ model User {
   sentFriendRequests     Friendship[] @relation("FriendRequester")
   receivedFriendRequests Friendship[] @relation("FriendAddressee")
   devices                DeviceToken[]
+  notifications          Notification[]
 }
 
 model Profile {
@@ -70,6 +71,8 @@ model Profile {
   lastActiveDay    String?
   /// День, когда уже напомнили «серия под угрозой» (YYYY-MM-DD), чтобы не слать дважды.
   streakReminderDay String?
+  /// Какие пуши слать и во сколько напоминать о серии (см. src/push/settings.ts).
+  notificationSettings Json @default("{}")
   updatedAt        DateTime  @updatedAt
 }
 
@@ -214,4 +217,21 @@ model DeviceToken {
   updatedAt DateTime @updatedAt
 
   @@index([userId])
+}
+
+/// Лента уведомлений: всё, что ушло пушем (и то, что не ушло — пуши выключены).
+model Notification {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// friend_request | friend_accepted | attacked | streak_risk
+  type      String
+  title     String
+  body      String
+  /// Куда вести по нажатию: friends | duels | home.
+  screen    String
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, createdAt])
 }

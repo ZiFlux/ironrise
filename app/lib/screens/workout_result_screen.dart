@@ -9,6 +9,7 @@ import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/progression.dart';
 import '../game/workout.dart';
+import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
@@ -123,14 +124,15 @@ class _Totals extends StatelessWidget {
   }
 }
 
-class _ValidityCard extends StatelessWidget {
+class _ValidityCard extends ConsumerWidget {
   const _ValidityCard({required this.summary});
 
   final WorkoutSummary summary;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final verified = summary.isVerified;
+    final waiting = !verified && ref.watch(accountProvider).awaitingWatchPulse;
     final multiplier = GameConfig.unverifiedValidity.toString().replaceAll(
       '.',
       ',',
@@ -142,7 +144,11 @@ class _ValidityCard extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Icon(
-              verified ? LucideIcons.shieldCheck : LucideIcons.watch,
+              verified
+                  ? LucideIcons.shieldCheck
+                  : waiting
+                  ? LucideIcons.hourglass
+                  : LucideIcons.watch,
               size: 18,
               color: AppColors.textSecondary,
             ),
@@ -154,6 +160,8 @@ class _ValidityCard extends StatelessWidget {
                   Text(
                     verified
                         ? 'Пульс подтверждён часами'
+                        : waiting
+                        ? 'Ждём пульс с часов'
                         : 'Без часов: опыт ×$multiplier',
                     style: const TextStyle(
                       fontSize: 14,
@@ -162,9 +170,11 @@ class _ValidityCard extends StatelessWidget {
                   ),
                   if (!verified) ...[
                     const SizedBox(height: 4),
-                    const Text(
-                      'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
-                      style: TextStyle(
+                    Text(
+                      waiting
+                          ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
+                          : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
+                      style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
                       ),

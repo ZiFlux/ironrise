@@ -9,6 +9,7 @@ import '../game/body_part.dart';
 import '../game/cardio.dart';
 import '../game/training_format.dart';
 import '../state/account_state.dart';
+import '../state/health_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
@@ -48,6 +49,29 @@ class ProfileScreen extends ConsumerWidget {
               title: const Text('Аккаунт и синхронизация'),
               subtitle: Text(
                 ref.watch(accountProvider).email ?? 'Не подключён — данные только на телефоне',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              ),
+              trailing: const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Card(
+            child: ListTile(
+              onTap: () => context.go('/profile/health'),
+              leading: const Icon(
+                LucideIcons.watch,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              title: const Text('Часы и здоровье'),
+              subtitle: Text(
+                ref.watch(healthProvider).connected
+                    ? 'Health Connect подключён'
+                    : 'Шаги и пульс с Galaxy Watch и других часов',
                 style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
               ),
               trailing: const Icon(

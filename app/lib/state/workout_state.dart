@@ -6,6 +6,7 @@ import '../game/anti_fraud.dart';
 import '../game/exercise_catalog.dart';
 import '../game/workout.dart';
 import 'account_state.dart';
+import 'health_state.dart';
 import 'heart_rate_state.dart';
 import 'providers.dart';
 
@@ -66,9 +67,15 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     if (session == null || hero == null || session.totalSets == 0) return null;
 
     final finishedAt = DateTime.now();
-    final pulse = ref
+    final live = ref
         .read(heartRateProvider.notifier)
         .samplesBetween(session.startedAt, finishedAt);
+    // Пульс не транслировался по Bluetooth — берём записанный часами (Health Connect).
+    final pulse = live.isNotEmpty
+        ? live
+        : await ref
+              .read(healthProvider.notifier)
+              .heartRateBetween(session.startedAt, finishedAt);
     final summary = WorkoutScoring.summarize(
       session: session,
       xpBefore: hero.xp,
@@ -84,7 +91,9 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     ref.read(lastSummaryProvider.notifier).show(summary);
     _save(null);
     // Не ждём сети: итог уже на экране, отправка идёт в фоне.
-    ref.read(accountProvider.notifier).enqueueStrength(session, finishedAt, pulse);
+    ref
+        .read(accountProvider.notifier)
+        .enqueueStrength(session, finishedAt, pulse);
     return summary;
   }
 

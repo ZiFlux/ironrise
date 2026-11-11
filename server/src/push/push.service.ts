@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { localDay } from '../common/day';
 import { isStreakAtRisk } from '../game/streak';
 import { PrismaService } from '../prisma.service';
+import { NotificationType, parseSettings } from './settings';
 
 interface ServiceAccount {
   project_id: string;
@@ -12,19 +13,20 @@ interface ServiceAccount {
 }
 
 export interface PushMessage {
+  type: NotificationType;
   title: string;
   body: string;
   /** Куда вести по нажатию: friends | duels | home. */
   screen: 'friends' | 'duels' | 'home';
 }
 
-const REMINDER_HOUR = 19;
 const REMINDER_EVERY_MS = 15 * 60_000;
 
 /**
- * Пуши через FCM HTTP v1. Ключ — JSON сервисного аккаунта Firebase по пути
- * FIREBASE_SERVICE_ACCOUNT. Без ключа сервис молча выключен: приложение работает,
- * просто без уведомлений. Ошибки отправки не роняют запросы — пуш не критичен.
+ * Уведомления: каждое событие пишется в ленту игрока (меню уведомлений в приложении)
+ * и, если игрок не выключил этот тип, уходит пушем через FCM HTTP v1.
+ * Ключ — JSON сервисного аккаунта Firebase по пути FIREBASE_SERVICE_ACCOUNT;
+ * без него лента работает, а пуши выключены. Ошибки не роняют запросы.
  */
 @Injectable()
 export class PushService implements OnModuleInit, OnModuleDestroy {
@@ -36,15 +38,15 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly db: PrismaService) {}
 
   onModuleInit() {
+    this.timer = setInterval(() => void this.remindStreaks().catch((e) => this.log.warn(String(e))), REMINDER_EVERY_MS);
     const path = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!path) {
-      this.log.log('FIREBASE_SERVICE_ACCOUNT не задан — пуши выключены');
+      this.log.log('FIREBASE_SERVICE_ACCOUNT не задан — пуши выключены, лента уведомлений работает');
       return;
     }
     try {
       this.account = JSON.parse(readFileSync(path, 'utf8')) as ServiceAccount;
       this.log.log(`Пуши включены, проект ${this.account.project_id}`);
-      this.timer = setInterval(() => void this.remindStreaks(), REMINDER_EVERY_MS);
     } catch (e) {
       this.log.error(`Не удалось прочитать ключ Firebase (${path}): ${(e as Error).message}`);
     }
@@ -52,10 +54,6 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
 
   onModuleDestroy() {
     if (this.timer) clearInterval(this.timer);
-  }
-
-  get enabled(): boolean {
-    return this.account !== null;
   }
 
   async register(userId: string, token: string, platform: string) {
@@ -70,10 +68,15 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
     await this.db.deviceToken.deleteMany({ where: { token, userId } });
   }
 
-  /** Отправить на все устройства пользователя. Никогда не бросает исключение. */
+  /** Записать в ленту и, если разрешено, отправить пуш. Никогда не бросает исключение. */
   notify(userId: string, msg: PushMessage): void {
-    if (!this.account) return;
     void (async () => {
+      await this.db.notification.create({
+        data: { userId, type: msg.type, title: msg.title, body: msg.body, screen: msg.screen },
+      });
+      if (!this.account) return;
+      const profile = await this.db.profile.findUnique({ where: { userId }, select: { notificationSettings: true } });
+      if (!parseSettings(profile?.notificationSettings)[msg.type]) return;
       const devices = await this.db.deviceToken.findMany({ where: { userId }, select: { token: true } });
       for (const d of devices) await this.send(d.token, msg);
     })().catch((e) => this.log.warn(`notify ${userId}: ${(e as Error).message}`));
@@ -88,7 +91,7 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
         message: {
           token: deviceToken,
           notification: { title: msg.title, body: msg.body },
-          data: { screen: msg.screen },
+          data: { screen: msg.screen, type: msg.type },
           android: { priority: 'high' },
         },
       }),
@@ -132,20 +135,31 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
   }
 
   /**
-   * Вечером напомнить тем, у кого сегодня последний допустимый день отдыха:
-   * без тренировки серия сгорит завтра. Раз в день на пользователя.
+   * В выбранный игроком час напомнить, если сегодня последний допустимый день отдыха:
+   * без тренировки серия сгорит завтра. Раз в день; выключается в настройках.
    */
   async remindStreaks(now = new Date()) {
     const profiles = await this.db.profile.findMany({
-      where: { streakDays: { gt: 0 }, lastActiveDay: { not: null }, user: { devices: { some: {} } } },
-      select: { userId: true, timezone: true, lastActiveDay: true, scheduleDays: true, streakDays: true, streakReminderDay: true },
+      where: { streakDays: { gt: 0 }, lastActiveDay: { not: null } },
+      select: {
+        userId: true,
+        timezone: true,
+        lastActiveDay: true,
+        scheduleDays: true,
+        streakDays: true,
+        streakReminderDay: true,
+        notificationSettings: true,
+      },
     });
     for (const p of profiles) {
+      const settings = parseSettings(p.notificationSettings);
       const today = localDay(now, p.timezone);
-      if (p.streakReminderDay === today || !isStreakAtRisk(p.lastActiveDay!, today, p.scheduleDays)) continue;
-      if (localHour(now, p.timezone) < REMINDER_HOUR) continue;
+      if (!settings.streak_risk || p.streakReminderDay === today) continue;
+      if (!isStreakAtRisk(p.lastActiveDay!, today, p.scheduleDays)) continue;
+      if (localHour(now, p.timezone) < settings.streakReminderHour) continue;
       await this.db.profile.update({ where: { userId: p.userId }, data: { streakReminderDay: today } });
       this.notify(p.userId, {
+        type: 'streak_risk',
         title: `Серия ${p.streakDays} дн. под угрозой`,
         body: 'Сегодня последний день отдыха. Короткая тренировка или 20 минут кардио сохранят серию',
         screen: 'home',

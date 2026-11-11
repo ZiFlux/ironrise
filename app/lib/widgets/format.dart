@@ -2,13 +2,18 @@ import '../game/exercise_catalog.dart';
 import '../game/workout.dart';
 
 /// 20 → «20», 22.5 → «22,5».
-String formatWeight(double kg) =>
-    kg % 1 == 0 ? kg.toInt().toString() : kg.toStringAsFixed(1).replaceAll('.', ',');
+String formatWeight(double kg) => kg % 1 == 0
+    ? kg.toInt().toString()
+    : kg.toStringAsFixed(1).replaceAll('.', ',');
 
 /// «20 кг × 10», «× 12», «30 с».
 String formatSet(Exercise exercise, SetRecord set) {
-  final amount = exercise.unit == ExerciseUnit.seconds ? '${set.reps} с' : '× ${set.reps}';
-  return exercise.usesWeight ? '${formatWeight(set.weight)} кг $amount' : amount;
+  final amount = exercise.unit == ExerciseUnit.seconds
+      ? '${set.reps} с'
+      : '× ${set.reps}';
+  return exercise.usesWeight
+      ? '${formatWeight(set.weight)} кг $amount'
+      : amount;
 }
 
 /// 1:05, 12:40, 1:02:03.
@@ -24,6 +29,18 @@ String formatMinutes(Duration d) => '${d.inMinutes < 1 ? 1 : d.inMinutes} мин
 String setsWord(int n) {
   final mod10 = n % 10, mod100 = n % 100;
   if (mod10 == 1 && mod100 != 11) return 'подход';
-  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'подхода';
+  final few = mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14);
+  if (few) return 'подхода';
   return 'подходов';
+}
+
+/// «8 432» — тысячи через узкий неразрывный пробел, как принято в русском.
+String formatThousands(int n) {
+  final s = n.abs().toString();
+  final buf = StringBuffer(n < 0 ? '-' : '');
+  for (var i = 0; i < s.length; i++) {
+    if (i > 0 && (s.length - i) % 3 == 0) buf.write('\u202F');
+    buf.write(s[i]);
+  }
+  return buf.toString();
 }

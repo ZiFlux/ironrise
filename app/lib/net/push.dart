@@ -74,6 +74,7 @@ Future<void> setupPush(Ref ref, ApiClient api) async {
     FirebaseMessaging.onMessage.listen((m) {
       ref.invalidate(serverFriendsProvider);
       ref.invalidate(serverAttacksProvider);
+      ref.invalidate(notificationsProvider);
       final title = m.notification?.title;
       if (title != null) {
         messengerKey.currentState?.showSnackBar(

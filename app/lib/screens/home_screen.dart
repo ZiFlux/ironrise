@@ -7,10 +7,14 @@ import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/recommendation.dart';
+import '../state/account_state.dart';
+import '../state/health_state.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
+import '../state/server_game.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
+import '../widgets/format.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
 
@@ -51,6 +55,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
               ),
               WeekStrip(hero: hero),
+              const _ActivityLine(),
               const SizedBox(height: 8),
               if (recommendation != null) ...[
                 _LaggingCard(
@@ -84,68 +89,102 @@ class HomeScreen extends ConsumerWidget {
   }
 }
 
-class _Header extends StatelessWidget {
+class _Header extends ConsumerWidget {
   const _Header({required this.hero});
 
   final HeroProfile hero;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final accent = Theme.of(context).colorScheme.primary;
     final streak = hero.currentStreak(DateTime.now());
-    return Row(
+    final signedIn = ref.watch(accountProvider).signedIn;
+    final unread = signedIn
+        ? ref.watch(notificationsProvider).value?.unread ?? 0
+        : 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                formatToday(DateTime.now()),
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textMuted,
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    formatToday(DateTime.now()),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    hero.nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            if (signedIn)
+              IconButton(
+                tooltip: unread > 0
+                    ? 'Уведомления: $unread новых'
+                    : 'Уведомления',
+                onPressed: () => context.go('/notifications'),
+                icon: Badge(
+                  isLabelVisible: unread > 0,
+                  label: Text('$unread'),
+                  child: const Icon(LucideIcons.bell, size: 22),
                 ),
               ),
-              const SizedBox(height: 2),
-              Text(
-                hero.nickname,
+          ],
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            _StatChip(
+              icon: LucideIcons.flame,
+              iconColor: AppColors.textSecondary,
+              value: Text(
+                '$streak',
                 style: const TextStyle(
-                  fontSize: 22,
+                  fontSize: 15,
                   fontWeight: FontWeight.w500,
                 ),
               ),
-            ],
-          ),
-        ),
-        _StatChip(
-          icon: LucideIcons.flame,
-          iconColor: AppColors.textSecondary,
-          value: Text(
-            '$streak',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-          ),
-          semantics: 'Серия $streak дней',
-        ),
-        const SizedBox(width: 8),
-        _StatChip(
-          icon: LucideIcons.zap,
-          iconColor: accent,
-          value: Text(
-            '${hero.power}',
-            style: figureStyle(size: 15, color: accent),
-          ),
-          semantics: 'Сила ${hero.power}',
-        ),
-        const SizedBox(width: 8),
-        _StatChip(
-          icon: LucideIcons.coins,
-          iconColor: AppColors.textSecondary,
-          value: Text(
-            '${hero.coins}',
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-          ),
-          semantics: 'Монеты ${hero.coins}, открыть гардероб',
-          onTap: () => context.go('/wardrobe'),
+              semantics: 'Серия $streak дней',
+            ),
+            const SizedBox(width: 8),
+            _StatChip(
+              icon: LucideIcons.zap,
+              iconColor: accent,
+              value: Text(
+                '${hero.power}',
+                style: figureStyle(size: 15, color: accent),
+              ),
+              semantics: 'Сила ${hero.power}',
+            ),
+            const SizedBox(width: 8),
+            _StatChip(
+              icon: LucideIcons.coins,
+              iconColor: AppColors.textSecondary,
+              value: Text(
+                '${hero.coins}',
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              semantics: 'Монеты ${hero.coins}, открыть гардероб',
+              onTap: () => context.go('/wardrobe'),
+            ),
+          ],
         ),
       ],
     );
@@ -343,3 +382,43 @@ const _monthsGenitive = [
 /// «Среда, 11 ноября».
 String formatToday(DateTime date) =>
     '${_weekdays[date.weekday - 1]}, ${date.day} ${_monthsGenitive[date.month - 1]}';
+
+/// Шаги и расстояние за сегодня с часов (Health Connect). Без подключения — пусто.
+class _ActivityLine extends ConsumerWidget {
+  const _ActivityLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final health = ref.watch(healthProvider);
+    final steps = health.stepsToday;
+    if (!health.connected || steps == null) return const SizedBox.shrink();
+    final km = ((health.metersToday ?? 0) / 1000)
+        .toStringAsFixed(1)
+        .replaceAll('.', ',');
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(
+            LucideIcons.footprints,
+            size: 14,
+            color: AppColors.textMuted,
+          ),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              '${formatThousands(steps)} шагов · $km км сегодня',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
