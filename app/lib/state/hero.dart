@@ -44,19 +44,20 @@ class BodyStats {
   final Experience? experience;
 
   Map<String, dynamic> toJson() => {
-        'sex': sex?.name,
-        'heightCm': heightCm,
-        'weightKg': weightKg,
-        'experience': experience?.name,
-      };
+    'sex': sex?.name,
+    'heightCm': heightCm,
+    'weightKg': weightKg,
+    'experience': experience?.name,
+  };
 
   factory BodyStats.fromJson(Map<String, dynamic> j) => BodyStats(
-        sex: j['sex'] == null ? null : Sex.values.byName(j['sex']),
-        heightCm: j['heightCm'],
-        weightKg: (j['weightKg'] as num?)?.toDouble(),
-        experience:
-            j['experience'] == null ? null : Experience.values.byName(j['experience']),
-      );
+    sex: j['sex'] == null ? null : Sex.values.byName(j['sex']),
+    heightCm: j['heightCm'],
+    weightKg: (j['weightKg'] as num?)?.toDouble(),
+    experience: j['experience'] == null
+        ? null
+        : Experience.values.byName(j['experience']),
+  );
 }
 
 class HeroProfile {
@@ -73,6 +74,7 @@ class HeroProfile {
     this.coins = 0,
     this.lastActiveDay,
     this.activeDays = const {},
+    this.ownedItems = const {},
   });
 
   factory HeroProfile.create({
@@ -82,18 +84,17 @@ class HeroProfile {
     required List<int> trainingDays,
     required BodyStats body,
     required AvatarSex avatarSex,
-  }) =>
-      HeroProfile(
-        nickname: nickname,
-        goal: goal,
-        format: format,
-        trainingDays: trainingDays,
-        body: body,
-        look: AvatarLook.starter(avatarSex),
-        xp: {for (final p in BodyPart.values) p: 0},
-        streakDays: 0,
-        createdAt: DateTime.now(),
-      );
+  }) => HeroProfile(
+    nickname: nickname,
+    goal: goal,
+    format: format,
+    trainingDays: trainingDays,
+    body: body,
+    look: AvatarLook.starter(avatarSex),
+    xp: {for (final p in BodyPart.values) p: 0},
+    streakDays: 0,
+    createdAt: DateTime.now(),
+  );
 
   final String nickname;
   final Goal goal;
@@ -113,6 +114,9 @@ class HeroProfile {
 
   final DateTime createdAt;
 
+  /// Купленная косметика (id из ShopCatalog). Бесплатные вещи сюда не пишутся.
+  final Set<String> ownedItems;
+
   Map<BodyPart, int> get levels => Progression.levels(xp);
   List<BodyPart> get lagging => Progression.laggingParts(levels);
   int get power => Progression.power(levels, currentStreak(DateTime.now()));
@@ -120,11 +124,11 @@ class HeroProfile {
 
   /// Серия с учётом сегодняшнего дня (сгорает после лишнего дня отдыха).
   int currentStreak(DateTime today) => Streak.current(
-        streakDays: streakDays,
-        lastActiveDay: lastActiveDay,
-        today: today,
-        maxRestDays: maxRestDays,
-      );
+    streakDays: streakDays,
+    lastActiveDay: lastActiveDay,
+    today: today,
+    maxRestDays: maxRestDays,
+  );
 
   HeroProfile copyWith({
     Map<BodyPart, int>? xp,
@@ -133,42 +137,46 @@ class HeroProfile {
     int? coins,
     DateTime? lastActiveDay,
     Set<String>? activeDays,
-  }) =>
-      HeroProfile(
-        nickname: nickname,
-        goal: goal,
-        format: format,
-        trainingDays: trainingDays,
-        body: body,
-        look: look ?? this.look,
-        xp: xp ?? this.xp,
-        streakDays: streakDays ?? this.streakDays,
-        coins: coins ?? this.coins,
-        lastActiveDay: lastActiveDay ?? this.lastActiveDay,
-        activeDays: activeDays ?? this.activeDays,
-        createdAt: createdAt,
-      );
+    Set<String>? ownedItems,
+  }) => HeroProfile(
+    nickname: nickname,
+    goal: goal,
+    format: format,
+    trainingDays: trainingDays,
+    body: body,
+    look: look ?? this.look,
+    xp: xp ?? this.xp,
+    streakDays: streakDays ?? this.streakDays,
+    coins: coins ?? this.coins,
+    lastActiveDay: lastActiveDay ?? this.lastActiveDay,
+    activeDays: activeDays ?? this.activeDays,
+    ownedItems: ownedItems ?? this.ownedItems,
+    createdAt: createdAt,
+  );
 
   String encode() => jsonEncode({
-        'nickname': nickname,
-        'goal': goal.name,
-        'format': format.name,
-        'trainingDays': trainingDays,
-        'body': body.toJson(),
-        'look': look.toJson(),
-        'xp': {for (final e in xp.entries) e.key.name: e.value},
-        'streakDays': streakDays,
-        'coins': coins,
-        'lastActiveDay': lastActiveDay?.toIso8601String(),
-        'activeDays': activeDays.toList()..sort(),
-        'createdAt': createdAt.toIso8601String(),
-      });
+    'nickname': nickname,
+    'goal': goal.name,
+    'format': format.name,
+    'trainingDays': trainingDays,
+    'body': body.toJson(),
+    'look': look.toJson(),
+    'xp': {for (final e in xp.entries) e.key.name: e.value},
+    'streakDays': streakDays,
+    'coins': coins,
+    'lastActiveDay': lastActiveDay?.toIso8601String(),
+    'activeDays': activeDays.toList()..sort(),
+    'createdAt': createdAt.toIso8601String(),
+    'ownedItems': ownedItems.toList()..sort(),
+  });
 
   factory HeroProfile.decode(String s) {
     final j = jsonDecode(s) as Map<String, dynamic>;
     final xpJson = j['xp'] as Map<String, dynamic>;
     final lastActiveRaw = j['lastActiveDay'] as String?;
-    final lastActive = lastActiveRaw == null ? null : DateTime.parse(lastActiveRaw);
+    final lastActive = lastActiveRaw == null
+        ? null
+        : DateTime.parse(lastActiveRaw);
     // Старые сохранения: истории ещё не было, восстанавливаем что можем.
     final activeDays = j['activeDays'] == null
         ? {if (lastActive != null) dayKey(lastActive)}
@@ -188,7 +196,10 @@ class HeroProfile {
       coins: j['coins'] ?? 0,
       lastActiveDay: lastActive,
       activeDays: activeDays,
-      createdAt: createdRaw == null ? lastActive ?? DateTime.now() : DateTime.parse(createdRaw),
+      ownedItems: Set<String>.from(j['ownedItems'] ?? const []),
+      createdAt: createdRaw == null
+          ? lastActive ?? DateTime.now()
+          : DateTime.parse(createdRaw),
     );
   }
 }

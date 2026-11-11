@@ -44,10 +44,10 @@ class AvatarLook {
 
   /// Базовый образ нового героя: без покупок из магазина.
   factory AvatarLook.starter(AvatarSex sex) => AvatarLook(
-        sex: sex,
-        hair: sex == AvatarSex.male ? HairStyle.short : HairStyle.bob,
-        top: sex == AvatarSex.male ? TopKind.none : TopKind.bra,
-      );
+    sex: sex,
+    hair: sex == AvatarSex.male ? HairStyle.short : HairStyle.bob,
+    top: sex == AvatarSex.male ? TopKind.none : TopKind.bra,
+  );
 
   final AvatarSex sex;
   final SkinTone skin;
@@ -65,19 +65,44 @@ class AvatarLook {
 
   bool get isFemale => sex == AvatarSex.female;
 
+  AvatarLook copyWith({
+    SkinTone? skin,
+    HairStyle? hair,
+    Color? hairColor,
+    TopKind? top,
+    Color? topColor,
+    BottomKind? bottom,
+    Color? bottomColor,
+    Color? sneakersColor,
+    bool noSneakers = false,
+    Set<Accessory>? accessories,
+  }) => AvatarLook(
+    sex: sex,
+    skin: skin ?? this.skin,
+    hair: hair ?? this.hair,
+    hairColor: hairColor ?? this.hairColor,
+    top: top ?? this.top,
+    topColor: topColor ?? this.topColor,
+    bottom: bottom ?? this.bottom,
+    bottomColor: bottomColor ?? this.bottomColor,
+    sneakersColor: noSneakers ? null : sneakersColor ?? this.sneakersColor,
+    accessories: accessories ?? this.accessories,
+    accessoryColor: accessoryColor,
+  );
+
   Map<String, dynamic> toJson() => {
-        'sex': sex.name,
-        'skin': skin.name,
-        'hair': hair.name,
-        'hairColor': hairColor.toARGB32(),
-        'top': top.name,
-        'topColor': topColor.toARGB32(),
-        'bottom': bottom.name,
-        'bottomColor': bottomColor.toARGB32(),
-        'sneakersColor': sneakersColor?.toARGB32(),
-        'accessories': accessories.map((a) => a.name).toList(),
-        'accessoryColor': accessoryColor.toARGB32(),
-      };
+    'sex': sex.name,
+    'skin': skin.name,
+    'hair': hair.name,
+    'hairColor': hairColor.toARGB32(),
+    'top': top.name,
+    'topColor': topColor.toARGB32(),
+    'bottom': bottom.name,
+    'bottomColor': bottomColor.toARGB32(),
+    'sneakersColor': sneakersColor?.toARGB32(),
+    'accessories': accessories.map((a) => a.name).toList(),
+    'accessoryColor': accessoryColor.toARGB32(),
+  };
 
   factory AvatarLook.fromJson(Map<String, dynamic> j) {
     final sneakers = j['sneakersColor'] as int?;
@@ -92,7 +117,8 @@ class AvatarLook {
       bottomColor: Color(j['bottomColor']),
       sneakersColor: sneakers == null ? null : Color(sneakers),
       accessories: {
-        for (final a in List<String>.from(j['accessories'] ?? const [])) Accessory.values.byName(a),
+        for (final a in List<String>.from(j['accessories'] ?? const []))
+          Accessory.values.byName(a),
       },
       accessoryColor: Color(j['accessoryColor']),
     );

@@ -11,6 +11,7 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
 import 'screens/rating_screen.dart';
+import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
 import 'state/providers.dart';
@@ -31,7 +32,18 @@ final routerProvider = Provider<GoRouter>((ref) {
         builder: (context, state, shell) => _Shell(shell: shell),
         branches: [
           StatefulShellBranch(
-            routes: [GoRoute(path: '/', builder: (_, _) => const HomeScreen())],
+            routes: [
+              GoRoute(
+                path: '/',
+                builder: (_, _) => const HomeScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'wardrobe',
+                    builder: (_, _) => const WardrobeScreen(),
+                  ),
+                ],
+              ),
+            ],
           ),
           StatefulShellBranch(
             routes: [

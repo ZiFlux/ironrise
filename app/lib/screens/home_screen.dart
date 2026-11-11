@@ -37,10 +37,17 @@ class HomeScreen extends ConsumerWidget {
             children: [
               _Header(hero: hero),
               Expanded(
-                child: AvatarView(
-                  levels: hero.levels,
-                  look: hero.look,
-                  withLamp: true,
+                child: Semantics(
+                  button: true,
+                  label: 'Открыть гардероб',
+                  child: GestureDetector(
+                    onTap: () => context.go('/wardrobe'),
+                    child: AvatarView(
+                      levels: hero.levels,
+                      look: hero.look,
+                      withLamp: true,
+                    ),
+                  ),
                 ),
               ),
               WeekStrip(hero: hero),
@@ -129,6 +136,17 @@ class _Header extends StatelessWidget {
           ),
           semantics: 'Сила ${hero.power}',
         ),
+        const SizedBox(width: 8),
+        _StatChip(
+          icon: LucideIcons.coins,
+          iconColor: AppColors.textSecondary,
+          value: Text(
+            '${hero.coins}',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          semantics: 'Монеты ${hero.coins}, открыть гардероб',
+          onTap: () => context.go('/wardrobe'),
+        ),
       ],
     );
   }
@@ -140,33 +158,39 @@ class _StatChip extends StatelessWidget {
     required this.iconColor,
     required this.value,
     required this.semantics,
+    this.onTap,
   });
 
   final IconData icon;
   final Color iconColor;
   final Widget value;
   final String semantics;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       label: semantics,
+      button: onTap != null,
       excludeSemantics: true,
-      child: Container(
-        height: 36,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
-        decoration: BoxDecoration(
-          color: AppColors.surface,
-          borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: AppColors.hairline),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(icon, size: 16, color: iconColor),
-            const SizedBox(width: 6),
-            value,
-          ],
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.hairline),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 6),
+              value,
+            ],
+          ),
         ),
       ),
     );
