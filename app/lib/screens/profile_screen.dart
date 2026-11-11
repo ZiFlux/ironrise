@@ -33,6 +33,17 @@ class ProfileScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          Card(
+            child: ListTile(
+              onTap: () => context.go('/player'),
+              leading: const Icon(LucideIcons.user, size: 18, color: AppColors.textSecondary),
+              title: const Text('Профиль игрока'),
+              subtitle: const Text('Статистика, рекорды и уровень силы',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
+            ),
+          ),
+          const SizedBox(height: 16),
           _HeroInfo(hero: hero),
           const SizedBox(height: 24),
           const _SectionLabel('Где тренируешься'),

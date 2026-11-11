@@ -11,6 +11,7 @@ import 'account_state.dart';
 import 'health_state.dart';
 import 'heart_rate_state.dart';
 import 'program_state.dart';
+import 'records_state.dart';
 import 'providers.dart';
 
 const _sessionKey = 'workout_session_v1';
@@ -117,6 +118,7 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
     ref.read(lastSummaryProvider.notifier).show(summary);
     await _applyProgram(session, summary);
+    await ref.read(recordsProvider.notifier).record(session, finishedAt);
     _save(null);
     // Не ждём сети: итог уже на экране, отправка идёт в фоне.
     ref

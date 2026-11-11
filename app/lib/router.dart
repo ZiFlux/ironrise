@@ -15,6 +15,7 @@ import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/player_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/rating_screen.dart';
 import 'screens/wardrobe_screen.dart';
@@ -49,6 +50,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'wardrobe',
                     builder: (_, _) => const WardrobeScreen(),
+                  ),
+                  GoRoute(
+                    path: 'player',
+                    builder: (_, _) => const PlayerScreen(),
                   ),
                   GoRoute(
                     path: 'notifications',
