@@ -49,4 +49,16 @@ class GameConfig {
 
   /// Отдых между подходами по умолчанию.
   static const Duration restBetweenSets = Duration(seconds: 90);
+
+  // ---- Дуэли (ТЗ 4.5). Шансы проверяются Монте-Карло в test/duel_test.dart. ----
+
+  static const int duelMinRounds = 6;
+  static const int duelMaxRounds = 10;
+  static const double duelMissChance = 0.2;
+  static const double duelCritChance = 0.2;
+  static const double duelCritMultiplier = 2;
+
+  /// Монеты за дуэль с ботом.
+  static const int duelWinCoins = 15;
+  static const int duelLossCoins = 3;
 }

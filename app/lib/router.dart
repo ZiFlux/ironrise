@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'screens/duel_battle_screen.dart';
+import 'screens/duels_screen.dart';
 import 'screens/exercise_library_screen.dart';
 import 'screens/heart_rate_screen.dart';
 import 'screens/home_screen.dart';
@@ -53,11 +55,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/duels',
-                builder: (_, _) => const PlaceholderScreen(
-                  title: 'Дуэли',
-                  icon: LucideIcons.swords,
-                  text: 'Вызывай друзей на дуэль. Исход решает сила героя.',
-                ),
+                builder: (_, _) => const DuelsScreen(),
+                routes: [
+                  GoRoute(
+                    path: 'battle',
+                    builder: (_, _) => const DuelBattleScreen(),
+                  ),
+                ],
               ),
             ],
           ),

@@ -55,6 +55,12 @@ class HeroNotifier extends Notifier<HeroProfile?> {
     ));
   }
 
+  Future<void> addCoins(int amount) async {
+    final h = state;
+    if (h == null) return;
+    await save(h.copyWith(coins: h.coins + amount));
+  }
+
   /// Только для разработки: начислить опыт части тела.
   Future<void> debugAddXp(BodyPart part, int amount) async {
     final h = state;
