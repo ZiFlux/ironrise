@@ -113,6 +113,9 @@ class _SignedIn extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         OutlinedButton(onPressed: notifier.logout, child: const Text('Выйти')),
+        const SizedBox(height: 16),
+        // Адрес туннеля беты меняется при перезапуске — вход при этом сохраняется.
+        _ServerUrlRow(url: ref.watch(serverUrlProvider)),
       ],
     );
   }
@@ -243,11 +246,66 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
           style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
         ),
         const SizedBox(height: 8),
-        const Text(
-          'Сервер: $apiBaseUrl',
-          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-        ),
+        _ServerUrlRow(url: ref.watch(serverUrlProvider)),
       ],
     );
   }
+}
+
+/// Адрес сервера. Для беты с туннелем он меняется — его присылает организатор.
+class _ServerUrlRow extends ConsumerWidget {
+  const _ServerUrlRow({required this.url});
+
+  final String url;
+
+  Future<void> _edit(BuildContext context, WidgetRef ref) async {
+    final controller = TextEditingController(text: url);
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Адрес сервера'),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.url,
+          decoration: const InputDecoration(
+            hintText: 'https://….trycloudflare.com',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, controller.text),
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    if (value != null && value.trim().isNotEmpty) {
+      await ref.read(serverUrlProvider.notifier).set(value);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => InkWell(
+    onTap: () => _edit(context, ref),
+    child: Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              'Сервер: $url',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+          ),
+          const Icon(LucideIcons.pencil, size: 14, color: AppColors.textMuted),
+        ],
+      ),
+    ),
+  );
 }

@@ -4,3 +4,5 @@ coverage/
 .env
 *.tsbuildinfo
 src/generated/
+secrets/
+.env.beta

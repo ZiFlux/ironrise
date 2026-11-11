@@ -1,0 +1,44 @@
+# Бета с компьютера разработчика: база + API + туннель Cloudflare наружу.
+# Запуск (из папки server):  docker compose -f compose.beta.yml -p ironrise-beta --env-file .env.beta up -d --build
+# Адрес для друзей:          docker compose -p ironrise-beta logs tunnel | findstr trycloudflare
+# Отдельный проект и том: данные беты не смешиваются с базой разработки.
+services:
+  db:
+    image: postgres:17.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ironrise
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.beta}
+      POSTGRES_DB: ironrise
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ironrise"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ironrise:${DB_PASSWORD}@db:5432/ironrise
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.beta}
+      PORT: "3000"
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
+    volumes:
+      # Ключ сервисного аккаунта Firebase для пушей (необязателен).
+      - ./secrets:/app/secrets:ro
+
+  # Быстрый туннель Cloudflare: без аккаунта, адрес https://*.trycloudflare.com
+  # меняется при перезапуске туннеля — его вводят в приложении (Профиль → Аккаунт).
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on: [api]
+    command: tunnel --no-autoupdate --url http://api:3000
+
+volumes:
+  pgdata:

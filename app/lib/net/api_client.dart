@@ -5,8 +5,9 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
-/// Адрес API. По умолчанию — компьютер разработчика, каким его видит эмулятор Android.
-/// Для телефона по Wi-Fi: flutter run --dart-define=API_URL=http://192.168.1.10:3000
+/// Адрес API по умолчанию — компьютер разработчика, каким его видит эмулятор Android.
+/// Сборка под другой сервер: --dart-define=API_URL=https://...; в приложении
+/// адрес можно сменить в «Профиль → Аккаунт» (адрес туннеля беты меняется).
 const apiBaseUrl = String.fromEnvironment(
   'API_URL',
   defaultValue: 'http://10.0.2.2:3000',
@@ -55,10 +56,13 @@ class TokenStore {
 }
 
 class ApiClient {
-  ApiClient(this.tokens, {http.Client? client})
+  ApiClient(this.tokens, {required this.baseUrl, http.Client? client})
     : _http = client ?? http.Client();
 
   final TokenStore tokens;
+
+  /// Адрес сервера без завершающего «/».
+  final String baseUrl;
   final http.Client _http;
 
   static const _timeout = Duration(seconds: 15);
@@ -95,7 +99,7 @@ class ApiClient {
     if (auth && tokens.access == null) await _refresh();
     final http.Response res;
     try {
-      final request = http.Request(method, Uri.parse('$apiBaseUrl$path'))
+      final request = http.Request(method, Uri.parse('$baseUrl$path'))
         ..headers['content-type'] = 'application/json'
         ..headers.addAll({
           if (auth && tokens.access != null)
@@ -142,4 +146,14 @@ class ApiClient {
       rethrow;
     }
   }
+}
+
+/// Привести введённый адрес к виду https://host[:port] без «/» в конце.
+String normalizeServerUrl(String input) {
+  var url = input.trim();
+  while (url.endsWith('/')) {
+    url = url.substring(0, url.length - 1);
+  }
+  final hasScheme = url.startsWith('http://') || url.startsWith('https://');
+  return hasScheme ? url : 'https://$url';
 }
