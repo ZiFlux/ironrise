@@ -88,20 +88,35 @@ class HeroNotifier extends Notifier<HeroProfile?> {
     await save(h.copyWith(look: look));
   }
 
-  /// Состояние с сервера — источник правды для опыта и серии.
-  /// Монеты пока остаются на телефоне: магазин и дуэли ещё не на сервере.
+  /// Состояние с сервера — источник правды для опыта, серии, монет и покупок.
   Future<void> applyServer(Map<String, dynamic> me) async {
     final h = state;
     if (h == null) return;
+    AvatarLook? look;
+    try {
+      look = AvatarLook.fromJson(
+        Map<String, dynamic>.from(me['appearance'] as Map),
+      );
+    } catch (_) {
+      look = null; // старый или неполный образ на сервере — оставляем свой
+    }
     final xp = Map<String, dynamic>.from(me['xp'] as Map);
     final last = me['lastActiveDay'] as String?;
     final lastDay = last == null ? null : DateTime.parse(last);
-    await save(h.copyWith(
-      xp: {for (final p in BodyPart.values) p: (xp[p.name] as num?)?.toInt() ?? 0},
-      streakDays: (me['streakDays'] as num).toInt(),
-      lastActiveDay: lastDay,
-      activeDays: {...h.activeDays, if (lastDay != null) dayKey(lastDay)},
-    ));
+    await save(
+      h.copyWith(
+        xp: {
+          for (final p in BodyPart.values)
+            p: (xp[p.name] as num?)?.toInt() ?? 0,
+        },
+        streakDays: (me['streakDays'] as num).toInt(),
+        lastActiveDay: lastDay,
+        activeDays: {...h.activeDays, if (lastDay != null) dayKey(lastDay)},
+        coins: (me['coins'] as num).toInt(),
+        ownedItems: Set<String>.from(me['ownedItems'] as List? ?? const []),
+        look: look,
+      ),
+    );
   }
 
   Future<void> setBody(BodyStats body) async {

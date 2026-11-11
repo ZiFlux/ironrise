@@ -8,6 +8,7 @@ import '../game/cardio.dart';
 import '../game/workout.dart';
 import '../net/api_client.dart';
 import 'providers.dart';
+import 'server_game.dart';
 
 const _outboxKey = 'outbox_v1';
 const _emailKey = 'account_email';
@@ -252,6 +253,9 @@ class AccountNotifier extends Notifier<AccountState> {
       await ref
           .read(heroProvider.notifier)
           .applyServer(await _api.get('/v1/me'));
+      // Уровни изменились — боты дня и лига на сервере тоже.
+      ref.invalidate(serverBotsProvider);
+      ref.invalidate(serverLeagueProvider);
       state = state.copyWith(
         lastSyncedAt: DateTime.now(),
         rejected: state.rejected + rejected,

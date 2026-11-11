@@ -6,8 +6,10 @@ import '../avatar/avatar_look.dart';
 import '../game/calendar.dart';
 import '../game/duel.dart';
 import '../game/game_config.dart';
+import 'account_state.dart';
 import 'hero.dart';
 import 'providers.dart';
+import 'server_game.dart';
 
 const _duelsKey = 'duels_v1';
 
@@ -71,6 +73,19 @@ class DuelNotifier extends Notifier<DuelDay> {
   /// Результаты за сегодня (сбрасываются после полуночи, даже если приложение открыто).
   Map<String, bool> get today =>
       state.day == dayKey(DateTime.now()) ? state.results : const {};
+
+  /// Бой через сервер (игрок в аккаунте): исход, лог и монеты считает сервер.
+  Future<DuelResult> fightOnServer(Fighter bot) async {
+    final j = await ref.read(apiProvider).post('/v1/duels/bots/${bot.id}', {});
+    final result = duelFromJson(j);
+    await ref
+        .read(heroProvider.notifier)
+        .applyServer(Map<String, dynamic>.from(j['hero'] as Map));
+    ref.read(currentDuelProvider.notifier).show(result);
+    ref.invalidate(serverBotsProvider);
+    ref.invalidate(serverLeagueProvider);
+    return result;
+  }
 
   /// Провести бой и сразу начислить награду, чтобы выход из анимации ничего не менял.
   Future<DuelResult?> fight(Fighter bot) async {

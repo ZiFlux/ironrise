@@ -7,6 +7,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/shop.dart';
+import '../net/api_client.dart';
+import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 
@@ -35,20 +37,40 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   }
 
   Future<void> _confirm(List<ShopItem> cart, AvatarLook look) async {
-    final ok = await ref.read(heroProvider.notifier).buyAndWear(cart, look);
-    if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          ok
-              ? (cart.isEmpty ? 'Образ сохранён' : 'Куплено и надето')
-              : 'Не хватает монет',
-        ),
-        duration: const Duration(seconds: 2),
-      ),
+    final ok = ref.read(accountProvider).signedIn
+        ? await _confirmOnServer(cart, look)
+        : await ref.read(heroProvider.notifier).buyAndWear(cart, look);
+    if (!mounted || ok == null) return;
+    _toast(
+      ok
+          ? (cart.isEmpty ? 'Образ сохранён' : 'Куплено и надето')
+          : 'Не хватает монет',
     );
     if (ok) setState(() => _preview = null);
   }
+
+  /// С аккаунтом монеты списывает сервер. null — ошибка уже показана.
+  Future<bool?> _confirmOnServer(List<ShopItem> cart, AvatarLook look) async {
+    final api = ref.read(apiProvider);
+    try {
+      final hero = cart.isEmpty
+          ? await api.put('/v1/me/appearance', {'appearance': look.toJson()})
+          : await api.post('/v1/shop/buy', {
+              'itemIds': [for (final i in cart) i.id],
+              'appearance': look.toJson(),
+            });
+      await ref.read(heroProvider.notifier).applyServer(hero);
+      return true;
+    } on ApiException catch (e) {
+      if (e.status == 409) return false;
+      _toast(e.isNetwork ? 'Нет связи с сервером' : e.message);
+      return null;
+    }
+  }
+
+  void _toast(String text) => ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
+  );
 
   @override
   Widget build(BuildContext context) {

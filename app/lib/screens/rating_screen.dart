@@ -4,7 +4,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/calendar.dart';
 import '../game/game_config.dart';
 import '../game/league.dart';
+import '../state/account_state.dart';
 import '../state/duel_state.dart';
+import '../state/server_game.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 
@@ -16,10 +18,35 @@ class RatingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hero = ref.watch(heroProvider);
     if (hero == null) return const SizedBox.shrink();
-    final duels = ref.watch(duelProvider);
     final now = DateTime.now();
-    final monday = mondayOf(now);
 
+    if (ref.watch(accountProvider).signedIn) {
+      return ref
+          .watch(serverLeagueProvider)
+          .when(
+            data: (d) => _LeagueView(
+              table: d.entries,
+              trainedDays: d.trainedDays,
+              wins: d.wins,
+            ),
+            loading: () => Scaffold(
+              appBar: AppBar(title: const Text('Рейтинг')),
+              body: const Center(child: CircularProgressIndicator()),
+            ),
+            error: (e, _) => Scaffold(
+              appBar: AppBar(title: const Text('Рейтинг')),
+              body: Center(
+                child: TextButton(
+                  onPressed: () => ref.invalidate(serverLeagueProvider),
+                  child: const Text('Нет связи с сервером. Повторить'),
+                ),
+              ),
+            ),
+          );
+    }
+
+    final duels = ref.watch(duelProvider);
+    final monday = mondayOf(now);
     final trainedDays = [
       for (var i = 0; i < 7; i++)
         DateTime(monday.year, monday.month, monday.day + i),
@@ -33,6 +60,24 @@ class RatingScreen extends ConsumerWidget {
         duelWins: wins,
       ),
     );
+    return _LeagueView(table: table, trainedDays: trainedDays, wins: wins);
+  }
+}
+
+class _LeagueView extends StatelessWidget {
+  const _LeagueView({
+    required this.table,
+    required this.trainedDays,
+    required this.wins,
+  });
+
+  final List<LeagueEntry> table;
+  final int trainedDays;
+  final int wins;
+
+  @override
+  Widget build(BuildContext context) {
+    final now = DateTime.now();
     final daysLeft = 7 - now.weekday;
 
     return Scaffold(
