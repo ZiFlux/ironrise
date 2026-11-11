@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/cardio.dart';
 import '../game/workout.dart';
+import 'account_state.dart';
 import 'heart_rate_state.dart';
 import 'providers.dart';
 import 'workout_state.dart';
@@ -36,11 +37,12 @@ class CardioNotifier extends Notifier<CardioSession?> {
     if (session == null || hero == null) return null;
 
     final finishedAt = DateTime.now();
+    final pulse = ref
+        .read(heartRateProvider.notifier)
+        .samplesBetween(session.startedAt, finishedAt);
     final summary = CardioScoring.summarize(
       session: session,
-      pulse: ref
-          .read(heartRateProvider.notifier)
-          .samplesBetween(session.startedAt, finishedAt),
+      pulse: pulse,
       xpBefore: hero.xp,
       finishedAt: finishedAt,
       restingHeartRate: hero.restingHeartRate,
@@ -49,6 +51,8 @@ class CardioNotifier extends Notifier<CardioSession?> {
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
     ref.read(lastSummaryProvider.notifier).show(summary);
     _save(null);
+    // Не ждём сети: итог уже на экране, отправка идёт в фоне.
+    ref.read(accountProvider.notifier).enqueueCardio(session, finishedAt, pulse);
     return summary;
   }
 

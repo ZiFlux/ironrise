@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../game/body_part.dart';
 import '../game/cardio.dart';
 import '../game/training_format.dart';
+import '../state/account_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
@@ -36,6 +37,27 @@ class ProfileScreen extends ConsumerWidget {
           const _SectionLabel('Цвет интерфейса'),
           const _AccentPicker(),
           const SizedBox(height: 24),
+          Card(
+            child: ListTile(
+              onTap: () => context.go('/profile/account'),
+              leading: const Icon(
+                LucideIcons.cloud,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              title: const Text('Аккаунт и синхронизация'),
+              subtitle: Text(
+                ref.watch(accountProvider).email ?? 'Не подключён — данные только на телефоне',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              ),
+              trailing: const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
           Card(
             child: ListTile(
               onTap: () => context.go('/profile/heart-rate'),

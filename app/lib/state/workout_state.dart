@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/anti_fraud.dart';
 import '../game/exercise_catalog.dart';
 import '../game/workout.dart';
+import 'account_state.dart';
 import 'heart_rate_state.dart';
 import 'providers.dart';
 
@@ -82,6 +83,8 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
     ref.read(lastSummaryProvider.notifier).show(summary);
     _save(null);
+    // Не ждём сети: итог уже на экране, отправка идёт в фоне.
+    ref.read(accountProvider.notifier).enqueueStrength(session, finishedAt, pulse);
     return summary;
   }
 
