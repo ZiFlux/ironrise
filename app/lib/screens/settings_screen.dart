@@ -486,6 +486,13 @@ class _DebugTools extends ConsumerWidget {
               label: const Text('Новый совет дня'),
               onPressed: () => ref.read(tipsProvider.notifier).debugNext(),
             ),
+            ActionChip(
+              avatar: const Icon(LucideIcons.layers, size: 16),
+              label: Text(
+                ref.watch(programProvider).phase == ProgramPhase.start ? 'Фаза «База»' : 'Фаза «Старт»',
+              ),
+              onPressed: () => ref.read(programProvider.notifier).debugTogglePhase(),
+            ),
           ],
         ),
         const SizedBox(height: 12),

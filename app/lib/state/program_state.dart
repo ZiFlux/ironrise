@@ -184,6 +184,11 @@ class ProgramNotifier extends Notifier<UserProgram> {
     return changes;
   }
 
+  /// Только для разработки: сразу перейти в фазу «База» или вернуться в «Старт».
+  Future<void> debugTogglePhase() => _save(state.copyWith(
+    completedWorkouts: state.phase == ProgramPhase.start ? ProgramPhase.startWorkouts : 0,
+  ));
+
   /// Самочувствие после тренировки (TRAINING_SYSTEM.md, раздел 6).
   Future<WellbeingResponse> recordWellbeing(Feeling feeling, {PainZone? zone}) async {
     final now = DateTime.now();
