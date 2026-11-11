@@ -22,6 +22,8 @@ services:
       DATABASE_URL: postgresql://ironrise:ironrise@db:5432/ironrise
       JWT_SECRET: dev-only-secret-never-use-for-beta-or-release
       PORT: "3000"
+      # Инструменты разработки (выдача монет). На бете не задано.
+      DEV_TOOLS: "true"
     ports:
       - "3000:3000"
 

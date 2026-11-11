@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'dart:math';
 
 import 'calendar.dart';
@@ -69,4 +71,18 @@ class WeeklyLeague {
     }
     return points;
   }
+}
+
+/// Уровни лиги (сервер: src/game/league.ts). Цвет — цвет металла медали.
+enum LeagueTier {
+  bronze('Бронзовая лига', Color(0xFFC08457)),
+  silver('Серебряная лига', Color(0xFFB8BEC6)),
+  gold('Золотая лига', Color(0xFFD9B25A));
+
+  const LeagueTier(this.title, this.color);
+
+  final String title;
+  final Color color;
+
+  static LeagueTier of(int index) => values[index.clamp(0, values.length - 1)];
 }

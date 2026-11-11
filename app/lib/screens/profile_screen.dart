@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/body_part.dart';
+import '../net/api_client.dart';
 import '../game/cardio.dart';
 import '../game/program.dart';
 import '../game/training_format.dart';
@@ -407,6 +408,25 @@ class _AccentSwatch extends StatelessWidget {
 class _DebugTools extends ConsumerWidget {
   const _DebugTools({required this.hero});
 
+  static const _devCoins = 1000;
+
+  /// С аккаунтом монеты считает сервер: выдаёт сервер разработки, без аккаунта — телефон.
+  Future<void> _grantCoins(BuildContext context, WidgetRef ref) async {
+    if (!ref.read(accountProvider).signedIn) {
+      await ref.read(heroProvider.notifier).addCoins(_devCoins);
+      return;
+    }
+    try {
+      await ref.read(apiProvider).post('/v1/dev/coins', {'amount': _devCoins});
+      await ref.read(accountProvider.notifier).sync();
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.status == 404 ? 'На этом сервере выдача монет выключена' : e.message)),
+      );
+    }
+  }
+
   final HeroProfile hero;
 
   @override
@@ -436,6 +456,11 @@ class _DebugTools extends ConsumerWidget {
               avatar: const Icon(LucideIcons.flame, size: 16),
               label: const Text('Серия +5'),
               onPressed: () => notifier.debugSetStreak(hero.streakDays + 5),
+            ),
+            ActionChip(
+              avatar: const Icon(LucideIcons.coins, size: 16),
+              label: const Text('Монеты +1000'),
+              onPressed: () => _grantCoins(context, ref),
             ),
           ],
         ),

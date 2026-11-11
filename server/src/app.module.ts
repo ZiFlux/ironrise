@@ -1,3 +1,4 @@
+import { DevController, devToolsEnabled } from './dev/dev.controller';
 import { Controller, Get, Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
@@ -35,7 +36,11 @@ const jwtSecret = () => {
       useFactory: () => ({ secret: jwtSecret(), signOptions: { expiresIn: '15m' } }),
     }),
   ],
-  controllers: [HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController, NotificationsController],
+  controllers: [
+    HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController, NotificationsController,
+    // Только на сервере разработки: выдача монет и прочие инструменты.
+    ...(devToolsEnabled ? [DevController] : []),
+  ],
   providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService, PushService],
 })
 export class AppModule {}

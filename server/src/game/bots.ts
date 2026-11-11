@@ -1,4 +1,5 @@
 import { BODY_PARTS, PartMap } from './body-part';
+import { botActivityBase } from './league';
 import { GameConfig as C } from './config';
 import { FighterSnapshot, seededRandom } from './duel';
 import { averageLevel } from './progression';
@@ -71,7 +72,13 @@ export const mondayOf = (day: string): string => {
 };
 
 /** Недельная лига: игрок и боты, очки за активность (тренировка +10, победа +3). */
-export const weeklyLeague = (args: { today: string; playerName: string; playerPoints: number }): LeagueEntry[] => {
+export const weeklyLeague = (args: {
+  today: string;
+  playerName: string;
+  playerPoints: number;
+  /** Лига игрока: в старших боты тренируются чаще. */
+  tier?: number;
+}): LeagueEntry[] => {
   const monday = mondayOf(args.today);
   const weekSeed = daySeed(monday);
   const daysPassed = daysBetween(monday, args.today) + 1;
@@ -79,7 +86,7 @@ export const weeklyLeague = (args: { today: string; playerName: string; playerPo
   const entries: LeagueEntry[] = [{ name: args.playerName, points: args.playerPoints, isPlayer: true }];
   for (let b = 0; b < BOTS_IN_LEAGUE; b++) {
     const rnd = seededRandom(weekSeed * 31 + b);
-    const activity = 0.25 + rnd() * 0.55;
+    const activity = botActivityBase(args.tier ?? 0) + rnd() * 0.55;
     let points = 0;
     for (let d = 0; d < 7; d++) {
       const trained = rnd() < activity;

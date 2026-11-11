@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { Bot, botsForDay, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, mondayOf, weeklyLeague } from '../game/bots';
+import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, PROMOTE_TOP, settleWeek, WeekSettlement } from '../game/league';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
 import { unpaidItems } from '../game/looks';
@@ -27,6 +28,9 @@ export const assertLookOwned = (look: Record<string, unknown>, owned: ReadonlySe
 
 const lockProfile = (tx: Prisma.TransactionClient, userId: string) =>
   tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
+
+/** Дольше не подводим по неделям: человек начинает лигу заново. */
+const MAX_WEEKS_TO_SETTLE = 26;
 
 @Injectable()
 export class EconomyService {
@@ -140,17 +144,62 @@ export class EconomyService {
     return { trainedDays, wins, points: trainedDays * LEAGUE_WORKOUT_POINTS + wins * LEAGUE_WIN_POINTS };
   }
 
-  /** Недельная лига по настоящим тренировочным дням и победам. */
+  /** Недельная лига по настоящим тренировочным дням и победам, с уровнем лиги. */
   async league(userId: string) {
     const day = await this.today(userId);
     const hero = await this.hero.state(userId);
+    const { tier, last } = await this.settleLeague(userId, hero.nickname, mondayOf(day));
     const { trainedDays, wins, points } = await this.weeklyStats(userId, mondayOf(day), day);
     return {
       day,
       trainedDays,
       wins,
-      entries: weeklyLeague({ today: day, playerName: hero.nickname, playerPoints: points }),
+      tier,
+      tierName: LEAGUE_TIERS[tier],
+      promoteTop: PROMOTE_TOP,
+      demoteBottom: DEMOTE_BOTTOM,
+      lastWeek: last,
+      entries: weeklyLeague({ today: day, playerName: hero.nickname, playerPoints: points, tier }),
     };
+  }
+
+  /**
+   * Подвести все прошедшие недели по очереди, по настоящим тренировкам каждой.
+   * Так лига сдвигается правильно, даже если человек не открывал приложение месяц.
+   */
+  private async settleLeague(userId: string, nickname: string, currentMonday: string) {
+    const profile = await this.db.profile.findUniqueOrThrow({
+      where: { userId },
+      select: { leagueTier: true, leagueWeek: true, leagueLast: true },
+    });
+    let tier = profile.leagueTier;
+    let last = profile.leagueLast as WeekSettlement | null;
+    if (profile.leagueWeek === null) {
+      await this.db.profile.update({ where: { userId }, data: { leagueWeek: currentMonday } });
+      return { tier, last };
+    }
+    let week = profile.leagueWeek;
+    for (let n = 0; week < currentMonday && n < MAX_WEEKS_TO_SETTLE; n++) {
+      const sunday = sundayOf(week);
+      const stats = await this.weeklyStats(userId, week, sunday);
+      const table = weeklyLeague({ today: sunday, playerName: nickname, playerPoints: stats.points, tier });
+      const rank = table.findIndex((e) => e.isPlayer) + 1;
+      last = settleWeek({ week, tier, rank, size: table.length, trainedDays: stats.trainedDays });
+      tier = last.tierAfter;
+      week = addWeeks(week, 1);
+    }
+    if (week < currentMonday) tier = 0; // полгода без входа — снова с бронзы
+    if (profile.leagueWeek !== currentMonday) {
+      await this.db.profile.update({
+        where: { userId },
+        data: {
+          leagueTier: tier,
+          leagueWeek: currentMonday,
+          leagueLast: last === null ? Prisma.DbNull : (last as unknown as Prisma.InputJsonValue),
+        },
+      });
+    }
+    return { tier, last };
   }
 
   async today(userId: string): Promise<string> {

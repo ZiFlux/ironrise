@@ -60,7 +60,23 @@ final serverBotsProvider = FutureProvider.autoDispose<ServerBots>((ref) async {
   );
 });
 
-typedef ServerLeague = ({List<LeagueEntry> entries, int trainedDays, int wins});
+/// Итог прошлой недели: место и куда сдвинулась лига.
+typedef LeagueWeekResult = ({
+  int rank,
+  String outcome,
+  int tierBefore,
+  int tierAfter,
+});
+
+typedef ServerLeague = ({
+  List<LeagueEntry> entries,
+  int trainedDays,
+  int wins,
+  LeagueTier tier,
+  int promoteTop,
+  int demoteBottom,
+  LeagueWeekResult? lastWeek,
+});
 
 final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
   ref,
@@ -77,6 +93,18 @@ final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
     ],
     trainedDays: (j['trainedDays'] as num).toInt(),
     wins: (j['wins'] as num).toInt(),
+    tier: LeagueTier.of((j['tier'] as num?)?.toInt() ?? 0),
+    promoteTop: (j['promoteTop'] as num?)?.toInt() ?? 0,
+    demoteBottom: (j['demoteBottom'] as num?)?.toInt() ?? 0,
+    lastWeek: switch (j['lastWeek']) {
+      final Map<String, dynamic> w => (
+        rank: (w['rank'] as num).toInt(),
+        outcome: w['outcome'] as String,
+        tierBefore: (w['tierBefore'] as num).toInt(),
+        tierAfter: (w['tierAfter'] as num).toInt(),
+      ),
+      _ => null,
+    },
   );
 });
 

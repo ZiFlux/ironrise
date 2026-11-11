@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/calendar.dart';
@@ -49,6 +50,10 @@ class _LeagueView extends StatelessWidget {
     this.header,
     this.title = 'Лига недели',
     this.footer = 'Рейтинг «Мой вуз» появится позже',
+    this.tier,
+    this.promoteTop = 0,
+    this.demoteBottom = 0,
+    this.lastWeek,
   });
 
   final List<LeagueEntry> table;
@@ -59,6 +64,21 @@ class _LeagueView extends StatelessWidget {
   final Widget? header;
   final String title;
   final String footer;
+
+  /// null — лига без уровней (друзья, без аккаунта).
+  final LeagueTier? tier;
+  final int promoteTop;
+  final int demoteBottom;
+  final LeagueWeekResult? lastWeek;
+
+  _Zone _zoneOf(int place) {
+    if (tier == null) return _Zone.none;
+    if (place <= promoteTop && tier != LeagueTier.values.last) return _Zone.up;
+    if (place > table.length - demoteBottom && tier != LeagueTier.values.first) {
+      return _Zone.down;
+    }
+    return _Zone.none;
+  }
 
   /// Больше строк, чем помещается на экран, — список прокручивается внутри.
   static const _fitRows = 8;
@@ -78,6 +98,10 @@ class _LeagueView extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               if (header != null) ...[header!, const SizedBox(height: 8)],
+              if (lastWeek case final week?) ...[
+                _LastWeekBanner(result: week),
+                const SizedBox(height: 8),
+              ],
               Card(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -89,8 +113,16 @@ class _LeagueView extends StatelessWidget {
                     children: [
                       Row(
                         children: [
+                          if (tier != null) ...[
+                            Icon(
+                              LucideIcons.medal,
+                              size: 18,
+                              color: tier!.color,
+                            ),
+                            const SizedBox(width: 8),
+                          ],
                           Text(
-                            title,
+                            tier?.title ?? title,
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
@@ -112,7 +144,8 @@ class _LeagueView extends StatelessWidget {
                       Text(
                         'Тренировка +${GameConfig.leagueWorkoutPoints} · '
                         'победа в дуэли +${GameConfig.leagueWinPoints}'
-                        '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}',
+                        '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
+                        '${tier == null ? '' : '\nПервые $promoteTop — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -126,7 +159,11 @@ class _LeagueView extends StatelessWidget {
               if (table.length <= _fitRows)
                 for (final (i, entry) in table.indexed)
                   Expanded(
-                    child: _Row(place: i + 1, entry: entry),
+                    child: _Row(
+                      place: i + 1,
+                      entry: entry,
+                      zone: _zoneOf(i + 1),
+                    ),
                   )
               else
                 Expanded(
@@ -134,7 +171,11 @@ class _LeagueView extends StatelessWidget {
                     itemCount: table.length,
                     itemBuilder: (_, i) => SizedBox(
                       height: 48,
-                      child: _Row(place: i + 1, entry: table[i]),
+                      child: _Row(
+                        place: i + 1,
+                        entry: table[i],
+                        zone: _zoneOf(i + 1),
+                      ),
                     ),
                   ),
                 ),
@@ -152,11 +193,18 @@ class _LeagueView extends StatelessWidget {
   }
 }
 
+enum _Zone { none, up, down }
+
 class _Row extends StatelessWidget {
-  const _Row({required this.place, required this.entry});
+  const _Row({
+    required this.place,
+    required this.entry,
+    this.zone = _Zone.none,
+  });
 
   final int place;
   final LeagueEntry entry;
+  final _Zone zone;
 
   @override
   Widget build(BuildContext context) {
@@ -195,6 +243,16 @@ class _Row extends StatelessWidget {
               ),
             ),
           ),
+          if (zone != _Zone.none) ...[
+            Icon(
+              zone == _Zone.up
+                  ? LucideIcons.chevronsUp
+                  : LucideIcons.chevronsDown,
+              size: 16,
+              color: zone == _Zone.up ? accent : AppColors.textMuted,
+            ),
+            const SizedBox(width: 8),
+          ],
           Text('${entry.points}', style: figureStyle(size: 15)),
         ],
       ),
@@ -275,10 +333,52 @@ class _ServerRatingState extends ConsumerState<_ServerRating> {
             trainedDays: d.trainedDays,
             wins: d.wins,
             header: header,
+            tier: d.tier,
+            promoteTop: d.promoteTop,
+            demoteBottom: d.demoteBottom,
+            lastWeek: d.lastWeek,
           ),
           loading: () => status(const CircularProgressIndicator()),
           error: (e, _) =>
               status(retry(() => ref.invalidate(serverLeagueProvider))),
         );
+  }
+}
+
+/// Итог прошлой недели: «2 место — ты поднялся в Серебряную лигу».
+class _LastWeekBanner extends StatelessWidget {
+  const _LastWeekBanner({required this.result});
+
+  final LeagueWeekResult result;
+
+  String get _text {
+    final after = LeagueTier.of(result.tierAfter).title.toLowerCase();
+    return switch (result.outcome) {
+      'up' when result.tierAfter > result.tierBefore =>
+        'Прошлая неделя: ${result.rank} место — ты поднялся: $after',
+      'down' when result.tierAfter < result.tierBefore =>
+        'Прошлая неделя: ${result.rank} место — лига ниже: $after',
+      _ => 'Прошлая неделя: ${result.rank} место, лига та же',
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tier = LeagueTier.of(result.tierAfter);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Row(
+        children: [
+          Icon(LucideIcons.medal, size: 16, color: tier.color),
+          const SizedBox(width: 8),
+          Expanded(child: Text(_text, style: const TextStyle(fontSize: 13))),
+        ],
+      ),
+    );
   }
 }

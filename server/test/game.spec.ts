@@ -285,3 +285,33 @@ describe('бонус за тренировку по плану', () => {
     expect(withPlanBonus(plain, false)).toBe(plain);
   });
 });
+
+import { addWeeks, settleWeek, sundayOf, TOP_TIER, weekOutcome } from '../src/game/league';
+
+describe('лиги', () => {
+  it('первые двое поднимаются, последние двое опускаются', () => {
+    expect(weekOutcome(1, 8, 3)).toBe('up');
+    expect(weekOutcome(2, 8, 3)).toBe('up');
+    expect(weekOutcome(4, 8, 3)).toBe('stay');
+    expect(weekOutcome(7, 8, 3)).toBe('down');
+  });
+
+  it('неделя без тренировок — минус лига, даже на первом месте', () => {
+    expect(weekOutcome(1, 8, 0)).toBe('down');
+  });
+
+  it('лига не выходит за бронзу и золото', () => {
+    expect(settleWeek({ week: '2026-11-02', tier: 0, rank: 8, size: 8, trainedDays: 3 }).tierAfter).toBe(0);
+    expect(settleWeek({ week: '2026-11-02', tier: TOP_TIER, rank: 1, size: 8, trainedDays: 3 }).tierAfter).toBe(TOP_TIER);
+    expect(settleWeek({ week: '2026-11-02', tier: 0, rank: 1, size: 8, trainedDays: 3 })).toMatchObject({
+      outcome: 'up',
+      tierBefore: 0,
+      tierAfter: 1,
+    });
+  });
+
+  it('недели считаются с понедельника по воскресенье', () => {
+    expect(sundayOf('2026-11-09')).toBe('2026-11-15');
+    expect(addWeeks('2026-11-09', 1)).toBe('2026-11-16');
+  });
+});
