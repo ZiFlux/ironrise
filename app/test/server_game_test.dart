@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ironrise/avatar/avatar_look.dart';
 import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/duel.dart';
 import 'package:ironrise/state/server_game.dart';
@@ -28,5 +29,15 @@ void main() {
     expect(r.defenderHpLeft, 41);
     // Сила считается той же формулой, что и на сервере: (10·30 + 2·3) · 1,05 = 321
     expect(r.attacker.power, 321);
+  });
+
+  test('образ друга: полный разбирается, неполный — стартовый нужного пола', () {
+    final look = AvatarLook.starter(AvatarSex.female).copyWith(hair: HairStyle.ponytail);
+    final full = fighterFromJson({...fighter('f1', 3), 'appearance': look.toJson()});
+    expect(full.lookOrStarter.hair, HairStyle.ponytail);
+
+    final partial = fighterFromJson({...fighter('f2', 3), 'isFemale': true, 'appearance': {'sex': 'female'}});
+    expect(partial.look, isNull);
+    expect(partial.lookOrStarter.sex, AvatarSex.female);
   });
 }

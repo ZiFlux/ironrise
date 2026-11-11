@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import '../avatar/avatar_look.dart';
 import 'body_part.dart';
 import 'game_config.dart';
 import 'progression.dart';
@@ -12,6 +13,7 @@ class Fighter {
     required this.levels,
     required this.streakDays,
     this.isFemale = false,
+    this.look,
   });
 
   final String id;
@@ -19,6 +21,12 @@ class Fighter {
   final Map<BodyPart, int> levels;
   final int streakDays;
   final bool isFemale;
+
+  /// Образ живого игрока; у ботов null — рисуем стартовый.
+  final AvatarLook? look;
+
+  AvatarLook get lookOrStarter =>
+      look ?? AvatarLook.starter(isFemale ? AvatarSex.female : AvatarSex.male);
 
   int get power => Progression.power(levels, streakDays);
 }
@@ -55,7 +63,8 @@ class DuelResult {
   final List<DuelHit> hits;
   final bool attackerWon;
 
-  int get attackerHpLeft => _lastHp(byAttacker: false, fallback: attacker.power);
+  int get attackerHpLeft =>
+      _lastHp(byAttacker: false, fallback: attacker.power);
   int get defenderHpLeft => _lastHp(byAttacker: true, fallback: defender.power);
 
   int _lastHp({required bool byAttacker, required int fallback}) {
@@ -75,7 +84,8 @@ class DuelSimulator {
 
   static DuelResult fight(Fighter attacker, Fighter defender, int seed) {
     final rng = Random(seed);
-    final rounds = GameConfig.duelMinRounds +
+    final rounds =
+        GameConfig.duelMinRounds +
         rng.nextInt(GameConfig.duelMaxRounds - GameConfig.duelMinRounds + 1);
     var hpA = attacker.power;
     var hpD = defender.power;
@@ -84,17 +94,40 @@ class DuelSimulator {
     for (var r = 0; r < rounds; r++) {
       final a = _strike(attacker, rng);
       hpD = max(0, hpD - a.$3);
-      hits.add(DuelHit(byAttacker: true, part: a.$1, kind: a.$2, damage: a.$3, targetHpAfter: hpD));
+      hits.add(
+        DuelHit(
+          byAttacker: true,
+          part: a.$1,
+          kind: a.$2,
+          damage: a.$3,
+          targetHpAfter: hpD,
+        ),
+      );
 
       final d = _strike(defender, rng);
       hpA = max(0, hpA - d.$3);
-      hits.add(DuelHit(byAttacker: false, part: d.$1, kind: d.$2, damage: d.$3, targetHpAfter: hpA));
+      hits.add(
+        DuelHit(
+          byAttacker: false,
+          part: d.$1,
+          kind: d.$2,
+          damage: d.$3,
+          targetHpAfter: hpA,
+        ),
+      );
     }
 
     final shareA = hpA / max(1, attacker.power);
     final shareD = hpD / max(1, defender.power);
-    final won = shareA != shareD ? shareA > shareD : attacker.power >= defender.power;
-    return DuelResult(attacker: attacker, defender: defender, hits: hits, attackerWon: won);
+    final won = shareA != shareD
+        ? shareA > shareD
+        : attacker.power >= defender.power;
+    return DuelResult(
+      attacker: attacker,
+      defender: defender,
+      hits: hits,
+      attackerWon: won,
+    );
   }
 
   static (BodyPart, HitKind, int) _strike(Fighter f, Random rng) {
@@ -126,8 +159,18 @@ class DuelBots {
   const DuelBots._();
 
   static const names = [
-    'Кирпич', 'Штанга', 'Железный Лёха', 'Медведь', 'Пружина', 'Турник',
-    'Гиря', 'Рельс', 'Фитоняша', 'Атлант', 'Бицепс', 'Блин 20',
+    'Кирпич',
+    'Штанга',
+    'Железный Лёха',
+    'Медведь',
+    'Пружина',
+    'Турник',
+    'Гиря',
+    'Рельс',
+    'Фитоняша',
+    'Атлант',
+    'Бицепс',
+    'Блин 20',
   ];
 
   /// Соперники от слабого к сильному: ×0.8, ×0.95, ×1.05, ×1.2 от уровней игрока.
@@ -144,7 +187,12 @@ class DuelBots {
           name: names[i],
           isFemale: rng.nextBool(),
           streakDays: player.streakDays,
-          levels: _scaledLevels(player.levels, ratio, rng, withWeakPart: i.isOdd),
+          levels: _scaledLevels(
+            player.levels,
+            ratio,
+            rng,
+            withWeakPart: i.isOdd,
+          ),
         ),
     ];
   }
@@ -197,8 +245,13 @@ class DuelAdvice {
       final names = lagging.map((p) => p.label.toLowerCase()).join(', ');
       return 'Подтяни $names до среднего — это +$gain силы и бонус баланса';
     }
-    final weakest = levels.entries.reduce((a, b) => a.value <= b.value ? a : b).key;
-    final next = Progression.power({...levels, weakest: levels[weakest]! + 1}, player.streakDays);
+    final weakest = levels.entries
+        .reduce((a, b) => a.value <= b.value ? a : b)
+        .key;
+    final next = Progression.power({
+      ...levels,
+      weakest: levels[weakest]! + 1,
+    }, player.streakDays);
     if (player.streakDays < GameConfig.streakCap) {
       return '+1 уровень «${weakest.label}» даст +${next - now} силы. Не теряй серию: каждый день +2';
     }

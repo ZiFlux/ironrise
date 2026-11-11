@@ -67,14 +67,25 @@ class ApiClient {
     String path,
     Map<String, dynamic> body, {
     bool auth = true,
-  }) => _send('POST', path, body: body, auth: auth);
+  }) async =>
+      (await _send('POST', path, body: body, auth: auth))
+          as Map<String, dynamic>;
 
-  Future<Map<String, dynamic>> put(String path, Map<String, dynamic> body) =>
-      _send('PUT', path, body: body);
+  Future<Map<String, dynamic>> put(
+    String path,
+    Map<String, dynamic> body,
+  ) async => (await _send('PUT', path, body: body)) as Map<String, dynamic>;
 
-  Future<Map<String, dynamic>> get(String path) => _send('GET', path);
+  Future<Map<String, dynamic>> get(String path) async =>
+      (await _send('GET', path)) as Map<String, dynamic>;
 
-  Future<Map<String, dynamic>> _send(
+  Future<List<dynamic>> getList(String path) async =>
+      (await _send('GET', path)) as List<dynamic>;
+
+  Future<void> delete(String path) => _send('DELETE', path);
+
+  /// Разобранный JSON ответа: объект, массив или пустой объект для 204.
+  Future<Object?> _send(
     String method,
     String path, {
     Map<String, dynamic>? body,
@@ -115,7 +126,7 @@ class ApiClient {
           : 'Ошибка ${res.statusCode}';
       throw ApiException(res.statusCode, message);
     }
-    return decoded as Map<String, dynamic>;
+    return decoded;
   }
 
   /// Обменять refresh-токен на новую пару. Нет токена или он отозван — 401.
@@ -124,12 +135,7 @@ class ApiClient {
     if (refresh == null) throw const ApiException(401, 'Нужно войти в аккаунт');
     try {
       await tokens.save(
-        await _send(
-          'POST',
-          '/v1/auth/refresh',
-          body: {'refreshToken': refresh},
-          auth: false,
-        ),
+        await post('/v1/auth/refresh', {'refreshToken': refresh}, auth: false),
       );
     } on ApiException catch (e) {
       if (e.status == 401) await tokens.clear();

@@ -20,30 +20,7 @@ class RatingScreen extends ConsumerWidget {
     if (hero == null) return const SizedBox.shrink();
     final now = DateTime.now();
 
-    if (ref.watch(accountProvider).signedIn) {
-      return ref
-          .watch(serverLeagueProvider)
-          .when(
-            data: (d) => _LeagueView(
-              table: d.entries,
-              trainedDays: d.trainedDays,
-              wins: d.wins,
-            ),
-            loading: () => Scaffold(
-              appBar: AppBar(title: const Text('Рейтинг')),
-              body: const Center(child: CircularProgressIndicator()),
-            ),
-            error: (e, _) => Scaffold(
-              appBar: AppBar(title: const Text('Рейтинг')),
-              body: Center(
-                child: TextButton(
-                  onPressed: () => ref.invalidate(serverLeagueProvider),
-                  child: const Text('Нет связи с сервером. Повторить'),
-                ),
-              ),
-            ),
-          );
-    }
+    if (ref.watch(accountProvider).signedIn) return const _ServerRating();
 
     final duels = ref.watch(duelProvider);
     final monday = mondayOf(now);
@@ -67,13 +44,24 @@ class RatingScreen extends ConsumerWidget {
 class _LeagueView extends StatelessWidget {
   const _LeagueView({
     required this.table,
-    required this.trainedDays,
-    required this.wins,
+    this.trainedDays,
+    this.wins,
+    this.header,
+    this.title = 'Лига недели',
+    this.footer = 'Рейтинг «Мой вуз» появится позже',
   });
 
   final List<LeagueEntry> table;
-  final int trainedDays;
-  final int wins;
+
+  /// null — не показываем строку «У тебя» (лига друзей).
+  final int? trainedDays;
+  final int? wins;
+  final Widget? header;
+  final String title;
+  final String footer;
+
+  /// Больше строк, чем помещается на экран, — список прокручивается внутри.
+  static const _fitRows = 8;
 
   @override
   Widget build(BuildContext context) {
@@ -89,6 +77,7 @@ class _LeagueView extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (header != null) ...[header!, const SizedBox(height: 8)],
               Card(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
@@ -100,9 +89,9 @@ class _LeagueView extends StatelessWidget {
                     children: [
                       Row(
                         children: [
-                          const Text(
-                            'Лига недели',
-                            style: TextStyle(
+                          Text(
+                            title,
+                            style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w500,
                             ),
@@ -122,8 +111,8 @@ class _LeagueView extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         'Тренировка +${GameConfig.leagueWorkoutPoints} · '
-                        'победа в дуэли +${GameConfig.leagueWinPoints}. '
-                        'У тебя: $trainedDays трен., $wins побед',
+                        'победа в дуэли +${GameConfig.leagueWinPoints}'
+                        '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}',
                         style: const TextStyle(
                           fontSize: 13,
                           color: AppColors.textSecondary,
@@ -134,13 +123,24 @@ class _LeagueView extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 8),
-              for (final (i, entry) in table.indexed)
+              if (table.length <= _fitRows)
+                for (final (i, entry) in table.indexed)
+                  Expanded(
+                    child: _Row(place: i + 1, entry: entry),
+                  )
+              else
                 Expanded(
-                  child: _Row(place: i + 1, entry: entry),
+                  child: ListView.builder(
+                    itemCount: table.length,
+                    itemBuilder: (_, i) => SizedBox(
+                      height: 48,
+                      child: _Row(place: i + 1, entry: table[i]),
+                    ),
+                  ),
                 ),
               const SizedBox(height: 8),
-              const Text(
-                'Таблица друзей и «Мой вуз» появятся вместе с сервером',
+              Text(
+                footer,
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 12, color: AppColors.textMuted),
               ),
@@ -199,5 +199,86 @@ class _Row extends StatelessWidget {
         ],
       ),
     );
+  }
+}
+
+/// Рейтинг с аккаунтом: лига недели с ботами или таблица среди друзей.
+class _ServerRating extends ConsumerStatefulWidget {
+  const _ServerRating();
+
+  @override
+  ConsumerState<_ServerRating> createState() => _ServerRatingState();
+}
+
+class _ServerRatingState extends ConsumerState<_ServerRating> {
+  bool _friends = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final header = SegmentedButton<bool>(
+      segments: const [
+        ButtonSegment(value: false, label: Text('Лига')),
+        ButtonSegment(value: true, label: Text('Друзья')),
+      ],
+      selected: {_friends},
+      showSelectedIcon: false,
+      onSelectionChanged: (s) => setState(() => _friends = s.first),
+    );
+    Widget status(Widget child) => Scaffold(
+      appBar: AppBar(title: const Text('Рейтинг')),
+      body: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            header,
+            Expanded(child: Center(child: child)),
+          ],
+        ),
+      ),
+    );
+    Widget retry(VoidCallback onRetry) => TextButton(
+      onPressed: onRetry,
+      child: const Text('Нет связи с сервером. Повторить'),
+    );
+
+    if (_friends) {
+      return ref
+          .watch(serverFriendsLeagueProvider)
+          .when(
+            data: (entries) => entries.length <= 1
+                ? status(
+                    const Text(
+                      'Добавь друзей во вкладке «Дуэли», и здесь появится ваша таблица',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
+                : _LeagueView(
+                    table: entries,
+                    header: header,
+                    title: 'Друзья за неделю',
+                    footer:
+                        'Очки за активность: кто чаще тренируется, тот выше',
+                  ),
+            loading: () => status(const CircularProgressIndicator()),
+            error: (e, _) => status(
+              retry(() => ref.invalidate(serverFriendsLeagueProvider)),
+            ),
+          );
+    }
+    return ref
+        .watch(serverLeagueProvider)
+        .when(
+          data: (d) => _LeagueView(
+            table: d.entries,
+            trainedDays: d.trainedDays,
+            wins: d.wins,
+            header: header,
+          ),
+          loading: () => status(const CircularProgressIndicator()),
+          error: (e, _) =>
+              status(retry(() => ref.invalidate(serverLeagueProvider))),
+        );
   }
 }

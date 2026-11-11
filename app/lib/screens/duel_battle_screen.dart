@@ -62,7 +62,10 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
       return Scaffold(
         appBar: AppBar(title: const Text('Дуэль')),
         body: Center(
-          child: TextButton(onPressed: () => context.go('/duels'), child: const Text('К дуэлям')),
+          child: TextButton(
+            onPressed: () => context.go('/duels'),
+            child: const Text('К дуэлям'),
+          ),
         ),
       );
     }
@@ -102,16 +105,16 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                         look: hero.look,
                         hp: hpOf(attacker: true),
                         isPlayer: true,
-                        hitKey: last != null && !last.byAttacker ? _shown : null,
+                        hitKey: last != null && !last.byAttacker
+                            ? _shown
+                            : null,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: _FighterPanel(
                         fighter: duel.defender,
-                        look: AvatarLook.starter(
-                          duel.defender.isFemale ? AvatarSex.female : AvatarSex.male,
-                        ),
+                        look: duel.defender.lookOrStarter,
                         hp: hpOf(attacker: false),
                         isPlayer: false,
                         hitKey: last != null && last.byAttacker ? _shown : null,
@@ -124,15 +127,23 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                 height: 44,
                 child: Center(
                   child: last == null
-                      ? const Text('Бой начинается…',
-                          style: TextStyle(color: AppColors.textMuted, fontSize: 15))
+                      ? const Text(
+                          'Бой начинается…',
+                          style: TextStyle(
+                            color: AppColors.textMuted,
+                            fontSize: 15,
+                          ),
+                        )
                       : _HitLine(hit: last, duel: duel),
                 ),
               ),
               AnimatedSwitcher(
                 duration: AppMotion.enter,
                 child: done
-                    ? _ResultPanel(duel: duel, advice: DuelAdvice.forPlayer(duel.attacker))
+                    ? _ResultPanel(
+                        duel: duel,
+                        advice: DuelAdvice.forPlayer(duel.attacker),
+                      )
                     : Align(
                         child: TextButton(
                           onPressed: () => _skip(duel.hits.length),
@@ -173,15 +184,19 @@ class _FighterPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(fighter.name,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+        Text(
+          fighter.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
         const SizedBox(height: 2),
-        Text('сила ${fighter.power}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+        Text(
+          'сила ${fighter.power}',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
         const SizedBox(height: 8),
         ClipRRect(
           borderRadius: BorderRadius.circular(4),
@@ -197,11 +212,17 @@ class _FighterPanel extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text('$hp / $max', textAlign: TextAlign.center, style: figureStyle(size: 13)),
+        Text(
+          '$hp / $max',
+          textAlign: TextAlign.center,
+          style: figureStyle(size: 13),
+        ),
         Expanded(
           child: _Shake(
             trigger: hitKey,
-            child: isPlayer ? avatar : Transform.flip(flipX: true, child: avatar),
+            child: isPlayer
+                ? avatar
+                : Transform.flip(flipX: true, child: avatar),
           ),
         ),
       ],
@@ -244,8 +265,14 @@ class _HitLine extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final (text, color) = switch (hit.kind) {
       HitKind.miss => ('$who промахивается', AppColors.textMuted),
-      HitKind.hit => ('$who: ${hit.part.label.toLowerCase()}, −${hit.damage}', AppColors.textPrimary),
-      HitKind.crit => ('Крит! $who: ${hit.part.label.toLowerCase()}, −${hit.damage}', accent),
+      HitKind.hit => (
+        '$who: ${hit.part.label.toLowerCase()}, −${hit.damage}',
+        AppColors.textPrimary,
+      ),
+      HitKind.crit => (
+        'Крит! $who: ${hit.part.label.toLowerCase()}, −${hit.damage}',
+        accent,
+      ),
     };
     return Row(
       mainAxisSize: MainAxisSize.min,
@@ -253,14 +280,23 @@ class _HitLine extends StatelessWidget {
         Container(
           width: 8,
           height: 8,
-          decoration: BoxDecoration(color: hit.part.color, shape: BoxShape.circle),
+          decoration: BoxDecoration(
+            color: hit.part.color,
+            shape: BoxShape.circle,
+          ),
         ),
         const SizedBox(width: 8),
         Flexible(
-          child: Text(text,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 15, color: color, fontWeight: FontWeight.w500)),
+          child: Text(
+            text,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              fontSize: 15,
+              color: color,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ),
       ],
     );
@@ -290,28 +326,38 @@ class _ResultPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(won ? 'Победа' : 'Поражение',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w600,
-                      color: won ? accent : AppColors.textPrimary,
-                    )),
+                Text(
+                  won ? 'Победа' : 'Поражение',
+                  style: TextStyle(
+                    fontSize: 22,
+                    fontWeight: FontWeight.w600,
+                    color: won ? accent : AppColors.textPrimary,
+                  ),
+                ),
                 const Spacer(),
-                const Icon(LucideIcons.coins, size: 16, color: AppColors.textSecondary),
+                const Icon(
+                  LucideIcons.coins,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
                 const SizedBox(width: 6),
                 Text('+$coins', style: figureStyle(size: 17)),
               ],
             ),
             const SizedBox(height: 4),
-            Text('Осталось здоровья: у тебя $hpA%, у соперника $hpD%',
-                style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            Text(
+              'Осталось здоровья: у тебя $hpA%, у соперника $hpD%',
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Icon(LucideIcons.lightbulb, size: 16, color: accent),
                 const SizedBox(width: 8),
-                Expanded(child: Text(advice, style: const TextStyle(fontSize: 14))),
+                Expanded(
+                  child: Text(advice, style: const TextStyle(fontSize: 14)),
+                ),
               ],
             ),
             const SizedBox(height: 16),

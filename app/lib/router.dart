@@ -8,6 +8,7 @@ import 'screens/cardio_screen.dart';
 import 'screens/duel_battle_screen.dart';
 import 'screens/duels_screen.dart';
 import 'screens/exercise_library_screen.dart';
+import 'screens/friends_screen.dart';
 import 'screens/heart_rate_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -78,6 +79,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'battle',
                     builder: (_, _) => const DuelBattleScreen(),
+                  ),
+                  GoRoute(
+                    path: 'friends',
+                    builder: (_, _) => const FriendsScreen(),
                   ),
                 ],
               ),

@@ -87,6 +87,22 @@ class DuelNotifier extends Notifier<DuelDay> {
     return result;
   }
 
+  /// Бой с другом: сервер дерётся со снимком его героя, друг может быть офлайн.
+  Future<DuelResult> fightFriendOnServer(Fighter friend) async {
+    final j = await ref
+        .read(apiProvider)
+        .post('/v1/duels/users/${friend.id}', {});
+    final result = duelFromJson(j);
+    await ref
+        .read(heroProvider.notifier)
+        .applyServer(Map<String, dynamic>.from(j['hero'] as Map));
+    ref.read(currentDuelProvider.notifier).show(result);
+    ref.invalidate(serverFriendsProvider);
+    ref.invalidate(serverLeagueProvider);
+    ref.invalidate(serverFriendsLeagueProvider);
+    return result;
+  }
+
   /// Провести бой и сразу начислить награду, чтобы выход из анимации ничего не менял.
   Future<DuelResult?> fight(Fighter bot) async {
     final hero = ref.read(heroProvider);

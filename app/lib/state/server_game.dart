@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../avatar/avatar_look.dart';
 import '../game/body_part.dart';
 import '../game/duel.dart';
 import '../game/league.dart';
@@ -12,12 +13,22 @@ Map<BodyPart, int> _levels(Map<String, dynamic> j) => {
   for (final p in BodyPart.values) p: (j[p.name] as num?)?.toInt() ?? 1,
 };
 
+AvatarLook? _look(Object? appearance) {
+  if (appearance is! Map) return null;
+  try {
+    return AvatarLook.fromJson(Map<String, dynamic>.from(appearance));
+  } catch (_) {
+    return null; // неполный образ — покажем стартовый
+  }
+}
+
 Fighter fighterFromJson(Map<String, dynamic> j) => Fighter(
   id: j['id'] as String,
   name: j['name'] as String,
   levels: _levels(Map<String, dynamic>.from(j['levels'] as Map)),
   streakDays: (j['streakDays'] as num).toInt(),
   isFemale: j['isFemale'] == true,
+  look: _look(j['appearance']),
 );
 
 DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
@@ -67,4 +78,64 @@ final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
     trainedDays: (j['trainedDays'] as num).toInt(),
     wins: (j['wins'] as num).toInt(),
   );
+});
+
+typedef PlayerRef = ({String userId, String nickname});
+
+typedef ServerFriends = ({
+  List<Fighter> friends,
+  List<PlayerRef> incoming,
+  List<PlayerRef> outgoing,
+  Map<String, bool> results,
+  int fightsLeft,
+});
+
+List<PlayerRef> _refs(Object? list) => [
+  for (final r in list as List)
+    (userId: r['userId'] as String, nickname: r['nickname'] as String),
+];
+
+final serverFriendsProvider = FutureProvider.autoDispose<ServerFriends>((
+  ref,
+) async {
+  final j = await ref.read(apiProvider).get('/v1/friends');
+  return (
+    friends: [
+      for (final f in j['friends'] as List)
+        fighterFromJson(Map<String, dynamic>.from(f as Map)),
+    ],
+    incoming: _refs(j['incoming']),
+    outgoing: _refs(j['outgoing']),
+    results: Map<String, bool>.from(j['results'] as Map),
+    fightsLeft: (j['fightsLeft'] as num).toInt(),
+  );
+});
+
+final serverFriendsLeagueProvider =
+    FutureProvider.autoDispose<List<LeagueEntry>>((ref) async {
+      final j = await ref.read(apiProvider).get('/v1/league/friends');
+      return [
+        for (final e in j['entries'] as List)
+          LeagueEntry(
+            name: e['name'] as String,
+            points: (e['points'] as num).toInt(),
+            isPlayer: e['isPlayer'] == true,
+          ),
+      ];
+    });
+
+typedef AttackOnMe = ({String attacker, bool attackerWon, DateTime at});
+
+final serverAttacksProvider = FutureProvider.autoDispose<List<AttackOnMe>>((
+  ref,
+) async {
+  final list = await ref.read(apiProvider).getList('/v1/duels/incoming');
+  return [
+    for (final a in list)
+      (
+        attacker: a['attacker'] as String,
+        attackerWon: a['attackerWon'] as bool,
+        at: DateTime.parse(a['at'] as String).toLocal(),
+      ),
+  ];
 });
