@@ -6,7 +6,8 @@ plugins {
 
 android {
     namespace = "com.ironrise.ironrise"
-    compileSdk = flutter.compileSdkVersion
+    // permission_handler требует компиляции под API 37.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {

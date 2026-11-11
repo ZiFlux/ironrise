@@ -30,6 +30,23 @@ class GameConfig {
   /// Монет за единицу опыта.
   static const double coinsPerXp = 0.2;
 
+  // ---- Антифрод (ТЗ 4.4). Пороги калибруются на реальных данных беты. ----
+
+  /// Быстрее этого подходы физически не делаются.
+  static const Duration minTimePerSet = Duration(seconds: 45);
+
+  /// Какая доля тренировки должна быть покрыта пульсом, чтобы он считался.
+  static const double minPulseCoverage = 0.6;
+
+  /// Пульс покоя по умолчанию, пока пользователь не указал свой.
+  static const int defaultRestingHeartRate = 70;
+
+  /// Насколько средний пульс тренировки должен быть выше пульса покоя.
+  static const int minPulseAboveRest = 15;
+
+  /// Минимальный разброс пульса: без циклов «подход — отдых» пульс ровный.
+  static const double minPulseSpread = 5;
+
   /// Отдых между подходами по умолчанию.
   static const Duration restBetweenSets = Duration(seconds: 90);
 }

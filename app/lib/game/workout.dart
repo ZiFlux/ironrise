@@ -10,6 +10,11 @@ class SetRecord {
 
   /// Повторы или секунды, в зависимости от упражнения.
   final int reps;
+
+  Map<String, dynamic> toJson() => {'weight': weight, 'reps': reps};
+
+  factory SetRecord.fromJson(Map<String, dynamic> j) =>
+      SetRecord(weight: (j['weight'] as num).toDouble(), reps: j['reps']);
 }
 
 class ExerciseEntry {
@@ -26,6 +31,16 @@ class ExerciseEntry {
   ExerciseEntry withoutLastSet() => sets.isEmpty
       ? this
       : ExerciseEntry(exercise: exercise, sets: sets.sublist(0, sets.length - 1));
+
+  Map<String, dynamic> toJson() => {
+        'exercise': exercise.id,
+        'sets': [for (final s in sets) s.toJson()],
+      };
+
+  factory ExerciseEntry.fromJson(Map<String, dynamic> j) => ExerciseEntry(
+        exercise: ExerciseCatalog.byId(j['exercise']),
+        sets: [for (final s in j['sets'] as List) SetRecord.fromJson(s)],
+      );
 }
 
 class WorkoutSession {
@@ -38,6 +53,16 @@ class WorkoutSession {
 
   WorkoutSession copyWith({List<ExerciseEntry>? entries}) =>
       WorkoutSession(startedAt: startedAt, entries: entries ?? this.entries);
+
+  Map<String, dynamic> toJson() => {
+        'startedAt': startedAt.toIso8601String(),
+        'entries': [for (final e in entries) e.toJson()],
+      };
+
+  factory WorkoutSession.fromJson(Map<String, dynamic> j) => WorkoutSession(
+        startedAt: DateTime.parse(j['startedAt']),
+        entries: [for (final e in j['entries'] as List) ExerciseEntry.fromJson(e)],
+      );
 }
 
 /// Что получила одна часть тела за тренировку.

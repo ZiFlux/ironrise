@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../game/exercise_catalog.dart';
 import '../game/game_config.dart';
 import '../game/workout.dart';
+import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
@@ -83,6 +84,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   void initState() {
     super.initState();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+    ref.read(heartRateProvider.notifier).reconnectSaved();
   }
 
   @override
@@ -146,6 +148,8 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
       appBar: AppBar(
         title: const Text('Тренировка'),
         actions: [
+          const _PulseIndicator(),
+          const SizedBox(width: 16),
           Text(formatClock(elapsed), style: figureStyle(size: 15)),
           IconButton(
             tooltip: 'Отменить тренировку',
@@ -181,6 +185,34 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
             onAdd: _addExercise,
             onFinish: _finish,
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Живой пульс в шапке. Без датчика — ссылка на подключение.
+class _PulseIndicator extends ConsumerWidget {
+  const _PulseIndicator();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final pulse = ref.watch(heartRateProvider);
+    if (!pulse.isConnected) {
+      return IconButton(
+        tooltip: 'Подключить датчик пульса',
+        onPressed: () => context.go('/profile/heart-rate'),
+        icon: const Icon(LucideIcons.heartOff, size: 18, color: AppColors.textMuted),
+      );
+    }
+    return Semantics(
+      label: 'Пульс ${pulse.bpm ?? 'нет данных'}',
+      excludeSemantics: true,
+      child: Row(
+        children: [
+          Icon(LucideIcons.heart, size: 16, color: Theme.of(context).colorScheme.primary),
+          const SizedBox(width: 4),
+          Text(pulse.bpm?.toString() ?? '—', style: figureStyle(size: 15)),
         ],
       ),
     );

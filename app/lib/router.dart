@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'screens/heart_rate_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/placeholder_screen.dart';
@@ -59,7 +60,13 @@ final routerProvider = Provider<GoRouter>((ref) {
             ),
           ]),
           StatefulShellBranch(routes: [
-            GoRoute(path: '/profile', builder: (_, _) => const ProfileScreen()),
+            GoRoute(
+              path: '/profile',
+              builder: (_, _) => const ProfileScreen(),
+              routes: [
+                GoRoute(path: 'heart-rate', builder: (_, _) => const HeartRateScreen()),
+              ],
+            ),
           ]),
         ],
       ),

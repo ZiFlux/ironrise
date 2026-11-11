@@ -6,10 +6,12 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/body_part.dart';
 import '../game/training_format.dart';
+import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
 import '../state/settings.dart';
 import '../theme.dart';
+import '../widgets/format.dart';
 
 class ProfileScreen extends ConsumerWidget {
   const ProfileScreen({super.key});
@@ -29,12 +31,16 @@ class ProfileScreen extends ConsumerWidget {
           const _SectionLabel('Цвет интерфейса'),
           const _AccentPicker(),
           const SizedBox(height: 24),
-          const Card(
+          Card(
             child: ListTile(
-              leading: Icon(LucideIcons.watch, size: 18, color: AppColors.textSecondary),
-              title: Text('Часы и датчики пульса'),
-              subtitle: Text('Подключение появится в следующих версиях',
-                  style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+              onTap: () => context.go('/profile/heart-rate'),
+              leading: const Icon(LucideIcons.heartPulse, size: 18, color: AppColors.textSecondary),
+              title: const Text('Датчик пульса'),
+              subtitle: Text(
+                ref.watch(heartRateProvider).isConnected ? 'Подключён' : 'Часы или нагрудный датчик по Bluetooth',
+                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+              ),
+              trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
             ),
           ),
           if (kDebugMode) ...[
@@ -71,7 +77,7 @@ class _HeroInfo extends StatelessWidget {
     final bodyText = [
       if (body.sex != null) body.sex!.label,
       if (body.heightCm != null) '${body.heightCm} см',
-      if (body.weightKg != null) '${body.weightKg} кг',
+      if (body.weightKg != null) '${formatWeight(body.weightKg!)} кг',
     ].join(', ');
     final rows = [
       ('Ник', hero.nickname),

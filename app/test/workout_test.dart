@@ -64,6 +64,15 @@ void main() {
     });
   });
 
+  test('тренировка сохраняется и восстанавливается без потерь', () {
+    final session = sessionWith('bench_press', 3);
+    final restored = WorkoutSession.fromJson(session.toJson());
+    expect(restored.startedAt, session.startedAt);
+    expect(restored.entries.single.exercise.id, 'bench_press');
+    expect(restored.totalSets, 3);
+    expect(restored.entries.single.sets.first.weight, 30);
+  });
+
   group('серия', () {
     final monday = DateTime(2026, 11, 9);
 
