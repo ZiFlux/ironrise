@@ -49,3 +49,8 @@ kotlin {
 flutter {
     source = "../.."
 }
+
+dependencies {
+    // Пульс с приложения IronRise на Wear OS часах (watch/wearos).
+    implementation("com.google.android.gms:play-services-wearable:19.0.0")
+}

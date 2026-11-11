@@ -1,4 +1,7 @@
 import 'dart:async';
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 
 import 'package:flutter_reactive_ble/flutter_reactive_ble.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -16,6 +19,15 @@ const _bufferLength = Duration(hours: 4);
 
 enum HeartRateStatus { idle, scanning, connecting, connected, failed }
 
+/// Откуда идёт живой пульс.
+enum PulseSource { bluetooth, watch }
+
+/// Канал приёма сообщений от приложения IronRise на часах (MainActivity.kt).
+const _watchChannel = EventChannel('ironrise/watch');
+
+/// Часы молчат дольше этого — считаем, что тренировка на них остановлена.
+const _watchSilenceLimit = Duration(seconds: 15);
+
 class SensorDevice {
   const SensorDevice({required this.id, required this.name, required this.rssi});
 
@@ -31,6 +43,7 @@ class HeartRateState {
     this.sensorName,
     this.bpm,
     this.message,
+    this.source,
   });
 
   final HeartRateStatus status;
@@ -38,6 +51,7 @@ class HeartRateState {
   final String? sensorName;
   final int? bpm;
   final String? message;
+  final PulseSource? source;
 
   bool get isConnected => status == HeartRateStatus.connected;
 
@@ -47,6 +61,7 @@ class HeartRateState {
     String? sensorName,
     int? bpm,
     String? message,
+    PulseSource? source,
   }) =>
       HeartRateState(
         status: status ?? this.status,
@@ -54,6 +69,7 @@ class HeartRateState {
         sensorName: sensorName ?? this.sensorName,
         bpm: bpm ?? this.bpm,
         message: message,
+        source: source ?? this.source,
       );
 }
 
@@ -64,11 +80,45 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
   StreamSubscription<DiscoveredDevice>? _scan;
   StreamSubscription<ConnectionStateUpdate>? _connection;
   StreamSubscription<List<int>>? _measurements;
+  StreamSubscription<dynamic>? _watch;
+  Timer? _watchSilence;
 
   @override
   HeartRateState build() {
     ref.onDispose(_cancelAll);
+    if (Platform.isAndroid) {
+      _watch = _watchChannel.receiveBroadcastStream().listen(
+        (event) => _onWatchMessage(parseWatchMessage(event as String)),
+        onError: (_) {},
+      );
+    }
     return const HeartRateState();
+  }
+
+  /// Пульс с приложения на часах. Bluetooth-датчик, если подключён, главнее.
+  void _onWatchMessage(WatchMessage? message) {
+    final bluetoothActive = state.isConnected && state.source == PulseSource.bluetooth;
+    if (message == null || bluetoothActive) return;
+    if (message is WatchStopped) {
+      _watchStopped('Тренировка на часах завершена');
+      return;
+    }
+    final pulse = message as WatchPulse;
+    _record(pulse.bpm, at: pulse.at);
+    state = state.copyWith(
+      status: HeartRateStatus.connected,
+      source: PulseSource.watch,
+      sensorName: 'Часы',
+      bpm: pulse.bpm,
+    );
+    _watchSilence?.cancel();
+    _watchSilence = Timer(_watchSilenceLimit, () => _watchStopped('Часы перестали передавать пульс'));
+  }
+
+  void _watchStopped(String message) {
+    _watchSilence?.cancel();
+    if (state.source != PulseSource.watch) return;
+    state = HeartRateState(message: message);
   }
 
   List<PulseSample> samplesBetween(DateTime from, DateTime to) =>
@@ -156,14 +206,14 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
       final bpm = parseHeartRateMeasurement(data);
       if (bpm == null || bpm == 0) return;
       _record(bpm);
-      state = state.copyWith(bpm: bpm);
+      state = state.copyWith(bpm: bpm, source: PulseSource.bluetooth);
     });
   }
 
-  void _record(int bpm) {
+  void _record(int bpm, {DateTime? at}) {
     final now = DateTime.now();
     _samples
-      ..add(PulseSample(now, bpm))
+      ..add(PulseSample(at ?? now, bpm))
       ..removeWhere((s) => now.difference(s.at) > _bufferLength);
   }
 
@@ -180,7 +230,37 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
     _scan?.cancel();
     _connection?.cancel();
     _measurements?.cancel();
+    _watch?.cancel();
+    _watchSilence?.cancel();
   }
+}
+
+sealed class WatchMessage {
+  const WatchMessage();
+}
+
+class WatchPulse extends WatchMessage {
+  const WatchPulse({required this.bpm, required this.steps, required this.at});
+
+  final int bpm;
+  final int steps;
+  final DateTime at;
+}
+
+class WatchStopped extends WatchMessage {
+  const WatchStopped();
+}
+
+/// Сообщение от часов: «pulse;пульс;шаги;время_мс» или «stopped».
+WatchMessage? parseWatchMessage(String raw) {
+  if (raw == 'stopped') return const WatchStopped();
+  final parts = raw.split(';');
+  if (parts.length != 4 || parts[0] != 'pulse') return null;
+  final bpm = int.tryParse(parts[1]);
+  final steps = int.tryParse(parts[2]);
+  final millis = int.tryParse(parts[3]);
+  if (bpm == null || steps == null || millis == null || bpm <= 0) return null;
+  return WatchPulse(bpm: bpm, steps: steps, at: DateTime.fromMillisecondsSinceEpoch(millis));
 }
 
 /// Разбор значения Heart Rate Measurement (0x2A37): первый бит флагов —

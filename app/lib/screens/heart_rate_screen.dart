@@ -57,6 +57,7 @@ class _HowToCard extends StatelessWidget {
   const _HowToCard();
 
   static const _steps = [
+    'Часы на Wear OS (Galaxy Watch, Pixel Watch): откройте IronRise на часах и нажмите «Начать». Пульс появится здесь сам',
     'Нагрудный датчик: наденьте его, он начнёт транслировать пульс сам',
     'Часы Xiaomi, Amazfit, Huawei, Garmin, Polar: включите в настройках часов «Трансляция пульса» или «Heart rate broadcast»',
     'Нажмите «Найти датчик» и выберите устройство из списка',
@@ -109,6 +110,7 @@ class _ConnectedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final fromWatch = state.source == PulseSource.watch;
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(16),
@@ -121,13 +123,22 @@ class _ConnectedCard extends StatelessWidget {
                   Text(state.sensorName ?? 'Датчик пульса',
                       style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
                   const SizedBox(height: 4),
-                  const Text('Подключён', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-                  const SizedBox(height: 12),
-                  TextButton(
-                    style: TextButton.styleFrom(padding: EdgeInsets.zero),
-                    onPressed: onDisconnect,
-                    child: const Text('Отключить'),
+                  Text(
+                    fromWatch ? 'Тренировка идёт на часах' : 'Подключён',
+                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
                   ),
+                  const SizedBox(height: 12),
+                  if (fromWatch)
+                    const Text(
+                      'Чтобы отключить, завершите тренировку на часах',
+                      style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                    )
+                  else
+                    TextButton(
+                      style: TextButton.styleFrom(padding: EdgeInsets.zero),
+                      onPressed: onDisconnect,
+                      child: const Text('Отключить'),
+                    ),
                 ],
               ),
             ),

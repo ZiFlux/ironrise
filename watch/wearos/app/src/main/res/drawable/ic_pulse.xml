@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Знак IronRise: блин штанги со ступицей. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+    <path
+        android:fillColor="#FFC6FF3D"
+        android:fillType="evenOdd"
+        android:pathData="M32,2a30,30 0,1 0,0.01 0zM32,17a15,15 0,1 1,-0.01 0z" />
+</vector>
