@@ -35,7 +35,9 @@ class PhoneLink(context: Context) {
     private suspend fun connectedPhones(): List<String> {
         val now = System.currentTimeMillis()
         if (phoneIds.isEmpty() || now - nodesCheckedAt > NODES_TTL_MS) {
-            phoneIds = nodes.connectedNodes.await().map { it.id }
+            val connected = nodes.connectedNodes.await()
+            Log.i(TAG, "Телефоны на связи: ${connected.map { it.displayName }}")
+            phoneIds = connected.map { it.id }
             nodesCheckedAt = now
         }
         return phoneIds

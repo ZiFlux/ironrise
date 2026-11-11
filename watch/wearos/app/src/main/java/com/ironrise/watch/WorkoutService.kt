@@ -12,10 +12,15 @@ import androidx.core.app.ServiceCompat
 import androidx.health.services.client.ExerciseClient
 import androidx.health.services.client.ExerciseUpdateCallback
 import androidx.health.services.client.HealthServices
+import androidx.health.services.client.MeasureCallback
+import androidx.health.services.client.MeasureClient
 import androidx.health.services.client.data.Availability
+import androidx.health.services.client.data.DataPointContainer
 import androidx.health.services.client.data.DataType
+import androidx.health.services.client.data.DeltaDataType
 import androidx.health.services.client.data.ExerciseConfig
 import androidx.health.services.client.data.ExerciseLapSummary
+import androidx.health.services.client.data.ExerciseTrackedStatus
 import androidx.health.services.client.data.ExerciseType
 import androidx.health.services.client.data.ExerciseUpdate
 import androidx.lifecycle.LifecycleService
@@ -29,6 +34,7 @@ import kotlinx.coroutines.launch
  */
 class WorkoutService : LifecycleService() {
     private val exercises: ExerciseClient by lazy { HealthServices.getClient(this).exerciseClient }
+    private val measure: MeasureClient by lazy { HealthServices.getClient(this).measureClient }
     private val phone by lazy { PhoneLink(this) }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
@@ -45,9 +51,15 @@ class WorkoutService : LifecycleService() {
         goForeground()
         lifecycleScope.launch {
             try {
+                endLeftoverExercise()
                 exercises.setUpdateCallback(updates)
                 exercises.startExerciseAsync(exerciseConfig()).await()
+                // Основной источник пульса — прямая подписка на датчик. Тренировка через
+                // ExerciseClient на Galaxy Watch (Wear OS 6) принимает старт, но не идёт:
+                // статус остаётся «нет тренировки», обновления не приходят.
+                measure.registerMeasureCallback(DataType.HEART_RATE_BPM, directPulse)
                 WorkoutStore.started(System.currentTimeMillis())
+                Log.i(TAG, "Тренировка: ${exercises.getCurrentExerciseInfoAsync().await().exerciseTrackedStatus}")
             } catch (e: Exception) {
                 Log.e(TAG, "Health Services не запустил тренировку", e)
                 WorkoutStore.failed("Не удалось начать: ${e.message ?: "ошибка датчиков"}")
@@ -64,6 +76,11 @@ class WorkoutService : LifecycleService() {
                 Log.w(TAG, "Тренировка уже завершена", e)
             }
             exercises.clearUpdateCallbackAsync(updates)
+            try {
+                measure.unregisterMeasureCallbackAsync(DataType.HEART_RATE_BPM, directPulse).await()
+            } catch (e: Exception) {
+                Log.w(TAG, "Подписка на пульс уже снята", e)
+            }
             WorkoutStore.stopped()
             phone.sendStopped()
             ServiceCompat.stopForeground(this@WorkoutService, ServiceCompat.STOP_FOREGROUND_REMOVE)
@@ -71,13 +88,31 @@ class WorkoutService : LifecycleService() {
         }
     }
 
-    /** Шаги есть не у всех типов тренировок на всех часах — берём, если поддерживаются. */
+    /** Тренировка нашего приложения могла остаться после падения или обновления. */
+    private suspend fun endLeftoverExercise() {
+        val current = exercises.getCurrentExerciseInfoAsync().await()
+        if (current.exerciseTrackedStatus == ExerciseTrackedStatus.OWNED_EXERCISE_IN_PROGRESS) {
+            exercises.endExerciseAsync().await()
+        }
+    }
+
+    /**
+     * Не на всех часах силовая тренировка отдаёт пульс (на Samsung — нет),
+     * поэтому берём первый вид тренировки, где пульс поддерживается. Шаги — если есть.
+     */
     private suspend fun exerciseConfig(): ExerciseConfig {
-        val supported = exercises.getCapabilitiesAsync().await()
-            .getExerciseTypeCapabilities(ExerciseType.STRENGTH_TRAINING)
-            .supportedDataTypes
-        val wanted = setOf(DataType.HEART_RATE_BPM, DataType.STEPS).filter { it in supported }.toSet()
-        return ExerciseConfig.builder(ExerciseType.STRENGTH_TRAINING)
+        val capabilities = exercises.getCapabilitiesAsync().await()
+        val supportedTypes = capabilities.supportedExerciseTypes
+        Log.i(TAG, "Поддерживаемые тренировки: $supportedTypes")
+        val type = PREFERRED_TYPES.firstOrNull { candidate ->
+            candidate in supportedTypes &&
+                DataType.HEART_RATE_BPM in capabilities.getExerciseTypeCapabilities(candidate).supportedDataTypes
+        } ?: throw IllegalStateException("часы не отдают пульс ни для одного вида тренировки")
+        val supportedData = capabilities.getExerciseTypeCapabilities(type).supportedDataTypes
+        Log.i(TAG, "Тренировка $type, данные: $supportedData")
+        val wanted = setOf(DataType.HEART_RATE_BPM, DataType.STEPS).filter { it in supportedData }.toSet()
+        Log.i(TAG, "Запрашиваем: $wanted")
+        return ExerciseConfig.builder(type)
             .setDataTypes(wanted)
             .setIsAutoPauseAndResumeEnabled(false)
             .setIsGpsEnabled(false)
@@ -87,25 +122,44 @@ class WorkoutService : LifecycleService() {
     private val updates = object : ExerciseUpdateCallback {
         override fun onExerciseUpdateReceived(update: ExerciseUpdate) {
             val metrics = update.latestMetrics
-            val bpm = metrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value?.toInt()
             val stepsDelta = metrics.getData(DataType.STEPS).sumOf { it.value }
             if (stepsDelta > 0) WorkoutStore.steps(stepsDelta)
-            if (bpm == null || bpm <= 0) return
-            WorkoutStore.pulse(bpm)
-            lifecycleScope.launch {
-                phone.sendPulse(bpm, WorkoutStore.state.value.steps, System.currentTimeMillis())
-            }
+            metrics.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value?.let(::onPulse)
         }
 
         override fun onLapSummaryReceived(lapSummary: ExerciseLapSummary) = Unit
 
-        override fun onRegistered() = Unit
+        override fun onRegistered() {
+            Log.i(TAG, "Приёмник обновлений зарегистрирован")
+        }
 
         override fun onRegistrationFailed(throwable: Throwable) {
             Log.e(TAG, "Не удалось подписаться на данные тренировки", throwable)
         }
 
-        override fun onAvailabilityChanged(dataType: DataType<*, *>, availability: Availability) = Unit
+        override fun onAvailabilityChanged(dataType: DataType<*, *>, availability: Availability) {
+            Log.d(TAG, "Доступность ${dataType.name}: $availability")
+        }
+    }
+
+    private val directPulse = object : MeasureCallback {
+        override fun onDataReceived(data: DataPointContainer) {
+            data.getData(DataType.HEART_RATE_BPM).lastOrNull()?.value?.let(::onPulse)
+        }
+
+        override fun onAvailabilityChanged(dataType: DeltaDataType<*, *>, availability: Availability) {
+            Log.d(TAG, "Датчик пульса: $availability")
+        }
+    }
+
+    /** Пульс из любого источника: показать на часах и отправить на телефон. */
+    private fun onPulse(value: Double) {
+        val bpm = value.toInt()
+        if (bpm <= 0) return
+        WorkoutStore.pulse(bpm)
+        lifecycleScope.launch {
+            phone.sendPulse(bpm, WorkoutStore.state.value.steps, System.currentTimeMillis())
+        }
     }
 
     private fun goForeground() {
@@ -133,6 +187,16 @@ class WorkoutService : LifecycleService() {
         private const val CHANNEL_ID = "workout"
         private const val NOTIFICATION_ID = 1
         private const val TAG = "IronRiseWorkout"
+
+        /** По порядку предпочтения: чем ближе к залу, тем лучше. */
+        private val PREFERRED_TYPES = listOf(
+            ExerciseType.STRENGTH_TRAINING,
+            ExerciseType.WEIGHTLIFTING,
+            ExerciseType.CALISTHENICS,
+            ExerciseType.WORKOUT,
+            ExerciseType.EXERCISE_CLASS,
+            ExerciseType.WALKING,
+        )
 
         fun start(context: Context) = context.startForegroundService(
             Intent(context, WorkoutService::class.java).setAction(ACTION_START),
