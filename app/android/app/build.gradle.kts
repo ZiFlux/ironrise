@@ -38,6 +38,7 @@ android {
     defaultConfig {
         // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
         applicationId = "com.ironrise.ironrise"
+        manifestPlaceholders["appLabel"] = "IronRise"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         // Health Connect требует Android 8.0 (API 26) и новее.
@@ -52,6 +53,13 @@ android {
     }
 
     buildTypes {
+        // Отладочная сборка — отдельное приложение «IronRise DEV» со своими данными:
+        // её можно поставить рядом с бетой, и она не попадает к бета-тестерам.
+        // Телефон и часы в debug оба с суффиксом .dev, поэтому видят друг друга.
+        getByName("debug") {
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "IronRise DEV"
+        }
         release {
             signingConfig = signingConfigs.getByName(if (releaseKeyFile.exists()) "release" else "debug")
         }

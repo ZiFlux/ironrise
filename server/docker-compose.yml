@@ -1,4 +1,6 @@
-# База для разработки: docker compose up -d (из папки server)
+# Сервер разработки (из папки server):  docker compose up -d --build
+# База и API для отладочной сборки «IronRise DEV». Бета — отдельно, compose.beta.yml.
+# Телефон по USB видит API как 127.0.0.1:3000 после: adb reverse tcp:3000 tcp:3000
 services:
   db:
     image: postgres:17.6
@@ -11,6 +13,17 @@ services:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on: [db]
+    environment:
+      DATABASE_URL: postgresql://ironrise:ironrise@db:5432/ironrise
+      JWT_SECRET: dev-only-secret-never-use-for-beta-or-release
+      PORT: "3000"
+    ports:
+      - "3000:3000"
 
 volumes:
   pgdata:

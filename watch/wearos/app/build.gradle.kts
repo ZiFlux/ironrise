@@ -19,6 +19,7 @@ android {
         // Тот же applicationId и ключ подписи, что у телефонного приложения:
         // без этого Wearable Data Layer не свяжет часы и телефон.
         applicationId = "com.ironrise.ironrise"
+        manifestPlaceholders["appLabel"] = "IronRise"
         // Health Services и Wear OS 3+.
         minSdk = 30
         targetSdk = 36
@@ -45,6 +46,13 @@ android {
     }
 
     buildTypes {
+        // Отладочная сборка — отдельное приложение «IronRise DEV» со своими данными:
+        // её можно поставить рядом с бетой, и она не попадает к бета-тестерам.
+        // Телефон и часы в debug оба с суффиксом .dev, поэтому видят друг друга.
+        getByName("debug") {
+            applicationIdSuffix = ".dev"
+            manifestPlaceholders["appLabel"] = "IronRise DEV"
+        }
         release {
             signingConfig = signingConfigs.getByName(if (releaseKeyFile.exists()) "release" else "debug")
         }

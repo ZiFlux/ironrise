@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'net/push.dart';
+import 'env.dart';
 import 'router.dart';
 import 'state/providers.dart';
 import 'state/settings.dart';
@@ -30,6 +31,15 @@ class IronRiseApp extends ConsumerWidget {
       title: 'IronRise',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(accent.color),
+      // Метка DEV: отладочную сборку не перепутать с бетой.
+      builder: (context, child) => isDev
+          ? Banner(
+              message: 'DEV',
+              location: BannerLocation.topEnd,
+              color: const Color(0xFFFF7A3D),
+              child: child!,
+            )
+          : child!,
       scrollBehavior: const _NoStretchScrollBehavior(),
       routerConfig: ref.watch(routerProvider),
       scaffoldMessengerKey: messengerKey,
