@@ -18,6 +18,8 @@ import '../state/local_data.dart';
 import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/settings.dart';
+import '../state/tips_state.dart';
+import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 
@@ -401,6 +403,22 @@ class _DebugTools extends ConsumerWidget {
 
   static const _devCoins = 1000;
 
+  /// Показать смену лиги и плашку итога недели, не дожидаясь понедельника.
+  Future<void> _shiftLeague(BuildContext context, WidgetRef ref, int shift) async {
+    final messenger = ScaffoldMessenger.of(context);
+    if (!ref.read(accountProvider).signedIn) {
+      messenger.showSnackBar(const SnackBar(content: Text('Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»')));
+      return;
+    }
+    try {
+      await ref.read(apiProvider).post('/v1/dev/league', {'shift': shift});
+      ref.invalidate(serverLeagueProvider);
+      messenger.showSnackBar(const SnackBar(content: Text('Готово: откройте вкладку «Рейтинг»')));
+    } on ApiException catch (e) {
+      messenger.showSnackBar(SnackBar(content: Text(e.status == 404 ? 'Это доступно только на сервере разработки' : e.message)));
+    }
+  }
+
   /// С аккаунтом монеты считает сервер: выдаёт сервер разработки, без аккаунта — телефон.
   Future<void> _grantCoins(BuildContext context, WidgetRef ref) async {
     if (!ref.read(accountProvider).signedIn) {
@@ -452,6 +470,21 @@ class _DebugTools extends ConsumerWidget {
               avatar: const Icon(LucideIcons.coins, size: 16),
               label: const Text('Монеты +1000'),
               onPressed: () => _grantCoins(context, ref),
+            ),
+            ActionChip(
+              avatar: const Icon(LucideIcons.chevronsUp, size: 16),
+              label: const Text('Лига выше'),
+              onPressed: () => _shiftLeague(context, ref, 1),
+            ),
+            ActionChip(
+              avatar: const Icon(LucideIcons.chevronsDown, size: 16),
+              label: const Text('Лига ниже'),
+              onPressed: () => _shiftLeague(context, ref, -1),
+            ),
+            ActionChip(
+              avatar: const Icon(LucideIcons.lightbulb, size: 16),
+              label: const Text('Новый совет дня'),
+              onPressed: () => ref.read(tipsProvider.notifier).debugNext(),
             ),
           ],
         ),

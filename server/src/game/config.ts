@@ -22,6 +22,8 @@ export const GameConfig = {
   dailyXpCap: 600,
   /** Бонус монет за тренировку, выполненную по плану программы (docs/TRAINING_SYSTEM.md, 7). */
   planCoinBonus: 0.2,
+  /** Монеты за правильный ответ на вопрос «Совета дня», раз в день. */
+  tipCoins: 10,
 
   // Антифрод
   minSecondsPerSet: 45,

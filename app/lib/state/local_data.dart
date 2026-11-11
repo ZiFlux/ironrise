@@ -7,6 +7,7 @@ import 'health_state.dart';
 import 'heart_rate_state.dart';
 import 'program_state.dart';
 import 'records_state.dart';
+import 'tips_state.dart';
 import 'providers.dart';
 import 'settings.dart';
 import 'workout_state.dart';
@@ -30,6 +31,7 @@ class LocalData {
       lastSummaryProvider,
       programProvider,
       recordsProvider,
+      tipsProvider,
       lastPlanResultProvider,
       cardioProvider,
       duelProvider,

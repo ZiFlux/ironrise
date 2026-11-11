@@ -18,6 +18,7 @@ import 'screens/player_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/rating_screen.dart';
 import 'screens/settings_screen.dart';
+import 'screens/tip_screen.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
@@ -51,6 +52,7 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'wardrobe',
                     builder: (_, _) => const WardrobeScreen(),
                   ),
+                  GoRoute(path: 'tip', builder: (_, _) => const TipScreen()),
                   GoRoute(
                     path: 'notifications',
                     builder: (_, _) => const NotificationsScreen(),

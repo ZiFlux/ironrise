@@ -9,6 +9,12 @@ import { AppearanceSchema, BuySchema, EconomyService } from './economy.service';
 export class EconomyController {
   constructor(private readonly economy: EconomyService) {}
 
+  @Post('tips/reward')
+  @HttpCode(200)
+  tipReward(@UserId() userId: string) {
+    return this.economy.tipReward(userId);
+  }
+
   @Post('shop/buy')
   @HttpCode(200)
   buy(@UserId() userId: string, @Body(new ZodPipe(BuySchema)) body: z.infer<typeof BuySchema>) {

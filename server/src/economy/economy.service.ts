@@ -202,6 +202,19 @@ export class EconomyService {
     return { tier, last };
   }
 
+  /** Награда за «Совет дня»: раз в календарный день пользователя. */
+  async tipReward(userId: string) {
+    const day = await this.today(userId);
+    return this.db.$transaction(async (tx) => {
+      await tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
+      const profile = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { tipRewardDay: true } });
+      if (profile.tipRewardDay === day) throw new ConflictException('Награда за совет сегодня уже получена');
+      await tx.walletTx.create({ data: { userId, amount: C.tipCoins, reason: 'tip' } });
+      await tx.profile.update({ where: { userId }, data: { tipRewardDay: day } });
+      return { coins: C.tipCoins };
+    });
+  }
+
   async today(userId: string): Promise<string> {
     const p = await this.db.profile.findUniqueOrThrow({ where: { userId }, select: { timezone: true } });
     return localDay(new Date(), p.timezone);

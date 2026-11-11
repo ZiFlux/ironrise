@@ -38,7 +38,12 @@ class RatingScreen extends ConsumerWidget {
         duelWins: wins,
       ),
     );
-    return _LeagueView(table: table, trainedDays: trainedDays, wins: wins);
+    return _LeagueView(
+      table: table,
+      trainedDays: trainedDays,
+      wins: wins,
+      footer: 'Бронзовая, серебряная и золотая лиги — после входа в аккаунт',
+    );
   }
 }
 

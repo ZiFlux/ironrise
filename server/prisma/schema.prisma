@@ -79,6 +79,8 @@ model Profile {
   leagueWeek       String?
   /// Итог последней подведённой недели: место и куда сдвинулась лига.
   leagueLast       Json?
+  /// День, за который уже выдана награда за «Совет дня» (YYYY-MM-DD).
+  tipRewardDay     String?
   updatedAt        DateTime  @updatedAt
 }
 

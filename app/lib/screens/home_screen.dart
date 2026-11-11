@@ -12,6 +12,7 @@ import '../state/health_state.dart';
 import '../state/hero.dart';
 import '../state/program_state.dart';
 import '../state/providers.dart';
+import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
@@ -58,6 +59,7 @@ class HomeScreen extends ConsumerWidget {
               ),
               WeekStrip(hero: hero),
               const _ActivityLine(),
+              const _TipLine(),
               const SizedBox(height: 8),
               if (recommendation != null) ...[
                 _LaggingCard(
@@ -424,6 +426,56 @@ class _ActivityLine extends ConsumerWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// «Совет дня» одной строкой: открывает совет, показывает, получена ли награда.
+class _TipLine extends ConsumerWidget {
+  const _TipLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final daily = ref.watch(tipsProvider);
+    if (daily == null) return const SizedBox.shrink();
+    final accent = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.hairline),
+        ),
+        child: InkWell(
+          onTap: () => context.go('/tip'),
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 40,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  const Icon(LucideIcons.lightbulb, size: 16, color: AppColors.textSecondary),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Совет дня: ${daily.tip.title}',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 13),
+                    ),
+                  ),
+                  if (daily.answered)
+                    const Icon(LucideIcons.check, size: 16, color: AppColors.textMuted)
+                  else
+                    Text('+${GameConfig.tipCoins}', style: TextStyle(fontSize: 13, color: accent)),
+                ],
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }
