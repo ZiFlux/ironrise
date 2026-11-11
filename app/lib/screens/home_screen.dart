@@ -6,11 +6,13 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
 import '../game/game_config.dart';
+import '../game/recommendation.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
 import '../widgets/level_plate.dart';
+import '../widgets/week_strip.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -20,37 +22,55 @@ class HomeScreen extends ConsumerWidget {
     final hero = ref.watch(heroProvider);
     if (hero == null) return const SizedBox.shrink();
 
-    final lagging = hero.lagging;
-    final isTrainingDay = hero.trainingDays.contains(DateTime.now().weekday - 1);
+    final recommendation = Recommendation.forLagging(hero.lagging);
+    final isTrainingDay = hero.trainingDays.contains(
+      DateTime.now().weekday - 1,
+    );
 
     return Scaffold(
       body: SafeArea(
-        child: ListView(
-          padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
-          children: [
-            _Header(hero: hero),
-            const SizedBox(height: 8),
-            SizedBox(
-              height: 272,
-              child: AvatarView(levels: hero.levels, look: hero.look, withLamp: true),
-            ),
-            const SizedBox(height: 8),
-            if (lagging.isNotEmpty) ...[
-              _LaggingCard(part: lagging.first),
-              const SizedBox(height: 16),
+        // Всё на одном экране без прокрутки: аватар забирает оставшееся место.
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _Header(hero: hero),
+              Expanded(
+                child: AvatarView(
+                  levels: hero.levels,
+                  look: hero.look,
+                  withLamp: true,
+                ),
+              ),
+              WeekStrip(hero: hero),
+              const SizedBox(height: 8),
+              if (recommendation != null) ...[
+                _LaggingCard(
+                  recommendation: recommendation,
+                  onStart: () {
+                    final notifier = ref.read(workoutProvider.notifier)
+                      ..start();
+                    final exercise = recommendation.exercise;
+                    if (exercise != null) notifier.addExercise(exercise);
+                    context.go('/workout');
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+              _PlateRow(hero: hero),
+              const SizedBox(height: 12),
+              FilledButton.icon(
+                onPressed: () {
+                  ref.read(workoutProvider.notifier).start();
+                  context.go('/workout');
+                },
+                icon: const Icon(LucideIcons.dumbbell, size: 18),
+                label: const Text('Начать тренировку'),
+              ),
+              if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
             ],
-            _PlateGrid(hero: hero),
-            const SizedBox(height: 20),
-            FilledButton.icon(
-              onPressed: () {
-                ref.read(workoutProvider.notifier).start();
-                context.go('/workout');
-              },
-              icon: const Icon(LucideIcons.dumbbell, size: 18),
-              label: const Text('Начать тренировку'),
-            ),
-            if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
-          ],
+          ),
         ),
       ),
     );
@@ -65,31 +85,48 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
+    final streak = hero.currentStreak(DateTime.now());
     return Row(
       children: [
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(formatToday(DateTime.now()),
-                  style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+              Text(
+                formatToday(DateTime.now()),
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textMuted,
+                ),
+              ),
               const SizedBox(height: 2),
-              Text(hero.nickname, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
+              Text(
+                hero.nickname,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
         ),
         _StatChip(
           icon: LucideIcons.flame,
           iconColor: AppColors.textSecondary,
-          value: Text('${hero.streakDays}',
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-          semantics: 'Серия ${hero.streakDays} дней',
+          value: Text(
+            '$streak',
+            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+          semantics: 'Серия $streak дней',
         ),
         const SizedBox(width: 8),
         _StatChip(
           icon: LucideIcons.zap,
           iconColor: accent,
-          value: Text('${hero.power}', style: figureStyle(size: 15, color: accent)),
+          value: Text(
+            '${hero.power}',
+            style: figureStyle(size: 15, color: accent),
+          ),
           semantics: 'Сила ${hero.power}',
         ),
       ],
@@ -137,63 +174,101 @@ class _StatChip extends StatelessWidget {
 }
 
 class _LaggingCard extends StatelessWidget {
-  const _LaggingCard({required this.part});
+  const _LaggingCard({required this.recommendation, required this.onStart});
 
-  final BodyPart part;
+  final Recommendation recommendation;
+  final VoidCallback onStart;
 
   @override
   Widget build(BuildContext context) {
     final penalty = ((1 - GameConfig.powerPenaltyUnbalanced) * 100).round();
+    final part = recommendation.part;
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(color: part.color, shape: BoxShape.circle),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onStart,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: part.color,
+                  shape: BoxShape.circle,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      part.laggingTitle,
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${recommendation.text}, опыт ×1,5',
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Text(part.laggingTitle,
-                      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
-                  const SizedBox(height: 2),
-                  Text('${part.beginnerExercise}, опыт ×1,5',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+                  Text(
+                    'сила −$penalty%',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Icon(
+                    LucideIcons.chevronRight,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
                 ],
               ),
-            ),
-            Text('сила −$penalty%',
-                style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 }
 
-class _PlateGrid extends StatelessWidget {
-  const _PlateGrid({required this.hero});
+class _PlateRow extends StatelessWidget {
+  const _PlateRow({required this.hero});
 
   final HeroProfile hero;
 
   @override
   Widget build(BuildContext context) {
     final lagging = hero.lagging;
-    return GridView.count(
-      crossAxisCount: 3,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 8,
-      crossAxisSpacing: 8,
-      childAspectRatio: 1.1,
+    return Row(
       children: [
-        for (final part in BodyPart.values)
-          LevelPlate(part: part, xp: hero.xp[part]!, lagging: lagging.contains(part)),
+        for (final (i, part) in BodyPart.values.indexed) ...[
+          if (i > 0) const SizedBox(width: 6),
+          Expanded(
+            child: LevelPlate(
+              part: part,
+              xp: hero.xp[part]!,
+              lagging: lagging.contains(part),
+              compact: true,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -207,9 +282,9 @@ class _RestDayNote extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.only(top: 6),
       child: Text(
-        'Сегодня по графику отдых. До $maxRestDays дн. отдыха подряд серия не сгорает',
+        'По графику отдых. Серия не сгорит ещё $maxRestDays дн.',
         textAlign: TextAlign.center,
         style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
       ),
@@ -217,10 +292,28 @@ class _RestDayNote extends StatelessWidget {
   }
 }
 
-const _weekdays = ['Понедельник', 'Вторник', 'Среда', 'Четверг', 'Пятница', 'Суббота', 'Воскресенье'];
+const _weekdays = [
+  'Понедельник',
+  'Вторник',
+  'Среда',
+  'Четверг',
+  'Пятница',
+  'Суббота',
+  'Воскресенье',
+];
 const _monthsGenitive = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
 ];
 
 /// «Среда, 11 ноября».

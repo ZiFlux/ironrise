@@ -17,6 +17,18 @@ class Streak {
     return currentStreak + restDays + 1;
   }
 
+  /// Серия на сегодня: если отдых уже превысил лимит, она сгорела.
+  static int current({
+    required int streakDays,
+    required DateTime? lastActiveDay,
+    required DateTime today,
+    required int maxRestDays,
+  }) {
+    if (lastActiveDay == null) return 0;
+    final restSoFar = _daysBetween(lastActiveDay, today) - 1;
+    return restSoFar > maxRestDays ? 0 : streakDays;
+  }
+
   static int _daysBetween(DateTime from, DateTime to) =>
       DateTime.utc(to.year, to.month, to.day)
           .difference(DateTime.utc(from.year, from.month, from.day))

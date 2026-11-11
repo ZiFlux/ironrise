@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/body_part.dart';
+import '../game/calendar.dart';
 import '../game/streak.dart';
 import '../game/workout.dart';
 import 'hero.dart';
@@ -50,6 +51,7 @@ class HeroNotifier extends Notifier<HeroProfile?> {
         maxRestDays: h.maxRestDays,
       ),
       lastActiveDay: finishedAt,
+      activeDays: {...h.activeDays, dayKey(finishedAt)},
     ));
   }
 

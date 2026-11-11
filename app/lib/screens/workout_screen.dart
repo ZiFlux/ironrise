@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/exercise_catalog.dart';
+import '../game/recommendation.dart';
 import '../game/game_config.dart';
 import '../game/workout.dart';
 import '../state/heart_rate_state.dart';
@@ -32,10 +33,10 @@ class _StartView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final lagging = ref.watch(heroProvider)?.lagging ?? const [];
-    final hint = lagging.isEmpty
+    final rec = Recommendation.forLagging(ref.watch(heroProvider)?.lagging ?? const []);
+    final hint = rec == null
         ? 'Тело развито ровно. Возьми базу: присед, жим, тяга'
-        : '${lagging.first.laggingTitle}. Начни с: ${lagging.first.beginnerExercise}';
+        : '${rec.part.laggingTitle}. Начни с: ${rec.text}';
     return Scaffold(
       appBar: AppBar(title: const Text('Тренировка')),
       body: Padding(
@@ -52,7 +53,11 @@ class _StartView extends ConsumerWidget {
                 style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
             const Spacer(),
             FilledButton(
-              onPressed: () => ref.read(workoutProvider.notifier).start(),
+              onPressed: () {
+                final notifier = ref.read(workoutProvider.notifier)..start();
+                final exercise = rec?.exercise;
+                if (exercise != null) notifier.addExercise(exercise);
+              },
               child: const Text('Начать тренировку'),
             ),
           ],
