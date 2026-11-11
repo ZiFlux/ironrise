@@ -22,7 +22,9 @@ class WorkoutScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final session = ref.watch(workoutProvider);
-    return session == null ? const _StartView() : _ActiveWorkout(session: session);
+    return session == null
+        ? const _StartView()
+        : _ActiveWorkout(session: session);
   }
 }
 
@@ -33,24 +35,48 @@ class _StartView extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final rec = Recommendation.forLagging(ref.watch(heroProvider)?.lagging ?? const []);
+    final rec = Recommendation.forLagging(
+      ref.watch(heroProvider)?.lagging ?? const [],
+    );
     final hint = rec == null
         ? 'Тело развито ровно. Возьми базу: присед, жим, тяга'
         : '${rec.part.laggingTitle}. Начни с: ${rec.text}';
     return Scaffold(
-      appBar: AppBar(title: const Text('Тренировка')),
+      appBar: AppBar(
+        title: const Text('Тренировка'),
+        actions: [
+          IconButton(
+            tooltip: 'Справочник упражнений',
+            onPressed: () => context.go('/workout/exercises'),
+            icon: const Icon(LucideIcons.bookOpen, size: 20),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Column(
           children: [
             const Spacer(),
-            const Icon(LucideIcons.dumbbell, size: 40, color: AppColors.textMuted),
+            const Icon(
+              LucideIcons.dumbbell,
+              size: 40,
+              color: AppColors.textMuted,
+            ),
             const SizedBox(height: 16),
-            const Text('Тренировка не начата', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
+            const Text(
+              'Тренировка не начата',
+              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 8),
-            Text(hint,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+            Text(
+              hint,
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                fontSize: 14,
+                color: AppColors.textSecondary,
+              ),
+            ),
             const Spacer(),
             FilledButton(
               onPressed: () {
@@ -88,7 +114,10 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   @override
   void initState() {
     super.initState();
-    _ticker = Timer.periodic(const Duration(seconds: 1), (_) => setState(() {}));
+    _ticker = Timer.periodic(
+      const Duration(seconds: 1),
+      (_) => setState(() {}),
+    );
     ref.read(heartRateProvider.notifier).reconnectSaved();
   }
 
@@ -119,7 +148,9 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
 
   void _logSet(int index, SetRecord set) {
     _workout.logSet(index, set);
-    setState(() => _restEndsAt = DateTime.now().add(GameConfig.restBetweenSets));
+    setState(
+      () => _restEndsAt = DateTime.now().add(GameConfig.restBetweenSets),
+    );
   }
 
   Future<void> _finish() async {
@@ -135,8 +166,14 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
         title: const Text('Отменить тренировку'),
         content: const Text('Записанные подходы не сохранятся'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Продолжить')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Отменить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Продолжить'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Отменить'),
+          ),
         ],
       ),
     );
@@ -159,7 +196,11 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
           IconButton(
             tooltip: 'Отменить тренировку',
             onPressed: _confirmCancel,
-            icon: const Icon(LucideIcons.x, size: 20, color: AppColors.textSecondary),
+            icon: const Icon(
+              LucideIcons.x,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
           ),
           const SizedBox(width: 8),
         ],
@@ -167,7 +208,10 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
       body: Column(
         children: [
           if (restLeft != null)
-            _RestBanner(left: restLeft, onSkip: () => setState(() => _restEndsAt = null)),
+            _RestBanner(
+              left: restLeft,
+              onSkip: () => setState(() => _restEndsAt = null),
+            ),
           Expanded(
             child: session.entries.isEmpty
                 ? const _EmptyHint()
@@ -207,7 +251,11 @@ class _PulseIndicator extends ConsumerWidget {
       return IconButton(
         tooltip: 'Подключить датчик пульса',
         onPressed: () => context.go('/profile/heart-rate'),
-        icon: const Icon(LucideIcons.heartOff, size: 18, color: AppColors.textMuted),
+        icon: const Icon(
+          LucideIcons.heartOff,
+          size: 18,
+          color: AppColors.textMuted,
+        ),
       );
     }
     return Semantics(
@@ -215,7 +263,11 @@ class _PulseIndicator extends ConsumerWidget {
       excludeSemantics: true,
       child: Row(
         children: [
-          Icon(LucideIcons.heart, size: 16, color: Theme.of(context).colorScheme.primary),
+          Icon(
+            LucideIcons.heart,
+            size: 16,
+            color: Theme.of(context).colorScheme.primary,
+          ),
           const SizedBox(width: 4),
           Text(pulse.bpm?.toString() ?? '—', style: figureStyle(size: 15)),
         ],
@@ -229,15 +281,15 @@ class _EmptyHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => const Center(
-        child: Padding(
-          padding: EdgeInsets.all(32),
-          child: Text(
-            'Добавь первое упражнение. Если какая-то часть тела отстаёт, список откроется на ней',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: AppColors.textSecondary),
-          ),
-        ),
-      );
+    child: Padding(
+      padding: EdgeInsets.all(32),
+      child: Text(
+        'Добавь первое упражнение. Если какая-то часть тела отстаёт, список откроется на ней',
+        textAlign: TextAlign.center,
+        style: TextStyle(color: AppColors.textSecondary),
+      ),
+    ),
+  );
 }
 
 class _RestBanner extends StatelessWidget {
@@ -262,11 +314,21 @@ class _RestBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(LucideIcons.timer, size: 16, color: AppColors.textSecondary),
+              const Icon(
+                LucideIcons.timer,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 8),
-              const Text('Отдых', style: TextStyle(color: AppColors.textSecondary)),
+              const Text(
+                'Отдых',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
               const SizedBox(width: 8),
-              Text(formatClock(left), style: figureStyle(size: 15, color: accent)),
+              Text(
+                formatClock(left),
+                style: figureStyle(size: 15, color: accent),
+              ),
               const Spacer(),
               TextButton(onPressed: onSkip, child: const Text('Пропустить')),
             ],
@@ -287,7 +349,11 @@ class _RestBanner extends StatelessWidget {
 }
 
 class _BottomActions extends StatelessWidget {
-  const _BottomActions({required this.canFinish, required this.onAdd, required this.onFinish});
+  const _BottomActions({
+    required this.canFinish,
+    required this.onAdd,
+    required this.onFinish,
+  });
 
   final bool canFinish;
   final VoidCallback onAdd;
@@ -297,7 +363,9 @@ class _BottomActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(20, 12, 20, 12),
-      decoration: const BoxDecoration(border: Border(top: BorderSide(color: AppColors.hairline))),
+      decoration: const BoxDecoration(
+        border: Border(top: BorderSide(color: AppColors.hairline)),
+      ),
       child: Row(
         children: [
           Expanded(
@@ -306,7 +374,9 @@ class _BottomActions extends StatelessWidget {
                 minimumSize: const Size.fromHeight(48),
                 side: const BorderSide(color: AppColors.hairline),
                 foregroundColor: AppColors.textPrimary,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
               ),
               onPressed: onAdd,
               icon: const Icon(LucideIcons.plus, size: 18),
@@ -354,14 +424,24 @@ class _ExerciseCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _CardHeader(entry: entry, onTap: onExpand, onRemove: entry.sets.isEmpty ? onRemove : null),
-            for (final (i, set) in entry.sets.indexed) _SetRow(index: i + 1, text: formatSet(exercise, set)),
+            _CardHeader(
+              entry: entry,
+              onTap: onExpand,
+              onRemove: entry.sets.isEmpty ? onRemove : null,
+            ),
+            for (final (i, set) in entry.sets.indexed)
+              _SetRow(index: i + 1, text: formatSet(exercise, set)),
             if (expanded)
               Padding(
                 padding: const EdgeInsets.only(top: 8, right: 12),
                 child: entry.isFull
-                    ? Text('Максимум ${GameConfig.maxSetsPerExercise} подходов на упражнение',
-                        style: const TextStyle(fontSize: 13, color: AppColors.textMuted))
+                    ? Text(
+                        'Максимум ${GameConfig.maxSetsPerExercise} подходов на упражнение',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      )
                     : _SetComposer(
                         key: ValueKey(exercise.id),
                         exercise: exercise,
@@ -379,7 +459,11 @@ class _ExerciseCard extends StatelessWidget {
 }
 
 class _CardHeader extends StatelessWidget {
-  const _CardHeader({required this.entry, required this.onTap, required this.onRemove});
+  const _CardHeader({
+    required this.entry,
+    required this.onTap,
+    required this.onRemove,
+  });
 
   final ExerciseEntry entry;
   final VoidCallback onTap;
@@ -388,7 +472,9 @@ class _CardHeader extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final exercise = entry.exercise;
-    final parts = exercise.shares.keys.map((p) => p.label.toLowerCase()).join(' · ');
+    final parts = exercise.shares.keys
+        .map((p) => p.label.toLowerCase())
+        .join(' · ');
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -399,7 +485,10 @@ class _CardHeader extends StatelessWidget {
             Container(
               width: 8,
               height: 8,
-              decoration: BoxDecoration(color: exercise.mainPart.color, shape: BoxShape.circle),
+              decoration: BoxDecoration(
+                color: exercise.mainPart.color,
+                shape: BoxShape.circle,
+              ),
             ),
             const SizedBox(width: 12),
             Expanded(
@@ -407,18 +496,36 @@ class _CardHeader extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(exercise.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
-                  Text(parts, style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                  Text(
+                    exercise.name,
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Text(
+                    parts,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             ),
-            Text('${entry.sets.length}/${GameConfig.maxSetsPerExercise}',
-                style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
+            Text(
+              '${entry.sets.length}/${GameConfig.maxSetsPerExercise}',
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
             if (onRemove != null)
               IconButton(
                 tooltip: 'Убрать упражнение',
                 onPressed: onRemove,
-                icon: const Icon(LucideIcons.x, size: 16, color: AppColors.textMuted),
+                icon: const Icon(
+                  LucideIcons.x,
+                  size: 16,
+                  color: AppColors.textMuted,
+                ),
               )
             else
               const SizedBox(width: 12),
@@ -437,17 +544,26 @@ class _SetRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SizedBox(
-        height: 28,
-        child: Row(
-          children: [
-            SizedBox(
-              width: 20,
-              child: Text('$index', style: const TextStyle(fontSize: 13, color: AppColors.textMuted)),
-            ),
-            Text(text, style: const TextStyle(fontSize: 14, fontFeatures: [FontFeature.tabularFigures()])),
-          ],
+    height: 28,
+    child: Row(
+      children: [
+        SizedBox(
+          width: 20,
+          child: Text(
+            '$index',
+            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
         ),
-      );
+        Text(
+          text,
+          style: const TextStyle(
+            fontSize: 14,
+            fontFeatures: [FontFeature.tabularFigures()],
+          ),
+        ),
+      ],
+    ),
+  );
 }
 
 /// Ввод следующего подхода: вес и повторы кнопками «−» и «+».
@@ -472,7 +588,8 @@ class _SetComposer extends StatefulWidget {
 }
 
 class _SetComposerState extends State<_SetComposer> {
-  late double _weight = widget.previous?.weight ?? widget.exercise.defaultWeight;
+  late double _weight =
+      widget.previous?.weight ?? widget.exercise.defaultWeight;
   late int _reps = widget.previous?.reps ?? widget.exercise.defaultReps;
 
   double get _weightStep => widget.exercise.defaultWeight >= 20 ? 2.5 : 1;
@@ -491,7 +608,11 @@ class _SetComposerState extends State<_SetComposer> {
                 child: _Stepper(
                   label: 'кг',
                   value: formatWeight(_weight),
-                  onMinus: _weight > 0 ? () => setState(() => _weight = (_weight - _weightStep).clamp(0, 500)) : null,
+                  onMinus: _weight > 0
+                      ? () => setState(
+                          () => _weight = (_weight - _weightStep).clamp(0, 500),
+                        )
+                      : null,
                   onPlus: () => setState(() => _weight += _weightStep),
                 ),
               ),
@@ -501,7 +622,9 @@ class _SetComposerState extends State<_SetComposer> {
               child: _Stepper(
                 label: exercise.unit == ExerciseUnit.seconds ? 'сек' : 'повт.',
                 value: '$_reps',
-                onMinus: _reps > _repsStep ? () => setState(() => _reps -= _repsStep) : null,
+                onMinus: _reps > _repsStep
+                    ? () => setState(() => _reps -= _repsStep)
+                    : null,
                 onPlus: () => setState(() => _reps += _repsStep),
               ),
             ),
@@ -514,7 +637,11 @@ class _SetComposerState extends State<_SetComposer> {
               IconButton(
                 tooltip: 'Удалить последний подход',
                 onPressed: widget.onUndo,
-                icon: const Icon(LucideIcons.undo2, size: 18, color: AppColors.textSecondary),
+                icon: const Icon(
+                  LucideIcons.undo2,
+                  size: 18,
+                  color: AppColors.textSecondary,
+                ),
               ),
             Expanded(
               child: FilledButton.tonal(
@@ -522,9 +649,16 @@ class _SetComposerState extends State<_SetComposer> {
                   minimumSize: const Size.fromHeight(44),
                   backgroundColor: AppColors.raised,
                   foregroundColor: AppColors.textPrimary,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10),
+                  ),
                 ),
-                onPressed: () => widget.onLog(SetRecord(weight: exercise.usesWeight ? _weight : 0, reps: _reps)),
+                onPressed: () => widget.onLog(
+                  SetRecord(
+                    weight: exercise.usesWeight ? _weight : 0,
+                    reps: _reps,
+                  ),
+                ),
                 child: const Text('Записать подход'),
               ),
             ),
@@ -536,7 +670,12 @@ class _SetComposerState extends State<_SetComposer> {
 }
 
 class _Stepper extends StatelessWidget {
-  const _Stepper({required this.label, required this.value, required this.onMinus, required this.onPlus});
+  const _Stepper({
+    required this.label,
+    required this.value,
+    required this.onMinus,
+    required this.onPlus,
+  });
 
   final String label;
   final String value;
@@ -547,7 +686,10 @@ class _Stepper extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       height: 48,
-      decoration: BoxDecoration(color: AppColors.raised, borderRadius: BorderRadius.circular(10)),
+      decoration: BoxDecoration(
+        color: AppColors.raised,
+        borderRadius: BorderRadius.circular(10),
+      ),
       child: Row(
         children: [
           IconButton(
@@ -561,7 +703,13 @@ class _Stepper extends StatelessWidget {
               children: [
                 Text(value, style: figureStyle(size: 16)),
                 const SizedBox(height: 2),
-                Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 11,
+                    color: AppColors.textMuted,
+                  ),
+                ),
               ],
             ),
           ),
