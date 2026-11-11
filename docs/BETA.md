@@ -62,7 +62,7 @@ Cloudflare (нужен свой домен) или VPS.
    Сохранить файл как `server/secrets/firebase.json` (папка в git не попадает).
 5. В `server/.env.beta`: `FIREBASE_SERVICE_ACCOUNT=/app/secrets/firebase.json`,
    затем перезапустить API командой из раздела 1.
-   Это не другая папка: `/app/secrets` — так файл из шага 4 (`server\secretsirebase.json`)
+   Это не другая папка: `/app/secrets` — так файл из шага 4 (`server/secrets/firebase.json`)
    виден серверу **внутри Docker-контейнера**. Папку `app\secrets` создавать не нужно,
    а ключ в папке Flutter-приложения `app\` держать нельзя. В логах API появится
    «Пуши включены, проект …».
