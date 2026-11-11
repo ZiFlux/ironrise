@@ -67,6 +67,8 @@ class HeroProfile {
     required this.look,
     required this.xp,
     required this.streakDays,
+    this.coins = 0,
+    this.lastActiveDay,
   });
 
   factory HeroProfile.create({
@@ -96,13 +98,23 @@ class HeroProfile {
   final AvatarLook look;
   final Map<BodyPart, int> xp;
   final int streakDays;
+  final int coins;
+
+  /// День последней тренировки, для подсчёта серии.
+  final DateTime? lastActiveDay;
 
   Map<BodyPart, int> get levels => Progression.levels(xp);
   List<BodyPart> get lagging => Progression.laggingParts(levels);
   int get power => Progression.power(levels, streakDays);
   int get maxRestDays => maxRestDaysInRow(trainingDays);
 
-  HeroProfile copyWith({Map<BodyPart, int>? xp, int? streakDays, AvatarLook? look}) =>
+  HeroProfile copyWith({
+    Map<BodyPart, int>? xp,
+    int? streakDays,
+    AvatarLook? look,
+    int? coins,
+    DateTime? lastActiveDay,
+  }) =>
       HeroProfile(
         nickname: nickname,
         goal: goal,
@@ -112,6 +124,8 @@ class HeroProfile {
         look: look ?? this.look,
         xp: xp ?? this.xp,
         streakDays: streakDays ?? this.streakDays,
+        coins: coins ?? this.coins,
+        lastActiveDay: lastActiveDay ?? this.lastActiveDay,
       );
 
   String encode() => jsonEncode({
@@ -123,11 +137,14 @@ class HeroProfile {
         'look': look.toJson(),
         'xp': {for (final e in xp.entries) e.key.name: e.value},
         'streakDays': streakDays,
+        'coins': coins,
+        'lastActiveDay': lastActiveDay?.toIso8601String(),
       });
 
   factory HeroProfile.decode(String s) {
     final j = jsonDecode(s) as Map<String, dynamic>;
     final xpJson = j['xp'] as Map<String, dynamic>;
+    final lastActive = j['lastActiveDay'] as String?;
     return HeroProfile(
       nickname: j['nickname'],
       goal: Goal.values.byName(j['goal']),
@@ -139,6 +156,8 @@ class HeroProfile {
           : AvatarLook.fromJson(j['look']),
       xp: {for (final p in BodyPart.values) p: (xpJson[p.name] as int?) ?? 0},
       streakDays: j['streakDays'] ?? 0,
+      coins: j['coins'] ?? 0,
+      lastActiveDay: lastActive == null ? null : DateTime.parse(lastActive),
     );
   }
 }

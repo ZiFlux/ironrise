@@ -20,4 +20,16 @@ class GameConfig {
 
   /// Максимальный вклад серии в силу, дней.
   static const int streakCap = 30;
+
+  /// Коэффициент достоверности V для тренировки без данных часов (ТЗ 4.4).
+  static const double unverifiedValidity = 0.5;
+
+  /// Подходов на одно упражнение сверх этого не засчитываются (антифрод).
+  static const int maxSetsPerExercise = 8;
+
+  /// Монет за единицу опыта.
+  static const double coinsPerXp = 0.2;
+
+  /// Отдых между подходами по умолчанию.
+  static const Duration restBetweenSets = Duration(seconds: 90);
 }

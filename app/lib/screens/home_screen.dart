@@ -8,6 +8,7 @@ import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../state/hero.dart';
 import '../state/providers.dart';
+import '../state/workout_state.dart';
 import '../theme.dart';
 import '../widgets/level_plate.dart';
 
@@ -41,7 +42,10 @@ class HomeScreen extends ConsumerWidget {
             _PlateGrid(hero: hero),
             const SizedBox(height: 20),
             FilledButton.icon(
-              onPressed: () => context.go('/workout'),
+              onPressed: () {
+                ref.read(workoutProvider.notifier).start();
+                context.go('/workout');
+              },
               icon: const Icon(LucideIcons.dumbbell, size: 18),
               label: const Text('Начать тренировку'),
             ),

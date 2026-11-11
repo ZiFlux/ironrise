@@ -26,7 +26,20 @@ class IronRiseApp extends ConsumerWidget {
       title: 'IronRise',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(accent.color),
+      scrollBehavior: const _NoStretchScrollBehavior(),
       routerConfig: ref.watch(routerProvider),
     );
   }
+}
+
+/// Без растягивания экрана на краях прокрутки (эффект Android 12+).
+class _NoStretchScrollBehavior extends MaterialScrollBehavior {
+  const _NoStretchScrollBehavior();
+
+  @override
+  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) =>
+      child;
+
+  @override
+  ScrollPhysics getScrollPhysics(BuildContext context) => const ClampingScrollPhysics();
 }

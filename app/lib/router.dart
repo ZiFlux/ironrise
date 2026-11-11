@@ -7,6 +7,8 @@ import 'screens/home_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/placeholder_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/workout_result_screen.dart';
+import 'screens/workout_screen.dart';
 import 'state/providers.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -30,11 +32,10 @@ final routerProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(routes: [
             GoRoute(
               path: '/workout',
-              builder: (_, _) => const PlaceholderScreen(
-                title: 'Тренировка',
-                icon: LucideIcons.dumbbell,
-                text: 'Здесь будет запись подходов, таймер отдыха и пульс с часов.',
-              ),
+              builder: (_, _) => const WorkoutScreen(),
+              routes: [
+                GoRoute(path: 'result', builder: (_, _) => const WorkoutResultScreen()),
+              ],
             ),
           ]),
           StatefulShellBranch(routes: [

@@ -2,6 +2,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../game/body_part.dart';
+import '../game/streak.dart';
+import '../game/workout.dart';
 import 'hero.dart';
 
 /// Подменяется в main() уже загруженным экземпляром.
@@ -32,6 +34,23 @@ class HeroNotifier extends Notifier<HeroProfile?> {
   Future<void> reset() async {
     state = null;
     await ref.read(prefsProvider).remove(_heroKey);
+  }
+
+  /// Начислить итог тренировки: опыт, монеты, серия.
+  Future<void> applyWorkout(WorkoutSummary summary, DateTime finishedAt) async {
+    final h = state;
+    if (h == null) return;
+    await save(h.copyWith(
+      xp: summary.applyTo(h.xp),
+      coins: h.coins + summary.coins,
+      streakDays: Streak.afterActivity(
+        currentStreak: h.streakDays,
+        lastActiveDay: h.lastActiveDay,
+        today: finishedAt,
+        maxRestDays: h.maxRestDays,
+      ),
+      lastActiveDay: finishedAt,
+    ));
   }
 
   /// Только для разработки: начислить опыт части тела.
