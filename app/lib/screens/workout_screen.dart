@@ -9,6 +9,7 @@ import '../game/exercise_catalog.dart';
 import '../game/recommendation.dart';
 import '../game/game_config.dart';
 import '../game/workout.dart';
+import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
@@ -85,6 +86,16 @@ class _StartView extends ConsumerWidget {
                 if (exercise != null) notifier.addExercise(exercise);
               },
               child: const Text('Начать тренировку'),
+            ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () => context.go('/workout/cardio'),
+              icon: const Icon(LucideIcons.heartPulse, size: 18),
+              label: Text(
+                ref.watch(cardioProvider) == null
+                    ? 'Кардио'
+                    : 'Продолжить кардио',
+              ),
             ),
           ],
         ),

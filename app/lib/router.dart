@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'screens/cardio_screen.dart';
 import 'screens/duel_battle_screen.dart';
 import 'screens/duels_screen.dart';
 import 'screens/exercise_library_screen.dart';
@@ -58,6 +59,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'exercises',
                     builder: (_, _) => const ExerciseLibraryScreen(),
+                  ),
+                  GoRoute(
+                    path: 'cardio',
+                    builder: (_, _) => const CardioScreen(),
                   ),
                 ],
               ),

@@ -30,17 +30,20 @@ class ExerciseEntry {
 
   ExerciseEntry withoutLastSet() => sets.isEmpty
       ? this
-      : ExerciseEntry(exercise: exercise, sets: sets.sublist(0, sets.length - 1));
+      : ExerciseEntry(
+          exercise: exercise,
+          sets: sets.sublist(0, sets.length - 1),
+        );
 
   Map<String, dynamic> toJson() => {
-        'exercise': exercise.id,
-        'sets': [for (final s in sets) s.toJson()],
-      };
+    'exercise': exercise.id,
+    'sets': [for (final s in sets) s.toJson()],
+  };
 
   factory ExerciseEntry.fromJson(Map<String, dynamic> j) => ExerciseEntry(
-        exercise: ExerciseCatalog.byId(j['exercise']),
-        sets: [for (final s in j['sets'] as List) SetRecord.fromJson(s)],
-      );
+    exercise: ExerciseCatalog.byId(j['exercise']),
+    sets: [for (final s in j['sets'] as List) SetRecord.fromJson(s)],
+  );
 }
 
 class WorkoutSession {
@@ -55,14 +58,14 @@ class WorkoutSession {
       WorkoutSession(startedAt: startedAt, entries: entries ?? this.entries);
 
   Map<String, dynamic> toJson() => {
-        'startedAt': startedAt.toIso8601String(),
-        'entries': [for (final e in entries) e.toJson()],
-      };
+    'startedAt': startedAt.toIso8601String(),
+    'entries': [for (final e in entries) e.toJson()],
+  };
 
   factory WorkoutSession.fromJson(Map<String, dynamic> j) => WorkoutSession(
-        startedAt: DateTime.parse(j['startedAt']),
-        entries: [for (final e in j['entries'] as List) ExerciseEntry.fromJson(e)],
-      );
+    startedAt: DateTime.parse(j['startedAt']),
+    entries: [for (final e in j['entries'] as List) ExerciseEntry.fromJson(e)],
+  );
 }
 
 /// Что получила одна часть тела за тренировку.
@@ -93,10 +96,14 @@ class WorkoutSummary {
     required this.gains,
     required this.coins,
     required this.validity,
+    this.cardio,
   });
 
   final Duration duration;
   final int totalSets;
+
+  /// Есть только у кардио: вид активности и минуты в пульсовой зоне.
+  final ({String activity, int zoneMinutes})? cardio;
 
   /// Только части, получившие опыт, по убыванию опыта.
   final List<PartGain> gains;
@@ -108,9 +115,9 @@ class WorkoutSummary {
   bool get isVerified => validity >= 1;
 
   Map<BodyPart, int> applyTo(Map<BodyPart, int> xp) => {
-        ...xp,
-        for (final g in gains) g.part: g.xpAfter,
-      };
+    ...xp,
+    for (final g in gains) g.part: g.xpAfter,
+  };
 }
 
 /// Перевод подходов в опыт частей тела: XP = k_base · d · B · V (ТЗ 4.1).
@@ -158,8 +165,12 @@ class WorkoutScoring {
   ) {
     final raw = <BodyPart, double>{};
     for (final entry in session.entries) {
-      final countedSets = entry.sets.length.clamp(0, GameConfig.maxSetsPerExercise);
-      for (final MapEntry(key: part, value: share) in entry.exercise.shares.entries) {
+      final countedSets = entry.sets.length.clamp(
+        0,
+        GameConfig.maxSetsPerExercise,
+      );
+      for (final MapEntry(key: part, value: share)
+          in entry.exercise.shares.entries) {
         final perSet = Progression.xpForSet(
           share: share,
           isLagging: lagging.contains(part),

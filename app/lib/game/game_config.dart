@@ -62,6 +62,17 @@ class GameConfig {
   static const int duelWinCoins = 15;
   static const int duelLossCoins = 3;
 
+  // ---- Кардио (PLAN 4.1). 30 минут бега ≈ одна силовая тренировка. ----
+
+  static const int cardioXpPerMinute = 6;
+  static const int cardioMaxMinutes = 120;
+
+  /// Зона 2 начинается с этой доли резерва пульса (Карвонен).
+  static const double cardioZoneReserveShare = 0.6;
+
+  /// Максимальный пульс, пока не знаем возраст (220 − 30).
+  static const int defaultMaxHeartRate = 190;
+
   /// Очки недельной лиги.
   static const int leagueWorkoutPoints = 10;
   static const int leagueWinPoints = 3;
