@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../net/api_client.dart';
@@ -113,11 +114,33 @@ class _SignedIn extends ConsumerWidget {
         ),
         const SizedBox(height: 8),
         OutlinedButton(onPressed: notifier.logout, child: const Text('Выйти')),
+        const SizedBox(height: 8),
+        TextButton(
+          onPressed: () => _deleteAccount(context, ref),
+          child: const Text('Удалить аккаунт'),
+        ),
         const SizedBox(height: 16),
         // Адрес туннеля беты меняется при перезапуске — вход при этом сохраняется.
         _ServerUrlRow(url: ref.watch(serverUrlProvider)),
       ],
     );
+  }
+
+  Future<void> _deleteAccount(BuildContext context, WidgetRef ref) async {
+    final password = await showDialog<String>(
+      context: context,
+      builder: (_) => const _DeleteAccountDialog(),
+    );
+    if (password == null || !context.mounted) return;
+    try {
+      await ref.read(accountProvider.notifier).deleteAccount(password);
+      if (context.mounted) context.go('/onboarding');
+    } on ApiException catch (e) {
+      if (!context.mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(e.status == 401 ? 'Неверный пароль' : e.message)),
+      );
+    }
   }
 
   static String _time(DateTime t) =>
@@ -308,4 +331,55 @@ class _ServerUrlRow extends ConsumerWidget {
       ),
     ),
   );
+}
+
+/// Удаление необратимо, поэтому просим пароль ещё раз.
+class _DeleteAccountDialog extends StatefulWidget {
+  const _DeleteAccountDialog();
+
+  @override
+  State<_DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
+  final _password = TextEditingController();
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      backgroundColor: AppColors.surface,
+      title: const Text('Удалить аккаунт'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Аккаунт, герой, тренировки, пульс, друзья и покупки удалятся с сервера и телефона. '
+            'Вернуть их не получится',
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            autofocus: true,
+            decoration: const InputDecoration(labelText: 'Пароль'),
+            onChanged: (_) => setState(() {}),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
+        TextButton(
+          onPressed: _password.text.isEmpty ? null : () => Navigator.pop(context, _password.text),
+          child: const Text('Удалить навсегда'),
+        ),
+      ],
+    );
+  }
 }

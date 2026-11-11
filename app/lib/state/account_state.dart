@@ -11,6 +11,7 @@ import '../game/workout.dart';
 import '../net/api_client.dart';
 import '../net/push.dart';
 import 'health_state.dart';
+import 'local_data.dart';
 import 'providers.dart';
 import 'server_game.dart';
 
@@ -78,17 +79,18 @@ class AccountState {
   );
 }
 
-const _serverUrlKey = 'server_url';
+/// Адрес сервера беты: его сохраняем даже при удалении данных.
+const serverUrlKey = 'server_url';
 
 /// Адрес сервера: введённый в приложении или заданный при сборке.
 class ServerUrlNotifier extends Notifier<String> {
   @override
   String build() =>
-      ref.read(prefsProvider).getString(_serverUrlKey) ?? apiBaseUrl;
+      ref.read(prefsProvider).getString(serverUrlKey) ?? apiBaseUrl;
 
   Future<void> set(String input) async {
     final url = normalizeServerUrl(input);
-    await ref.read(prefsProvider).setString(_serverUrlKey, url);
+    await ref.read(prefsProvider).setString(serverUrlKey, url);
     state = url;
   }
 }
@@ -279,6 +281,14 @@ class AccountNotifier extends Notifier<AccountState> {
     await _api.tokens.clear();
     await ref.read(prefsProvider).remove(_emailKey);
     state = state.copyWith(clearEmail: true, clearError: true);
+  }
+
+  /// Удалить аккаунт на сервере и все данные на телефоне. Бросает [ApiException]
+  /// при неверном пароле или без сети — тогда ничего не удаляется.
+  /// После удаления этот провайдер пересоздаётся, поэтому состояние здесь не трогаем.
+  Future<void> deleteAccount(String password) async {
+    await _api.post('/v1/auth/delete-account', {'password': password});
+    await ref.read(localDataProvider).wipe();
   }
 
   /// Приложение открыто, а пульс с часов ещё не пришёл — проверим снова позже.

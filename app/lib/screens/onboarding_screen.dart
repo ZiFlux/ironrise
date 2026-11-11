@@ -164,6 +164,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
             controlAffinity: ListTileControlAffinity.leading,
             contentPadding: EdgeInsets.zero,
           ),
+          const SizedBox(height: 8),
+          const Text(
+            'Продолжая, вы соглашаетесь с обработкой данных о тренировках и пульсе '
+            'по политике конфиденциальности',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              style: TextButton.styleFrom(padding: EdgeInsets.zero),
+              onPressed: () => context.push('/privacy'),
+              child: const Text('Политика конфиденциальности'),
+            ),
+          ),
         ],
       );
 

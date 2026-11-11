@@ -29,6 +29,10 @@ export const RegisterSchema = z.object({
   restingHr: z.number().int().min(35).max(110).optional(),
 });
 
+export const DeleteAccountSchema = z.object({
+  password: z.string().min(1).max(128),
+});
+
 export const LoginSchema = z.object({
   email: z.email().transform((e) => e.toLowerCase()),
   password: z.string().min(1).max(128),
@@ -107,6 +111,21 @@ export class AuthService {
       where: { tokenHash: sha256(refreshToken), revokedAt: null },
       data: { revokedAt: new Date() },
     });
+  }
+
+  /**
+   * Удаление аккаунта (требование Google Play и 152-ФЗ / GDPR). Всё, что связано
+   * с пользователем, удаляется каскадом; дуэли, где он был соперником, — явно.
+   */
+  async deleteAccount(userId: string, password: string): Promise<void> {
+    const user = await this.db.user.findUnique({ where: { id: userId } });
+    if (!user || !(await verifyPassword(password, user.passwordHash))) {
+      throw new UnauthorizedException('Неверный пароль');
+    }
+    await this.db.$transaction([
+      this.db.duel.deleteMany({ where: { opponentKind: 'user', opponentId: userId } }),
+      this.db.user.delete({ where: { id: userId } }),
+    ]);
   }
 
   private async issue(userId: string): Promise<Tokens> {

@@ -1,7 +1,8 @@
-import { Body, Controller, HttpCode, Post } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { ZodPipe } from '../common/zod';
-import { AuthService, LoginSchema, RefreshSchema, RegisterSchema } from './auth.service';
+import { AuthGuard, UserId } from './auth.guard';
+import { AuthService, DeleteAccountSchema, LoginSchema, RefreshSchema, RegisterSchema } from './auth.service';
 
 @Controller('auth')
 export class AuthController {
@@ -28,5 +29,16 @@ export class AuthController {
   @HttpCode(204)
   async logout(@Body(new ZodPipe(RefreshSchema)) body: z.infer<typeof RefreshSchema>) {
     await this.auth.logout(body.refreshToken);
+  }
+
+  /** Удалить аккаунт и все данные. Пароль — защита от удаления с чужого телефона. */
+  @Post('delete-account')
+  @HttpCode(204)
+  @UseGuards(AuthGuard)
+  async deleteAccount(
+    @UserId() userId: string,
+    @Body(new ZodPipe(DeleteAccountSchema)) body: z.infer<typeof DeleteAccountSchema>,
+  ) {
+    await this.auth.deleteAccount(userId, body.password);
   }
 }

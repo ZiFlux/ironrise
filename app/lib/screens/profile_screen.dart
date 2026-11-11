@@ -12,6 +12,7 @@ import '../state/account_state.dart';
 import '../state/health_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
+import '../state/local_data.dart';
 import '../state/providers.dart';
 import '../state/settings.dart';
 import '../theme.dart';
@@ -31,6 +32,9 @@ class ProfileScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
           _HeroInfo(hero: hero),
+          const SizedBox(height: 24),
+          const _SectionLabel('Данные'),
+          const _DataSection(),
           const SizedBox(height: 24),
           const _SectionLabel('Пульсовые зоны'),
           _HeartZones(hero: hero),
@@ -429,5 +433,55 @@ class _DebugTools extends ConsumerWidget {
         ),
       ],
     );
+  }
+}
+
+/// Политика конфиденциальности и удаление данных (требование Google Play).
+class _DataSection extends ConsumerWidget {
+  const _DataSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final signedIn = ref.watch(accountProvider).signedIn;
+    return Card(
+      child: Column(
+        children: [
+          ListTile(
+            onTap: () => context.push('/privacy'),
+            leading: const Icon(LucideIcons.shieldCheck, size: 18, color: AppColors.textSecondary),
+            title: const Text('Политика конфиденциальности'),
+            trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
+          ),
+          const Divider(height: 1),
+          ListTile(
+            onTap: signedIn ? () => context.go('/profile/account') : () => _confirmWipe(context, ref),
+            leading: const Icon(LucideIcons.trash2, size: 18, color: AppColors.textSecondary),
+            title: const Text('Удалить мои данные'),
+            subtitle: Text(
+              signedIn ? 'Через удаление аккаунта' : 'Герой, тренировки и настройки на телефоне',
+              style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _confirmWipe(BuildContext context, WidgetRef ref) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Удалить все данные'),
+        content: const Text('Герой, уровни, тренировки и покупки исчезнут с телефона. Вернуть их не получится'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(localDataProvider).wipe();
+    if (context.mounted) context.go('/onboarding');
   }
 }

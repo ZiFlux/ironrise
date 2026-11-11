@@ -15,6 +15,7 @@ import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/onboarding_screen.dart';
 import 'screens/profile_screen.dart';
+import 'screens/privacy_screen.dart';
 import 'screens/rating_screen.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
@@ -27,12 +28,15 @@ final routerProvider = Provider<GoRouter>((ref) {
     redirect: (context, state) {
       final hasHero = ref.read(heroProvider) != null;
       final onOnboarding = state.matchedLocation == '/onboarding';
+      // Политику можно открыть до создания героя — из онбординга.
+      if (state.matchedLocation == '/privacy') return null;
       if (!hasHero && !onOnboarding) return '/onboarding';
       if (hasHero && onOnboarding) return '/';
       return null;
     },
     routes: [
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
+      GoRoute(path: '/privacy', builder: (_, _) => const PrivacyScreen()),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _Shell(shell: shell),
         branches: [
