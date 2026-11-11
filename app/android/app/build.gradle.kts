@@ -1,3 +1,12 @@
+import java.util.Properties
+
+// Ключ загрузки для Google Play лежит вне репозитория (см. docs/RELEASE.md).
+// Нет файла — релиз подписывается отладочным ключом, сборка не падает.
+val releaseKeyFile = file("${System.getProperty("user.home")}/.ironrise/key.properties")
+val releaseKey = Properties().apply {
+    if (releaseKeyFile.exists()) releaseKeyFile.inputStream().use { load(it) }
+}
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -9,6 +18,17 @@ android {
     // permission_handler требует компиляции под API 37.
     compileSdk = 37
     ndkVersion = flutter.ndkVersion
+
+    signingConfigs {
+        create("release") {
+            if (releaseKeyFile.exists()) {
+                keyAlias = releaseKey.getProperty("keyAlias")
+                keyPassword = releaseKey.getProperty("keyPassword")
+                storeFile = file(releaseKey.getProperty("storeFile"))
+                storePassword = releaseKey.getProperty("storePassword")
+            }
+        }
+    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
@@ -33,9 +53,7 @@ android {
 
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName(if (releaseKeyFile.exists()) "release" else "debug")
         }
     }
 }
