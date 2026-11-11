@@ -4,7 +4,7 @@ import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
 import { CardioSummary, scoreCardio } from '../game/cardio';
 import { maxRestDaysInRow, streakAfterActivity } from '../game/streak';
-import { scoreStrength, UnknownExerciseError, WorkoutSummary } from '../game/workout';
+import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap } from '../game/workout';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService, HeroState } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
@@ -126,8 +126,16 @@ export class WorkoutsService {
 
       const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
       const xpBefore = await this.hero.xpOf(userId, tx);
-      const summary = await score(xpBefore, profile.restingHr, profile.age);
       const day = localDay(finishedAt, profile.timezone);
+      const earnedToday = await tx.xpEvent.aggregate({
+        _sum: { xp: true },
+        where: { userId, workout: { day } },
+      });
+      const summary = applyDailyCap(
+        await score(xpBefore, profile.restingHr, profile.age),
+        xpBefore,
+        earnedToday._sum.xp ?? 0,
+      );
 
       const workout = await tx.workout.create({
         data: {

@@ -36,6 +36,8 @@ export interface WorkoutSummary {
   gains: PartGain[];
   coins: number;
   validity: number;
+  /** Сколько опыта срезал дневной потолок; нет поля — не срезал. */
+  cappedXp?: number;
 }
 
 export const totalSets = (s: StrengthSession): number =>
@@ -96,4 +98,26 @@ export const scoreStrength = (
     totalSets: totalSets(session),
     validity,
   });
+};
+
+/**
+ * Дневной потолок опыта (ТЗ 4.4): если с учётом уже набранного за день опыт
+ * превышает потолок, все части тела получают пропорционально меньше.
+ */
+export const applyDailyCap = <T extends WorkoutSummary>(
+  summary: T,
+  xpBefore: PartMap<number>,
+  xpEarnedToday: number,
+  cap: number = C.dailyXpCap,
+): T => {
+  const total = summary.gains.reduce((s, g) => s + g.xp, 0);
+  const allowed = Math.max(0, cap - xpEarnedToday);
+  if (total <= allowed) return summary;
+  const factor = allowed / total;
+  const earned: Partial<Record<BodyPart, number>> = {};
+  for (const g of summary.gains) earned[g.part] = Math.floor(g.xp * factor);
+  const lagging = new Set(summary.gains.filter((g) => g.wasLagging).map((g) => g.part));
+  const rebuilt = buildSummary(earned, xpBefore, lagging, summary);
+  const keptXp = rebuilt.gains.reduce((s, g) => s + g.xp, 0);
+  return { ...summary, gains: rebuilt.gains, coins: rebuilt.coins, cappedXp: total - keptXp };
 };

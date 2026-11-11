@@ -5,7 +5,7 @@ import { GameConfig as C } from '../src/game/config';
 import { FighterSnapshot, seededRandom, simulateDuel } from '../src/game/duel';
 import { power } from '../src/game/progression';
 import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../src/game/streak';
-import { scoreStrength, StrengthSession } from '../src/game/workout';
+import { applyDailyCap, scoreStrength, StrengthSession } from '../src/game/workout';
 
 // Те же сценарии, что в app/test/*.dart: формулы клиента и сервера должны совпадать.
 
@@ -233,5 +233,38 @@ describe('настройки уведомлений', () => {
     expect(parseSettings({ attacked: false, streakReminderHour: 21 }).streakReminderHour).toBe(21);
     expect(parseSettings({ streakReminderHour: 3 }).streak_risk).toBe(true);
     expect(parseSettings(null).friend_request).toBe(true);
+  });
+});
+
+describe('дневной потолок опыта', () => {
+  const zero = partMap(() => 0);
+  const heavy: StrengthSession = {
+    startedAt: new Date('2026-11-11T18:00:00Z'),
+    finishedAt: new Date('2026-11-11T19:30:00Z'),
+    entries: ['bench_press', 'barbell_squat', 'lat_pulldown', 'db_curl'].map((exerciseId) => ({
+      exerciseId,
+      sets: Array.from({ length: 8 }, () => ({ weight: 30, reps: 8 })),
+    })),
+  };
+
+  it('не трогает тренировку в пределах потолка', () => {
+    const summary = scoreStrength(heavy, zero, 1);
+    expect(applyDailyCap(summary, zero, 0)).toBe(summary);
+  });
+
+  it('срезает опыт сверх потолка с учётом уже набранного за день', () => {
+    const summary = scoreStrength(heavy, zero, 1); // ≈ 4 × 8 × 18
+    const before = summary.gains.reduce((s, g) => s + g.xp, 0);
+    const capped = applyDailyCap(summary, zero, 400);
+    const total = capped.gains.reduce((s, g) => s + g.xp, 0);
+    expect(total).toBeLessThanOrEqual(C.dailyXpCap - 400);
+    expect(capped.cappedXp).toBe(before - total);
+    expect(capped.coins).toBe(Math.round(total * C.coinsPerXp));
+  });
+
+  it('после потолка тренировка опыта не даёт', () => {
+    const capped = applyDailyCap(scoreStrength(heavy, zero, 1), zero, C.dailyXpCap);
+    expect(capped.gains).toEqual([]);
+    expect(capped.coins).toBe(0);
   });
 });
