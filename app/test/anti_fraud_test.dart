@@ -57,4 +57,32 @@ void main() {
     final pulse = pulseFor(duration, (i) => i % 9 < 3 ? 145 : 110);
     expect(AntiFraud.validity(session: sessionWithSets(60), pulse: pulse, finishedAt: finishedAt), closeTo(0.3, 1e-9));
   });
+
+  group('причины урезания опыта', () {
+    test('без пульса', () {
+      final r = AntiFraud.check(session: sessionWithSets(10), pulse: const [], finishedAt: finishedAt);
+      expect(r.issues, [ValidityIssue.noPulse]);
+    });
+
+    test('пульс только на треть тренировки', () {
+      final pulse = pulseFor(const Duration(minutes: 10), (i) => i % 9 < 3 ? 145 : 110);
+      final r = AntiFraud.check(session: sessionWithSets(10), pulse: pulse, finishedAt: finishedAt);
+      expect(r.issues, [ValidityIssue.partialPulse]);
+      expect(r.pulseCoverage, closeTo(1 / 3, 0.01));
+    });
+
+    test('быстрая проверочная тренировка с пульсом в покое', () {
+      final shortEnd = start.add(const Duration(minutes: 3));
+      final pulse = pulseFor(const Duration(minutes: 3), (_) => 75);
+      final r = AntiFraud.check(session: sessionWithSets(6), pulse: pulse, finishedAt: shortEnd);
+      expect(r.issues, containsAll([ValidityIssue.lowIntensity, ValidityIssue.flatPulse, ValidityIssue.tooFast]));
+    });
+
+    test('честная тренировка — без причин', () {
+      final pulse = pulseFor(duration, (i) => i % 9 < 3 ? 145 : 110);
+      final r = AntiFraud.check(session: sessionWithSets(10), pulse: pulse, finishedAt: finishedAt);
+      expect(r.issues, isEmpty);
+      expect(r.value, 1);
+    });
+  });
 }

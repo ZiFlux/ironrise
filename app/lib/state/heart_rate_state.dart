@@ -89,6 +89,7 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
   @override
   HeartRateState build() {
     ref.onDispose(_cancelAll);
+    _samples.addAll(_loadSavedPulse());
     if (Platform.isAndroid) {
       _watch = _watchChannel.receiveBroadcastStream().listen(
         (event) => _onWatchMessage(parseWatchMessage(event as String)),
@@ -232,6 +233,37 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
     _samples
       ..add(PulseSample(at ?? now, bpm))
       ..removeWhere((s) => now.difference(s.at) > _bufferLength);
+    if (now.difference(_savedAt) >= _saveEvery) _savePulse(now);
+  }
+
+  // Пульс сохраняется на телефоне: перезапуск приложения посреди тренировки
+  // не должен превращать её в тренировку «без часов».
+  DateTime _savedAt = DateTime.fromMillisecondsSinceEpoch(0);
+  static const _saveEvery = Duration(seconds: 15);
+  static const _pulseKey = 'pulse_buffer_v1';
+
+  void _savePulse(DateTime now) {
+    _savedAt = now;
+    final packed = _samples.map((s) => '${s.at.millisecondsSinceEpoch}:${s.bpm}').join(',');
+    ref.read(prefsProvider).setString(_pulseKey, packed);
+  }
+
+  List<PulseSample> _loadSavedPulse() {
+    final packed = ref.read(prefsProvider).getString(_pulseKey);
+    if (packed == null || packed.isEmpty) return const [];
+    final now = DateTime.now();
+    return [
+      for (final item in packed.split(','))
+        if (_unpack(item) case final sample? when now.difference(sample.at) <= _bufferLength) sample,
+    ];
+  }
+
+  static PulseSample? _unpack(String item) {
+    final parts = item.split(':');
+    final millis = int.tryParse(parts.first);
+    final bpm = parts.length == 2 ? int.tryParse(parts.last) : null;
+    if (millis == null || bpm == null) return null;
+    return PulseSample(DateTime.fromMillisecondsSinceEpoch(millis), bpm);
   }
 
   Future<bool> _ensurePermissions() async {

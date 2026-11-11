@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
+import '../game/anti_fraud.dart';
 import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/progression.dart';
@@ -139,6 +140,7 @@ class _ValidityCard extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final verified = summary.isVerified;
+    final report = summary.validityReport;
     final waiting = !verified && ref.watch(accountProvider).awaitingWatchPulse;
     final multiplier = GameConfig.unverifiedValidity.toString().replaceAll(
       '.',
@@ -169,24 +171,29 @@ class _ValidityCard extends ConsumerWidget {
                         ? 'Пульс подтверждён часами'
                         : waiting
                         ? 'Ждём пульс с часов'
-                        : 'Без часов: опыт ×$multiplier',
+                        : report == null
+                        ? 'Без часов: опыт ×$multiplier'
+                        : 'Опыт ×${_decimal(summary.validity)}',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.w500,
                     ),
                   ),
-                  if (!verified) ...[
-                    const SizedBox(height: 4),
-                    Text(
-                      waiting
-                          ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
-                          : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textSecondary,
+                  if (!verified)
+                    for (final reason in waiting || report == null
+                        ? [
+                            waiting
+                                ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
+                                : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
+                          ]
+                        : report.issues.map((i) => _explain(i, report)))
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Text(
+                          reason,
+                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                        ),
                       ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -196,6 +203,20 @@ class _ValidityCard extends ConsumerWidget {
     );
   }
 }
+
+String _decimal(double v) => v.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '').replaceAll('.', ',');
+
+/// Человеческое объяснение, почему опыт урезан.
+String _explain(ValidityIssue issue, ValidityReport report) => switch (issue) {
+  ValidityIssue.noPulse => 'Пульса нет: подключите часы или датчик, и опыт будет полным',
+  ValidityIssue.partialPulse =>
+    'Пульс записан только на ${(report.pulseCoverage * 100).round()}% тренировки, нужно от '
+        '${(GameConfig.minPulseCoverage * 100).round()}%: часы передавали его не всё время',
+  ValidityIssue.lowIntensity => 'Пульс почти как в покое: так бывает, если записывать подходы сидя',
+  ValidityIssue.flatPulse => 'Пульс ровный, без подъёмов на подходах и спадов на отдыхе',
+  ValidityIssue.tooFast =>
+    'Подходов больше, чем успеть за это время: на подход нужно от ${GameConfig.minTimePerSet.inSeconds} с',
+};
 
 class _GainRow extends StatelessWidget {
   const _GainRow({required this.gain, required this.maxXp});

@@ -101,15 +101,17 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
         : await ref
               .read(healthProvider.notifier)
               .heartRateBetween(session.startedAt, finishedAt);
+    final report = AntiFraud.check(
+      session: session,
+      pulse: pulse,
+      finishedAt: finishedAt,
+      restingHeartRate: hero.restingHeartRate,
+    );
     final summary = WorkoutScoring.summarize(
       session: session,
       xpBefore: hero.xp,
-      validity: AntiFraud.validity(
-        session: session,
-        pulse: pulse,
-        finishedAt: finishedAt,
-        restingHeartRate: hero.restingHeartRate,
-      ),
+      validity: report.value,
+      validityReport: report,
       finishedAt: finishedAt,
     );
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);

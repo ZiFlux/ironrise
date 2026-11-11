@@ -1,3 +1,4 @@
+import 'anti_fraud.dart';
 import 'body_part.dart';
 import 'exercise_catalog.dart';
 import 'game_config.dart';
@@ -134,6 +135,7 @@ class WorkoutSummary {
     required this.coins,
     required this.validity,
     this.cardio,
+    this.validityReport,
   });
 
   final Duration duration;
@@ -146,6 +148,9 @@ class WorkoutSummary {
   final List<PartGain> gains;
   final int coins;
   final double validity;
+
+  /// Почему опыт урезан (только у силовой, посчитанной на телефоне).
+  final ValidityReport? validityReport;
 
   int get totalXp => gains.fold(0, (sum, g) => sum + g.xp);
 
@@ -167,6 +172,7 @@ class WorkoutScoring {
     required Map<BodyPart, int> xpBefore,
     required double validity,
     required DateTime finishedAt,
+    ValidityReport? validityReport,
   }) {
     final levelsBefore = Progression.levels(xpBefore);
     final lagging = Progression.laggingParts(levelsBefore).toSet();
@@ -192,6 +198,7 @@ class WorkoutScoring {
       gains: gains,
       coins: (totalXp * GameConfig.coinsPerXp).round(),
       validity: validity,
+      validityReport: validityReport,
     );
   }
 
