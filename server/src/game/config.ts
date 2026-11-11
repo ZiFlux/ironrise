@@ -20,6 +20,8 @@ export const GameConfig = {
    * больше за день — уже перетренированность, а не прогресс.
    */
   dailyXpCap: 600,
+  /** Бонус монет за тренировку, выполненную по плану программы (docs/TRAINING_SYSTEM.md, 7). */
+  planCoinBonus: 0.2,
 
   // Антифрод
   minSecondsPerSet: 45,

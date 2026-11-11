@@ -4,7 +4,7 @@ import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
 import { CardioSummary, scoreCardio } from '../game/cardio';
 import { maxRestDaysInRow, streakAfterActivity } from '../game/streak';
-import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap } from '../game/workout';
+import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap, withPlanBonus } from '../game/workout';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService, HeroState } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
@@ -38,6 +38,8 @@ export const StrengthSchema = Base.extend({
     )
     .min(1)
     .max(30),
+  /** Все упражнения дня программы сделаны: +20% монет. */
+  planCompleted: z.boolean().optional(),
 });
 
 export const CardioSchema = Base.extend({
@@ -60,7 +62,7 @@ export class WorkoutsService {
   ) {}
 
   submitStrength(userId: string, input: z.infer<typeof StrengthSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'strength', input, async (xpBefore, restingHr) => {
+    return this.submit(userId, input, 'strength', input, input.planCompleted ?? false, async (xpBefore, restingHr) => {
       const validity = strengthValidity({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
@@ -78,7 +80,7 @@ export class WorkoutsService {
   }
 
   submitCardio(userId: string, input: z.infer<typeof CardioSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'cardio', { activity: input.activity }, async (xpBefore, restingHr, age) =>
+    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age) =>
       scoreCardio({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
@@ -99,6 +101,7 @@ export class WorkoutsService {
     base: { clientId: string; startedAt: Date; finishedAt: Date; pulse: PulseSample[] },
     type: 'strength' | 'cardio',
     payload: object,
+    planCompleted: boolean,
     score: (
       xpBefore: Awaited<ReturnType<HeroService['xpOf']>>,
       restingHr: number | null,
@@ -131,10 +134,9 @@ export class WorkoutsService {
         _sum: { xp: true },
         where: { userId, workout: { day } },
       });
-      const summary = applyDailyCap(
-        await score(xpBefore, profile.restingHr, profile.age),
-        xpBefore,
-        earnedToday._sum.xp ?? 0,
+      const summary = withPlanBonus(
+        applyDailyCap(await score(xpBefore, profile.restingHr, profile.age), xpBefore, earnedToday._sum.xp ?? 0),
+        planCompleted,
       );
 
       const workout = await tx.workout.create({

@@ -195,6 +195,7 @@ class AccountNotifier extends Notifier<AccountState> {
               },
         ],
         'pulse': _pulseJson(pulse),
+        if (s.planCompleted) 'planCompleted': true,
       },
     ),
   );

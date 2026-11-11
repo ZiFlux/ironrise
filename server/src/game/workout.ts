@@ -121,3 +121,11 @@ export const applyDailyCap = <T extends WorkoutSummary>(
   const keptXp = rebuilt.gains.reduce((s, g) => s + g.xp, 0);
   return { ...summary, gains: rebuilt.gains, coins: rebuilt.coins, cappedXp: total - keptXp };
 };
+
+/**
+ * +20% монет за тренировку по плану программы. Опыт не меняется: план
+ * не должен давить на силу героя. Признак приходит с телефона — монеты
+ * влияют только на косметику, проверять сам план на сервере не нужно.
+ */
+export const withPlanBonus = <T extends WorkoutSummary>(summary: T, planCompleted: boolean): T =>
+  planCompleted ? { ...summary, coins: Math.round(summary.coins * (1 + C.planCoinBonus)) } : summary;

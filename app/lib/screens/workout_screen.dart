@@ -6,11 +6,13 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/exercise_catalog.dart';
+import '../game/program.dart';
 import '../game/recommendation.dart';
 import '../game/game_config.dart';
 import '../game/workout.dart';
 import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
+import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
@@ -39,9 +41,10 @@ class _StartView extends ConsumerWidget {
     final rec = Recommendation.forLagging(
       ref.watch(heroProvider)?.lagging ?? const [],
     );
-    final hint = rec == null
-        ? 'Тело развито ровно. Возьми базу: присед, жим, тяга'
-        : '${rec.part.laggingTitle}. Начни с: ${rec.text}';
+    final today = ref.watch(programProvider).today;
+    final hint = [
+      for (final e in today.exercises) e.exercise.name,
+    ].join(' · ');
     return Scaffold(
       appBar: AppBar(
         title: const Text('Тренировка'),
@@ -65,9 +68,9 @@ class _StartView extends ConsumerWidget {
               color: AppColors.textMuted,
             ),
             const SizedBox(height: 16),
-            const Text(
-              'Тренировка не начата',
-              style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
+            Text(
+              'Сегодня: ${today.title}',
+              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
             Text(
@@ -80,12 +83,17 @@ class _StartView extends ConsumerWidget {
             ),
             const Spacer(),
             FilledButton(
+              onPressed: () => ref.read(workoutProvider.notifier).startPlanned(today),
+              child: Text(planLabel(today)),
+            ),
+            const SizedBox(height: 8),
+            TextButton(
               onPressed: () {
                 final notifier = ref.read(workoutProvider.notifier)..start();
                 final exercise = rec?.exercise;
                 if (exercise != null) notifier.addExercise(exercise);
               },
-              child: const Text('Начать тренировку'),
+              child: const Text('Без плана'),
             ),
             const SizedBox(height: 8),
             OutlinedButton.icon(
@@ -164,6 +172,12 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     );
   }
 
+  /// Ответил «был запас?» — переходим к следующему упражнению плана.
+  void _answerReserve(int index, bool hadReserve) {
+    _workout.setReserve(index, hadReserve);
+    if (index + 1 < widget.session.entries.length) setState(() => _expanded = index + 1);
+  }
+
   Future<void> _finish() async {
     final summary = await _workout.finish();
     if (summary != null && mounted) context.go('/workout/result');
@@ -194,6 +208,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   @override
   Widget build(BuildContext context) {
     final session = widget.session;
+    final program = ref.watch(programProvider);
     final elapsed = DateTime.now().difference(session.startedAt);
     final restLeft = _restLeft;
 
@@ -232,6 +247,8 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _ExerciseCard(
                       entry: session.entries[i],
+                      progress: program.progressOf(session.entries[i].exercise.id),
+                      onReserve: (reserve) => _answerReserve(i, reserve),
                       expanded: i == _expanded,
                       onExpand: () => setState(() => _expanded = i),
                       onLog: (set) => _logSet(i, set),
@@ -412,6 +429,8 @@ class _BottomActions extends StatelessWidget {
 class _ExerciseCard extends StatelessWidget {
   const _ExerciseCard({
     required this.entry,
+    required this.progress,
+    required this.onReserve,
     required this.expanded,
     required this.onExpand,
     required this.onLog,
@@ -420,6 +439,8 @@ class _ExerciseCard extends StatelessWidget {
   });
 
   final ExerciseEntry entry;
+  final ExerciseProgress progress;
+  final ValueChanged<bool> onReserve;
   final bool expanded;
   final VoidCallback onExpand;
   final ValueChanged<SetRecord> onLog;
@@ -440,8 +461,11 @@ class _ExerciseCard extends StatelessWidget {
               onTap: onExpand,
               onRemove: entry.sets.isEmpty ? onRemove : null,
             ),
+            if (entry.plan != null) _PlanTarget(plan: entry.plan!, progress: progress),
             for (final (i, set) in entry.sets.indexed)
               _SetRow(index: i + 1, text: formatSet(exercise, set)),
+            if (entry.planDone)
+              _ReserveQuestion(answer: entry.hadReserve, onAnswer: onReserve),
             if (expanded)
               Padding(
                 padding: const EdgeInsets.only(top: 8, right: 12),
@@ -456,7 +480,7 @@ class _ExerciseCard extends StatelessWidget {
                     : _SetComposer(
                         key: ValueKey(exercise.id),
                         exercise: exercise,
-                        previous: entry.sets.lastOrNull,
+                        previous: entry.sets.lastOrNull ?? _plannedSet(entry),
                         canUndo: entry.sets.isNotEmpty,
                         onLog: onLog,
                         onUndo: onUndo,
@@ -464,6 +488,85 @@ class _ExerciseCard extends StatelessWidget {
               ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+extension on _ExerciseCard {
+  /// Первый подход по плану: рабочий вес и верх диапазона повторов.
+  SetRecord? _plannedSet(ExerciseEntry entry) {
+    final plan = entry.plan;
+    if (plan == null) return null;
+    return SetRecord(
+      weight: progress.workingWeight ?? entry.exercise.defaultWeight,
+      reps: DoubleProgression.repsRange(plan, progress).max,
+    );
+  }
+}
+
+/// «Цель: 2 × 10–12 · 3 в запасе» и подсказка при первом подборе веса.
+class _PlanTarget extends StatelessWidget {
+  const _PlanTarget({required this.plan, required this.progress});
+
+  final PlannedExercise plan;
+  final ExerciseProgress progress;
+
+  @override
+  Widget build(BuildContext context) {
+    final range = DoubleProgression.repsRange(plan, progress);
+    final unit = plan.exercise.unit == ExerciseUnit.seconds ? ' с' : '';
+    final calibrating = plan.exercise.usesWeight && progress.isCalibrating;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6, right: 12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Цель: ${plan.sets} × ${range.min}–${range.max}$unit · ${plan.repsInReserve} в запасе',
+            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          if (calibrating)
+            Text(
+              'Подбери вес: ${range.max} повторов и ещё ${plan.repsInReserve} в запасе',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// После запланированных подходов: от ответа зависит, растёт ли вес.
+class _ReserveQuestion extends StatelessWidget {
+  const _ReserveQuestion({required this.answer, required this.onAnswer});
+
+  final bool? answer;
+  final ValueChanged<bool> onAnswer;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(top: 8, right: 12),
+      child: Row(
+        children: [
+          const Expanded(
+            child: Text('Был запас?', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+          ),
+          ChoiceChip(
+            label: const Text('Да'),
+            selected: answer == true,
+            showCheckmark: false,
+            onSelected: (_) => onAnswer(true),
+          ),
+          const SizedBox(width: 8),
+          ChoiceChip(
+            label: const Text('Впритык'),
+            selected: answer == false,
+            showCheckmark: false,
+            onSelected: (_) => onAnswer(false),
+          ),
+        ],
       ),
     );
   }

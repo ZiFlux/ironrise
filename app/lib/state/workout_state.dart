@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/anti_fraud.dart';
 import '../game/exercise_catalog.dart';
+import '../game/game_config.dart';
+import '../game/program.dart';
 import '../game/workout.dart';
 import 'account_state.dart';
 import 'health_state.dart';
 import 'heart_rate_state.dart';
+import 'program_state.dart';
 import 'providers.dart';
 
 const _sessionKey = 'workout_session_v1';
@@ -31,6 +34,22 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     _save(WorkoutSession(startedAt: DateTime.now()));
     ref.read(heartRateProvider.notifier).startWatch();
   }
+
+  /// Тренировка по программе: упражнения дня уже добавлены, у каждого — цель.
+  void startPlanned(ProgramDay day) {
+    if (state != null) return;
+    _save(WorkoutSession(
+      startedAt: DateTime.now(),
+      planDayId: day.id,
+      entries: [
+        for (final plan in day.exercises) ExerciseEntry(exercise: plan.exercise, plan: plan),
+      ],
+    ));
+    ref.read(heartRateProvider.notifier).startWatch();
+  }
+
+  void setReserve(int entryIndex, bool hadReserve) =>
+      _updateEntry(entryIndex, (entry) => entry.withReserve(hadReserve));
 
   void addExercise(Exercise exercise) {
     final session = state;
@@ -95,12 +114,25 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     );
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
     ref.read(lastSummaryProvider.notifier).show(summary);
+    await _applyProgram(session, summary);
     _save(null);
     // Не ждём сети: итог уже на экране, отправка идёт в фоне.
     ref
         .read(accountProvider.notifier)
         .enqueueStrength(session, finishedAt, pulse);
     return summary;
+  }
+
+  /// Рабочие веса на следующий раз и бонус монет за тренировку по плану.
+  Future<void> _applyProgram(WorkoutSession session, WorkoutSummary summary) async {
+    if (session.planDayId == null) {
+      ref.read(lastPlanResultProvider.notifier).show(null);
+      return;
+    }
+    final changes = await ref.read(programProvider.notifier).applyWorkout(session);
+    final bonus = session.planCompleted ? (summary.coins * GameConfig.planCoinBonus).round() : 0;
+    if (bonus > 0) await ref.read(heroProvider.notifier).addCoins(bonus);
+    ref.read(lastPlanResultProvider.notifier).show(PlanResult(changes: changes, bonusCoins: bonus));
   }
 
   void _updateEntry(int index, ExerciseEntry Function(ExerciseEntry) change) {

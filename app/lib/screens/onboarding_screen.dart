@@ -6,8 +6,10 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
+import '../game/program.dart';
 import '../game/training_format.dart';
 import '../state/hero.dart';
+import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/logo_mark.dart';
@@ -23,7 +25,7 @@ class OnboardingScreen extends ConsumerStatefulWidget {
 class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _pages = PageController();
   int _step = 0;
-  static const _stepCount = 4;
+  static const _stepCount = 5;
 
   bool _isAdult = false;
   final _nickname = TextEditingController();
@@ -35,6 +37,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _height = TextEditingController();
   final _weight = TextEditingController();
   Experience? _experience;
+  Equipment _equipment = Equipment.gym;
+
+  /// Ответы на вопросы о здоровье (docs/TRAINING_SYSTEM.md, раздел 2).
+  final _healthRisks = <int>{};
+  bool _healthAcknowledged = false;
 
   @override
   void dispose() {
@@ -49,6 +56,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         0 => _isAdult,
         1 => _nickname.text.trim().length >= 2 && _goal != null,
         2 => _days.length >= minTrainingDaysPerWeek,
+        3 => _healthRisks.isEmpty || _healthAcknowledged,
         _ => true,
       };
 
@@ -73,6 +81,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
       avatarSex: _avatarSex,
     );
+    await ref.read(programProvider.notifier).setEquipment(_equipment);
     await ref.read(heroProvider.notifier).save(hero);
     if (mounted) context.go('/');
   }
@@ -119,7 +128,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                 child: PageView(
                   controller: _pages,
                   physics: const NeverScrollableScrollPhysics(),
-                  children: [_ageStep(), _heroStep(), _formatStep(), _bodyStep()],
+                  children: [_ageStep(), _heroStep(), _formatStep(), _healthStep(), _bodyStep()],
                 ),
               ),
               FilledButton(
@@ -217,6 +226,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _formatStep() => ListView(
         children: [
+          const Text('Где тренируешься', style: TextStyle(fontWeight: FontWeight.w500)),
+          const SizedBox(height: 8),
+          SegmentedButton<Equipment>(
+            segments: [
+              for (final e in Equipment.values) ButtonSegment(value: e, label: Text(e.label)),
+            ],
+            selected: {_equipment},
+            onSelectionChanged: (v) => setState(() => _equipment = v.first),
+          ),
           _title('Как будешь тренироваться?',
               'Отдых по графику не сбрасывает серию. Новичкам лучше начать с 3 тренировок в неделю.'),
           for (final f in TrainingFormat.values)
@@ -264,6 +282,45 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                   : AppColors.textSecondary,
             ),
           ),
+        ],
+      );
+
+  static const _healthQuestions = [
+    'Бывает боль или давление в груди при нагрузке',
+    'Бывают головокружения или потери сознания',
+    'За последний год были травмы суставов или спины',
+  ];
+
+  /// Проверка в духе PAR-Q: при любом «да» — совет поговорить с врачом.
+  Widget _healthStep() => ListView(
+        children: [
+          _title('Пара вопросов о здоровье',
+              'Чтобы нагрузка была безопасной. Ответы остаются на телефоне'),
+          for (final (i, question) in _healthQuestions.indexed)
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text(question),
+              value: _healthRisks.contains(i),
+              onChanged: (on) => setState(() {
+                on ? _healthRisks.add(i) : _healthRisks.remove(i);
+                if (_healthRisks.isEmpty) _healthAcknowledged = false;
+              }),
+            ),
+          if (_healthRisks.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            const Text(
+              'Перед тренировками лучше обсудить нагрузку с врачом. IronRise не заменяет '
+              'медицинскую консультацию',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+            CheckboxListTile(
+              contentPadding: EdgeInsets.zero,
+              controlAffinity: ListTileControlAffinity.leading,
+              value: _healthAcknowledged,
+              onChanged: (v) => setState(() => _healthAcknowledged = v ?? false),
+              title: const Text('Врач разрешил или я понимаю риск'),
+            ),
+          ],
         ],
       );
 

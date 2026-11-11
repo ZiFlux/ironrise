@@ -2,6 +2,7 @@ import 'body_part.dart';
 import 'exercise_catalog.dart';
 import 'game_config.dart';
 import 'progression.dart';
+import 'program.dart';
 
 class SetRecord {
   const SetRecord({required this.weight, required this.reps});
@@ -18,53 +19,89 @@ class SetRecord {
 }
 
 class ExerciseEntry {
-  const ExerciseEntry({required this.exercise, this.sets = const []});
+  const ExerciseEntry({
+    required this.exercise,
+    this.sets = const [],
+    this.plan,
+    this.hadReserve,
+  });
 
   final Exercise exercise;
   final List<SetRecord> sets;
 
+  /// Цель из программы тренировок; null — упражнение добавлено вне плана.
+  final PlannedExercise? plan;
+
+  /// Ответ «был запас?» после запланированных подходов; null — не отвечал.
+  final bool? hadReserve;
+
   bool get isFull => sets.length >= GameConfig.maxSetsPerExercise;
 
-  ExerciseEntry withSet(SetRecord set) =>
-      isFull ? this : ExerciseEntry(exercise: exercise, sets: [...sets, set]);
+  bool get planDone => plan != null && sets.length >= plan!.sets;
 
-  ExerciseEntry withoutLastSet() => sets.isEmpty
-      ? this
-      : ExerciseEntry(
-          exercise: exercise,
-          sets: sets.sublist(0, sets.length - 1),
-        );
+  ExerciseEntry _copy({List<SetRecord>? sets, bool? hadReserve}) => ExerciseEntry(
+    exercise: exercise,
+    sets: sets ?? this.sets,
+    plan: plan,
+    hadReserve: hadReserve ?? this.hadReserve,
+  );
+
+  ExerciseEntry withSet(SetRecord set) => isFull ? this : _copy(sets: [...sets, set]);
+
+  ExerciseEntry withoutLastSet() =>
+      sets.isEmpty ? this : _copy(sets: sets.sublist(0, sets.length - 1));
+
+  ExerciseEntry withReserve(bool reserve) => _copy(hadReserve: reserve);
 
   Map<String, dynamic> toJson() => {
     'exercise': exercise.id,
     'sets': [for (final s in sets) s.toJson()],
+    if (plan != null) 'plan': plan!.toJson(),
+    if (hadReserve != null) 'hadReserve': hadReserve,
   };
 
   factory ExerciseEntry.fromJson(Map<String, dynamic> j) => ExerciseEntry(
     exercise: ExerciseCatalog.byId(j['exercise']),
     sets: [for (final s in j['sets'] as List) SetRecord.fromJson(s)],
+    plan: j['plan'] == null ? null : PlannedExercise.fromJson(j['plan']),
+    hadReserve: j['hadReserve'],
   );
 }
 
 class WorkoutSession {
-  const WorkoutSession({required this.startedAt, this.entries = const []});
+  const WorkoutSession({
+    required this.startedAt,
+    this.entries = const [],
+    this.planDayId,
+  });
 
   final DateTime startedAt;
   final List<ExerciseEntry> entries;
 
+  /// День программы («A», «B»); null — свободная тренировка.
+  final String? planDayId;
+
   int get totalSets => entries.fold(0, (sum, e) => sum + e.sets.length);
 
+  /// Все упражнения плана сделаны в запланированном числе подходов.
+  bool get planCompleted {
+    final planned = entries.where((e) => e.plan != null);
+    return planDayId != null && planned.isNotEmpty && planned.every((e) => e.planDone);
+  }
+
   WorkoutSession copyWith({List<ExerciseEntry>? entries}) =>
-      WorkoutSession(startedAt: startedAt, entries: entries ?? this.entries);
+      WorkoutSession(startedAt: startedAt, entries: entries ?? this.entries, planDayId: planDayId);
 
   Map<String, dynamic> toJson() => {
     'startedAt': startedAt.toIso8601String(),
     'entries': [for (final e in entries) e.toJson()],
+    if (planDayId != null) 'planDayId': planDayId,
   };
 
   factory WorkoutSession.fromJson(Map<String, dynamic> j) => WorkoutSession(
     startedAt: DateTime.parse(j['startedAt']),
     entries: [for (final e in j['entries'] as List) ExerciseEntry.fromJson(e)],
+    planDayId: j['planDayId'],
   );
 }
 

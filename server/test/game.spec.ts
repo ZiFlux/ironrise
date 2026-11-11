@@ -5,7 +5,7 @@ import { GameConfig as C } from '../src/game/config';
 import { FighterSnapshot, seededRandom, simulateDuel } from '../src/game/duel';
 import { power } from '../src/game/progression';
 import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../src/game/streak';
-import { applyDailyCap, scoreStrength, StrengthSession } from '../src/game/workout';
+import { applyDailyCap, scoreStrength, StrengthSession, withPlanBonus } from '../src/game/workout';
 
 // Те же сценарии, что в app/test/*.dart: формулы клиента и сервера должны совпадать.
 
@@ -266,5 +266,22 @@ describe('дневной потолок опыта', () => {
     const capped = applyDailyCap(scoreStrength(heavy, zero, 1), zero, C.dailyXpCap);
     expect(capped.gains).toEqual([]);
     expect(capped.coins).toBe(0);
+  });
+});
+
+describe('бонус за тренировку по плану', () => {
+  const zero = partMap(() => 0);
+  const session: StrengthSession = {
+    startedAt: new Date('2026-11-12T18:00:00Z'),
+    finishedAt: new Date('2026-11-12T18:40:00Z'),
+    entries: [{ exerciseId: 'bench_press', sets: [{ weight: 30, reps: 12 }, { weight: 30, reps: 12 }] }],
+  };
+
+  it('+20% монет, опыт тот же', () => {
+    const plain = scoreStrength(session, zero, 1);
+    const planned = withPlanBonus(plain, true);
+    expect(planned.coins).toBe(Math.round(plain.coins * 1.2));
+    expect(planned.gains).toEqual(plain.gains);
+    expect(withPlanBonus(plain, false)).toBe(plain);
   });
 });

@@ -7,12 +7,14 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/body_part.dart';
 import '../game/cardio.dart';
+import '../game/program.dart';
 import '../game/training_format.dart';
 import '../state/account_state.dart';
 import '../state/health_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
 import '../state/local_data.dart';
+import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/settings.dart';
 import '../theme.dart';
@@ -32,6 +34,9 @@ class ProfileScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
           _HeroInfo(hero: hero),
+          const SizedBox(height: 24),
+          const _SectionLabel('Где тренируешься'),
+          const _EquipmentPicker(),
           const SizedBox(height: 24),
           const _SectionLabel('Данные'),
           const _DataSection(),
@@ -483,5 +488,22 @@ class _DataSection extends ConsumerWidget {
     if (confirmed != true) return;
     await ref.read(localDataProvider).wipe();
     if (context.mounted) context.go('/onboarding');
+  }
+}
+
+/// Зал или дом с гантелями: от этого зависят упражнения программы.
+class _EquipmentPicker extends ConsumerWidget {
+  const _EquipmentPicker();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final current = ref.watch(programProvider).equipment;
+    return SegmentedButton<Equipment>(
+      segments: [
+        for (final e in Equipment.values) ButtonSegment(value: e, label: Text(e.label)),
+      ],
+      selected: {current},
+      onSelectionChanged: (v) => ref.read(programProvider.notifier).setEquipment(v.first),
+    );
   }
 }

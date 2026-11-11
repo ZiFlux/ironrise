@@ -1,4 +1,5 @@
 import '../game/exercise_catalog.dart';
+import '../game/program.dart';
 import '../game/workout.dart';
 
 /// 20 → «20», 22.5 → «22,5».
@@ -44,3 +45,6 @@ String formatThousands(int n) {
   }
   return buf.toString();
 }
+
+/// «Тренировка А · ~32 мин» — подпись кнопки старта по плану.
+String planLabel(ProgramDay day) => '${day.title} · ~${day.estimatedDuration.inMinutes} мин';

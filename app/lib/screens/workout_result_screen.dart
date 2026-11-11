@@ -10,10 +10,12 @@ import '../game/game_config.dart';
 import '../game/progression.dart';
 import '../game/workout.dart';
 import '../state/account_state.dart';
+import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
+import '../widgets/next_time_card.dart';
 
 /// Итог тренировки: опыт по частям тела, новые уровни, монеты.
 class WorkoutResultScreen extends ConsumerWidget {
@@ -22,6 +24,7 @@ class WorkoutResultScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(lastSummaryProvider);
+    final planResult = ref.watch(lastPlanResultProvider);
     final hero = ref.watch(heroProvider);
     if (summary == null || hero == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/'));
@@ -67,6 +70,10 @@ class WorkoutResultScreen extends ConsumerWidget {
           const SizedBox(height: 4),
           for (final gain in summary.gains)
             _GainRow(gain: gain, maxXp: summary.gains.first.xp),
+          if (planResult != null && planResult.changes.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            NextTimeCard(result: planResult),
+          ],
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () => context.go('/'),

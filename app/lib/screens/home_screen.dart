@@ -10,6 +10,7 @@ import '../game/recommendation.dart';
 import '../state/account_state.dart';
 import '../state/health_state.dart';
 import '../state/hero.dart';
+import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/server_game.dart';
 import '../state/workout_state.dart';
@@ -27,6 +28,7 @@ class HomeScreen extends ConsumerWidget {
     if (hero == null) return const SizedBox.shrink();
 
     final recommendation = Recommendation.forLagging(hero.lagging);
+    final today = ref.watch(programProvider).today;
     final isTrainingDay = hero.trainingDays.contains(
       DateTime.now().weekday - 1,
     );
@@ -74,11 +76,11 @@ class HomeScreen extends ConsumerWidget {
               const SizedBox(height: 12),
               FilledButton.icon(
                 onPressed: () {
-                  ref.read(workoutProvider.notifier).start();
+                  ref.read(workoutProvider.notifier).startPlanned(today);
                   context.go('/workout');
                 },
                 icon: const Icon(LucideIcons.dumbbell, size: 18),
-                label: const Text('Начать тренировку'),
+                label: Text(planLabel(today)),
               ),
               if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
             ],
