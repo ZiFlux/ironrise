@@ -2,6 +2,7 @@ import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/co
 import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
 import { isValidTimeZone } from '../common/day';
+import { assertLookOwned } from '../economy/economy.service';
 import { BODY_PARTS } from '../game/body-part';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
@@ -50,6 +51,8 @@ export class AuthService {
   async register(input: z.infer<typeof RegisterSchema>): Promise<Tokens> {
     const { email, password, nickname, goal, trainingFormat, scheduleDays, appearance, timezone, age, restingHr } =
       input;
+    // Новый герой — только в бесплатных вещах.
+    assertLookOwned(appearance, new Set());
     try {
       const user = await this.db.user.create({
         data: {

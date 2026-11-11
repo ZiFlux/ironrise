@@ -181,3 +181,29 @@ describe('боты, лига, магазин', () => {
     expect(prices.filter((p) => p > 0)).toHaveLength(27);
   });
 });
+
+import { unpaidItems, wornItems } from '../src/game/looks';
+
+describe('образ и купленные вещи', () => {
+  // AvatarLook.starter(male).toJson() из клиента.
+  const starter = {
+    sex: 'male', skin: 'iron', hair: 'short', hairColor: 0xff26262a, top: 'none', topColor: 0xff1f1f22,
+    bottom: 'shorts', bottomColor: 0xff1f1f22, sneakersColor: null, accessories: [], accessoryColor: 0xffc6ff3d,
+  };
+
+  it('стартовый образ — только бесплатные вещи', () => {
+    expect(unpaidItems(starter, new Set())).toEqual([]);
+  });
+
+  it('некупленная футболка и повязка видны, купленные — нет', () => {
+    const look = { ...starter, top: 'tee', accessories: ['headband'] };
+    expect(unpaidItems(look, new Set())).toEqual(['top_tee', 'acc_headband']);
+    expect(unpaidItems(look, new Set(['top_tee', 'acc_headband']))).toEqual([]);
+  });
+
+  it('цвет, которого нет в магазине, или чужой пол — образ некорректен', () => {
+    expect(wornItems({ ...starter, topColor: 0xff123456 })).toBeNull();
+    expect(wornItems({ ...starter, sex: 'robot' })).toBeNull();
+    expect(wornItems({ sex: 'male' })).toBeNull();
+  });
+});

@@ -4,6 +4,7 @@ import { localDay } from '../common/day';
 import { Bot, botsForDay, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, mondayOf, weeklyLeague } from '../game/bots';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
+import { unpaidItems } from '../game/looks';
 import { priceOf } from '../game/shop';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService } from '../hero/hero.service';
@@ -16,6 +17,13 @@ export const BuySchema = z.object({
 });
 
 export const AppearanceSchema = z.object({ appearance: z.record(z.string(), z.unknown()) });
+
+/** Образ разбирается на вещи; некупленные платные — ошибка. */
+export const assertLookOwned = (look: Record<string, unknown>, owned: ReadonlySet<string>) => {
+  const unpaid = unpaidItems(look, owned);
+  if (unpaid === null) throw new BadRequestException('Invalid look');
+  if (unpaid.length) throw new BadRequestException(`Items are not owned: ${unpaid.join(', ')}`);
+};
 
 const lockProfile = (tx: Prisma.TransactionClient, userId: string) =>
   tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
@@ -41,6 +49,7 @@ export class EconomyService {
         (await tx.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map((i) => i.itemId),
       );
       const toBuy = [...new Set(input.itemIds)].filter((id) => !owned.has(id) && priceOf(id)! > 0);
+      assertLookOwned(input.appearance, new Set([...owned, ...toBuy]));
       const total = toBuy.reduce((s, id) => s + priceOf(id)!, 0);
       if (total > (await this.hero.coinsOf(userId, tx))) throw new ConflictException('Not enough coins');
 
@@ -58,11 +67,10 @@ export class EconomyService {
     });
   }
 
-  /**
-   * Сохранить образ из купленного. Сервер пока не сверяет образ с инвентарём:
-   * косметика не влияет на силу, проверка появится вместе с серверным каталогом образов.
-   */
+  /** Сохранить образ: всё надетое должно быть куплено или бесплатно. */
   async setAppearance(userId: string, appearance: Record<string, unknown>) {
+    const owned = await this.db.inventoryItem.findMany({ where: { userId }, select: { itemId: true } });
+    assertLookOwned(appearance, new Set(owned.map((i) => i.itemId)));
     await this.db.profile.update({ where: { userId }, data: { appearance: appearance as Prisma.InputJsonValue } });
     return this.hero.state(userId);
   }
