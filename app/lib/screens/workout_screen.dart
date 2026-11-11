@@ -41,10 +41,13 @@ class _StartView extends ConsumerWidget {
     final rec = Recommendation.forLagging(
       ref.watch(heroProvider)?.lagging ?? const [],
     );
-    final today = ref.watch(programProvider).today;
+    final adapted = ref.watch(programProvider).adaptedToday(DateTime.now());
+    final today = adapted.day;
     final hint = [
-      for (final e in today.exercises) e.exercise.name,
-    ].join(' · ');
+      [for (final e in today.exercises) e.exercise.name].join(' · '),
+      if (adapted.eased) 'План облегчён: на подход меньше',
+      if (adapted.adjustments.isNotEmpty) 'Часть упражнений заменена, пока бережём больное место',
+    ].join('\n');
     return Scaffold(
       appBar: AppBar(
         title: const Text('Тренировка'),

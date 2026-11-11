@@ -17,6 +17,7 @@ import '../state/workout_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 import '../widgets/next_time_card.dart';
+import '../widgets/wellbeing_card.dart';
 
 /// Итог тренировки: опыт по частям тела, новые уровни, монеты.
 class WorkoutResultScreen extends ConsumerWidget {
@@ -74,6 +75,11 @@ class WorkoutResultScreen extends ConsumerWidget {
           if (planResult != null && planResult.changes.isNotEmpty) ...[
             const SizedBox(height: 16),
             NextTimeCard(result: planResult),
+          ],
+          // Только после силовой: у кардио своё восстановление.
+          if (summary.cardio == null) ...[
+            const SizedBox(height: 16),
+            const WellbeingCard(),
           ],
           const SizedBox(height: 24),
           FilledButton(
