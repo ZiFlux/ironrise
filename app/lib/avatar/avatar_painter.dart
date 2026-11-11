@@ -14,7 +14,7 @@ class AvatarPainter extends CustomPainter {
     layers = AvatarLayers(frame, look);
   }
 
-  final Map<BodyPart, int> levels;
+  final Map<BodyPart, num> levels;
   final AvatarLook look;
   final BodyFrame frame;
   late final AvatarLayers layers;

@@ -8,7 +8,7 @@ import 'avatar_painter.dart';
 class AvatarView extends StatelessWidget {
   const AvatarView({super.key, required this.levels, required this.look, this.withLamp = false});
 
-  final Map<BodyPart, int> levels;
+  final Map<BodyPart, num> levels;
   final AvatarLook look;
 
   /// Конус света сверху, как от лампы над помостом. Для главного экрана.

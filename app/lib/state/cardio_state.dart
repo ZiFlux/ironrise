@@ -43,6 +43,8 @@ class CardioNotifier extends Notifier<CardioSession?> {
           .samplesBetween(session.startedAt, finishedAt),
       xpBefore: hero.xp,
       finishedAt: finishedAt,
+      restingHeartRate: hero.restingHeartRate,
+      maxHeartRate: hero.maxHeartRate,
     );
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
     ref.read(lastSummaryProvider.notifier).show(summary);

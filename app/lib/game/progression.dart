@@ -14,8 +14,17 @@ class Progression {
   static double levelProgress(int xp) =>
       (xp % GameConfig.xpPerLevel) / GameConfig.xpPerLevel;
 
-  static Map<BodyPart, int> levels(Map<BodyPart, int> xp) =>
-      {for (final p in BodyPart.values) p: levelFromXp(xp[p] ?? 0)};
+  /// Уровень с дробной частью по опыту (3,4 — уровень 3 и 40% до четвёртого).
+  /// Аватар растёт по нему плавно, а не скачком на новом уровне.
+  static double fractionalLevel(int xp) => 1 + xp / GameConfig.xpPerLevel;
+
+  static Map<BodyPart, double> fractionalLevels(Map<BodyPart, int> xp) => {
+    for (final p in BodyPart.values) p: fractionalLevel(xp[p] ?? 0),
+  };
+
+  static Map<BodyPart, int> levels(Map<BodyPart, int> xp) => {
+    for (final p in BodyPart.values) p: levelFromXp(xp[p] ?? 0),
+  };
 
   static double averageLevel(Map<BodyPart, int> levels) =>
       levels.values.fold<int>(0, (a, b) => a + b) / levels.length;
@@ -31,8 +40,8 @@ class Progression {
 
   static double balanceMultiplier(Map<BodyPart, int> levels) =>
       laggingParts(levels).isEmpty
-          ? GameConfig.powerBonusBalanced
-          : GameConfig.powerPenaltyUnbalanced;
+      ? GameConfig.powerBonusBalanced
+      : GameConfig.powerPenaltyUnbalanced;
 
   /// Сила аватара: P = (10·ΣL + 2·min(S, 30)) · K_bal.
   static int power(Map<BodyPart, int> levels, int streakDays) {

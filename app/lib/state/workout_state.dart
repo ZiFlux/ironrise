@@ -32,7 +32,14 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     final session = state;
     if (session == null) return;
     if (session.entries.any((e) => e.exercise.id == exercise.id)) return;
-    _save(session.copyWith(entries: [...session.entries, ExerciseEntry(exercise: exercise)]));
+    _save(
+      session.copyWith(
+        entries: [
+          ...session.entries,
+          ExerciseEntry(exercise: exercise),
+        ],
+      ),
+    );
   }
 
   void logSet(int entryIndex, SetRecord set) =>
@@ -44,7 +51,9 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
   void removeExercise(int entryIndex) {
     final session = state;
     if (session == null) return;
-    _save(session.copyWith(entries: [...session.entries]..removeAt(entryIndex)));
+    _save(
+      session.copyWith(entries: [...session.entries]..removeAt(entryIndex)),
+    );
   }
 
   void cancel() => _save(null);
@@ -56,11 +65,18 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     if (session == null || hero == null || session.totalSets == 0) return null;
 
     final finishedAt = DateTime.now();
-    final pulse = ref.read(heartRateProvider.notifier).samplesBetween(session.startedAt, finishedAt);
+    final pulse = ref
+        .read(heartRateProvider.notifier)
+        .samplesBetween(session.startedAt, finishedAt);
     final summary = WorkoutScoring.summarize(
       session: session,
       xpBefore: hero.xp,
-      validity: AntiFraud.validity(session: session, pulse: pulse, finishedAt: finishedAt),
+      validity: AntiFraud.validity(
+        session: session,
+        pulse: pulse,
+        finishedAt: finishedAt,
+        restingHeartRate: hero.restingHeartRate,
+      ),
       finishedAt: finishedAt,
     );
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
@@ -86,7 +102,9 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
   }
 }
 
-final workoutProvider = NotifierProvider<WorkoutNotifier, WorkoutSession?>(WorkoutNotifier.new);
+final workoutProvider = NotifierProvider<WorkoutNotifier, WorkoutSession?>(
+  WorkoutNotifier.new,
+);
 
 /// Итог последней тренировки для экрана итогов.
 class LastSummaryNotifier extends Notifier<WorkoutSummary?> {
@@ -97,4 +115,6 @@ class LastSummaryNotifier extends Notifier<WorkoutSummary?> {
 }
 
 final lastSummaryProvider =
-    NotifierProvider<LastSummaryNotifier, WorkoutSummary?>(LastSummaryNotifier.new);
+    NotifierProvider<LastSummaryNotifier, WorkoutSummary?>(
+      LastSummaryNotifier.new,
+    );

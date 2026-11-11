@@ -1,10 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/body_part.dart';
+import '../game/cardio.dart';
 import '../game/training_format.dart';
 import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
@@ -28,19 +30,35 @@ class ProfileScreen extends ConsumerWidget {
         children: [
           _HeroInfo(hero: hero),
           const SizedBox(height: 24),
+          const _SectionLabel('Пульсовые зоны'),
+          _HeartZones(hero: hero),
+          const SizedBox(height: 24),
           const _SectionLabel('Цвет интерфейса'),
           const _AccentPicker(),
           const SizedBox(height: 24),
           Card(
             child: ListTile(
               onTap: () => context.go('/profile/heart-rate'),
-              leading: const Icon(LucideIcons.heartPulse, size: 18, color: AppColors.textSecondary),
+              leading: const Icon(
+                LucideIcons.heartPulse,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
               title: const Text('Датчик пульса'),
               subtitle: Text(
-                ref.watch(heartRateProvider).isConnected ? 'Подключён' : 'Часы или нагрудный датчик по Bluetooth',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ref.watch(heartRateProvider).isConnected
+                    ? 'Подключён'
+                    : 'Часы или нагрудный датчик по Bluetooth',
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
               ),
-              trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
+              trailing: const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
             ),
           ),
           if (kDebugMode) ...[
@@ -61,9 +79,12 @@ class _SectionLabel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: Text(text, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
-      );
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Text(
+      text,
+      style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+    ),
+  );
 }
 
 class _HeroInfo extends StatelessWidget {
@@ -96,13 +117,148 @@ class _HeroInfo extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Row(
                   children: [
-                    Text(label, style: const TextStyle(color: AppColors.textSecondary)),
+                    Text(
+                      label,
+                      style: const TextStyle(color: AppColors.textSecondary),
+                    ),
                     const Spacer(),
                     Text(value),
                   ],
                 ),
               ),
             ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Возраст и пульс покоя: от них считаются зона кардио и проверка пульса.
+class _HeartZones extends ConsumerWidget {
+  const _HeartZones({required this.hero});
+
+  final HeroProfile hero;
+
+  Future<void> _edit(
+    BuildContext context,
+    WidgetRef ref, {
+    required String title,
+    required String hint,
+    required int? current,
+    required int min,
+    required int max,
+    required BodyStats Function(int) apply,
+  }) async {
+    final controller = TextEditingController(text: current?.toString() ?? '');
+    final value = await showDialog<int>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Text(title),
+        content: TextField(
+          controller: controller,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(
+            hintText: hint,
+            helperText: 'от $min до $max',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () {
+              final v = int.tryParse(controller.text);
+              if (v != null && v >= min && v <= max) Navigator.pop(context, v);
+            },
+            child: const Text('Сохранить'),
+          ),
+        ],
+      ),
+    );
+    if (value == null) return;
+    await ref.read(heroProvider.notifier).setBody(apply(value));
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final body = hero.body;
+    final zone = CardioScoring.zoneLowerBound(
+      resting: hero.restingHeartRate,
+      max: hero.maxHeartRate,
+    );
+    Widget row(String label, String value, VoidCallback onTap) => InkWell(
+      onTap: onTap,
+      child: SizedBox(
+        height: 48,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          child: Row(
+            children: [
+              Text(
+                label,
+                style: const TextStyle(color: AppColors.textSecondary),
+              ),
+              const Spacer(),
+              Text(value),
+              const SizedBox(width: 8),
+              const Icon(
+                LucideIcons.pencil,
+                size: 14,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          row(
+            'Возраст',
+            body.age == null ? 'не указан' : '${body.age}',
+            () => _edit(
+              context,
+              ref,
+              title: 'Возраст',
+              hint: 'лет',
+              current: body.age,
+              min: 18,
+              max: 90,
+              apply: (v) => body.copyWith(age: v),
+            ),
+          ),
+          row(
+            'Пульс покоя',
+            body.restingHeartRate == null
+                ? 'не указан'
+                : '${body.restingHeartRate} уд/мин',
+            () => _edit(
+              context,
+              ref,
+              title: 'Пульс покоя',
+              hint: 'утром, лёжа, уд/мин',
+              current: body.restingHeartRate,
+              min: 35,
+              max: 110,
+              apply: (v) => body.copyWith(restingHeartRate: v),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
+            child: Text(
+              'Макс. пульс ${hero.maxHeartRate}, зона 2 для кардио — от $zone уд/мин'
+              '${body.age == null || body.restingHeartRate == null ? '. Пока по средним значениям' : ''}',
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+          ),
         ],
       ),
     );
@@ -133,7 +289,11 @@ class _AccentPicker extends ConsumerWidget {
 }
 
 class _AccentSwatch extends StatelessWidget {
-  const _AccentSwatch({required this.option, required this.selected, required this.onTap});
+  const _AccentSwatch({
+    required this.option,
+    required this.selected,
+    required this.onTap,
+  });
 
   final AccentOption option;
   final bool selected;
@@ -162,7 +322,10 @@ class _AccentSwatch extends StatelessWidget {
                 Container(
                   width: 20,
                   height: 20,
-                  decoration: BoxDecoration(color: option.color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: option.color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(option.label, style: const TextStyle(fontSize: 12)),
@@ -195,7 +358,10 @@ class _DebugTools extends ConsumerWidget {
                 avatar: Container(
                   width: 8,
                   height: 8,
-                  decoration: BoxDecoration(color: part.color, shape: BoxShape.circle),
+                  decoration: BoxDecoration(
+                    color: part.color,
+                    shape: BoxShape.circle,
+                  ),
                 ),
                 label: Text('${part.label} +100'),
                 onPressed: () => notifier.debugAddXp(part, 100),

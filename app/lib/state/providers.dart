@@ -88,6 +88,12 @@ class HeroNotifier extends Notifier<HeroProfile?> {
     await save(h.copyWith(look: look));
   }
 
+  Future<void> setBody(BodyStats body) async {
+    final h = state;
+    if (h == null) return;
+    await save(h.copyWith(body: body));
+  }
+
   /// Только для разработки: начислить опыт части тела.
   Future<void> debugAddXp(BodyPart part, int amount) async {
     final h = state;

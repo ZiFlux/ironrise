@@ -10,6 +10,7 @@ import '../game/cardio.dart';
 import '../game/game_config.dart';
 import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
+import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 
@@ -39,7 +40,7 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
   @override
   Widget build(BuildContext context) {
     final pulse = ref.watch(heartRateProvider);
-    final zone = CardioScoring.zoneLowerBound();
+    final zone = _zoneFor(ref);
     return Scaffold(
       appBar: AppBar(title: const Text('Кардио')),
       body: SafeArea(
@@ -168,7 +169,7 @@ class _ActiveCardioState extends ConsumerState<_ActiveCardio> {
     final now = DateTime.now();
     final elapsed = now.difference(session.startedAt);
     final pulse = ref.watch(heartRateProvider);
-    final zone = CardioScoring.zoneLowerBound();
+    final zone = _zoneFor(ref);
     final samples = ref
         .read(heartRateProvider.notifier)
         .samplesBetween(session.startedAt, now);
@@ -291,4 +292,15 @@ class _Stat extends StatelessWidget {
       ],
     ),
   );
+}
+
+/// Нижняя граница зоны 2 с учётом возраста и пульса покоя из профиля.
+int _zoneFor(WidgetRef ref) {
+  final hero = ref.watch(heroProvider);
+  return hero == null
+      ? CardioScoring.zoneLowerBound()
+      : CardioScoring.zoneLowerBound(
+          resting: hero.restingHeartRate,
+          max: hero.maxHeartRate,
+        );
 }

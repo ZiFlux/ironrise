@@ -43,7 +43,7 @@ class HomeScreen extends ConsumerWidget {
                   child: GestureDetector(
                     onTap: () => context.go('/wardrobe'),
                     child: AvatarView(
-                      levels: hero.levels,
+                      levels: hero.avatarLevels,
                       look: hero.look,
                       withLamp: true,
                     ),

@@ -3,6 +3,7 @@ import 'dart:convert';
 import '../avatar/avatar_look.dart';
 import '../game/body_part.dart';
 import '../game/calendar.dart';
+import '../game/game_config.dart';
 import '../game/progression.dart';
 import '../game/streak.dart';
 import '../game/training_format.dart';
@@ -36,18 +37,40 @@ enum Experience {
 
 /// Данные о комплекции. Необязательны; понадобятся системе тренировок (PLAN.md, 4.6).
 class BodyStats {
-  const BodyStats({this.sex, this.heightCm, this.weightKg, this.experience});
+  const BodyStats({
+    this.sex,
+    this.heightCm,
+    this.weightKg,
+    this.experience,
+    this.age,
+    this.restingHeartRate,
+  });
 
   final Sex? sex;
   final int? heightCm;
   final double? weightKg;
   final Experience? experience;
 
+  /// Для максимального пульса (220 − возраст) и пульсовых зон.
+  final int? age;
+  final int? restingHeartRate;
+
+  BodyStats copyWith({int? age, int? restingHeartRate}) => BodyStats(
+    sex: sex,
+    heightCm: heightCm,
+    weightKg: weightKg,
+    experience: experience,
+    age: age ?? this.age,
+    restingHeartRate: restingHeartRate ?? this.restingHeartRate,
+  );
+
   Map<String, dynamic> toJson() => {
     'sex': sex?.name,
     'heightCm': heightCm,
     'weightKg': weightKg,
     'experience': experience?.name,
+    'age': age,
+    'restingHeartRate': restingHeartRate,
   };
 
   factory BodyStats.fromJson(Map<String, dynamic> j) => BodyStats(
@@ -57,6 +80,8 @@ class BodyStats {
     experience: j['experience'] == null
         ? null
         : Experience.values.byName(j['experience']),
+    age: j['age'],
+    restingHeartRate: j['restingHeartRate'],
   );
 }
 
@@ -118,6 +143,14 @@ class HeroProfile {
   final Set<String> ownedItems;
 
   Map<BodyPart, int> get levels => Progression.levels(xp);
+
+  /// Для аватара: растёт плавно с каждым подходом.
+  Map<BodyPart, double> get avatarLevels => Progression.fractionalLevels(xp);
+
+  int get restingHeartRate =>
+      body.restingHeartRate ?? GameConfig.defaultRestingHeartRate;
+  int get maxHeartRate =>
+      body.age == null ? GameConfig.defaultMaxHeartRate : 220 - body.age!;
   List<BodyPart> get lagging => Progression.laggingParts(levels);
   int get power => Progression.power(levels, currentStreak(DateTime.now()));
   int get maxRestDays => maxRestDaysInRow(trainingDays);
@@ -134,6 +167,7 @@ class HeroProfile {
     Map<BodyPart, int>? xp,
     int? streakDays,
     AvatarLook? look,
+    BodyStats? body,
     int? coins,
     DateTime? lastActiveDay,
     Set<String>? activeDays,
@@ -143,7 +177,7 @@ class HeroProfile {
     goal: goal,
     format: format,
     trainingDays: trainingDays,
-    body: body,
+    body: body ?? this.body,
     look: look ?? this.look,
     xp: xp ?? this.xp,
     streakDays: streakDays ?? this.streakDays,

@@ -3,9 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../avatar/avatar_look.dart';
+import '../avatar/avatar_view.dart';
+import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/progression.dart';
 import '../game/workout.dart';
+import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
@@ -17,7 +21,8 @@ class WorkoutResultScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final summary = ref.watch(lastSummaryProvider);
-    if (summary == null) {
+    final hero = ref.watch(heroProvider);
+    if (summary == null || hero == null) {
       WidgetsBinding.instance.addPostFrameCallback((_) => context.go('/'));
       return const SizedBox.shrink();
     }
@@ -41,6 +46,15 @@ class WorkoutResultScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          SizedBox(
+            height: 260,
+            child: _GrowingAvatar(
+              summary: summary,
+              look: hero.look,
+              xpNow: hero.xp,
+            ),
+          ),
+          const SizedBox(height: 8),
           _Totals(summary: summary),
           const SizedBox(height: 16),
           _ValidityCard(summary: summary),
@@ -83,9 +97,12 @@ class _Totals extends StatelessWidget {
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 8),
-              Text(
-                '+${summary.totalXp}',
-                style: figureStyle(size: 40, color: accent),
+              TweenAnimationBuilder<int>(
+                tween: IntTween(begin: 0, end: summary.totalXp),
+                duration: _growDuration,
+                curve: Curves.easeOutCubic,
+                builder: (_, v, _) =>
+                    Text('+$v', style: figureStyle(size: 40, color: accent)),
               ),
             ],
           ),
@@ -249,4 +266,114 @@ extension on PartGain {
   /// Опыт внутри текущего уровня после тренировки.
   int get progressInLevel =>
       xpAfter - (Progression.levelFromXp(xpAfter) - 1) * GameConfig.xpPerLevel;
+}
+
+const _growDuration = Duration(milliseconds: 1600);
+
+/// Аватар плавно дорастает от «до тренировки» к «после», затем — плашка новых уровней.
+class _GrowingAvatar extends StatefulWidget {
+  const _GrowingAvatar({
+    required this.summary,
+    required this.look,
+    required this.xpNow,
+  });
+
+  final WorkoutSummary summary;
+  final AvatarLook look;
+  final Map<BodyPart, int> xpNow;
+
+  @override
+  State<_GrowingAvatar> createState() => _GrowingAvatarState();
+}
+
+class _GrowingAvatarState extends State<_GrowingAvatar>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c = AnimationController(
+    vsync: this,
+    duration: _growDuration,
+  );
+  late final Animation<double> _t = CurvedAnimation(
+    parent: _c,
+    curve: Curves.easeInOutCubic,
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    Future.delayed(const Duration(milliseconds: 400), () {
+      if (mounted) _c.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  Map<BodyPart, double> _levelsAt(double t) {
+    final gained = {for (final g in widget.summary.gains) g.part: g};
+    return {
+      for (final p in BodyPart.values)
+        p: switch (gained[p]) {
+          null => Progression.fractionalLevel(widget.xpNow[p] ?? 0),
+          final g =>
+            Progression.fractionalLevel(g.xpAfter - g.xp) +
+                g.xp * t / GameConfig.xpPerLevel,
+        },
+    };
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final levelUps = [
+      for (final g in widget.summary.gains)
+        if (g.leveledUp) g,
+    ];
+    final accent = Theme.of(context).colorScheme.primary;
+    return AnimatedBuilder(
+      animation: _t,
+      builder: (context, _) => Stack(
+        fit: StackFit.expand,
+        children: [
+          AvatarView(
+            levels: _levelsAt(_t.value),
+            look: widget.look,
+            withLamp: true,
+          ),
+          if (levelUps.isNotEmpty)
+            Align(
+              alignment: Alignment.bottomCenter,
+              child: AnimatedOpacity(
+                opacity: _c.isCompleted ? 1 : 0,
+                duration: const Duration(milliseconds: 300),
+                child: AnimatedScale(
+                  scale: _c.isCompleted ? 1 : 0.8,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeOutBack,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 8,
+                    ),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Новый уровень: ${levelUps.map((g) => '${g.part.label.toLowerCase()} ${g.levelAfter}').join(', ')}',
+                      style: const TextStyle(
+                        color: AppColors.onAccent,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
 }

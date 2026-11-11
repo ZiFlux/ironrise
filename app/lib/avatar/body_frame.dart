@@ -10,7 +10,7 @@ const double avatarCanvasHeight = 400;
 const double _centerX = 100;
 
 /// Рост части тела: заметен на первых уровнях и замедляется к 40+.
-double growthOf(int level) => 1 - exp(-(level - 1) / 15);
+double growthOf(num level) => 1 - exp(-(level - 1) / 15);
 
 double _lerp(double a, double b, double t) => a + (b - a) * t;
 
@@ -66,7 +66,7 @@ class ArmGeometry {
 
 /// Все размеры тела, посчитанные из уровней и пола.
 class BodyFrame {
-  factory BodyFrame(Map<BodyPart, int> levels, AvatarSex sex) {
+  factory BodyFrame(Map<BodyPart, num> levels, AvatarSex sex) {
     double g(BodyPart p) => growthOf(levels[p] ?? 1);
     return BodyFrame._(
       isFemale: sex == AvatarSex.female,

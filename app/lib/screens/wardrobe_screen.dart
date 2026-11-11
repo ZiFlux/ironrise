@@ -75,7 +75,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           children: [
             Expanded(
               child: AvatarView(
-                levels: hero.levels,
+                levels: hero.avatarLevels,
                 look: look,
                 withLamp: true,
               ),

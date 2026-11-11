@@ -68,6 +68,8 @@ class CardioScoring {
     required List<PulseSample> pulse,
     required Map<BodyPart, int> xpBefore,
     required DateTime finishedAt,
+    int restingHeartRate = GameConfig.defaultRestingHeartRate,
+    int maxHeartRate = GameConfig.defaultMaxHeartRate,
   }) {
     final duration = finishedAt.difference(session.startedAt);
     final totalMin = min(
@@ -76,7 +78,14 @@ class CardioScoring {
     );
     final verified = hasEnoughPulse(pulse, duration);
     final zoneMin = verified
-        ? min(timeInZone(pulse, zoneLowerBound()).inSeconds / 60, totalMin)
+        ? min(
+            timeInZone(
+                  pulse,
+                  zoneLowerBound(resting: restingHeartRate, max: maxHeartRate),
+                ).inSeconds /
+                60,
+            totalMin,
+          )
         : 0.0;
     final effectiveMin = verified
         ? zoneMin + (totalMin - zoneMin) * GameConfig.unverifiedValidity
