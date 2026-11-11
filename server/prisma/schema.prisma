@@ -1,0 +1,144 @@
+// Ядро MVP по PLAN.md, раздел 3. Дуэли, друзья и рейтинг — следующими миграциями.
+
+generator client {
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
+  moduleFormat = "cjs"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum BodyPart {
+  chest
+  back
+  arms
+  legs
+  core
+  cardio
+}
+
+enum WorkoutType {
+  strength
+  cardio
+}
+
+enum WorkoutStatus {
+  accepted
+  flagged
+}
+
+model User {
+  id               String    @id @default(uuid()) @db.Uuid
+  email            String    @unique
+  passwordHash     String
+  /// Подтверждение 18+ (ТЗ): без него аккаунт не создаётся.
+  adultConfirmedAt DateTime
+  createdAt        DateTime  @default(now())
+
+  profile       Profile?
+  avatarParts   AvatarPart[]
+  workouts      Workout[]
+  xpEvents      XpEvent[]
+  walletTx      WalletTx[]
+  refreshTokens RefreshToken[]
+}
+
+model Profile {
+  userId           String    @id @db.Uuid
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  nickname         String    @unique
+  goal             String
+  trainingFormat   String
+  /// 0 = понедельник … 6 = воскресенье.
+  scheduleDays     Int[]
+  formatChangedAt  DateTime  @default(now())
+  /// Внешность аватара и косметика (AvatarLook с клиента).
+  appearance       Json
+  age              Int?
+  restingHr        Int?
+  /// IANA, например Europe/Moscow: по нему считаются календарные дни и серия.
+  timezone         String    @default("UTC")
+  streakDays       Int       @default(0)
+  /// YYYY-MM-DD в часовом поясе пользователя.
+  lastActiveDay    String?
+  updatedAt        DateTime  @updatedAt
+}
+
+/// 6 строк на пользователя. Уровень считается из xp.
+model AvatarPart {
+  userId String   @db.Uuid
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  part   BodyPart
+  xp     Int      @default(0)
+
+  @@id([userId, part])
+}
+
+model Workout {
+  id         String        @id @default(uuid()) @db.Uuid
+  userId     String        @db.Uuid
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Id с клиента: повторная отправка после обрыва связи не начислит опыт дважды.
+  clientId   String
+  type       WorkoutType
+  startedAt  DateTime
+  endedAt    DateTime
+  /// YYYY-MM-DD в часовом поясе пользователя — для серии, календаря и лиги.
+  day        String
+  validity   Float
+  status     WorkoutStatus @default(accepted)
+  /// Подходы (силовая) или вид активности (кардио) — как прислал клиент.
+  payload    Json
+  /// Пульс: [{at, bpm}]. Пока целиком, позже — сжатая сводка.
+  pulse      Json
+  createdAt  DateTime      @default(now())
+
+  xpEvents XpEvent[]
+
+  @@unique([userId, clientId])
+  @@index([userId, day])
+}
+
+/// Append-only журнал начислений опыта (PLAN 3).
+model XpEvent {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutId String?  @db.Uuid
+  workout   Workout? @relation(fields: [workoutId], references: [id], onDelete: SetNull)
+  part      BodyPart
+  xp        Int
+  validity  Float
+  wasLagging Boolean
+  createdAt DateTime @default(now())
+
+  @@index([userId, createdAt])
+}
+
+/// Append-only журнал монет. Баланс = сумма amount.
+model WalletTx {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  amount    Int
+  reason    String
+  refId     String?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid()) @db.Uuid
+  userId    String    @db.Uuid
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Храним только хеш: утечка базы не даёт войти.
+  tokenHash String    @unique
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
