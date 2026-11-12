@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-export const NOTIFICATION_TYPES = ['friend_request', 'friend_accepted', 'attacked', 'streak_risk'] as const;
+export const NOTIFICATION_TYPES = [
+  'friend_request',
+  'friend_accepted',
+  'attacked',
+  'streak_risk',
+  'daily_tip',
+  'duels_refreshed',
+] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
 /** Настройки пушей игрока. Всё включено по умолчанию, напоминание в 19:00. */
@@ -11,7 +18,31 @@ export const SettingsSchema = z.object({
   streak_risk: z.boolean().default(true),
   /** Час напоминания о серии по времени игрока. */
   streakReminderHour: z.number().int().min(6).max(23).default(19),
+  /** «Совет дня готов» — утром в morningHour. */
+  daily_tip: z.boolean().default(true),
+  /** «Новые соперники в дуэлях» — через 4 часа после morningHour. */
+  duels_refreshed: z.boolean().default(true),
+  morningHour: z.number().int().min(6).max(12).default(9),
 });
+
+/** Ежедневные напоминания — только тем, кто тренировался за последние 14 дней. */
+export const DAILY_ACTIVE_DAYS = 14;
+/** Новые дуэли напоминаем позже совета, чтобы не слать два пуша сразу. */
+export const DUELS_AFTER_MORNING_HOURS = 4;
+
+/** Пора ли слать ежедневное напоминание этого типа. */
+export const dailyReminderDue = (args: {
+  enabled: boolean;
+  sentDay: string | null;
+  today: string;
+  hour: number;
+  atHour: number;
+  lastActiveDay: string | null;
+}): boolean => {
+  if (!args.enabled || args.sentDay === args.today || args.hour < args.atHour || !args.lastActiveDay) return false;
+  const days = (Date.parse(args.today) - Date.parse(args.lastActiveDay)) / 86_400_000;
+  return days <= DAILY_ACTIVE_DAYS;
+};
 
 export type NotificationSettings = z.infer<typeof SettingsSchema>;
 

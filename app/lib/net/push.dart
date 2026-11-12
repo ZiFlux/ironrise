@@ -53,6 +53,7 @@ Future<bool> _ensureFirebase() async {
 String _pathFor(RemoteMessage m) => switch (m.data['screen']) {
   'friends' => '/duels/friends',
   'duels' => '/duels',
+  'tip' => '/tip',
   _ => '/',
 };
 

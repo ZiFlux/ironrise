@@ -221,12 +221,13 @@ describe('напоминание о серии', () => {
   });
 });
 
-import { parseSettings } from '../src/push/settings';
+import { dailyReminderDue, parseSettings } from '../src/push/settings';
 
 describe('настройки уведомлений', () => {
   it('по умолчанию всё включено, напоминание в 19', () => {
     expect(parseSettings({})).toEqual({
       friend_request: true, friend_accepted: true, attacked: true, streak_risk: true, streakReminderHour: 19,
+      daily_tip: true, duels_refreshed: true, morningHour: 9,
     });
   });
 
@@ -453,5 +454,23 @@ describe('премиум и тестеры', () => {
     const s = { durationSec: 1, totalSets: 1, validity: 1, gains: [], coins: 40 };
     expect(withPremiumCoins(s, true).coins).toBe(50);
     expect(withPremiumCoins(s, false).coins).toBe(40);
+  });
+});
+
+describe('утренние уведомления', () => {
+  const base = { enabled: true, sentDay: null, today: '2026-11-12', hour: 9, atHour: 9, lastActiveDay: '2026-11-10' };
+  it('шлём в свой час раз в день активным игрокам', () => {
+    expect(dailyReminderDue(base)).toBe(true);
+    expect(dailyReminderDue({ ...base, hour: 8 })).toBe(false);
+    expect(dailyReminderDue({ ...base, sentDay: '2026-11-12' })).toBe(false);
+    expect(dailyReminderDue({ ...base, enabled: false })).toBe(false);
+  });
+  it('не беспокоим тех, кто не тренировался больше двух недель', () => {
+    expect(dailyReminderDue({ ...base, lastActiveDay: '2026-10-29' })).toBe(true);
+    expect(dailyReminderDue({ ...base, lastActiveDay: '2026-10-28' })).toBe(false);
+    expect(dailyReminderDue({ ...base, lastActiveDay: null })).toBe(false);
+  });
+  it('настройки по умолчанию включают оба напоминания на 9:00', () => {
+    expect(parseSettings({})).toMatchObject({ daily_tip: true, duels_refreshed: true, morningHour: 9 });
   });
 });

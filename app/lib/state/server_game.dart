@@ -195,6 +195,7 @@ class AppNotification {
   String get path => switch (screen) {
     'friends' => '/duels/friends',
     'duels' => '/duels',
+    'tip' => '/tip',
     _ => '/',
   };
 }

@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { localDay } from '../common/day';
 import { isStreakAtRisk } from '../game/streak';
 import { PrismaService } from '../prisma.service';
-import { NotificationType, parseSettings } from './settings';
+import { dailyReminderDue, DUELS_AFTER_MORNING_HOURS, NotificationType, parseSettings } from './settings';
 
 interface ServiceAccount {
   project_id: string;
@@ -16,8 +16,8 @@ export interface PushMessage {
   type: NotificationType;
   title: string;
   body: string;
-  /** Куда вести по нажатию: friends | duels | home. */
-  screen: 'friends' | 'duels' | 'home';
+  /** Куда вести по нажатию: friends | duels | home | tip. */
+  screen: 'friends' | 'duels' | 'home' | 'tip';
 }
 
 const REMINDER_EVERY_MS = 15 * 60_000;
@@ -38,7 +38,10 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly db: PrismaService) {}
 
   onModuleInit() {
-    this.timer = setInterval(() => void this.remindStreaks().catch((e) => this.log.warn(String(e))), REMINDER_EVERY_MS);
+    this.timer = setInterval(() => {
+      void this.remindStreaks().catch((e) => this.log.warn(String(e)));
+      void this.remindDaily().catch((e) => this.log.warn(String(e)));
+    }, REMINDER_EVERY_MS);
     const path = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!path) {
       this.log.log('FIREBASE_SERVICE_ACCOUNT не задан — пуши выключены, лента уведомлений работает');
@@ -166,7 +169,69 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
       });
     }
   }
+
+  async remindDaily(now = new Date()) {
+    const profiles = await this.db.profile.findMany({
+      where: { lastActiveDay: { not: null } },
+      select: {
+        userId: true,
+        timezone: true,
+        lastActiveDay: true,
+        tipRewardDay: true,
+        tipReminderDay: true,
+        duelsReminderDay: true,
+        notificationSettings: true,
+      },
+    });
+    for (const p of profiles) {
+      const s = parseSettings(p.notificationSettings);
+      const today = localDay(now, p.timezone);
+      const hour = localHour(now, p.timezone);
+      const common = { today, hour, lastActiveDay: p.lastActiveDay };
+      // Совет уже разобран сегодня — напоминать не о чем.
+      if (
+        p.tipRewardDay !== today &&
+        dailyReminderDue({ ...common, enabled: s.daily_tip, sentDay: p.tipReminderDay, atHour: s.morningHour })
+      ) {
+        await this.db.profile.update({ where: { userId: p.userId }, data: { tipReminderDay: today } });
+        this.notify(p.userId, dailyMessages.tip);
+      }
+      if (
+        dailyReminderDue({
+          ...common,
+          enabled: s.duels_refreshed,
+          sentDay: p.duelsReminderDay,
+          atHour: s.morningHour + DUELS_AFTER_MORNING_HOURS,
+        })
+      ) {
+        await this.db.profile.update({ where: { userId: p.userId }, data: { duelsReminderDay: today } });
+        this.notify(p.userId, dailyMessages.duels(today));
+      }
+    }
+  }
 }
+
+/** Утренние напоминания: совет дня и новые соперники в дуэлях. Не чаще раза в день каждое. */
+const DUEL_LINES = [
+  'Четыре новых соперника уже разминаются. Кто-то из них явно пропустил день ног',
+  'Свежие боты в зале: один на массе, другой на сушке. Проверь, кто сильнее',
+  'Новые соперники пришли в зал и заняли твою скамью. Разберись',
+];
+
+export const dailyMessages = {
+  tip: {
+    type: 'daily_tip' as const,
+    title: 'Совет дня готов',
+    body: 'Минута чтения и вопрос — за правильный ответ монеты',
+    screen: 'tip' as const,
+  },
+  duels: (day: string): PushMessage => ({
+    type: 'duels_refreshed',
+    title: 'Новые соперники в дуэлях',
+    body: DUEL_LINES[Number(day.replaceAll('-', '')) % DUEL_LINES.length],
+    screen: 'duels',
+  }),
+};
 
 const localHour = (at: Date, timeZone: string): number =>
   Number(new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(at));

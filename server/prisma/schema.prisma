@@ -89,6 +89,9 @@ model Profile {
   leagueLast       Json?
   /// День, за который уже выдана награда за «Совет дня» (YYYY-MM-DD).
   tipRewardDay     String?
+  /// Дни, когда уже напомнили о совете дня и о новых дуэлях — не чаще раза в день.
+  tipReminderDay   String?
+  duelsReminderDay String?
   /// Бета-тестер: премиум навсегда, без штрафа за тренировки без часов, эксклюзивные вещи.
   isTester         Boolean   @default(false)
   /// Оплаченный премиум до этой даты (оплаты пока нет).

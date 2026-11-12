@@ -120,6 +120,8 @@ class _Tile extends StatelessWidget {
     'friend_accepted': LucideIcons.users,
     'attacked': LucideIcons.swords,
     'streak_risk': LucideIcons.flame,
+    'daily_tip': LucideIcons.lightbulb,
+    'duels_refreshed': LucideIcons.swords,
   };
 
   @override
@@ -222,6 +224,8 @@ class _NotificationSettingsState
     ('friend_accepted', 'Новые друзья', 'Твою заявку приняли'),
     ('attacked', 'Нападения', 'Друг вызвал тебя на дуэль'),
     ('streak_risk', 'Серия под угрозой', 'Если сегодня последний день отдыха'),
+    ('daily_tip', 'Совет дня', 'Утром: новый совет и монеты за ответ'),
+    ('duels_refreshed', 'Новые соперники', 'Днём: в дуэлях обновились боты'),
   ];
 
   @override
@@ -315,6 +319,30 @@ class _NotificationSettingsState
                         : null,
                     items: [
                       for (var h = 6; h <= 23; h++)
+                        DropdownMenuItem(
+                          value: h,
+                          child: Text('${h.toString().padLeft(2, '0')}:00'),
+                        ),
+                    ],
+                  ),
+                ),
+                ListTile(
+                  enabled:
+                      s['daily_tip'] == true || s['duels_refreshed'] == true,
+                  title: const Text('Утренние уведомления'),
+                  subtitle: const Text(
+                    'Совет дня — в это время, новые соперники — через 4 часа',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
+                  trailing: DropdownButton<int>(
+                    value: ((s['morningHour'] as num?) ?? 9).toInt(),
+                    underline: const SizedBox.shrink(),
+                    onChanged:
+                        s['daily_tip'] == true || s['duels_refreshed'] == true
+                        ? (h) => _set('morningHour', h!)
+                        : null,
+                    items: [
+                      for (var h = 6; h <= 12; h++)
                         DropdownMenuItem(
                           value: h,
                           child: Text('${h.toString().padLeft(2, '0')}:00'),
