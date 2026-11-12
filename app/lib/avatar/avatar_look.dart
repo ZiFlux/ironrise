@@ -21,9 +21,24 @@ enum SkinTone {
 
 enum HairStyle { short, buzz, curly, manBun, bob, ponytail, bun, long }
 
-enum TopKind { none, tank, tee, bra }
+enum TopKind {
+  none,
+  tank,
+  tee,
+  bra,
 
-enum BottomKind { shorts, joggers, leggings }
+  /// Футболка бета-тестера: фиолетовая с эмблемой β (эксклюзив).
+  betaTee,
+}
+
+enum BottomKind {
+  shorts,
+  joggers,
+  leggings,
+
+  /// Джоггеры бета-тестера: тёмные с лаймовыми лампасами (эксклюзив).
+  betaJoggers,
+}
 
 enum Accessory {
   headband,

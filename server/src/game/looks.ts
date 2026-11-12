@@ -13,13 +13,17 @@ const HAIR_COLOR: Record<number, string> = {
   0xff26262a: 'hc_black', 0xff5a3a24: 'hc_brown', 0xffd9b66e: 'hc_blond',
   0xffb4532a: 'hc_red', 0xffe6e2d8: 'hc_platinum', 0xffe86aa6: 'hc_pink', 0xff4a7bd9: 'hc_blue',
 };
-const TOP: Record<string, string> = { none: 'top_none', bra: 'top_bra', tank: 'top_tank', tee: 'top_tee' };
+const TOP: Record<string, string> = {
+  none: 'top_none', bra: 'top_bra', tank: 'top_tank', tee: 'top_tee', betaTee: 'top_beta_tee',
+};
 const TOP_COLOR: Record<number, string> = {
   0xff1f1f22: 'tc_graphite', 0xffe8e8e8: 'tc_white', 0xffc6ff3d: 'tc_lime',
   0xffff7a3d: 'tc_ember', 0xff3ddcff: 'tc_ice', 0xff1e2a4a: 'tc_navy', 0xffd23c3c: 'tc_red',
   0xffd9b25a: 'tc_gold', 0xff8b5cf6: 'tc_beta',
 };
-const BOTTOM: Record<string, string> = { shorts: 'bottom_shorts', joggers: 'bottom_joggers', leggings: 'bottom_leggings' };
+const BOTTOM: Record<string, string> = {
+  shorts: 'bottom_shorts', joggers: 'bottom_joggers', leggings: 'bottom_leggings', betaJoggers: 'bottom_beta_joggers',
+};
 const BOTTOM_COLOR: Record<number, string> = {
   0xff1f1f22: 'bc_graphite', 0xff1e2a4a: 'bc_navy', 0xff4a5230: 'bc_olive', 0xff8a8a90: 'bc_grey',
   0xff0e0e10: 'bc_black',
@@ -91,7 +95,7 @@ export const randomBotLook = (isFemale: boolean, rnd: () => number): Record<stri
     hairColor: pickOf(nums(HAIR_COLOR), rnd),
     top: pickOf(isFemale ? ['bra', 'tank', 'tee'] : ['none', 'tank', 'tee'], rnd),
     topColor: pickOf(nums(TOP_COLOR), rnd),
-    bottom: pickOf(Object.keys(BOTTOM), rnd),
+    bottom: pickOf(forSale(BOTTOM), rnd),
     bottomColor: pickOf(nums(BOTTOM_COLOR), rnd),
     sneakersColor: rnd() < 0.2 ? null : pickOf(nums(SNEAKERS), rnd),
     accessories,

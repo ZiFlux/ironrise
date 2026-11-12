@@ -16,73 +16,142 @@ class AvatarLayers {
   // ---------- Одежда ----------
 
   Path? get top => switch (look.top) {
-        TopKind.none => null,
-        TopKind.bra => mirroredPath([
-            const Offset(0, 104), Offset(_f.neck + 4.5, 66), Offset(_f.neck + 8, 67),
-            Offset(_f.lat + 1.4, 110), Offset(_f.lat + 1, 124),
-            Offset(_lerp(_f.lat, _f.waist, 0.3) + 0.8, 141), const Offset(0, 142),
-          ]),
-        TopKind.tank => mirroredPath([
-            Offset(0, look.isFemale ? 92 : 78), Offset(_f.neck + 2.5, 64),
-            Offset(_f.neck + (look.isFemale ? 6 : 7), 66), Offset(_f.lat + 1.6, 108),
-            Offset(_f.lat + 1, 124), Offset(_f.ribs + 1, 150), Offset(_f.waist + 1, 172),
-            Offset(_f.hip + 1.2, 200), Offset(_f.hip + 1.4, 206), const Offset(0, 208),
-          ]),
-        TopKind.tee => mirroredPath([
-            const Offset(0, 72), Offset(_f.neck + 1.5, 63), Offset(_f.trapX + 1, 69.5),
-            Offset(_f.shoulder - _f.deltSize * 0.45 + 1, 81), Offset(_f.lat + 1.6, 112),
-            Offset(_f.lat + 1.2, 124), Offset(_f.ribs + 1.2, 150), Offset(_f.waist + 1.4, 172),
-            Offset(_f.hip + 1.6, 200), Offset(_f.hip + 1.8, 208), const Offset(0, 210),
-          ]),
-      };
+    TopKind.none => null,
+    TopKind.bra => mirroredPath([
+      const Offset(0, 104),
+      Offset(_f.neck + 4.5, 66),
+      Offset(_f.neck + 8, 67),
+      Offset(_f.lat + 1.4, 110),
+      Offset(_f.lat + 1, 124),
+      Offset(_lerp(_f.lat, _f.waist, 0.3) + 0.8, 141),
+      const Offset(0, 142),
+    ]),
+    TopKind.tank => mirroredPath([
+      Offset(0, look.isFemale ? 92 : 78),
+      Offset(_f.neck + 2.5, 64),
+      Offset(_f.neck + (look.isFemale ? 6 : 7), 66),
+      Offset(_f.lat + 1.6, 108),
+      Offset(_f.lat + 1, 124),
+      Offset(_f.ribs + 1, 150),
+      Offset(_f.waist + 1, 172),
+      Offset(_f.hip + 1.2, 200),
+      Offset(_f.hip + 1.4, 206),
+      const Offset(0, 208),
+    ]),
+    TopKind.tee || TopKind.betaTee => mirroredPath([
+      const Offset(0, 72),
+      Offset(_f.neck + 1.5, 63),
+      Offset(_f.trapX + 1, 69.5),
+      Offset(_f.shoulder - _f.deltSize * 0.45 + 1, 81),
+      Offset(_f.lat + 1.6, 112),
+      Offset(_f.lat + 1.2, 124),
+      Offset(_f.ribs + 1.2, 150),
+      Offset(_f.waist + 1.4, 172),
+      Offset(_f.hip + 1.6, 200),
+      Offset(_f.hip + 1.8, 208),
+      const Offset(0, 210),
+    ]),
+  };
 
   /// Рукава футболки повторяют дельту и доходят до середины бицепса.
-  List<Path> get sleeves => look.top == TopKind.tee
+  List<Path> get sleeves =>
+      look.top == TopKind.tee || look.top == TopKind.betaTee
       ? [_sleeveOf(_f.rightArm), _sleeveOf(_f.leftArm)]
       : const [];
 
+  /// Центр эмблемы на груди футболки тестера.
+  Offset get chestEmblem => Offset(100 + _f.lat * 0.42, 100);
+
+  /// Лампасы джоггеров тестера — по внешнему краю штанин.
+  Path get sideStripes {
+    final path = Path();
+    for (final s in const [-1.0, 1.0]) {
+      final pts = [
+        Offset(_f.hip + 0.6, 202),
+        Offset(_f.thigh + 0.8, 224),
+        Offset(_f.thigh - 2.4, 254),
+        Offset(_f.knee + 1.2, 290),
+        Offset(_f.calf + 0.6, 318),
+        Offset(_f.shin + 0.6, 350),
+        Offset(_f.ankle + 1.6, 364),
+      ];
+      path.moveTo(100 + s * pts.first.dx, pts.first.dy);
+      for (final p in pts.skip(1)) {
+        path.lineTo(100 + s * p.dx, p.dy);
+      }
+    }
+    return path;
+  }
+
   Path _sleeveOf(ArmGeometry arm) => smoothClosedPath([
-        arm.at(-0.08, -(_f.deltSize * 0.15 + 1.6)),
-        arm.at(-0.01, -(_f.deltSize * 0.9 + 1.6)),
-        arm.at(0.09, -(_f.deltSize * 1.14 + 1.6)),
-        arm.at(0.34, -(_f.bicepWidth + 2)),
-        arm.at(0.34, _f.bicepWidth + 2),
-        arm.at(0.08, _f.deltSize * 0.6 + 1.8),
-        arm.at(-0.04, _f.deltSize * 0.42 + 1.6),
-      ]);
+    arm.at(-0.08, -(_f.deltSize * 0.15 + 1.6)),
+    arm.at(-0.01, -(_f.deltSize * 0.9 + 1.6)),
+    arm.at(0.09, -(_f.deltSize * 1.14 + 1.6)),
+    arm.at(0.34, -(_f.bicepWidth + 2)),
+    arm.at(0.34, _f.bicepWidth + 2),
+    arm.at(0.08, _f.deltSize * 0.6 + 1.8),
+    arm.at(-0.04, _f.deltSize * 0.42 + 1.6),
+  ]);
 
   Path get bottom => switch (look.bottom) {
-        BottomKind.shorts => mirroredPath([
-            const Offset(0, 190), Offset(_f.waistband + 1.2, 192), Offset(_f.hip + 1.6, 200),
-            Offset(_f.thigh + 1.8, 224), Offset(_f.thigh - 1.4, 256), const Offset(4.2, 259),
-            const Offset(1.4, 232),
-          ]),
-        BottomKind.joggers => mirroredPath([
-            const Offset(0, 190), Offset(_f.waistband + 1.4, 192), Offset(_f.hip + 2, 200),
-            Offset(_f.thigh + 2.2, 224), Offset(_f.thigh - 1, 254), Offset(_f.knee + 2.6, 290),
-            Offset(_f.calf + 2, 318), Offset(_f.shin + 2, 350), Offset(_f.ankle + 3, 366),
-            Offset(_f.ankle + 2.6, 374), const Offset(3.4, 374), const Offset(3.8, 366),
-            Offset(_f.calf * 0.35 - 0.5, 330), const Offset(3.8, 292), const Offset(4.2, 254),
-            const Offset(1.3, 232),
-          ]),
-        BottomKind.leggings => mirroredPath([
-            const Offset(0, 186), Offset(_lerp(_f.waist, _f.hip, 0.55) + 0.6, 188),
-            Offset(_f.hip + 0.6, 200), Offset(_f.thigh + 0.6, 224), Offset(_f.thigh - 2.4, 254),
-            Offset(_f.knee + 1.6, 290), Offset(_f.calf + 0.6, 318), Offset(_f.shin + 0.6, 350),
-            Offset(_f.ankle + 0.8, 368), const Offset(4, 368), Offset(_f.calf * 0.35 - 0.3, 330),
-            const Offset(4.1, 292), const Offset(4.6, 254), const Offset(1.3, 230),
-          ]),
-      };
+    BottomKind.shorts => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.2, 192),
+      Offset(_f.hip + 1.6, 200),
+      Offset(_f.thigh + 1.8, 224),
+      Offset(_f.thigh - 1.4, 256),
+      const Offset(4.2, 259),
+      const Offset(1.4, 232),
+    ]),
+    BottomKind.joggers || BottomKind.betaJoggers => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.4, 192),
+      Offset(_f.hip + 2, 200),
+      Offset(_f.thigh + 2.2, 224),
+      Offset(_f.thigh - 1, 254),
+      Offset(_f.knee + 2.6, 290),
+      Offset(_f.calf + 2, 318),
+      Offset(_f.shin + 2, 350),
+      Offset(_f.ankle + 3, 366),
+      Offset(_f.ankle + 2.6, 374),
+      const Offset(3.4, 374),
+      const Offset(3.8, 366),
+      Offset(_f.calf * 0.35 - 0.5, 330),
+      const Offset(3.8, 292),
+      const Offset(4.2, 254),
+      const Offset(1.3, 232),
+    ]),
+    BottomKind.leggings => mirroredPath([
+      const Offset(0, 186),
+      Offset(_lerp(_f.waist, _f.hip, 0.55) + 0.6, 188),
+      Offset(_f.hip + 0.6, 200),
+      Offset(_f.thigh + 0.6, 224),
+      Offset(_f.thigh - 2.4, 254),
+      Offset(_f.knee + 1.6, 290),
+      Offset(_f.calf + 0.6, 318),
+      Offset(_f.shin + 0.6, 350),
+      Offset(_f.ankle + 0.8, 368),
+      const Offset(4, 368),
+      Offset(_f.calf * 0.35 - 0.3, 330),
+      const Offset(4.1, 292),
+      const Offset(4.6, 254),
+      const Offset(1.3, 230),
+    ]),
+  };
 
-  List<Path> get sneakers => look.sneakersColor == null ? const [] : [_shoe(1), _shoe(-1)];
+  List<Path> get sneakers =>
+      look.sneakersColor == null ? const [] : [_shoe(1), _shoe(-1)];
 
   Path _shoe(int side) => smoothClosedPath([
-        for (final p in [
-          Offset(_f.ankle + 0.8, 367), Offset(_f.ankle + 5.8, 381), Offset(_f.ankle + 4.6, 391),
-          const Offset(3, 391), const Offset(2.8, 369),
-        ])
-          Offset(100 + side * p.dx, p.dy),
-      ]);
+    for (final p in [
+      Offset(_f.ankle + 0.8, 367),
+      Offset(_f.ankle + 5.8, 381),
+      Offset(_f.ankle + 4.6, 391),
+      const Offset(3, 391),
+      const Offset(2.8, 369),
+    ])
+      Offset(100 + side * p.dx, p.dy),
+  ]);
 
   Path get soles => Path()
     ..moveTo(103.4, 389.6)
@@ -97,8 +166,10 @@ class AvatarLayers {
     final top = _f.headHalfWidthAt(15) + 0.6;
     final bottom = _f.headHalfWidthAt(21) + 0.6;
     return polygonPath([
-      Offset(100 - top, 15), Offset(100 + top, 15),
-      Offset(100 + bottom, 21), Offset(100 - bottom, 21),
+      Offset(100 - top, 15),
+      Offset(100 + top, 15),
+      Offset(100 + bottom, 21),
+      Offset(100 - bottom, 21),
     ]);
   }
 
@@ -107,9 +178,11 @@ class AvatarLayers {
       : const [];
 
   Path _wristband(ArmGeometry arm) => polygonPath([
-        arm.at(0.8, _f.wristWidth + 1.4), arm.at(0.9, _f.wristWidth + 1.2),
-        arm.at(0.9, -_f.wristWidth - 1.2), arm.at(0.8, -_f.wristWidth - 1.4),
-      ]);
+    arm.at(0.8, _f.wristWidth + 1.4),
+    arm.at(0.9, _f.wristWidth + 1.2),
+    arm.at(0.9, -_f.wristWidth - 1.2),
+    arm.at(0.8, -_f.wristWidth - 1.4),
+  ]);
 
   bool _has(Accessory a) => look.accessories.contains(a);
 
@@ -120,11 +193,14 @@ class AvatarLayers {
     final bottom = _lerp(_f.waist, _f.hip, 0.6) + 1.6;
     return (
       polygonPath([
-        Offset(100 - top, 175), Offset(100 + top, 175),
-        Offset(100 + bottom, 189), Offset(100 - bottom, 189),
+        Offset(100 - top, 175),
+        Offset(100 + top, 175),
+        Offset(100 + bottom, 189),
+        Offset(100 - bottom, 189),
       ]),
-      Path()
-        ..addRRect(RRect.fromLTRBR(95.5, 177.5, 104.5, 186.5, const Radius.circular(1.5))),
+      Path()..addRRect(
+        RRect.fromLTRBR(95.5, 177.5, 104.5, 186.5, const Radius.circular(1.5)),
+      ),
     );
   }
 
@@ -136,8 +212,10 @@ class AvatarLayers {
     return [
       for (final s in const [-1.0, 1.0])
         polygonPath([
-          Offset(100 + s * 4.2, 277), Offset(100 + s * top, 277),
-          Offset(100 + s * bottom, 301), Offset(100 + s * 4.3, 301),
+          Offset(100 + s * 4.2, 277),
+          Offset(100 + s * top, 277),
+          Offset(100 + s * bottom, 301),
+          Offset(100 + s * 4.3, 301),
         ]),
     ];
   }
@@ -163,8 +241,15 @@ class AvatarLayers {
         ..moveTo(100 - rx - 1.4, 21)
         ..cubicTo(100 - rx, -1, 100 + rx, -1, 100 + rx + 1.4, 21)
         ..close(),
-      Path()
-        ..addRRect(RRect.fromLTRBR(100 - rx - 4, 18.5, 100 + rx + 4, 23.5, const Radius.circular(2.5))),
+      Path()..addRRect(
+        RRect.fromLTRBR(
+          100 - rx - 4,
+          18.5,
+          100 + rx + 4,
+          23.5,
+          const Radius.circular(2.5),
+        ),
+      ),
     );
   }
 
@@ -173,7 +258,9 @@ class AvatarLayers {
     if (!_has(Accessory.glasses)) return null;
     return Path()
       ..addRRect(RRect.fromLTRBR(86.5, 25, 98, 32.5, const Radius.circular(3)))
-      ..addRRect(RRect.fromLTRBR(102, 25, 113.5, 32.5, const Radius.circular(3)))
+      ..addRRect(
+        RRect.fromLTRBR(102, 25, 113.5, 32.5, const Radius.circular(3)),
+      )
       ..addRect(const Rect.fromLTRB(97.5, 26.5, 102.5, 28));
   }
 
@@ -189,8 +276,24 @@ class AvatarLayers {
         ..cubicTo(100 + rx - 1, 0, 100 - rx + 1, 0, 100 - rx + 0.5, 30)
         ..close(),
       Path()
-        ..addRRect(RRect.fromLTRBR(100 - rx - 5, 22, 100 - rx + 2, 40, const Radius.circular(3)))
-        ..addRRect(RRect.fromLTRBR(100 + rx - 2, 22, 100 + rx + 5, 40, const Radius.circular(3))),
+        ..addRRect(
+          RRect.fromLTRBR(
+            100 - rx - 5,
+            22,
+            100 - rx + 2,
+            40,
+            const Radius.circular(3),
+          ),
+        )
+        ..addRRect(
+          RRect.fromLTRBR(
+            100 + rx - 2,
+            22,
+            100 + rx + 5,
+            40,
+            const Radius.circular(3),
+          ),
+        ),
     );
   }
 
@@ -209,8 +312,22 @@ class AvatarLayers {
     final rx = _f.headRx;
     return Path()
       ..moveTo(100 - rx - 3, 30)
-      ..cubicTo(100 - rx - spread, depth - 6, 100 - rx + 2, depth + 2, 100, depth)
-      ..cubicTo(100 + rx - 2, depth + 2, 100 + rx + spread, depth - 6, 100 + rx + 3, 30)
+      ..cubicTo(
+        100 - rx - spread,
+        depth - 6,
+        100 - rx + 2,
+        depth + 2,
+        100,
+        depth,
+      )
+      ..cubicTo(
+        100 + rx - 2,
+        depth + 2,
+        100 + rx + spread,
+        depth - 6,
+        100 + rx + 3,
+        30,
+      )
       ..close();
   }
 
@@ -223,25 +340,34 @@ class AvatarLayers {
     return switch (look.hair) {
       HairStyle.bob => _backHair(64, 4),
       HairStyle.long => _backHair(88, 7),
-      HairStyle.ponytail => Path()
-        ..moveTo(108, 14)
-        ..cubicTo(100 + rx + 16, 12, 100 + rx + 14, 52, 100 + rx + 6, 76)
-        ..cubicTo(100 + rx + 2, 52, 100 + rx + 4, 26, 106, 20)
-        ..close(),
+      HairStyle.ponytail =>
+        Path()
+          ..moveTo(108, 14)
+          ..cubicTo(100 + rx + 16, 12, 100 + rx + 14, 52, 100 + rx + 6, 76)
+          ..cubicTo(100 + rx + 2, 52, 100 + rx + 4, 26, 106, 20)
+          ..close(),
       _ => null,
     };
   }
 
   /// Волосы поверх головы.
   Path get hairFront => switch (look.hair) {
-        HairStyle.short => _cap(26, 6),
-        HairStyle.buzz => _cap(20, 9),
-        HairStyle.curly => Path.combine(PathOperation.union, _cap(26, 7), _curls),
-        HairStyle.manBun => Path.combine(PathOperation.union, _cap(25, 7), _circle(100, 7, 6)),
-        HairStyle.bob || HairStyle.long => _cap(30, 4),
-        HairStyle.ponytail => _cap(27, 5),
-        HairStyle.bun => Path.combine(PathOperation.union, _cap(27, 5), _circle(100, 6, 7)),
-      };
+    HairStyle.short => _cap(26, 6),
+    HairStyle.buzz => _cap(20, 9),
+    HairStyle.curly => Path.combine(PathOperation.union, _cap(26, 7), _curls),
+    HairStyle.manBun => Path.combine(
+      PathOperation.union,
+      _cap(25, 7),
+      _circle(100, 7, 6),
+    ),
+    HairStyle.bob || HairStyle.long => _cap(30, 4),
+    HairStyle.ponytail => _cap(27, 5),
+    HairStyle.bun => Path.combine(
+      PathOperation.union,
+      _cap(27, 5),
+      _circle(100, 6, 7),
+    ),
+  };
 
   Path get _curls {
     final path = Path();
@@ -287,7 +413,12 @@ class AvatarLayers {
     for (final s in const [-1.0, 1.0]) {
       path
         ..moveTo(100 + s * hip * 0.52, 236)
-        ..quadraticBezierTo(100 + s * (hip * 0.6 - 2), 262, 100 + s * hip * 0.46, 286);
+        ..quadraticBezierTo(
+          100 + s * (hip * 0.6 - 2),
+          262,
+          100 + s * hip * 0.46,
+          286,
+        );
     }
     return path;
   }

@@ -25,7 +25,9 @@ export const PREMIUM_ITEMS: ReadonlySet<string> = new Set(['tc_gold', 'sn_gold',
  * Эксклюзивы бета-тестеров: не продаются, выдаются аккаунту навсегда
  * (src/admin/grant-tester.ts и миграция beta_testers).
  */
-export const TESTER_ITEMS: readonly string[] = ['acc_beta_cap', 'tc_beta', 'sn_beta'];
+export const TESTER_ITEMS: readonly string[] = [
+  'acc_beta_cap', 'tc_beta', 'sn_beta', 'top_beta_tee', 'bottom_beta_joggers',
+];
 
 /** Вещи, которых нет в продаже: носить можно только выданные. */
 export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set(TESTER_ITEMS);

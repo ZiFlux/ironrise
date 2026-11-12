@@ -11,7 +11,7 @@ import 'body_frame.dart';
 /// Рисует аватар слоями: тень, волосы сзади, руки, тело, рельеф, одежда, голова.
 class AvatarPainter extends CustomPainter {
   AvatarPainter({required this.levels, required this.look})
-      : frame = BodyFrame(levels, look.sex) {
+    : frame = BodyFrame(levels, look.sex) {
     layers = AvatarLayers(frame, look);
   }
 
@@ -24,11 +24,16 @@ class AvatarPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final scale = min(size.width / avatarCanvasWidth, size.height / avatarCanvasHeight);
+    final scale = min(
+      size.width / avatarCanvasWidth,
+      size.height / avatarCanvasHeight,
+    );
     canvas
       ..save()
-      ..translate((size.width - avatarCanvasWidth * scale) / 2,
-          (size.height - avatarCanvasHeight * scale) / 2)
+      ..translate(
+        (size.width - avatarCanvasWidth * scale) / 2,
+        (size.height - avatarCanvasHeight * scale) / 2,
+      )
       ..scale(scale);
 
     _paintFloorShadow(canvas);
@@ -43,9 +48,9 @@ class AvatarPainter extends CustomPainter {
   }
 
   void _paintFloorShadow(Canvas canvas) => canvas.drawOval(
-        Rect.fromCenter(center: const Offset(100, 392), width: 108, height: 10),
-        Paint()..color = _floorShadow,
-      );
+    Rect.fromCenter(center: const Offset(100, 392), width: 108, height: 10),
+    Paint()..color = _floorShadow,
+  );
 
   void _paintArms(Canvas canvas) {
     for (final arm in [frame.rightArm, frame.leftArm]) {
@@ -57,7 +62,11 @@ class AvatarPainter extends CustomPainter {
     final handPaint = Paint()..color = look.skin.hand;
     for (final arm in [frame.rightArm, frame.leftArm]) {
       canvas.drawOval(
-        Rect.fromCenter(center: arm.handCenter, width: look.isFemale ? 9.2 : 10.8, height: look.isFemale ? 16 : 18),
+        Rect.fromCenter(
+          center: arm.handCenter,
+          width: look.isFemale ? 9.2 : 10.8,
+          height: look.isFemale ? 16 : 18,
+        ),
         handPaint,
       );
     }
@@ -89,7 +98,9 @@ class AvatarPainter extends CustomPainter {
 
   /// Светлая грань рядом с линией. Ярче там, где рельеф глубже.
   void _paintShine(Canvas canvas, Path path, _ReliefStyle style, double depth) {
-    final shine = style.paint(Colors.white.withValues(alpha: style.shine * depth / 0.9));
+    final shine = style.paint(
+      Colors.white.withValues(alpha: style.shine * depth / 0.9),
+    );
     canvas
       ..save()
       ..translate(style.shineShift.dx, style.shineShift.dy)
@@ -98,12 +109,31 @@ class AvatarPainter extends CustomPainter {
   }
 
   void _paintClothes(Canvas canvas) {
-    _fillCloth(canvas, layers.bottom, look.bottomColor);
-    final top = layers.top;
-    if (top != null) _fillCloth(canvas, top, look.topColor, withFall: true);
-    for (final sleeve in layers.sleeves) {
-      _fillCloth(canvas, sleeve, look.topColor, withFall: true);
+    final betaBottom = look.bottom == BottomKind.betaJoggers;
+    _fillCloth(
+      canvas,
+      layers.bottom,
+      betaBottom ? _betaDark : look.bottomColor,
+    );
+    if (betaBottom) {
+      canvas.drawPath(
+        layers.sideStripes,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2.4
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..color = look.accessoryColor,
+      );
     }
+    final betaTop = look.top == TopKind.betaTee;
+    final topColor = betaTop ? _beta : look.topColor;
+    final top = layers.top;
+    if (top != null) _fillCloth(canvas, top, topColor, withFall: true);
+    for (final sleeve in layers.sleeves) {
+      _fillCloth(canvas, sleeve, topColor, withFall: true);
+    }
+    if (betaTop) _paintEmblem(canvas, layers.chestEmblem);
     for (final sleeve in layers.kneeSleeves) {
       _fillCloth(canvas, sleeve, _sleeveColor);
     }
@@ -129,12 +159,20 @@ class AvatarPainter extends CustomPainter {
   }
 
   void _paintHead(Canvas canvas) {
-    _fillSkin(canvas, Path()..addRect(Rect.fromLTRB(100 - frame.neck, 46, 100 + frame.neck, 64)));
     _fillSkin(
       canvas,
       Path()
-        ..addOval(Rect.fromCenter(
-            center: BodyFrame.headCenter, width: frame.headRx * 2, height: frame.headRy * 2)),
+        ..addRect(Rect.fromLTRB(100 - frame.neck, 46, 100 + frame.neck, 64)),
+    );
+    _fillSkin(
+      canvas,
+      Path()..addOval(
+        Rect.fromCenter(
+          center: BodyFrame.headCenter,
+          width: frame.headRx * 2,
+          height: frame.headRy * 2,
+        ),
+      ),
     );
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.hairFront, look.hairColor);
@@ -159,10 +197,33 @@ class AvatarPainter extends CustomPainter {
   static const _capColor = Color(0xFF2A2A2E);
   static const _capBrim = Color(0xFF1C1C1F);
   static const _beta = Color(0xFF8B5CF6);
+  static const _betaDark = Color(0xFF17171A);
+
+  /// Эмблема бета-тестера: лаймовый круг с «β».
+  void _paintEmblem(Canvas canvas, Offset at) {
+    canvas.drawCircle(at, 6.5, Paint()..color = look.accessoryColor);
+    final text = TextPainter(
+      text: const TextSpan(
+        text: 'β',
+        style: TextStyle(
+          fontSize: 10,
+          fontWeight: FontWeight.w700,
+          color: Color(0xFF17171A),
+        ),
+      ),
+      textDirection: TextDirection.ltr,
+    )..layout();
+    text.paint(canvas, at - Offset(text.width / 2, text.height / 2));
+  }
 
   // ---------- Заливки ----------
 
-  static const _figureBounds = Rect.fromLTWH(0, 0, avatarCanvasWidth, avatarCanvasHeight);
+  static const _figureBounds = Rect.fromLTWH(
+    0,
+    0,
+    avatarCanvasWidth,
+    avatarCanvasHeight,
+  );
 
   void _fillSkin(Canvas canvas, Path path) {
     final skin = Paint()
@@ -176,7 +237,12 @@ class AvatarPainter extends CustomPainter {
       ..drawPath(path, _rimPaint(path));
   }
 
-  void _fillCloth(Canvas canvas, Path path, Color color, {bool withFall = false}) {
+  void _fillCloth(
+    Canvas canvas,
+    Path path,
+    Color color, {
+    bool withFall = false,
+  }) {
     canvas
       ..drawPath(path, Paint()..color = color)
       ..drawPath(path, _rimPaint(path));
@@ -190,7 +256,12 @@ class AvatarPainter extends CustomPainter {
   /// Затенение по краям формы даёт объём без свечения.
   Paint _rimPaint(Path path) => Paint()
     ..shader = const LinearGradient(
-      colors: [Color(0x6B000000), Color(0x00000000), Color(0x0DFFFFFF), Color(0x6B000000)],
+      colors: [
+        Color(0x6B000000),
+        Color(0x00000000),
+        Color(0x0DFFFFFF),
+        Color(0x6B000000),
+      ],
       stops: [0, 0.28, 0.62, 1],
     ).createShader(path.getBounds());
 
@@ -205,7 +276,8 @@ class AvatarPainter extends CustomPainter {
   @override
   // Уровни сравниваются по значениям: при каждой пересборке экрана карта новая,
   // а перерисовка дорогая (контуры тела, градиенты, рельеф).
-  bool shouldRepaint(AvatarPainter old) => old.look != look || !mapEquals(old.levels, levels);
+  bool shouldRepaint(AvatarPainter old) =>
+      old.look != look || !mapEquals(old.levels, levels);
 }
 
 class _ReliefStyle {

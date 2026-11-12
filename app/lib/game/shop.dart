@@ -107,22 +107,36 @@ ShopItem _color(
   },
 );
 
-ShopItem _top(String id, String name, TopKind k, int price, [AvatarSex? sex]) =>
-    ShopItem(
-      id: id,
-      name: name,
-      slot: ShopSlot.top,
-      price: price,
-      onlyFor: sex,
-      apply: (l) => l.copyWith(top: k),
-      isWorn: (l) => l.top == k,
-    );
+ShopItem _top(
+  String id,
+  String name,
+  TopKind k,
+  int price, [
+  AvatarSex? sex,
+  bool testerOnly = false,
+]) => ShopItem(
+  id: id,
+  name: name,
+  slot: ShopSlot.top,
+  price: price,
+  onlyFor: sex,
+  testerOnly: testerOnly,
+  apply: (l) => l.copyWith(top: k),
+  isWorn: (l) => l.top == k,
+);
 
-ShopItem _bottom(String id, String name, BottomKind k, int price) => ShopItem(
+ShopItem _bottom(
+  String id,
+  String name,
+  BottomKind k,
+  int price, {
+  bool testerOnly = false,
+}) => ShopItem(
   id: id,
   name: name,
   slot: ShopSlot.bottom,
   price: price,
+  testerOnly: testerOnly,
   apply: (l) => l.copyWith(bottom: k),
   isWorn: (l) => l.bottom == k,
 );
@@ -214,6 +228,7 @@ class ShopCatalog {
     _top('top_bra', 'Топ', TopKind.bra, 0, AvatarSex.female),
     _top('top_tank', 'Майка', TopKind.tank, 50),
     _top('top_tee', 'Футболка', TopKind.tee, 40),
+    _top('top_beta_tee', 'Футболка тестера', TopKind.betaTee, 0, null, true),
     _color('tc_graphite', 'Графит', ShopSlot.topColor, _graphite, 0),
     _color('tc_white', 'Белый', ShopSlot.topColor, const Color(0xFFE8E8E8), 30),
     _color('tc_lime', 'Лайм', ShopSlot.topColor, const Color(0xFFC6FF3D), 40),
@@ -247,6 +262,13 @@ class ShopCatalog {
     _bottom('bottom_shorts', 'Шорты', BottomKind.shorts, 0),
     _bottom('bottom_joggers', 'Джоггеры', BottomKind.joggers, 50),
     _bottom('bottom_leggings', 'Леггинсы', BottomKind.leggings, 50),
+    _bottom(
+      'bottom_beta_joggers',
+      'Джоггеры тестера',
+      BottomKind.betaJoggers,
+      0,
+      testerOnly: true,
+    ),
     _color('bc_graphite', 'Графит', ShopSlot.bottomColor, _graphite, 0),
     _color(
       'bc_navy',
