@@ -126,7 +126,10 @@ class _JointScreenState extends ConsumerState<JointScreen> {
               ),
             ),
             const SizedBox(width: 8),
+            // В теме кнопки растягиваются на всю ширину — в строке с полем
+            // это бесконечная ширина, поэтому минимальный размер задаём явно.
             OutlinedButton(
+              style: OutlinedButton.styleFrom(minimumSize: const Size(0, 48)),
               onPressed: _busy ? null : _join,
               child: const Text('Подключиться'),
             ),

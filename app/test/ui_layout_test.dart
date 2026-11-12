@@ -20,6 +20,7 @@ import 'package:ironrise/game/workout.dart';
 import 'package:ironrise/main.dart';
 import 'package:ironrise/router.dart';
 import 'package:ironrise/state/account_state.dart';
+import 'package:ironrise/state/joint_state.dart';
 import 'package:ironrise/state/duel_state.dart';
 import 'package:ironrise/state/hero.dart';
 import 'package:ironrise/state/providers.dart';
@@ -80,6 +81,12 @@ class _SignedIn extends AccountNotifier {
 }
 
 /// Данные сервера для режима «в аккаунте» — без сети.
+/// Совместной тренировки нет — экран показывает «Показать код» и поле ввода.
+class _NoJoint extends JointNotifier {
+  @override
+  Future<JointSession?> build() async => null;
+}
+
 List<Override> _serverFakes() {
   final friends = [
     for (var i = 0; i < 9; i++)
@@ -87,6 +94,7 @@ List<Override> _serverFakes() {
   ];
   return [
     accountProvider.overrideWith(_SignedIn.new),
+    jointProvider.overrideWith(_NoJoint.new),
     serverBotsProvider.overrideWith(
       (ref) async => (
         bots: [

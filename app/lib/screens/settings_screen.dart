@@ -20,6 +20,7 @@ import '../state/settings.dart';
 import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/screen_hint.dart';
 import 'devices_screen.dart';
 import '../widgets/format.dart';
 import '../widgets/motion.dart';
@@ -73,7 +74,25 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           const _SectionLabel('Цвет интерфейса'),
           const _AccentPicker(),
-          const SizedBox(height: 24),
+          const SizedBox(height: 12),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton.icon(
+              onPressed: () async {
+                await ScreenHint.resetAll(ref);
+                if (context.mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Подсказки снова появятся на экранах'),
+                    ),
+                  );
+                }
+              },
+              icon: const Icon(LucideIcons.lightbulb, size: 18),
+              label: const Text('Показать подсказки снова'),
+            ),
+          ),
+          const SizedBox(height: 12),
           const _SectionLabel('Данные и конфиденциальность'),
           const _DataSection(),
           const SizedBox(height: 8),

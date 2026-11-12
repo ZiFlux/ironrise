@@ -26,6 +26,7 @@ import 'screens/tip_screen.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
+import 'widgets/screen_hint.dart';
 import 'state/providers.dart';
 import 'widgets/motion.dart';
 
@@ -51,7 +52,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (_, _) => const HomeScreen(),
+                builder: (_, _) =>
+                    const ScreenHint(id: 'home', child: HomeScreen()),
                 routes: [
                   GoRoute(
                     path: 'wardrobe',
@@ -59,7 +61,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'shop',
-                    builder: (_, _) => const WardrobeScreen(shop: true),
+                    builder: (_, _) => const ScreenHint(
+                      id: 'shop',
+                      child: WardrobeScreen(shop: true),
+                    ),
                     routes: [
                       GoRoute(
                         path: 'premium',
@@ -86,7 +91,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/workout',
-                builder: (_, _) => const WorkoutScreen(),
+                builder: (_, _) =>
+                    const ScreenHint(id: 'workout', child: WorkoutScreen()),
                 routes: [
                   GoRoute(
                     path: 'result',
@@ -112,7 +118,8 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/duels',
-                builder: (_, _) => const DuelsScreen(),
+                builder: (_, _) =>
+                    const ScreenHint(id: 'duels', child: DuelsScreen()),
                 routes: [
                   GoRoute(
                     path: 'battle',
@@ -128,14 +135,19 @@ final routerProvider = Provider<GoRouter>((ref) {
           ),
           StatefulShellBranch(
             routes: [
-              GoRoute(path: '/rating', builder: (_, _) => const RatingScreen()),
+              GoRoute(
+                path: '/rating',
+                builder: (_, _) =>
+                    const ScreenHint(id: 'rating', child: RatingScreen()),
+              ),
             ],
           ),
           StatefulShellBranch(
             routes: [
               GoRoute(
                 path: '/profile',
-                builder: (_, _) => const PlayerScreen(),
+                builder: (_, _) =>
+                    const ScreenHint(id: 'profile', child: PlayerScreen()),
                 routes: [
                   GoRoute(
                     path: 'settings',
