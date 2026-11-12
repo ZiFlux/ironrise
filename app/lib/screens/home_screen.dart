@@ -469,6 +469,7 @@ class _TipLine extends ConsumerWidget {
     final daily = ref.watch(tipsProvider);
     if (daily == null) return const SizedBox.shrink();
     final accent = Theme.of(context).colorScheme.primary;
+    final fresh = !daily.answered;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Material(
@@ -486,18 +487,59 @@ class _TipLine extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  const Icon(
-                    LucideIcons.lightbulb,
-                    size: 16,
-                    color: AppColors.textSecondary,
+                  // Непрочитанный совет — лампочка горит и с точкой, как значок
+                  // нового сообщения; после ответа строка гаснет.
+                  Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Icon(
+                        LucideIcons.lightbulb,
+                        size: 16,
+                        color: fresh ? accent : AppColors.textMuted,
+                      ),
+                      if (fresh)
+                        Positioned(
+                          right: -3,
+                          top: -3,
+                          child: Container(
+                            width: 7,
+                            height: 7,
+                            decoration: BoxDecoration(
+                              color: accent,
+                              shape: BoxShape.circle,
+                              border: Border.all(
+                                color: AppColors.surface,
+                                width: 1.5,
+                              ),
+                            ),
+                          ),
+                        ),
+                    ],
                   ),
                   const SizedBox(width: 8),
                   Expanded(
-                    child: Text(
-                      'Совет дня: ${daily.tip.title}',
+                    child: Text.rich(
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: fresh ? 'Новый совет: ' : 'Совет дня: ',
+                            style: TextStyle(
+                              fontWeight: fresh
+                                  ? FontWeight.w500
+                                  : FontWeight.w400,
+                            ),
+                          ),
+                          TextSpan(text: daily.tip.title),
+                        ],
+                      ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontSize: 13),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: fresh
+                            ? AppColors.textPrimary
+                            : AppColors.textSecondary,
+                      ),
                     ),
                   ),
                   if (daily.answered)

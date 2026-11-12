@@ -192,13 +192,13 @@ class _StartLookCard extends StatelessWidget {
     final days = (hero.startLookUntil!.difference(DateTime.now()).inHours / 24)
         .ceil();
     return Material(
-      color: accent.withValues(alpha: 0.10),
+      color: AppColors.surface,
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: accent.withValues(alpha: 0.35)),
+        borderRadius: BorderRadius.circular(12),
+        side: const BorderSide(color: AppColors.hairline),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         onTap: () => context.go('/profile/start-look'),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
@@ -212,11 +212,11 @@ class _StartLookCard extends StatelessWidget {
                   children: [
                     const Text(
                       'Собери себя на старте',
-                      style: TextStyle(fontWeight: FontWeight.w600),
+                      style: TextStyle(fontWeight: FontWeight.w500),
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      'Телосложение, причёска, одежда — бесплатно. '
+                      'Телосложение, причёска и одежда бесплатно\n'
                       'Осталось дней: $days',
                       style: const TextStyle(
                         fontSize: 12,
@@ -345,35 +345,40 @@ class _Stats extends StatelessWidget {
       ('Серия', '${hero.streakDays}'),
       ('Монеты', formatThousands(hero.coins)),
     ];
-    return Row(
-      children: [
-        for (final (i, (label, value)) in tiles.indexed) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: BoxDecoration(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.hairline),
-              ),
-              child: Column(
-                children: [
-                  Text(value, style: figureStyle(size: 17)),
-                  const SizedBox(height: 6),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
+    // Одна высота у всех плиток, даже если подпись где-то переносится.
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          for (final (i, (label, value)) in tiles.indexed) ...[
+            if (i > 0) const SizedBox(width: 8),
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                decoration: BoxDecoration(
+                  color: AppColors.surface,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppColors.hairline),
+                ),
+                child: Column(
+                  children: [
+                    Text(value, style: figureStyle(size: 17)),
+                    const SizedBox(height: 6),
+                    Text(
+                      label,
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
-          ),
+          ],
         ],
-      ],
+      ),
     );
   }
 }
@@ -552,9 +557,9 @@ class _MuscleSection extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: accent.withValues(alpha: 0.35)),
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: AppColors.hairline),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,

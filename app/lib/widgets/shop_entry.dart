@@ -31,9 +31,9 @@ class ShopButton extends StatelessWidget {
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
               decoration: BoxDecoration(
-                color: accent.withValues(alpha: 0.14),
+                color: AppColors.raised,
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: accent.withValues(alpha: 0.55)),
+                border: Border.all(color: AppColors.hairline),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -42,10 +42,9 @@ class ShopButton extends StatelessWidget {
                   const SizedBox(width: 6),
                   Text(
                     'Магазин',
-                    style: TextStyle(
+                    style: const TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
-                      color: accent,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                 ],
@@ -114,7 +113,7 @@ class PremiumBanner extends ConsumerWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: compact ? 14 : 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
                       ),
                     ),
                     if (!compact || !active)

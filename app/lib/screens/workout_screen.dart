@@ -36,6 +36,15 @@ class WorkoutScreen extends ConsumerWidget {
 // ---------- Тренировка не начата ----------
 
 /// «Фаза «Старт» · 5 из 12 тренировок» или «Фаза «База»».
+/// «3 × 8–12» или «3 × 30 с» для упражнений на время.
+String _setsLine(PlannedExercise e) {
+  final reps = e.repsMin == e.repsMax
+      ? '${e.repsMin}'
+      : '${e.repsMin}–${e.repsMax}';
+  final unit = e.exercise.unit == ExerciseUnit.seconds ? ' с' : '';
+  return '${e.sets} × $reps$unit';
+}
+
 String _phaseLine(UserProgram program) => switch (program.phase) {
   ProgramPhase.start =>
     'Фаза «Старт» · ${program.completedWorkouts} из ${ProgramPhase.startWorkouts} тренировок',
@@ -53,13 +62,11 @@ class _StartView extends ConsumerWidget {
     final adapted = ref.watch(todayPlanProvider);
     final program = ref.watch(programProvider);
     final today = adapted.day;
-    final hint = [
-      [for (final e in today.exercises) e.exercise.name].join(' · '),
-      _phaseLine(program),
+    final notes = [
       if (adapted.eased) 'План облегчён: на подход меньше',
       if (adapted.adjustments.isNotEmpty)
         'Часть упражнений заменена, пока бережём больное место',
-    ].join('\n');
+    ];
     return Scaffold(
       appBar: AppBar(
         title: const Text('Тренировка'),
@@ -75,28 +82,76 @@ class _StartView extends ConsumerWidget {
       body: Padding(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 24),
         child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Spacer(),
-            const Icon(
-              LucideIcons.dumbbell,
-              size: 40,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(height: 16),
-            Text(
-              'Сегодня: ${today.title}',
-              style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            Text(
-              hint,
-              textAlign: TextAlign.center,
-              style: const TextStyle(
-                fontSize: 14,
-                color: AppColors.textSecondary,
+            // План дня — сверху и целиком: что делать и сколько, нажатие — техника.
+            // Карточка берёт высоту по содержимому, кнопки остаются внизу.
+            Expanded(
+              child: Align(
+                alignment: Alignment.topCenter,
+                child: Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: ListView(
+                    shrinkWrap: true,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                        child: Text(
+                          'Сегодня · ${today.title}',
+                          style: const TextStyle(
+                            fontSize: 17,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                        child: Text(
+                          [_phaseLine(program), ...notes].join('\n'),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                      for (final e in today.exercises)
+                        InkWell(
+                          onTap: () => showExerciseDetails(context, e.exercise),
+                          child: Container(
+                            constraints: const BoxConstraints(minHeight: 48),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: const BoxDecoration(
+                              border: Border(
+                                top: BorderSide(color: AppColors.hairline),
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    e.exercise.name,
+                                    style: const TextStyle(fontSize: 15),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Text(
+                                  _setsLine(e),
+                                  style: figureStyle(
+                                    size: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                ),
               ),
             ),
-            const Spacer(),
+            const SizedBox(height: 16),
             FilledButton(
               onPressed: () =>
                   ref.read(workoutProvider.notifier).startPlanned(today),
@@ -109,6 +164,9 @@ class _StartView extends ConsumerWidget {
                 final exercise = rec?.exercise;
                 if (exercise != null) notifier.addExercise(exercise);
               },
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+              ),
               child: const Text('Без плана'),
             ),
             const SizedBox(height: 8),

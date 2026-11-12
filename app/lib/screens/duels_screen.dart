@@ -339,16 +339,21 @@ class _FighterCard extends StatelessWidget {
       margin: EdgeInsets.zero,
       child: Padding(
         padding: const EdgeInsets.fromLTRB(8, 6, 12, 6),
+        // Карточки делят экран: соперник растёт вместе с карточкой, а не тонет в ней.
         child: Row(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            SizedBox(
-              width: 48,
-              child: AvatarView(
-                levels: fighter.levels,
-                look: fighter.lookOrStarter,
+            ConstrainedBox(
+              constraints: const BoxConstraints(minWidth: 48, maxWidth: 88),
+              child: AspectRatio(
+                aspectRatio: 0.5,
+                child: AvatarView(
+                  levels: fighter.levels,
+                  look: fighter.lookOrStarter,
+                ),
               ),
             ),
-            const SizedBox(width: 8),
+            const SizedBox(width: 12),
             Expanded(
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
@@ -366,6 +371,8 @@ class _FighterCard extends StatelessWidget {
                   const SizedBox(height: 2),
                   Text(
                     'сила ${fighter.power} · $_strength',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textMuted,
@@ -375,16 +382,21 @@ class _FighterCard extends StatelessWidget {
               ),
             ),
             switch (result) {
-              null => FilledButton(
-                onPressed: onFight,
-                style: FilledButton.styleFrom(
-                  minimumSize: const Size(88, 40),
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+              // Четыре соперника — четыре одинаковые кнопки: лайм был бы везде,
+              // поэтому кнопка спокойная, а лайм остаётся за победой.
+              null => Center(
+                child: OutlinedButton(
+                  onPressed: onFight,
+                  style: OutlinedButton.styleFrom(
+                    minimumSize: const Size(88, 40),
+                    backgroundColor: AppColors.raised,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                  ),
+                  child: const Text('В бой'),
                 ),
-                child: const Text('В бой'),
               ),
-              true => const _ResultTag('Победа', true),
-              false => const _ResultTag('Поражение', false),
+              true => const Center(child: _ResultTag('Победа', true)),
+              false => const Center(child: _ResultTag('Поражение', false)),
             },
           ],
         ),

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Нейтральная графитовая шкала. Цвет несут акцент, аватар и данные, а не фон.
 class AppColors {
@@ -38,29 +37,41 @@ class AppMotion {
 }
 
 /// Крупные цифры (сила, уровни, опыт) набираются Unbounded.
-TextStyle figureStyle({double size = 17, Color color = AppColors.textPrimary}) =>
-    GoogleFonts.unbounded(
-      fontSize: size,
-      fontWeight: FontWeight.w500,
-      color: color,
-      height: 1,
-      fontFeatures: const [FontFeature.tabularFigures()],
-    );
+TextStyle figureStyle({
+  double size = 17,
+  Color color = AppColors.textPrimary,
+}) => TextStyle(
+  fontFamily: 'Unbounded',
+  fontSize: size,
+  fontWeight: FontWeight.w500,
+  color: color,
+  height: 1,
+  fontFeatures: const [FontFeature.tabularFigures()],
+);
+
+const _inter = 'Inter';
 
 ThemeData buildTheme(Color accent) {
-  final scheme = ColorScheme.fromSeed(seedColor: accent, brightness: Brightness.dark).copyWith(
-    primary: accent,
-    onPrimary: AppColors.onAccent,
-    surface: AppColors.surface,
-    onSurface: AppColors.textPrimary,
-    surfaceContainerHighest: AppColors.raised,
-    outline: AppColors.hairline,
-    outlineVariant: AppColors.hairline,
-  );
-  final baseText = ThemeData(brightness: Brightness.dark).textTheme.apply(
-        bodyColor: AppColors.textPrimary,
-        displayColor: AppColors.textPrimary,
+  final scheme =
+      ColorScheme.fromSeed(
+        seedColor: accent,
+        brightness: Brightness.dark,
+      ).copyWith(
+        primary: accent,
+        onPrimary: AppColors.onAccent,
+        surface: AppColors.surface,
+        onSurface: AppColors.textPrimary,
+        surfaceContainerHighest: AppColors.raised,
+        outline: AppColors.hairline,
+        outlineVariant: AppColors.hairline,
       );
+  // Inter для всего текста: без fontFamily здесь textTheme остаётся на Roboto,
+  // а Inter получают только кнопки и вкладки — шрифты на экране смешиваются.
+  final baseText = ThemeData(brightness: Brightness.dark).textTheme.apply(
+    fontFamily: _inter,
+    bodyColor: AppColors.textPrimary,
+    displayColor: AppColors.textPrimary,
+  );
 
   return ThemeData(
     useMaterial3: true,
@@ -72,14 +83,18 @@ ThemeData buildTheme(Color accent) {
     ),
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.background,
-    fontFamily: GoogleFonts.inter().fontFamily,
+    fontFamily: _inter,
     textTheme: baseText,
     appBarTheme: AppBarTheme(
       backgroundColor: AppColors.background,
       elevation: 0,
       scrolledUnderElevation: 0,
       centerTitle: false,
-      titleTextStyle: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w500),
+      titleTextStyle: TextStyle(
+        fontFamily: _inter,
+        fontSize: 17,
+        fontWeight: FontWeight.w500,
+      ),
     ),
     cardTheme: CardThemeData(
       color: AppColors.surface,
@@ -93,7 +108,11 @@ ThemeData buildTheme(Color accent) {
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
         minimumSize: const Size.fromHeight(48),
-        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500),
+        textStyle: TextStyle(
+          fontFamily: _inter,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
@@ -102,7 +121,11 @@ ThemeData buildTheme(Color accent) {
         minimumSize: const Size.fromHeight(48),
         foregroundColor: AppColors.textPrimary,
         side: const BorderSide(color: AppColors.hairline),
-        textStyle: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w500),
+        textStyle: TextStyle(
+          fontFamily: _inter,
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+        ),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
@@ -119,7 +142,8 @@ ThemeData buildTheme(Color accent) {
       indicatorColor: Colors.transparent,
       height: 64,
       labelTextStyle: WidgetStateProperty.resolveWith(
-        (states) => GoogleFonts.inter(
+        (states) => TextStyle(
+          fontFamily: _inter,
           fontSize: 11,
           color: states.contains(WidgetState.selected)
               ? AppColors.textPrimary
@@ -135,6 +159,9 @@ ThemeData buildTheme(Color accent) {
         ),
       ),
     ),
-    dividerTheme: const DividerThemeData(color: AppColors.hairline, thickness: 1),
+    dividerTheme: const DividerThemeData(
+      color: AppColors.hairline,
+      thickness: 1,
+    ),
   );
 }

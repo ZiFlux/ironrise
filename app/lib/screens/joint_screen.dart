@@ -298,7 +298,7 @@ class _Explainer extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           'Вместе — на $_bonusPercent% сильнее',
-          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         Text(

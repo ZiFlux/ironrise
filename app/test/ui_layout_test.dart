@@ -9,7 +9,6 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:ironrise/avatar/avatar_look.dart';
 import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/duel.dart';
@@ -330,7 +329,6 @@ Future<void> _audit(
 }
 
 void main() {
-  setUpAll(() => GoogleFonts.config.allowRuntimeFetching = false);
   tearDown(() {
     debugPaintSizeEnabled = false;
   });

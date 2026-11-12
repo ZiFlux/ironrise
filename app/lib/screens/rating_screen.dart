@@ -170,31 +170,54 @@ class _LeagueView extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 8),
+                // Таблица — одна карточка со строками, а не стопка отдельных карточек.
                 if (table.length <= _fitRows)
-                  for (final (i, entry) in table.indexed)
-                    FlexibleMin(
-                      minHeight: MediaQuery.textScalerOf(context).scale(36),
-                      child: FadeSlideIn(
-                        index: i,
-                        child: _Row(
-                          place: i + 1,
-                          entry: entry,
-                          zone: _zoneOf(i + 1),
-                        ),
+                  Flexible(
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          for (final (i, entry) in table.indexed)
+                            Flexible(
+                              child: ConstrainedBox(
+                                constraints: BoxConstraints(
+                                  minHeight: MediaQuery.textScalerOf(context)
+                                      .scale(36),
+                                  maxHeight: MediaQuery.textScalerOf(context)
+                                      .scale(56),
+                                ),
+                                child: FadeSlideIn(
+                                  index: i,
+                                  child: _Row(
+                                    place: i + 1,
+                                    entry: entry,
+                                    zone: _zoneOf(i + 1),
+                                    first: i == 0,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
-                    )
+                    ),
+                  )
                 else
                   Expanded(
-                    child: ListView.builder(
-                      itemCount: table.length,
-                      itemBuilder: (_, i) => SizedBox(
-                        height: MediaQuery.textScalerOf(context).scale(48),
-                        child: FadeSlideIn(
-                          index: i,
-                          child: _Row(
-                            place: i + 1,
-                            entry: table[i],
-                            zone: _zoneOf(i + 1),
+                    child: Card(
+                      clipBehavior: Clip.antiAlias,
+                      child: ListView.builder(
+                        itemCount: table.length,
+                        itemBuilder: (_, i) => SizedBox(
+                          height: MediaQuery.textScalerOf(context).scale(48),
+                          child: FadeSlideIn(
+                            index: i,
+                            child: _Row(
+                              place: i + 1,
+                              entry: table[i],
+                              zone: _zoneOf(i + 1),
+                              first: i == 0,
+                            ),
                           ),
                         ),
                       ),
@@ -222,7 +245,11 @@ class _Row extends StatelessWidget {
     required this.place,
     required this.entry,
     this.zone = _Zone.none,
+    this.first = false,
   });
+
+  /// Первая строка — без разделителя сверху.
+  final bool first;
 
   final int place;
   final LeagueEntry entry;
@@ -233,14 +260,13 @@ class _Row extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final me = entry.isPlayer;
     return Container(
-      margin: const EdgeInsets.only(bottom: 4),
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: me ? accent.withValues(alpha: 0.12) : AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(
-          color: me ? accent.withValues(alpha: 0.5) : AppColors.hairline,
-        ),
+        // Своя строка — ступень поверхности, а не лаймовая заливка.
+        color: me ? AppColors.raised : null,
+        border: first
+            ? null
+            : const Border(top: BorderSide(color: AppColors.hairline)),
       ),
       child: Row(
         children: [
@@ -250,7 +276,7 @@ class _Row extends StatelessWidget {
               '$place',
               style: figureStyle(
                 size: 15,
-                color: place <= 3 ? accent : AppColors.textMuted,
+                color: place <= 3 ? AppColors.textPrimary : AppColors.textMuted,
               ),
             ),
           ),
@@ -261,7 +287,7 @@ class _Row extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               style: TextStyle(
                 fontSize: 15,
-                fontWeight: me ? FontWeight.w600 : FontWeight.w400,
+                fontWeight: me ? FontWeight.w500 : FontWeight.w400,
               ),
             ),
           ),
@@ -275,7 +301,13 @@ class _Row extends StatelessWidget {
             ),
             const SizedBox(width: 8),
           ],
-          Text('${entry.points}', style: figureStyle(size: 15)),
+          Text(
+            '${entry.points}',
+            style: figureStyle(
+              size: 15,
+              color: me ? accent : AppColors.textPrimary,
+            ),
+          ),
         ],
       ),
     );

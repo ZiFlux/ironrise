@@ -66,7 +66,7 @@ class PremiumScreen extends ConsumerWidget {
                   active ? 'Премиум активен' : 'IronRise Премиум',
                   style: const TextStyle(
                     fontSize: 22,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 const SizedBox(height: 6),

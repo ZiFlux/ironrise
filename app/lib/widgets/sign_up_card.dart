@@ -38,9 +38,9 @@ class SignUpCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: accent.withValues(alpha: 0.08),
+        color: AppColors.surface,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: accent.withValues(alpha: 0.5)),
+        border: Border.all(color: AppColors.hairline),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -52,7 +52,7 @@ class SignUpCard extends StatelessWidget {
               const Expanded(
                 child: Text(
                   'Создай аккаунт',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
                 ),
               ),
             ],
