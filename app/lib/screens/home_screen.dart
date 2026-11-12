@@ -21,6 +21,7 @@ import '../widgets/format.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
 import '../widgets/motion.dart';
+import '../widgets/shop_entry.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -134,6 +135,8 @@ class _Header extends ConsumerWidget {
                   children: [
                     Text(
                       formatToday(DateTime.now()),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -153,6 +156,7 @@ class _Header extends ConsumerWidget {
                 ),
               ),
             ),
+            const ShopButton(),
             if (signedIn)
               IconButton(
                 tooltip: unread > 0
@@ -208,8 +212,8 @@ class _Header extends ConsumerWidget {
                     fontWeight: FontWeight.w500,
                   ),
                 ),
-                semantics: 'Монеты ${hero.coins}, открыть гардероб',
-                onTap: () => context.go('/wardrobe'),
+                semantics: 'Монеты ${hero.coins}, открыть магазин',
+                onTap: () => context.go('/shop'),
               ),
             ),
           ],

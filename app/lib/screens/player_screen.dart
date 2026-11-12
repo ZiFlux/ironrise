@@ -15,6 +15,7 @@ import '../state/providers.dart';
 import '../state/records_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
+import '../widgets/shop_entry.dart';
 import 'devices_screen.dart';
 import '../widgets/sign_up_card.dart';
 
@@ -78,6 +79,8 @@ class PlayerScreen extends ConsumerWidget {
             const SignUpCard(),
             const SizedBox(height: 16),
           ],
+          const PremiumBanner(),
+          const SizedBox(height: 12),
           const _Menu(),
           const SizedBox(height: 24),
           _StrengthSection(hero: hero, records: records),

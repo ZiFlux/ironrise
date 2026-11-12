@@ -13,6 +13,7 @@ import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/motion.dart';
+import '../widgets/shop_entry.dart';
 
 /// Инвентарь и магазин (экран 11): примерка на аватаре.
 /// Инвентарь — только свои вещи; магазин — всё, что продаётся, с покупкой за монеты.
@@ -125,6 +126,11 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            if (shop)
+              const Padding(
+                padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                child: PremiumBanner(compact: true),
+              ),
             Expanded(
               child: AvatarView(
                 levels: hero.avatarLevels,
