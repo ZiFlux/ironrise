@@ -2,6 +2,7 @@ import 'dart:math';
 
 import '../avatar/avatar_look.dart';
 import 'body_part.dart';
+import 'duel_flavor.dart';
 import 'game_config.dart';
 import 'progression.dart';
 
@@ -31,7 +32,8 @@ class Fighter {
   int get power => Progression.power(levels, streakDays);
 }
 
-enum HitKind { miss, hit, crit }
+/// skip — боец пропустил ход из-за события (селфи у зеркала и т. п.).
+enum HitKind { miss, hit, crit, skip }
 
 class DuelHit {
   const DuelHit({
@@ -40,6 +42,10 @@ class DuelHit {
     required this.kind,
     required this.damage,
     required this.targetHpAfter,
+    this.eventId,
+    this.heal = 0,
+    this.selfHpAfter,
+    this.boosted = false,
   });
 
   /// true — бьёт игрок (атакующий), false — соперник.
@@ -48,6 +54,16 @@ class DuelHit {
   final HitKind kind;
   final int damage;
   final int targetHpAfter;
+
+  /// Случайное событие перед ударом (id из duel_flavor.dart) — или null.
+  final String? eventId;
+
+  /// Сколько здоровья восстановило событие; здоровье бьющего после этого.
+  final int heal;
+  final int? selfHpAfter;
+
+  /// Удар усилен событием (×1,5).
+  final bool boosted;
 }
 
 class DuelResult {
@@ -63,15 +79,23 @@ class DuelResult {
   final List<DuelHit> hits;
   final bool attackerWon;
 
-  int get attackerHpLeft =>
-      _lastHp(byAttacker: false, fallback: attacker.power);
-  int get defenderHpLeft => _lastHp(byAttacker: true, fallback: defender.power);
+  int get attackerHpLeft => hpAfter(hits.length).attacker;
+  int get defenderHpLeft => hpAfter(hits.length).defender;
 
-  int _lastHp({required bool byAttacker, required int fallback}) {
-    for (final h in hits.reversed) {
-      if (h.byAttacker == byAttacker) return h.targetHpAfter;
+  /// Здоровье обоих после первых [count] ходов: удары и лечение событиями.
+  ({int attacker, int defender}) hpAfter(int count) {
+    var a = attacker.power;
+    var d = defender.power;
+    for (final h in hits.take(count)) {
+      if (h.byAttacker) {
+        if (h.selfHpAfter != null) a = h.selfHpAfter!;
+        d = h.targetHpAfter;
+      } else {
+        if (h.selfHpAfter != null) d = h.selfHpAfter!;
+        a = h.targetHpAfter;
+      }
     }
-    return fallback;
+    return (attacker: a, defender: d);
   }
 }
 
@@ -92,29 +116,15 @@ class DuelSimulator {
     final hits = <DuelHit>[];
 
     for (var r = 0; r < rounds; r++) {
-      final a = _strike(attacker, rng);
-      hpD = max(0, hpD - a.$3);
-      hits.add(
-        DuelHit(
-          byAttacker: true,
-          part: a.$1,
-          kind: a.$2,
-          damage: a.$3,
-          targetHpAfter: hpD,
-        ),
-      );
+      final a = _turn(attacker, hpA, rng);
+      if (a.selfHpAfter != null) hpA = a.selfHpAfter!;
+      hpD = max(0, hpD - a.damage);
+      hits.add(a.toHit(byAttacker: true, targetHpAfter: hpD));
 
-      final d = _strike(defender, rng);
-      hpA = max(0, hpA - d.$3);
-      hits.add(
-        DuelHit(
-          byAttacker: false,
-          part: d.$1,
-          kind: d.$2,
-          damage: d.$3,
-          targetHpAfter: hpA,
-        ),
-      );
+      final d = _turn(defender, hpD, rng);
+      if (d.selfHpAfter != null) hpD = d.selfHpAfter!;
+      hpA = max(0, hpA - d.damage);
+      hits.add(d.toHit(byAttacker: false, targetHpAfter: hpA));
     }
 
     final shareA = hpA / max(1, attacker.power);
@@ -130,14 +140,47 @@ class DuelSimulator {
     );
   }
 
-  static (BodyPart, HitKind, int) _strike(Fighter f, Random rng) {
+  /// Ход: иногда перед ударом событие — лечение, усиленный удар или пропуск
+  /// (как на сервере, server/src/game/duel.ts).
+  static _Turn _turn(Fighter f, int hpSelf, Random rng) {
+    if (rng.nextDouble() >= GameConfig.duelEventChance) {
+      return _Turn.of(_strike(f, rng, 1));
+    }
+    final e = pickDuelEvent(rng);
+    switch (e.kind) {
+      case DuelEventKind.heal:
+        final share =
+            GameConfig.duelHealMin +
+            rng.nextDouble() *
+                (GameConfig.duelHealMax - GameConfig.duelHealMin);
+        final after = min<int>(f.power, hpSelf + max<int>(1, (f.power * share).round()));
+        return _Turn.of(
+          _strike(f, rng, 1),
+          eventId: e.id,
+          heal: after - hpSelf,
+          selfHpAfter: after,
+        );
+      case DuelEventKind.boost:
+        final s = _strike(f, rng, GameConfig.duelBoostMultiplier);
+        return _Turn.of(s, eventId: e.id, boosted: s.$2 != HitKind.miss);
+      case DuelEventKind.skip:
+        return _Turn.of((
+          _pickPart(f.levels, rng),
+          HitKind.skip,
+          0,
+        ), eventId: e.id);
+    }
+  }
+
+  static (BodyPart, HitKind, int) _strike(Fighter f, Random rng, double boost) {
     final part = _pickPart(f.levels, rng);
     final roll = rng.nextDouble();
     if (roll < GameConfig.duelMissChance) return (part, HitKind.miss, 0);
     final crit = roll > 1 - GameConfig.duelCritChance;
     final avg = Progression.averageLevel(f.levels);
     final spread = 0.85 + rng.nextDouble() * 0.3;
-    final base = f.power / 20 * (1 + f.levels[part]! / avg) / 2 * spread;
+    final base =
+        f.power / 20 * (1 + f.levels[part]! / avg) / 2 * spread * boost;
     final dmg = (base * (crit ? GameConfig.duelCritMultiplier : 1)).round();
     return (part, crit ? HitKind.crit : HitKind.hit, max(1, dmg));
   }
@@ -158,34 +201,21 @@ class DuelSimulator {
 class DuelBots {
   const DuelBots._();
 
-  static const names = [
-    'Кирпич',
-    'Штанга',
-    'Железный Лёха',
-    'Медведь',
-    'Пружина',
-    'Турник',
-    'Гиря',
-    'Рельс',
-    'Фитоняша',
-    'Атлант',
-    'Бицепс',
-    'Блин 20',
-  ];
-
   /// Соперники от слабого к сильному: ×0.8, ×0.95, ×1.05, ×1.2 от уровней игрока.
   static const _ratios = [0.8, 0.95, 1.05, 1.2];
 
   static List<Fighter> forDay(Fighter player, DateTime day) {
     final seed = day.year * 10000 + day.month * 100 + day.day;
     final rng = Random(seed);
-    final names = [...DuelBots.names]..shuffle(rng);
+    final female = [for (final _ in _ratios) rng.nextBool()];
+    final names = botNames(female, rng);
     return [
       for (final (i, ratio) in _ratios.indexed)
         Fighter(
           id: 'bot_${seed}_$i',
           name: names[i],
-          isFemale: rng.nextBool(),
+          isFemale: female[i],
+          look: randomBotLook(female: female[i], rng: rng),
           streakDays: player.streakDays,
           levels: _scaledLevels(
             player.levels,
@@ -257,4 +287,38 @@ class DuelAdvice {
     }
     return '+1 уровень «${weakest.label}» даст +${next - now} силы';
   }
+}
+
+/// Результат хода до записи в лог.
+class _Turn {
+  _Turn.of(
+    (BodyPart, HitKind, int) strike, {
+    this.eventId,
+    this.heal = 0,
+    this.selfHpAfter,
+    this.boosted = false,
+  }) : part = strike.$1,
+       kind = strike.$2,
+       damage = strike.$3;
+
+  final BodyPart part;
+  final HitKind kind;
+  final int damage;
+  final String? eventId;
+  final int heal;
+  final int? selfHpAfter;
+  final bool boosted;
+
+  DuelHit toHit({required bool byAttacker, required int targetHpAfter}) =>
+      DuelHit(
+        byAttacker: byAttacker,
+        part: part,
+        kind: kind,
+        damage: damage,
+        targetHpAfter: targetHpAfter,
+        eventId: eventId,
+        heal: heal,
+        selfHpAfter: selfHpAfter,
+        boosted: boosted,
+      );
 }

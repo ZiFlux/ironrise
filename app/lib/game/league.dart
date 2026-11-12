@@ -3,7 +3,7 @@ import 'dart:ui';
 import 'dart:math';
 
 import 'calendar.dart';
-import 'duel.dart';
+import 'duel_flavor.dart';
 import 'game_config.dart';
 
 class LeagueEntry {
@@ -38,7 +38,10 @@ class WeeklyLeague {
     final monday = mondayOf(today);
     final weekSeed = monday.year * 10000 + monday.month * 100 + monday.day;
     final daysPassed = today.weekday; // Пн = 1 … Вс = 7
-    final names = [...DuelBots.names]..shuffle(Random(weekSeed));
+    final nameRng = Random(weekSeed);
+    final names = botNames([
+      for (var i = 0; i < botsInLeague; i++) nameRng.nextBool(),
+    ], nameRng);
     final entries = [
       LeagueEntry(name: playerName, points: playerPoints, isPlayer: true),
       for (var i = 0; i < botsInLeague; i++)

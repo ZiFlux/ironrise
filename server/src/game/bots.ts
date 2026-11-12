@@ -3,29 +3,19 @@ import { botActivityBase } from './league';
 import { GameConfig as C } from './config';
 import { FighterSnapshot, seededRandom } from './duel';
 import { averageLevel } from './progression';
+import { botNames } from './duel-flavor';
+import { randomBotLook } from './looks';
 import { daysBetween } from './streak';
-
-export const BOT_NAMES = [
-  'Кирпич', 'Штанга', 'Железный Лёха', 'Медведь', 'Пружина', 'Турник',
-  'Гиря', 'Рельс', 'Фитоняша', 'Атлант', 'Бицепс', 'Блин 20',
-] as const;
 
 /** Соперники от слабого к сильному относительно уровней игрока. */
 const RATIOS = [0.8, 0.95, 1.05, 1.2];
-
-const shuffled = <T>(xs: readonly T[], rnd: () => number): T[] => {
-  const a = [...xs];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(rnd() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-};
 
 const daySeed = (day: string): number => Number(day.replaceAll('-', ''));
 
 export interface Bot extends FighterSnapshot {
   isFemale: boolean;
+  /** Случайный образ из вещей магазина (формат AvatarLook.toJson). */
+  appearance: Record<string, unknown>;
 }
 
 /**
@@ -35,11 +25,12 @@ export interface Bot extends FighterSnapshot {
 export const botsForDay = (player: { levels: PartMap<number>; streakDays: number }, day: string): Bot[] => {
   const seed = daySeed(day);
   const rnd = seededRandom(seed);
-  const names = shuffled(BOT_NAMES, rnd);
+  const female = RATIOS.map(() => rnd() < 0.5);
+  const names = botNames(female, rnd);
   return RATIOS.map((ratio, i) => {
     const levels = { ...player.levels };
     for (const p of BODY_PARTS) levels[p] = Math.max(1, Math.round(player.levels[p] * ratio + rnd() - 0.5));
-    const isFemale = rnd() < 0.5;
+    const isFemale = female[i];
     if (i % 2 === 1) {
       const part = BODY_PARTS[Math.floor(rnd() * BODY_PARTS.length)];
       const weak = Math.floor(averageLevel(levels) - C.laggingThreshold - 1);
@@ -50,7 +41,14 @@ export const botsForDay = (player: { levels: PartMap<number>; streakDays: number
         for (let k = 0; k < lost; k++) levels[others[k % others.length]] += 1;
       }
     }
-    return { id: `bot_${seed}_${i}`, name: names[i], isFemale, levels, streakDays: player.streakDays };
+    return {
+      id: `bot_${seed}_${i}`,
+      name: names[i],
+      isFemale,
+      appearance: randomBotLook(isFemale, rnd),
+      levels,
+      streakDays: player.streakDays,
+    };
   });
 };
 
@@ -82,7 +80,8 @@ export const weeklyLeague = (args: {
   const monday = mondayOf(args.today);
   const weekSeed = daySeed(monday);
   const daysPassed = daysBetween(monday, args.today) + 1;
-  const names = shuffled(BOT_NAMES, seededRandom(weekSeed));
+  const nameRnd = seededRandom(weekSeed);
+  const names = botNames(Array.from({ length: BOTS_IN_LEAGUE }, () => nameRnd() < 0.5), nameRnd);
   const entries: LeagueEntry[] = [{ name: args.playerName, points: args.playerPoints, isPlayer: true }];
   for (let b = 0; b < BOTS_IN_LEAGUE; b++) {
     const rnd = seededRandom(weekSeed * 31 + b);

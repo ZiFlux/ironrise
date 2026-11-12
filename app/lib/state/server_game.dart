@@ -43,6 +43,10 @@ DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
         kind: HitKind.values.byName(h['kind'] as String),
         damage: (h['damage'] as num).toInt(),
         targetHpAfter: (h['targetHpAfter'] as num).toInt(),
+        eventId: (h['event'] as Map?)?['id'] as String?,
+        heal: ((h['event'] as Map?)?['heal'] as num?)?.toInt() ?? 0,
+        selfHpAfter: ((h['event'] as Map?)?['selfHpAfter'] as num?)?.toInt(),
+        boosted: h['boosted'] == true,
       ),
   ],
 );

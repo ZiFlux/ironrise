@@ -328,3 +328,54 @@ describe('смена графика', () => {
     expect(nextScheduleChangeAt(new Date('2026-11-05T11:00:00Z'), now)).toBeNull();
   });
 });
+
+import { DUEL_EVENTS, botNames } from '../src/game/duel-flavor';
+
+describe('колорит дуэлей', () => {
+  const fighterOf = (id: string, level: number): FighterSnapshot => ({
+    id,
+    name: id,
+    levels: partMap(() => level),
+    streakDays: 0,
+  });
+
+  it('события случаются примерно в 12% ходов, все трёх видов', () => {
+    let turns = 0;
+    const seen = new Map<string, number>();
+    for (let s = 0; s < 3000; s++) {
+      for (const h of simulateDuel(fighterOf('a', 8), fighterOf('b', 8), s).log) {
+        turns++;
+        if (h.event) seen.set(h.event.id, (seen.get(h.event.id) ?? 0) + 1);
+      }
+    }
+    const events = [...seen.values()].reduce((a, b) => a + b, 0);
+    expect(events / turns).toBeGreaterThan(0.1);
+    expect(events / turns).toBeLessThan(0.14);
+    expect(new Set(DUEL_EVENTS.filter((e) => seen.has(e.id)).map((e) => e.kind))).toEqual(new Set(['heal', 'boost', 'skip']));
+  });
+
+  it('лечение не поднимает здоровье выше максимума, пропуск хода не наносит урон', () => {
+    for (let s = 0; s < 2000; s++) {
+      const r = simulateDuel(fighterOf('a', 6), fighterOf('b', 6), s);
+      for (const h of r.log) {
+        if (h.kind === 'skip') expect(h.damage).toBe(0);
+        if (h.event?.selfHpAfter !== undefined) {
+          expect(h.event.selfHpAfter).toBeLessThanOrEqual(h.byAttacker ? r.powerA : r.powerD);
+        }
+      }
+    }
+  });
+
+  it('у ботов разные имена с согласованным родом и образ из вещей магазина', () => {
+    const bots = botsForDay({ levels: partMap(() => 5), streakDays: 3 }, '2026-11-12');
+    expect(new Set(bots.map((b) => b.name)).size).toBe(4);
+    for (const b of bots) {
+      expect(wornItems(b.appearance)).not.toBeNull();
+      expect(b.appearance.sex).toBe(b.isFemale ? 'female' : 'male');
+      if (b.isFemale) expect(b.name).not.toMatch(/ый |ой /);
+    }
+    const rnd = seededRandom(1);
+    const names = botNames(Array(40).fill(false), rnd);
+    expect(new Set(names).size).toBe(40);
+  });
+});

@@ -62,3 +62,27 @@ export const unpaidItems = (look: Record<string, unknown>, owned: ReadonlySet<st
   if (worn === null) return null;
   return [...new Set(worn)].filter((id) => (SHOP_PRICES[id] ?? 0) > 0 && !owned.has(id));
 };
+
+const pickOf = <T>(xs: readonly T[], rnd: () => number): T => xs[Math.floor(rnd() * xs.length)];
+const numKeys = (t: Record<number, string>) => Object.keys(t).map(Number);
+
+/**
+ * Случайный образ бота — только из вещей магазина, как будто он их купил.
+ * Формат совпадает с AvatarLook.toJson в приложении.
+ */
+export const randomBotLook = (isFemale: boolean, rnd: () => number): Record<string, unknown> => {
+  const accessories = Object.keys(ACCESSORY).filter(() => rnd() < 0.3);
+  return {
+    sex: isFemale ? 'female' : 'male',
+    skin: pickOf(Object.keys(SKIN), rnd),
+    hair: pickOf(isFemale ? ['bob', 'ponytail', 'bun', 'long'] : ['short', 'buzz', 'curly', 'manBun'], rnd),
+    hairColor: pickOf(numKeys(HAIR_COLOR), rnd),
+    top: pickOf(isFemale ? ['bra', 'tank', 'tee'] : ['none', 'tank', 'tee'], rnd),
+    topColor: pickOf(numKeys(TOP_COLOR), rnd),
+    bottom: pickOf(Object.keys(BOTTOM), rnd),
+    bottomColor: pickOf(numKeys(BOTTOM_COLOR), rnd),
+    sneakersColor: rnd() < 0.2 ? null : pickOf(numKeys(SNEAKERS), rnd),
+    accessories,
+    accessoryColor: 0xffc6ff3d,
+  };
+};

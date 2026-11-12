@@ -64,6 +64,12 @@ class GameConfig {
   static const double duelCritChance = 0.2;
   static const double duelCritMultiplier = 2;
 
+  /// Шанс события перед ударом, усиление удара и лечение (доля здоровья) — как на сервере.
+  static const double duelEventChance = 0.12;
+  static const double duelBoostMultiplier = 1.5;
+  static const double duelHealMin = 0.05;
+  static const double duelHealMax = 0.09;
+
   /// Монеты за дуэль с ботом.
   static const int duelWinCoins = 15;
   static const int duelLossCoins = 3;

@@ -38,6 +38,13 @@ export const GameConfig = {
   duelMissChance: 0.2,
   duelCritChance: 0.2,
   duelCritMultiplier: 2,
+  /** Шанс случайного события перед ударом (креатин, селфи у зеркала…). */
+  duelEventChance: 0.12,
+  /** Удар под предтреном и т. п. */
+  duelBoostMultiplier: 1.5,
+  /** Лечение событием — доля от полного здоровья. */
+  duelHealMin: 0.05,
+  duelHealMax: 0.09,
   duelWinCoins: 15,
   duelLossCoins: 3,
 

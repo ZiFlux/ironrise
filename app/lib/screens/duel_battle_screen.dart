@@ -9,6 +9,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/duel.dart';
+import '../game/duel_flavor.dart';
 import '../game/game_config.dart';
 import '../state/duel_state.dart';
 import '../state/providers.dart';
@@ -73,12 +74,9 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
     final hits = duel.hits.take(_shown).toList();
     final last = hits.isEmpty ? null : hits.last;
     final done = _shown >= duel.hits.length;
-    int hpOf({required bool attacker}) {
-      for (final h in hits.reversed) {
-        if (h.byAttacker != attacker) return h.targetHpAfter;
-      }
-      return attacker ? duel.attacker.power : duel.defender.power;
-    }
+    // Здоровье с учётом лечения событиями (креатин и т. п.).
+    final hp = duel.hpAfter(_shown);
+    int hpOf({required bool attacker}) => attacker ? hp.attacker : hp.defender;
 
     return Scaffold(
       appBar: AppBar(
@@ -124,7 +122,8 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                 ),
               ),
               SizedBox(
-                height: 44,
+                // Событие и удар — две строки; с крупным шрифтом выше.
+                height: MediaQuery.textScalerOf(context).scale(64),
                 child: Center(
                   child: last == null
                       ? const Text(
@@ -259,48 +258,98 @@ class _HitLine extends StatelessWidget {
   final DuelHit hit;
   final DuelResult duel;
 
+  static const _healColor = Color(0xFF5BD68A);
+
   @override
   Widget build(BuildContext context) {
-    final who = hit.byAttacker ? duel.attacker.name : duel.defender.name;
+    final fighter = hit.byAttacker ? duel.attacker : duel.defender;
+    final who = fighter.name;
     final accent = Theme.of(context).colorScheme.primary;
+    final part = hit.part.label.toLowerCase();
+    final boost = hit.boosted ? ' ×1,5' : '';
     final (text, color) = switch (hit.kind) {
       HitKind.miss => ('$who промахивается', AppColors.textMuted),
+      HitKind.skip => ('$who пропускает ход', AppColors.textMuted),
       HitKind.hit => (
-        '$who: ${hit.part.label.toLowerCase()}, −${hit.damage}',
+        '$who: $part, −${hit.damage}$boost',
         AppColors.textPrimary,
       ),
-      HitKind.crit => (
-        'Крит! $who: ${hit.part.label.toLowerCase()}, −${hit.damage}',
-        accent,
-      ),
+      HitKind.crit => ('Крит! $who: $part, −${hit.damage}$boost', accent),
     };
-    return Row(
+    final event = hit.eventId == null ? null : duelEventById(hit.eventId!);
+
+    return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Container(
-          width: 8,
-          height: 8,
-          decoration: BoxDecoration(
-            color: hit.part.color,
-            shape: BoxShape.circle,
+        if (event != null)
+          _Line(
+            icon: switch (event.kind) {
+              DuelEventKind.heal => LucideIcons.heartPlus,
+              DuelEventKind.boost => LucideIcons.zap,
+              DuelEventKind.skip => LucideIcons.hourglass,
+            },
+            color: switch (event.kind) {
+              DuelEventKind.heal => _healColor,
+              DuelEventKind.boost => accent,
+              DuelEventKind.skip => AppColors.textSecondary,
+            },
+            text:
+                event.phrase(who, female: fighter.isFemale) +
+                (event.kind == DuelEventKind.heal && hit.heal > 0
+                    ? ', +${hit.heal}'
+                    : ''),
+            size: 13,
           ),
-        ),
-        const SizedBox(width: 8),
-        Flexible(
-          child: Text(
-            text,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: TextStyle(
-              fontSize: 15,
-              color: color,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-        ),
+        if (event != null) const SizedBox(height: 4),
+        _Line(dot: hit.part.color, text: text, color: color, size: 15),
       ],
     );
   }
+}
+
+/// Строка под аватарами: иконка события или цветная точка части тела и текст.
+class _Line extends StatelessWidget {
+  const _Line({
+    required this.text,
+    required this.color,
+    required this.size,
+    this.icon,
+    this.dot,
+  });
+
+  final String text;
+  final Color color;
+  final double size;
+  final IconData? icon;
+  final Color? dot;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      if (icon != null)
+        Icon(icon, size: 14, color: color)
+      else
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(color: dot, shape: BoxShape.circle),
+        ),
+      const SizedBox(width: 8),
+      Flexible(
+        child: Text(
+          text,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            fontSize: size,
+            color: color,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ),
+    ],
+  );
 }
 
 class _ResultPanel extends StatelessWidget {
