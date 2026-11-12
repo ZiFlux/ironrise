@@ -1,0 +1,5 @@
+# HTTPS для API: сертификат Let's Encrypt выпускается и продлевается сам.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy api:3000
+}

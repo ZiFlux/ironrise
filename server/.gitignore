@@ -6,3 +6,5 @@ coverage/
 src/generated/
 secrets/
 .env.beta
+.env.prod
+*.tar.gz

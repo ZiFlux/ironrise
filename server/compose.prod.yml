@@ -1,0 +1,57 @@
+# Продакшн-сервер беты на VPS: база + API + Caddy (HTTPS с автоматическим сертификатом).
+# Образ API собирается на компьютере разработчика и привозится готовым
+# (deploy/push.ps1): на VPS с 1 ГБ памяти сборка может не поместиться.
+# Запуск на сервере (в /opt/ironrise):  docker compose -f compose.prod.yml --env-file .env.prod up -d
+services:
+  db:
+    image: postgres:17.6
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ironrise
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set DB_PASSWORD in .env.prod}
+      POSTGRES_DB: ironrise
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ironrise"]
+      interval: 5s
+      retries: 10
+    logging: &logs
+      driver: json-file
+      options: { max-size: "10m", max-file: "3" }
+
+  api:
+    image: ironrise-api:prod
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://ironrise:${DB_PASSWORD}@db:5432/ironrise
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.prod}
+      PORT: "3000"
+      FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
+      # Потолок кучи Node: под нагрузкой API занимает ~180 МБ, на VPS с 0,6–1 ГБ
+      # памяти не даём ему разрастаться и вытеснять базу в подкачку.
+      NODE_OPTIONS: --max-old-space-size=256
+    volumes:
+      - ./secrets:/app/secrets:ro
+    logging: *logs
+
+  caddy:
+    image: caddy:2.10
+    restart: unless-stopped
+    depends_on: [api]
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:?set DOMAIN in .env.prod}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    logging: *logs
+
+volumes:
+  pgdata:
+  caddy_data:
