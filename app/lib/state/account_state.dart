@@ -8,9 +8,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/anti_fraud.dart';
 import '../game/cardio.dart';
 import '../game/workout.dart';
+import '../legal/privacy_policy.dart';
 import '../net/api_client.dart';
 import '../net/push.dart';
 import 'health_state.dart';
+import 'consent_state.dart';
 import 'local_data.dart';
 import 'providers.dart';
 import 'server_game.dart';
@@ -255,6 +257,10 @@ class AccountNotifier extends Notifier<AccountState> {
       if (hero.body.age != null) 'age': hero.body.age,
       if (hero.body.restingHeartRate != null)
         'restingHr': hero.body.restingHeartRate,
+      if (ref.read(healthConsentProvider).asked) ...{
+        'healthConsent': ref.read(healthConsentProvider).allowsPulse,
+        'policyVersion': privacyPolicyUpdated,
+      },
     };
     await _signedIn(
       email,
@@ -276,6 +282,7 @@ class AccountNotifier extends Notifier<AccountState> {
     await _api.tokens.save(tokens);
     await ref.read(prefsProvider).setString(_emailKey, email.toLowerCase());
     state = state.copyWith(email: email.toLowerCase(), clearError: true);
+    await ref.read(healthConsentProvider.notifier).pushToServer();
     await sync();
     await setupPush(ref, _api);
   }
@@ -321,6 +328,8 @@ class AccountNotifier extends Notifier<AccountState> {
   Future<Map<String, dynamic>?> _withWatchPulse(
     Map<String, dynamic> body,
   ) async {
+    // Без согласия на данные о здоровье пульс не отправляем, даже записанный.
+    if (!ref.read(healthConsentProvider).allowsPulse) return {...body, 'pulse': []};
     final health = ref.read(healthProvider);
     if ((body['pulse'] as List).isNotEmpty || !health.connected) return body;
     final from = DateTime.parse(body['startedAt'] as String);

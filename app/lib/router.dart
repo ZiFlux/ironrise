@@ -24,6 +24,7 @@ import 'screens/schedule_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tip_screen.dart';
 import 'screens/start_look_screen.dart';
+import 'widgets/consent_prompt.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
@@ -53,8 +54,9 @@ final routerProvider = Provider<GoRouter>((ref) {
             routes: [
               GoRoute(
                 path: '/',
-                builder: (_, _) =>
-                    const ScreenHint(id: 'home', child: HomeScreen()),
+                builder: (_, _) => const ConsentPrompt(
+                  child: ScreenHint(id: 'home', child: HomeScreen()),
+                ),
                 routes: [
                   GoRoute(
                     path: 'wardrobe',

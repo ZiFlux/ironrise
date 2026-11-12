@@ -9,6 +9,7 @@ import { EconomyService } from './economy/economy.service';
 import { HeroService } from './hero/hero.service';
 import { JointController } from './joint/joint.controller';
 import { JointService } from './joint/joint.service';
+import { LegalController } from './legal/legal.controller';
 import { LogRetention, LogsController } from './logs/logs.controller';
 import { PrismaService } from './prisma.service';
 import { NotificationsController } from './push/notifications.controller';
@@ -40,7 +41,7 @@ const jwtSecret = () => {
     }),
   ],
   controllers: [
-    LogsController,
+    LogsController, LegalController,
     HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController, NotificationsController, JointController,
     // Только на сервере разработки: выдача монет и прочие инструменты.
     ...(devToolsEnabled ? [DevController] : []),

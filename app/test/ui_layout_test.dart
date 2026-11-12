@@ -245,7 +245,13 @@ Future<void> _audit(
 
         // Онбординг открывается только у нового игрока — без героя.
         SharedPreferences.setMockInitialValues(
-          path == '/onboarding' ? {} : {'hero_v1': _hero().encode()},
+          path == '/onboarding'
+              ? {}
+              : {
+                  'hero_v1': _hero().encode(),
+                  // Без ответа на главной всплывает вопрос о пульсе — он проверяется отдельно.
+                  'health_consent_v1': '{"granted":true}',
+                },
         );
         final prefs = await SharedPreferences.getInstance();
         final container = ProviderContainer(
@@ -397,7 +403,10 @@ void main() {
     tester.view.physicalSize = const Size(360, 780);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
-    SharedPreferences.setMockInitialValues({'hero_v1': _hero().encode()});
+    SharedPreferences.setMockInitialValues({
+      'hero_v1': _hero().encode(),
+      'health_consent_v1': '{"granted":true}',
+    });
     final prefs = await SharedPreferences.getInstance();
     final container = ProviderContainer(
       overrides: [prefsProvider.overrideWithValue(prefs)],

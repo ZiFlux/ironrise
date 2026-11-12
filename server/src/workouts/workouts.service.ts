@@ -67,12 +67,14 @@ export class WorkoutsService {
   ) {}
 
   submitStrength(userId: string, input: z.infer<typeof StrengthSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'strength', input, input.planCompleted ?? false, async (xpBefore, restingHr, _age, isTester) => {
+    // В payload — только подходы: пульс хранится отдельно и лишь при согласии.
+    const payload = { entries: input.entries, planCompleted: input.planCompleted };
+    return this.submit(userId, input, 'strength', payload, input.planCompleted ?? false, async (xpBefore, restingHr, _age, isTester, pulse) => {
       const validity = strengthValidity({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
         totalSets: input.entries.reduce((n, e) => n + e.sets.length, 0),
-        pulse: input.pulse,
+        pulse,
         restingHeartRate: restingHr ?? undefined,
         unverified: unverifiedValidityFor(isTester),
       });
@@ -86,11 +88,11 @@ export class WorkoutsService {
   }
 
   submitCardio(userId: string, input: z.infer<typeof CardioSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age, isTester) =>
+    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age, isTester, pulse) =>
       scoreCardio({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
-        pulse: input.pulse,
+        pulse,
         xpBefore,
         restingHeartRate: restingHr ?? undefined,
         maxHeartRate: age ? 220 - age : undefined,
@@ -114,6 +116,8 @@ export class WorkoutsService {
       restingHr: number | null,
       age: number | null,
       isTester: boolean,
+      /** Пульс, только если пользователь дал согласие на данные о здоровье. */
+      pulse: PulseSample[],
     ) => Promise<WorkoutSummary | CardioSummary>,
   ): Promise<WorkoutResult> {
     const { startedAt, finishedAt } = base;
@@ -136,6 +140,8 @@ export class WorkoutsService {
       }
 
       const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
+      // Без согласия на данные о здоровье пульс не учитывается и не сохраняется (152-ФЗ, ст. 10).
+      const pulse = profile.healthConsentAt ? base.pulse : [];
       const xpBefore = await this.hero.xpOf(userId, tx);
       const day = localDay(finishedAt, profile.timezone);
       const earnedToday = await tx.xpEvent.aggregate({
@@ -146,7 +152,7 @@ export class WorkoutsService {
       const summary = withPremiumCoins(
         withPlanBonus(
           applyDailyCap(
-            withJointBonus(await score(xpBefore, profile.restingHr, profile.age, profile.isTester), xpBefore, partners),
+            withJointBonus(await score(xpBefore, profile.restingHr, profile.age, profile.isTester, pulse), xpBefore, partners),
             xpBefore,
             earnedToday._sum.xp ?? 0,
           ),
@@ -165,7 +171,7 @@ export class WorkoutsService {
           day,
           validity: summary.validity,
           payload: { ...payload, summary } as unknown as Prisma.InputJsonValue,
-          pulse: base.pulse.map((s) => ({ at: s.at.toISOString(), bpm: s.bpm })),
+          pulse: pulse.map((s) => ({ at: s.at.toISOString(), bpm: s.bpm })),
         },
       });
 

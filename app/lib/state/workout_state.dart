@@ -9,6 +9,7 @@ import '../game/game_config.dart';
 import '../game/program.dart';
 import '../game/workout.dart';
 import 'account_state.dart';
+import 'consent_state.dart';
 import 'health_state.dart';
 import 'heart_rate_state.dart';
 import 'program_state.dart';
@@ -101,7 +102,10 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
         .read(heartRateProvider.notifier)
         .samplesBetween(session.startedAt, finishedAt);
     // Пульс не транслировался по Bluetooth — берём записанный часами (Health Connect).
-    final pulse = live.isNotEmpty
+    // Без согласия на данные о здоровье пульс не используется вовсе.
+    final pulse = !ref.read(healthConsentProvider).allowsPulse
+        ? live.take(0).toList()
+        : live.isNotEmpty
         ? live
         : await ref
               .read(healthProvider.notifier)

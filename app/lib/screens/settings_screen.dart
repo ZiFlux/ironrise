@@ -20,6 +20,7 @@ import '../state/settings.dart';
 import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/consent_prompt.dart';
 import '../widgets/screen_hint.dart';
 import 'devices_screen.dart';
 import '../widgets/format.dart';
@@ -584,6 +585,8 @@ class _DataSection extends ConsumerWidget {
     return Card(
       child: Column(
         children: [
+          const HealthConsentTile(),
+          const Divider(height: 1),
           ListTile(
             onTap: () => context.push('/privacy'),
             leading: const Icon(

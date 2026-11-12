@@ -10,7 +10,7 @@ async function bootstrap() {
     // файла нет — используем окружение как есть
   }
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('v1', { exclude: ['health'] });
+  app.setGlobalPrefix('v1', { exclude: ['health', 'privacy'] });
   const port = Number(process.env.PORT ?? 3000);
   await app.listen(port);
   console.log(`IronRise API listening on http://localhost:${port}`);

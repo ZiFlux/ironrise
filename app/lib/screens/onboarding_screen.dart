@@ -11,7 +11,9 @@ import '../game/training_format.dart';
 import '../state/hero.dart';
 import '../state/program_state.dart';
 import '../state/providers.dart';
+import '../state/consent_state.dart';
 import '../theme.dart';
+import '../widgets/consent_prompt.dart';
 import '../widgets/schedule_picker.dart';
 import '../widgets/logo_mark.dart';
 
@@ -29,6 +31,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   static const _stepCount = 5;
 
   bool _isAdult = false;
+
+  /// Согласие на пульс необязательно: без него тренировки идут без проверки.
+  bool _pulseConsent = false;
   final _nickname = TextEditingController();
   AvatarSex _avatarSex = AvatarSex.male;
   Goal? _goal;
@@ -86,6 +91,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       avatarSex: _avatarSex,
     );
     await ref.read(programProvider.notifier).setEquipment(_equipment);
+    await ref.read(healthConsentProvider.notifier).set(_pulseConsent);
     await ref.read(heroProvider.notifier).save(hero);
     if (mounted) context.go('/');
   }
@@ -193,9 +199,20 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         controlAffinity: ListTileControlAffinity.leading,
         contentPadding: EdgeInsets.zero,
       ),
+      CheckboxListTile(
+        value: _pulseConsent,
+        onChanged: (v) => setState(() => _pulseConsent = v ?? false),
+        title: const Text(healthConsentTitle),
+        subtitle: const Text(
+          'Необязательно. $healthConsentDetails',
+          style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        controlAffinity: ListTileControlAffinity.leading,
+        contentPadding: EdgeInsets.zero,
+      ),
       const SizedBox(height: 8),
       const Text(
-        'Продолжая, вы соглашаетесь с обработкой данных о тренировках и пульсе '
+        'Продолжая, вы соглашаетесь с обработкой данных о тренировках '
         'по политике конфиденциальности',
         style: TextStyle(fontSize: 13, color: AppColors.textMuted),
       ),

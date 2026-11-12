@@ -75,6 +75,10 @@ model Profile {
   startLockedAt    DateTime?
   /// До этой даты образ собирается бесплатно (src/game/start-look.ts).
   startLookUntil   DateTime  @default(dbgenerated("(now() + '14 days'::interval)"))
+  /// Согласие на обработку данных о пульсе (152-ФЗ, ст. 10); null — нет согласия, пульс не принимается.
+  healthConsentAt  DateTime?
+  /// Версия политики (дата), на которую дано или отозвано согласие.
+  consentPolicy    String?
   /// Очки отдельных мышц (src/game/muscles.ts); null — ещё не посчитаны по истории тренировок.
   musclePoints     Json?
   age              Int?

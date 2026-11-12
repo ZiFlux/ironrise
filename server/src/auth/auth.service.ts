@@ -28,6 +28,9 @@ export const RegisterSchema = z.object({
   timezone: z.string().refine(isValidTimeZone, 'unknown time zone').default('UTC'),
   age: z.number().int().min(18).max(90).optional(),
   restingHr: z.number().int().min(35).max(110).optional(),
+  /** Согласие на данные о пульсе, данное в приложении до регистрации. */
+  healthConsent: z.boolean().optional(),
+  policyVersion: z.string().min(1).max(40).optional(),
 });
 
 export const DeleteAccountSchema = z.object({
@@ -63,6 +66,7 @@ export class AuthService {
   async register(input: z.infer<typeof RegisterSchema>): Promise<Tokens> {
     const { email, password, nickname, goal, trainingFormat, scheduleDays, appearance, timezone, age, restingHr } =
       input;
+    const consentAt = input.healthConsent ? new Date() : null;
     // Новый герой — только в бесплатных вещах.
     assertLookOwned(appearance, new Set());
     try {
@@ -81,6 +85,8 @@ export class AuthService {
               timezone,
               age,
               restingHr,
+              healthConsentAt: consentAt,
+              consentPolicy: input.policyVersion,
             },
           },
           avatarParts: { create: BODY_PARTS.map((part) => ({ part })) },

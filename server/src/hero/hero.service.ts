@@ -40,6 +40,8 @@ export interface HeroState {
   startLookUntil: Date | null;
   /** Очки отдельных мышц: как опыт распределён внутри частей тела. */
   muscles: MusclePoints;
+  /** Дано ли согласие на данные о пульсе: без него пульс не принимается. */
+  healthConsent: boolean;
 }
 
 @Injectable()
@@ -94,6 +96,7 @@ export class HeroService {
       premium: premiumStatus(profile, now),
       startAppearance: profile.startAppearance,
       startLookUntil: profile.startLockedAt ? null : profile.startLookUntil,
+      healthConsent: profile.healthConsentAt !== null,
       muscles: (profile.musclePoints as MusclePoints | null) ?? (await this.backfillMuscles(userId, db)),
     };
   }
