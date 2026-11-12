@@ -199,6 +199,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
         () => _error = switch (e.status) {
           0 => 'Сервер недоступен. Проверьте сеть',
           401 => 'Неверный e-mail или пароль',
+          403 when e.isBanned => 'Аккаунт заблокирован: ${e.banReason}',
           409 => 'Такой e-mail или ник уже заняты',
           400 => 'Сервер не принял данные: $e',
           _ => e.message,
@@ -283,10 +284,11 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
             ],
           ),
         ),
-        if (_error != null) ...[
+        // Ошибка формы или причина, по которой сессия закрылась (например, блокировка).
+        if ((_error ?? widget.account.error) case final error?) ...[
           const SizedBox(height: 12),
           Text(
-            _error!,
+            error,
             style: const TextStyle(color: Color(0xFFE5484D), fontSize: 13),
           ),
         ],

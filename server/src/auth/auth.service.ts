@@ -1,5 +1,5 @@
 import { GameConfig } from '../game/config';
-import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
 import { isValidTimeZone } from '../common/day';
@@ -40,6 +40,13 @@ export const LoginSchema = z.object({
 });
 
 export const RefreshSchema = z.object({ refreshToken: z.string().min(10) });
+
+/** Заблокированному — 403 с причиной: приложение покажет её и выйдет из аккаунта. */
+const assertNotBanned = (user: { bannedAt: Date | null; banReason: string | null }) => {
+  if (user.bannedAt) {
+    throw new ForbiddenException({ message: `Account banned: ${user.banReason ?? ''}`, banned: true, reason: user.banReason });
+  }
+};
 
 export interface Tokens {
   accessToken: string;
@@ -95,6 +102,7 @@ export class AuthService {
     if (!user || !(await verifyPassword(input.password, user.passwordHash))) {
       throw new UnauthorizedException('Wrong email or password');
     }
+    assertNotBanned(user);
     return this.issue(user.id);
   }
 
@@ -105,6 +113,7 @@ export class AuthService {
       throw new UnauthorizedException('Refresh token is invalid');
     }
     await this.db.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+    assertNotBanned(await this.db.user.findUniqueOrThrow({ where: { id: stored.userId } }));
     return this.issue(stored.userId);
   }
 

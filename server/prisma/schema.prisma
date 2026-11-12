@@ -36,6 +36,9 @@ model User {
   /// Подтверждение 18+ (ТЗ): без него аккаунт не создаётся.
   adultConfirmedAt DateTime
   createdAt        DateTime  @default(now())
+  /// Блокировка за нарушения (src/admin/admin.ts): вход и обновление сессии закрыты.
+  bannedAt         DateTime?
+  banReason        String?
 
   profile       Profile?
   avatarParts   AvatarPart[]
@@ -52,6 +55,7 @@ model User {
   clientLogs             ClientLog[]
   jointSessions          JointSession[]
   jointMemberships       JointMember[]
+  adminActions           AdminAction[]
 }
 
 model Profile {
@@ -301,4 +305,16 @@ model JointMember {
 
   @@id([sessionId, userId])
   @@index([userId, joinedAt])
+}
+
+/// Журнал действий администратора (src/admin/admin.ts): кто что выдал, кого заблокировал.
+model AdminAction {
+  id      String   @id @default(uuid()) @db.Uuid
+  at      DateTime @default(now())
+  command String
+  userId  String?  @db.Uuid
+  user    User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  details Json
+
+  @@index([at])
 }

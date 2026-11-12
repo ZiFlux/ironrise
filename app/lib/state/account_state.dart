@@ -371,12 +371,14 @@ class AccountNotifier extends Notifier<AccountState> {
       );
       _schedulePulseRetry(waitingForPulse);
     } on ApiException catch (e) {
-      if (e.status == 401) {
+      if (e.status == 401 || e.isBanned) {
         // Refresh-токен отозван или истёк: просим войти заново, очередь сохраняется.
         await ref.read(prefsProvider).remove(_emailKey);
         state = state.copyWith(
           clearEmail: true,
-          error: 'Войдите в аккаунт заново',
+          error: e.isBanned
+              ? 'Аккаунт заблокирован: ${e.banReason}'
+              : 'Войдите в аккаунт заново',
         );
       } else {
         state = state.copyWith(

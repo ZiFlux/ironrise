@@ -31,6 +31,11 @@ class ApiException implements Exception {
   bool get isNetwork => status == 0;
 
   /// Запрос отклонён по существу (400, 409, 422): повторять бессмысленно.
+  /// Аккаунт заблокирован администратором; причина — в [banReason].
+  bool get isBanned => status == 403 && message.startsWith('Account banned');
+
+  String get banReason => message.replaceFirst('Account banned:', '').trim();
+
   bool get isRejected => status >= 400 && status < 500 && status != 401;
 
   @override
@@ -175,7 +180,9 @@ class ApiClient {
     } on ApiException catch (e) {
       // Стираем вход, только если отклонён именно сохранённый сейчас токен:
       // пока шёл запрос, мог успеть войти пользователь или пройти другой обмен.
-      if (e.status == 401 && await tokens.readRefresh() == refresh) {
+      // 403 — аккаунт заблокирован: сессию тоже стираем.
+      if ((e.status == 401 || e.isBanned) &&
+          await tokens.readRefresh() == refresh) {
         await tokens.clear();
       }
       rethrow;
