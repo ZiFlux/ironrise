@@ -1,12 +1,19 @@
 import 'package:flutter/material.dart';
 
 import '../game/body_part.dart';
+import '../game/muscles.dart';
 import 'avatar_look.dart';
 import 'avatar_painter.dart';
 
 /// Аватар героя. Пропорции из уровней, внешний вид из образа.
 class AvatarView extends StatelessWidget {
-  const AvatarView({super.key, required this.levels, required this.look, this.withLamp = false});
+  const AvatarView({
+    super.key,
+    required this.levels,
+    required this.look,
+    this.withLamp = false,
+    this.muscles = const {},
+  });
 
   final Map<BodyPart, num> levels;
   final AvatarLook look;
@@ -14,13 +21,16 @@ class AvatarView extends StatelessWidget {
   /// Конус света сверху, как от лампы над помостом. Для главного экрана.
   final bool withLamp;
 
+  /// Очки мышц героя (MuscleMath); у соперников и на «Старте» — пусто.
+  final MusclePoints muscles;
+
   @override
   Widget build(BuildContext context) {
     // Свой слой: аватар не перерисовывается, когда меняется что-то рядом
     // (таймер, анимация кнопки, прокрутка соседнего списка).
     final avatar = RepaintBoundary(
       child: CustomPaint(
-        painter: AvatarPainter(levels: levels, look: look),
+        painter: AvatarPainter(levels: levels, look: look, muscles: muscles),
         size: Size.infinite,
       ),
     );

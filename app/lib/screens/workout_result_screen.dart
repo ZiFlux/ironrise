@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/anti_fraud.dart';
+import '../game/muscles.dart';
 import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/progression.dart';
@@ -59,6 +60,7 @@ class WorkoutResultScreen extends ConsumerWidget {
             child: _GrowingAvatar(
               summary: summary,
               look: hero.look,
+              muscles: hero.muscles,
               xpNow: hero.xp,
             ),
           ),
@@ -376,11 +378,13 @@ class _GrowingAvatar extends StatefulWidget {
   const _GrowingAvatar({
     required this.summary,
     required this.look,
+    required this.muscles,
     required this.xpNow,
   });
 
   final WorkoutSummary summary;
   final AvatarLook look;
+  final MusclePoints muscles;
   final Map<BodyPart, int> xpNow;
 
   @override
@@ -440,6 +444,7 @@ class _GrowingAvatarState extends State<_GrowingAvatar>
           AvatarView(
             levels: _levelsAt(_t.value),
             look: widget.look,
+            muscles: widget.muscles,
             withLamp: true,
           ),
           if (levelUps.isNotEmpty)

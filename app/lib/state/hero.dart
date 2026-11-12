@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import '../avatar/avatar_look.dart';
+import '../game/muscles.dart';
 import '../game/body_part.dart';
 import '../game/calendar.dart';
 import '../game/game_config.dart';
@@ -139,6 +140,7 @@ class HeroProfile {
     this.premium = const PremiumInfo(),
     this.startLook,
     this.startLookUntil,
+    this.muscles = const {},
   });
 
   factory HeroProfile.create({
@@ -196,6 +198,9 @@ class HeroProfile {
   /// До этого момента образ собирается бесплатно; null — уже зафиксирован.
   final DateTime? startLookUntil;
 
+  /// Очки отдельных мышц (MuscleMath): пропорции аватара и гротескная мышца.
+  final MusclePoints muscles;
+
   /// Открыт ли редактор стартового образа.
   bool startLookOpen(DateTime now) =>
       startLook == null &&
@@ -247,6 +252,7 @@ class HeroProfile {
     AvatarLook? startLook,
     DateTime? startLookUntil,
     bool startLocked = false,
+    MusclePoints? muscles,
   }) => HeroProfile(
     nickname: nickname,
     goal: goal,
@@ -267,6 +273,7 @@ class HeroProfile {
     createdAt: createdAt,
     startLook: startLook ?? this.startLook,
     startLookUntil: startLocked ? null : startLookUntil ?? this.startLookUntil,
+    muscles: muscles ?? this.muscles,
   );
 
   String encode() => jsonEncode({
@@ -287,6 +294,7 @@ class HeroProfile {
     'premium': premium.toJson(),
     'startLook': startLook?.toJson(),
     'startLookUntil': startLookUntil?.toIso8601String(),
+    'muscles': MuscleMath.toJson(muscles),
   });
 
   factory HeroProfile.decode(String s) {
@@ -325,6 +333,9 @@ class HeroProfile {
       nextScheduleChangeAt: j['nextScheduleChangeAt'] == null
           ? null
           : DateTime.parse(j['nextScheduleChangeAt'] as String),
+      muscles: MuscleMath.fromJson(
+        (j['muscles'] as Map?)?.cast<String, dynamic>(),
+      ),
       startLook: j['startLook'] == null
           ? null
           : AvatarLook.fromJson(

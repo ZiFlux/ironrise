@@ -4,6 +4,7 @@ import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
 import { CardioSummary, scoreCardio } from '../game/cardio';
 import { maxRestDaysInRow, streakAfterActivity } from '../game/streak';
+import { addMusclePoints, MusclePoints, musclePointsOf } from '../game/muscles';
 import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap, withPlanBonus } from '../game/workout';
 import { Prisma } from '../generated/prisma/client';
 import { withJointBonus } from '../game/joint';
@@ -167,6 +168,19 @@ export class WorkoutsService {
           pulse: base.pulse.map((s) => ({ at: s.at.toISOString(), bpm: s.bpm })),
         },
       });
+
+      if (type === 'strength' && profile.musclePoints !== null) {
+        const entries = (payload as { entries: { exerciseId: string; sets: unknown[] }[] }).entries;
+        await tx.profile.update({
+          where: { userId },
+          data: {
+            musclePoints: addMusclePoints(
+              profile.musclePoints as MusclePoints,
+              musclePointsOf(entries, summary.validity),
+            ) as Prisma.InputJsonValue,
+          },
+        });
+      }
 
       for (const g of summary.gains) {
         await tx.avatarPart.update({

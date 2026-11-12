@@ -6,11 +6,12 @@ import { currentStreak, maxRestDaysInRow } from '../game/streak';
 import { premiumStatus, PremiumStatus } from '../game/premium';
 import { nextScheduleChangeAt } from '../game/schedule';
 import { creatorItemsToGrant } from '../game/start-look';
+import { addMusclePoints, MusclePoints, musclePointsOf } from '../game/muscles';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
 
 /** Клиент Prisma или транзакция — у них одинаковые методы моделей. */
-type Db = Pick<PrismaService, 'profile' | 'avatarPart' | 'walletTx' | 'inventoryItem'>;
+type Db = Pick<PrismaService, 'profile' | 'avatarPart' | 'walletTx' | 'inventoryItem' | 'workout'>;
 
 export interface HeroState {
   nickname: string;
@@ -37,6 +38,8 @@ export interface HeroState {
   startAppearance: unknown;
   /** До какого момента образ собирается бесплатно; null — уже зафиксирован. */
   startLookUntil: Date | null;
+  /** Очки отдельных мышц: как опыт распределён внутри частей тела. */
+  muscles: MusclePoints;
 }
 
 @Injectable()
@@ -91,7 +94,23 @@ export class HeroService {
       premium: premiumStatus(profile, now),
       startAppearance: profile.startAppearance,
       startLookUntil: profile.startLockedAt ? null : profile.startLookUntil,
+      muscles: (profile.musclePoints as MusclePoints | null) ?? (await this.backfillMuscles(userId, db)),
     };
+  }
+
+  /** Очки мышц по всей истории силовых тренировок — один раз, дальше копятся при отправке. */
+  private async backfillMuscles(userId: string, db: Db): Promise<MusclePoints> {
+    const rows = await db.workout.findMany({
+      where: { userId, type: 'strength', status: 'accepted' },
+      select: { payload: true, validity: true },
+    });
+    let points: MusclePoints = {};
+    for (const w of rows) {
+      const entries = (w.payload as { entries?: { exerciseId: string; sets: unknown[] }[] }).entries ?? [];
+      points = addMusclePoints(points, musclePointsOf(entries, w.validity));
+    }
+    await db.profile.update({ where: { userId }, data: { musclePoints: points } });
+    return points;
   }
 
   /** Зафиксировать стартовый образ: он становится «Стартом», надетые вещи редактора — навсегда за игроком. */

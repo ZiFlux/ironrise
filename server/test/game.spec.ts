@@ -509,3 +509,26 @@ describe('стартовый образ', () => {
     expect(wornItems(look)).not.toBeNull();
   });
 });
+
+import { addMusclePoints, EXERCISE_MUSCLES, MUSCLES, musclePointsOf } from '../src/game/muscles';
+import { EXERCISES } from '../src/game/exercises';
+
+describe('мышцы', () => {
+  it('у каждого упражнения есть мышцы, доли в сумме 1', () => {
+    for (const e of EXERCISES) {
+      const shares = Object.values(EXERCISE_MUSCLES[e.id] ?? {});
+      expect(shares.length).toBeGreaterThan(0);
+      expect(shares.reduce((a, b) => a + b, 0)).toBeCloseTo(1);
+    }
+    for (const m of Object.values(EXERCISE_MUSCLES).flatMap((x) => Object.keys(x))) {
+      expect(MUSCLES).toContain(m);
+    }
+  });
+
+  it('очки: подходы × доля × достоверность, копятся', () => {
+    const p = musclePointsOf([{ exerciseId: 'db_curl', sets: [1, 2, 3] }], 0.5);
+    expect(p.biceps).toBeCloseTo(1.2);
+    expect(p.forearms).toBeCloseTo(0.3);
+    expect(addMusclePoints(p, p).biceps).toBeCloseTo(2.4);
+  });
+});

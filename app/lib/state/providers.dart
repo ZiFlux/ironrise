@@ -4,6 +4,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../avatar/avatar_look.dart';
 import '../game/body_part.dart';
 import '../game/calendar.dart';
+import '../game/muscles.dart';
 import '../game/shop.dart';
 import '../game/streak.dart';
 import '../game/workout.dart';
@@ -66,11 +67,17 @@ class HeroNotifier extends Notifier<HeroProfile?> {
   }
 
   /// Начислить итог тренировки: опыт, монеты, серия.
-  Future<void> applyWorkout(WorkoutSummary summary, DateTime finishedAt) async {
+  /// muscles — очки мышц силовой тренировки (MuscleMath.pointsOf), у кардио пусто.
+  Future<void> applyWorkout(
+    WorkoutSummary summary,
+    DateTime finishedAt, {
+    MusclePoints muscles = const {},
+  }) async {
     final h = state;
     if (h == null) return;
     await save(
       h.copyWith(
+        muscles: MuscleMath.add(h.muscles, muscles),
         xp: summary.applyTo(h.xp),
         coins: h.coins + summary.coins,
         streakDays: Streak.afterActivity(
@@ -165,6 +172,12 @@ class HeroNotifier extends Notifier<HeroProfile?> {
             ? null
             : DateTime.parse(startUntil).toLocal(),
         startLocked: startUntil == null && startLook != null,
+        // Старый сервер мышцы не присылает — тогда остаются свои.
+        muscles: me['muscles'] is Map
+            ? MuscleMath.fromJson(
+                Map<String, dynamic>.from(me['muscles'] as Map),
+              )
+            : null,
       ),
     );
   }

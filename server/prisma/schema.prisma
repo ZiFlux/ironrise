@@ -75,6 +75,8 @@ model Profile {
   startLockedAt    DateTime?
   /// До этой даты образ собирается бесплатно (src/game/start-look.ts).
   startLookUntil   DateTime  @default(dbgenerated("(now() + '14 days'::interval)"))
+  /// Очки отдельных мышц (src/game/muscles.ts); null — ещё не посчитаны по истории тренировок.
+  musclePoints     Json?
   age              Int?
   restingHr        Int?
   /// IANA, например Europe/Moscow: по нему считаются календарные дни и серия.

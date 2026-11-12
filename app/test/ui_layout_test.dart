@@ -15,6 +15,7 @@ import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/duel.dart';
 import 'package:ironrise/game/exercise_catalog.dart';
 import 'package:ironrise/game/league.dart';
+import 'package:ironrise/game/muscles.dart';
 import 'package:ironrise/game/training_format.dart';
 import 'package:ironrise/game/workout.dart';
 import 'package:ironrise/main.dart';
@@ -62,6 +63,8 @@ HeroProfile _hero() {
   return h.copyWith(
     xp: {for (final (i, p) in BodyPart.values.indexed) p: 340 + i * 260},
     coins: 123456,
+    // Перекос в жим — на профиле видна гротескная грудь и все строки мышц.
+    muscles: MuscleMath.pointsOf([(exerciseId: 'bench_press', sets: 60)], 1),
     streakDays: 30,
     lastActiveDay: DateTime.now(),
   );

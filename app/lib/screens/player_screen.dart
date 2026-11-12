@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
+import '../game/muscles.dart';
 import '../game/exercise_catalog.dart';
 import '../game/game_config.dart';
 import '../game/strength.dart';
@@ -90,6 +91,8 @@ class PlayerScreen extends ConsumerWidget {
           const _Menu(),
           const SizedBox(height: 24),
           _StrengthSection(hero: hero, records: records),
+          const SizedBox(height: 24),
+          _MuscleSection(hero: hero),
         ],
       ),
     );
@@ -130,6 +133,7 @@ class _Growth extends StatelessWidget {
               label: 'Сейчас',
               levels: hero.avatarLevels,
               look: hero.look,
+              muscles: hero.muscles,
             ),
           ),
         ],
@@ -143,12 +147,14 @@ class _Figure extends StatelessWidget {
     required this.label,
     required this.levels,
     required this.look,
+    this.muscles = const {},
     this.onTap,
   });
 
   final String label;
   final Map<BodyPart, num> levels;
   final AvatarLook look;
+  final MusclePoints muscles;
   final VoidCallback? onTap;
 
   @override
@@ -156,7 +162,7 @@ class _Figure extends StatelessWidget {
     final figure = Column(
       children: [
         Expanded(
-          child: AvatarView(levels: levels, look: look),
+          child: AvatarView(levels: levels, look: look, muscles: muscles),
         ),
         Text(
           label,
@@ -506,6 +512,140 @@ class _LiftRow extends StatelessWidget {
           Text(
             level?.label ?? '—',
             style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Мышцы: какие впереди, какие отстают, и шуточная гротескная мышца.
+class _MuscleSection extends StatelessWidget {
+  const _MuscleSection({required this.hero});
+
+  final HeroProfile hero;
+
+  @override
+  Widget build(BuildContext context) {
+    final points = hero.muscles;
+    final total = points.values.fold<double>(0, (a, b) => a + b);
+    final balance = MuscleMath.balance(points);
+    final grotesque = MuscleMath.grotesque(points);
+    final accent = Theme.of(context).colorScheme.primary;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Мышцы',
+          style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        if (total == 0)
+          const Text(
+            'После силовых тренировок здесь будет видно, какие мышцы растут '
+            'быстрее, а какие отстают. Аватар меняется так же.',
+            style: TextStyle(fontSize: 14, color: AppColors.textSecondary),
+          )
+        else ...[
+          if (grotesque != null) ...[
+            Container(
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: accent.withValues(alpha: 0.10),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: accent.withValues(alpha: 0.35)),
+              ),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Icon(LucideIcons.bicepsFlexed, color: accent, size: 22),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      grotesqueJoke(grotesque),
+                      style: const TextStyle(fontSize: 14),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+          ],
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(14, 10, 14, 4),
+              child: Column(
+                children: [
+                  for (final part in BodyPart.values)
+                    for (final m in Muscle.values.where((m) => m.part == part))
+                      _MuscleRow(
+                        muscle: m,
+                        balance: balance[m]!,
+                        grotesque: m == grotesque,
+                      ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Считается по подходам: чем чаще мышца в работе, тем она крупнее на '
+            'аватаре. Нажми на упражнение в справочнике — там его целевые мышцы.',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _MuscleRow extends StatelessWidget {
+  const _MuscleRow({
+    required this.muscle,
+    required this.balance,
+    required this.grotesque,
+  });
+
+  final Muscle muscle;
+  final double balance;
+  final bool grotesque;
+
+  @override
+  Widget build(BuildContext context) {
+    final (tag, color) = grotesque
+        ? ('гротеск', Theme.of(context).colorScheme.primary)
+        : balance > 1.12
+        ? ('впереди', muscle.part.color)
+        : balance < 0.9
+        ? ('отстаёт', const Color(0xFFFFB547))
+        : ('ровно', AppColors.textMuted);
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Row(
+        children: [
+          SizedBox(
+            width: 112,
+            child: Text(muscle.label, style: const TextStyle(fontSize: 14)),
+          ),
+          Expanded(
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: LinearProgressIndicator(
+                value: ((balance - 0.6) / 0.9).clamp(0.05, 1.0),
+                minHeight: 6,
+                color: muscle.part.color,
+                backgroundColor: AppColors.raised,
+              ),
+            ),
+          ),
+          SizedBox(
+            width: 76,
+            child: Text(
+              tag,
+              textAlign: TextAlign.right,
+              style: TextStyle(fontSize: 13, color: color),
+            ),
           ),
         ],
       ),

@@ -2,6 +2,7 @@ import 'dart:math';
 import 'dart:ui';
 
 import '../game/body_part.dart';
+import '../game/muscles.dart';
 import 'avatar_look.dart';
 
 /// Холст аватара: 200 × 400, центр тела по x = 100.
@@ -71,8 +72,17 @@ class BodyFrame {
     Map<BodyPart, num> levels,
     AvatarSex sex, [
     BodyBuild build = BodyBuild.average,
+    MusclePoints muscles = const {},
   ]) {
     double g(BodyPart p) => growthOf(levels[p] ?? 1);
+    // Мышца растёт вместе со своей частью тела, но пропорционально тренировкам:
+    // перекачанная — крупнее, забытая — мельче, гротескная — заметно раздута.
+    final balance = MuscleMath.balance(muscles);
+    final grotesque = MuscleMath.grotesque(muscles);
+    // Гротеск — прибавка сверху, а не множитель: иначе на низких уровнях его не видно.
+    double mg(Muscle m) =>
+        g(m.part) * balance[m]! +
+        (m == grotesque ? MuscleMath.grotesqueBoost : 0);
     final burn = (g(BodyPart.cardio) + g(BodyPart.core)) / 2;
     final muscle =
         (g(BodyPart.chest) +
@@ -89,12 +99,21 @@ class BodyFrame {
         BodyBuild.solid => 0.5 * (1 - burn * 0.8),
         BodyBuild.heavy => 1.0 * (1 - burn * 0.8),
       },
-      chest: g(BodyPart.chest),
+      chest: mg(Muscle.pecs),
       back: g(BodyPart.back),
       arms: g(BodyPart.arms),
       legs: g(BodyPart.legs),
-      core: g(BodyPart.core),
+      core: mg(Muscle.abs),
       cardio: g(BodyPart.cardio),
+      lats: mg(Muscle.lats),
+      traps: mg(Muscle.traps),
+      delts: mg(Muscle.delts),
+      // Спереди виден бицепс, поэтому он весит больше трицепса.
+      upperArm: mg(Muscle.biceps) * 0.65 + mg(Muscle.triceps) * 0.35,
+      forearms: mg(Muscle.forearms),
+      thighs: mg(Muscle.quads) * 0.7 + mg(Muscle.hamstrings) * 0.3,
+      glutes: mg(Muscle.glutes),
+      calves: mg(Muscle.calves),
     );
   }
 
@@ -107,6 +126,14 @@ class BodyFrame {
     required this.legs,
     required this.core,
     required this.cardio,
+    required this.lats,
+    required this.traps,
+    required this.delts,
+    required this.upperArm,
+    required this.forearms,
+    required this.thighs,
+    required this.glutes,
+    required this.calves,
   }) {
     rightArm = _armFor(1);
     leftArm = _armFor(-1);
@@ -116,16 +143,21 @@ class BodyFrame {
 
   /// Телосложение: −1 худощавое … 0 среднее … 1 крупное (с поправкой на прогресс).
   final double fat;
+
+  /// Рост частей тела 0…1; chest и core — уже с учётом мышц (грудные, пресс).
   final double chest, back, arms, legs, core, cardio;
+
+  /// Рост отдельных мышц: часть тела × баланс тренировок (может быть больше 1).
+  final double lats, traps, delts, upperArm, forearms, thighs, glutes, calves;
   late final ArmGeometry rightArm;
   late final ArmGeometry leftArm;
 
   double _pick(double male, double female) => isFemale ? female : male;
 
-  late final double neck = _pick(8.5, 6.5) + back * 2 + fat * 3;
+  late final double neck = _pick(8.5, 6.5) + traps * 2 + fat * 3;
   late final double shoulder =
-      _pick(34, 29) + back * _pick(14, 7) + chest * _pick(4, 2);
-  late final double lat = _pick(28, 24) + back * _pick(12, 5) + fat * 6;
+      _pick(34, 29) + (lats + traps) / 2 * _pick(14, 7) + chest * _pick(4, 2);
+  late final double lat = _pick(28, 24) + lats * _pick(12, 5) + fat * 6;
   late final double waist =
       _pick(26, 21) -
       cardio * 4 -
@@ -133,22 +165,29 @@ class BodyFrame {
       chest * _pick(1, 0) +
       fat * _pick(15, 11);
   late final double ribs = _lerp(lat, waist, 0.6);
-  late final double hip = _pick(26, 31) + legs * 2 + fat * _pick(9, 10);
-  late final double thigh = _pick(25, 30) + legs * _pick(9, 6) + fat * 7;
+  late final double hip =
+      _pick(26, 31) + glutes * _pick(2, 4) + fat * _pick(9, 10);
+  late final double thigh = _pick(25, 30) + thighs * _pick(9, 6) + fat * 7;
   late final double knee = _pick(17, 16) + legs * 2;
-  late final double calf = _pick(18, 17) + legs * _pick(6, 4) + fat * 3;
+  late final double calf = _pick(18, 17) + calves * _pick(6, 4) + fat * 3;
   late final double ankle = _pick(10, 9);
   late final double shin = _lerp(calf, ankle, 0.6);
   late final double waistband = _lerp(waist, hip, 0.7);
   late final double trapX = _lerp(neck, shoulder, 0.55);
 
-  late final double deltSize = _pick(11, 8.6) + (arms + back) / 2 * _pick(7, 3);
-  late final double deltWidth = _pick(10.5, 8.5) + arms * _pick(5, 2.5) + back;
+  late final double deltSize =
+      _pick(11, 8.6) + (delts + traps) / 2 * _pick(7, 3);
+  late final double deltWidth = _pick(10.5, 8.5) + delts * _pick(5, 2.5) + lats;
   late final double bicepWidth =
-      _pick(8, 6.6) + arms * _pick(6.5, 3) + fat * 3.5;
-  late final double elbowWidth = _pick(6.2, 5.2) + arms * 2;
+      _pick(8, 6.6) +
+      upperArm * _pick(6.5, 3) +
+      // Перекачанный бицепс выпирает сильнее, чем растёт обычный.
+      max(0.0, upperArm - 1) * _pick(6, 3) +
+      fat * 3.5;
+  late final double elbowWidth =
+      _pick(6.2, 5.2) + (upperArm + forearms) / 2 * 2;
   late final double forearmWidth =
-      _pick(6.8, 5.8) + arms * _pick(3.6, 2) + fat * 2;
+      _pick(6.8, 5.8) + forearms * _pick(3.6, 2) + fat * 2;
   late final double wristWidth = _pick(4.1, 3.4);
 
   late final double headRx = _pick(16, 15);
@@ -178,7 +217,7 @@ class BodyFrame {
     Offset(neck, 62),
     Offset(trapX, 70),
     Offset(shoulder - deltSize * 0.45, 81),
-    Offset(lat + 1, 112),
+    Offset(lat + 1 + chest * _pick(4, 2), 112),
     Offset(lat, 124),
     Offset(ribs, 150),
     Offset(waist, 172),

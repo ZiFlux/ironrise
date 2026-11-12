@@ -3,6 +3,8 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/body_part.dart';
 import '../game/exercise_catalog.dart';
+import '../game/exercise_guide.dart';
+import '../game/muscles.dart';
 import '../game/game_config.dart';
 import '../theme.dart';
 
@@ -41,9 +43,15 @@ Future<Exercise?> showExercisePicker(
 Future<void> showExerciseDetails(BuildContext context, Exercise exercise) =>
     showModalBottomSheet<void>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: AppColors.surface,
       shape: _sheetShape,
-      builder: (_) => _ExerciseDetails(exercise: exercise),
+      builder: (context) => ConstrainedBox(
+        constraints: BoxConstraints(
+          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
+        ),
+        child: _ExerciseDetails(exercise: exercise),
+      ),
     );
 
 const _sheetShape = RoundedRectangleBorder(
@@ -322,8 +330,11 @@ class _ExerciseDetails extends StatelessWidget {
       exercise.usesWeight ? 'с отягощением' : 'свой вес',
       exercise.unit == ExerciseUnit.seconds ? 'на время' : 'на повторы',
     ].join(' · ');
+    final muscles = (exerciseMuscles[exercise.id] ?? const {}).entries.toList()
+      ..sort((a, b) => b.value.compareTo(a.value));
+    final guide = exerciseGuides[exercise.id];
     return SafeArea(
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -353,6 +364,83 @@ class _ExerciseDetails extends StatelessWidget {
               'Опыт указан для подтверждённой тренировки. Отстающая часть получает ×1,5, без часов ×0,5',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
+            if (muscles.isNotEmpty) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Целевые мышцы',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final (i, MapEntry(key: m, value: share))
+                      in muscles.indexed)
+                    Chip(
+                      visualDensity: VisualDensity.compact,
+                      side: BorderSide(
+                        color: i == 0
+                            ? m.part.color.withValues(alpha: 0.6)
+                            : AppColors.hairline,
+                      ),
+                      backgroundColor: AppColors.raised,
+                      label: Text(
+                        '${m.label} · ${(share * 100).round()}%',
+                        style: const TextStyle(fontSize: 13),
+                      ),
+                    ),
+                ],
+              ),
+            ],
+            if (guide != null) ...[
+              const SizedBox(height: 20),
+              const Text(
+                'Техника',
+                style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 10),
+              for (final (i, step) in guide.steps.indexed)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        child: Text('${i + 1}', style: figureStyle(size: 14)),
+                      ),
+                      Expanded(
+                        child: Text(step, style: const TextStyle(fontSize: 14)),
+                      ),
+                    ],
+                  ),
+                ),
+              const SizedBox(height: 4),
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(top: 1),
+                    child: Icon(
+                      LucideIcons.triangleAlert,
+                      size: 16,
+                      color: Color(0xFFFFB547),
+                    ),
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      guide.mistake,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

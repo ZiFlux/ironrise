@@ -4,19 +4,26 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../game/body_part.dart';
+import '../game/muscles.dart';
 import 'avatar_layers.dart';
 import 'avatar_look.dart';
 import 'body_frame.dart';
 
 /// Рисует аватар слоями: тень, волосы сзади, руки, тело, рельеф, одежда, голова.
 class AvatarPainter extends CustomPainter {
-  AvatarPainter({required this.levels, required this.look})
-    : frame = BodyFrame(levels, look.sex, look.build) {
+  AvatarPainter({
+    required this.levels,
+    required this.look,
+    this.muscles = const {},
+  }) : frame = BodyFrame(levels, look.sex, look.build, muscles) {
     layers = AvatarLayers(frame, look);
   }
 
   final Map<BodyPart, num> levels;
   final AvatarLook look;
+
+  /// Очки мышц: пропорции внутри частей тела. Пусто — все мышцы ровные.
+  final MusclePoints muscles;
   final BodyFrame frame;
   late final AvatarLayers layers;
 
@@ -83,11 +90,12 @@ class AvatarPainter extends CustomPainter {
   void _paintRelief(Canvas canvas) {
     final style = _ReliefStyle.of(look);
     final lines = <(Path, double)>[
-      (layers.chestLines, 0.12 + 0.45 * frame.chest),
-      (layers.absLines, 0.05 + 0.45 * frame.core),
-      (layers.quadLines, 0.05 + 0.4 * frame.legs),
-      (layers.deltLines, 0.1 + 0.45 * (frame.arms + frame.back) / 2),
-      (layers.armLines, 0.08 + 0.4 * frame.arms),
+      // Рост мышц бывает больше 1 (перекачанные) — рельеф всё равно не чернее обычного.
+      (layers.chestLines, 0.12 + 0.45 * min(1.0, frame.chest)),
+      (layers.absLines, 0.05 + 0.45 * min(1.0, frame.core)),
+      (layers.quadLines, 0.05 + 0.4 * min(1.0, frame.thighs)),
+      (layers.deltLines, 0.1 + 0.45 * min(1.0, frame.delts)),
+      (layers.armLines, 0.08 + 0.4 * min(1.0, frame.upperArm)),
     ];
     for (final (path, opacity) in lines) {
       final depth = min(0.9, opacity * style.strength);
@@ -277,7 +285,9 @@ class AvatarPainter extends CustomPainter {
   // Уровни сравниваются по значениям: при каждой пересборке экрана карта новая,
   // а перерисовка дорогая (контуры тела, градиенты, рельеф).
   bool shouldRepaint(AvatarPainter old) =>
-      old.look != look || !mapEquals(old.levels, levels);
+      old.look != look ||
+      !mapEquals(old.levels, levels) ||
+      !mapEquals(old.muscles, muscles);
 }
 
 class _ReliefStyle {

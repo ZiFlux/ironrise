@@ -58,6 +58,7 @@ class HomeScreen extends ConsumerWidget {
                       child: AvatarView(
                         levels: hero.avatarLevels,
                         look: hero.look,
+                        muscles: hero.muscles,
                         withLamp: true,
                       ),
                     ),
