@@ -55,7 +55,8 @@ class _StartView extends ConsumerWidget {
       [for (final e in today.exercises) e.exercise.name].join(' · '),
       _phaseLine(program),
       if (adapted.eased) 'План облегчён: на подход меньше',
-      if (adapted.adjustments.isNotEmpty) 'Часть упражнений заменена, пока бережём больное место',
+      if (adapted.adjustments.isNotEmpty)
+        'Часть упражнений заменена, пока бережём больное место',
     ].join('\n');
     return Scaffold(
       appBar: AppBar(
@@ -95,7 +96,8 @@ class _StartView extends ConsumerWidget {
             ),
             const Spacer(),
             FilledButton(
-              onPressed: () => ref.read(workoutProvider.notifier).startPlanned(today),
+              onPressed: () =>
+                  ref.read(workoutProvider.notifier).startPlanned(today),
               child: Text(planLabel(today)),
             ),
             const SizedBox(height: 8),
@@ -187,7 +189,8 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   /// Ответил «был запас?» — переходим к следующему упражнению плана.
   void _answerReserve(int index, bool hadReserve) {
     _workout.setReserve(index, hadReserve);
-    if (index + 1 < widget.session.entries.length) setState(() => _expanded = index + 1);
+    if (index + 1 >= widget.session.entries.length) return;
+    setState(() => _expanded = index + 1);
   }
 
   Future<void> _finish() async {
@@ -259,7 +262,9 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, i) => _ExerciseCard(
                       entry: session.entries[i],
-                      progress: program.progressOf(session.entries[i].exercise.id),
+                      progress: program.progressOf(
+                        session.entries[i].exercise.id,
+                      ),
                       onReserve: (reserve) => _answerReserve(i, reserve),
                       expanded: i == _expanded,
                       onExpand: () => setState(() => _expanded = i),
@@ -473,7 +478,8 @@ class _ExerciseCard extends StatelessWidget {
               onTap: onExpand,
               onRemove: entry.sets.isEmpty ? onRemove : null,
             ),
-            if (entry.plan != null) _PlanTarget(plan: entry.plan!, progress: progress),
+            if (entry.plan != null)
+              _PlanTarget(plan: entry.plan!, progress: progress),
             for (final (i, set) in entry.sets.indexed)
               _SetRow(index: i + 1, text: formatSet(exercise, set)),
             if (entry.planDone)
@@ -536,7 +542,10 @@ class _PlanTarget extends StatelessWidget {
         children: [
           Text(
             'Цель: ${plan.sets} × ${range.min}–${range.max}$unit · ${plan.repsInReserve} в запасе',
-            style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
           ),
           if (calibrating)
             Text(
@@ -563,7 +572,10 @@ class _ReserveQuestion extends StatelessWidget {
       child: Row(
         children: [
           const Expanded(
-            child: Text('Был запас?', style: TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            child: Text(
+              'Был запас?',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
           ),
           ChoiceChip(
             label: const Text('Да'),
@@ -604,58 +616,67 @@ class _CardHeader extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        height: 52,
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: exercise.mainPart.color,
-                shape: BoxShape.circle,
+      // Длинное название переносится на вторую строку — строка растёт, а не обрезается.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 52),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: exercise.mainPart.color,
+                  shape: BoxShape.circle,
+                ),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    exercise.name,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      exercise.name,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  Text(
-                    parts,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
+                    Text(
+                      parts,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-            Text(
-              '${entry.sets.length}/${GameConfig.maxSetsPerExercise}',
-              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-            ),
-            if (onRemove != null)
-              IconButton(
-                tooltip: 'Убрать упражнение',
-                onPressed: onRemove,
-                icon: const Icon(
-                  LucideIcons.x,
-                  size: 16,
+              Text(
+                '${entry.sets.length}/${GameConfig.maxSetsPerExercise}',
+                style: const TextStyle(
+                  fontSize: 13,
                   color: AppColors.textMuted,
                 ),
-              )
-            else
-              const SizedBox(width: 12),
-          ],
+              ),
+              if (onRemove != null)
+                IconButton(
+                  tooltip: 'Убрать упражнение',
+                  onPressed: onRemove,
+                  icon: const Icon(
+                    LucideIcons.x,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                )
+              else
+                const SizedBox(width: 12),
+            ],
+          ),
         ),
       ),
     );

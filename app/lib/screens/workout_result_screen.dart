@@ -241,7 +241,9 @@ class _GainRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final highlight = gain.leveledUp || gain.wasLagging;
     return Container(
-      height: 52,
+      // Подпись про уровень может перенестись — строка растёт, а не обрезается.
+      constraints: const BoxConstraints(minHeight: 52),
+      padding: const EdgeInsets.symmetric(vertical: 6),
       decoration: const BoxDecoration(
         border: Border(bottom: BorderSide(color: AppColors.hairline)),
       ),

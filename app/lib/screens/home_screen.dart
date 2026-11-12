@@ -16,6 +16,7 @@ import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
+import '../widgets/fit_screen.dart';
 import '../widgets/format.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
@@ -37,55 +38,59 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       body: SafeArea(
         // Всё на одном экране без прокрутки: аватар забирает оставшееся место.
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              _Header(hero: hero),
-              Expanded(
-                child: Semantics(
-                  button: true,
-                  label: 'Открыть гардероб',
-                  child: GestureDetector(
-                    onTap: () => context.go('/wardrobe'),
-                    child: AvatarView(
-                      levels: hero.avatarLevels,
-                      look: hero.look,
-                      withLamp: true,
+        // На маленьком экране или с крупным шрифтом — прокрутка вместо наложения.
+        child: FitScreen(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _Header(hero: hero),
+                FlexibleMin(
+                  minHeight: 130,
+                  child: Semantics(
+                    button: true,
+                    label: 'Открыть гардероб',
+                    child: GestureDetector(
+                      onTap: () => context.go('/wardrobe'),
+                      child: AvatarView(
+                        levels: hero.avatarLevels,
+                        look: hero.look,
+                        withLamp: true,
+                      ),
                     ),
                   ),
                 ),
-              ),
-              WeekStrip(hero: hero),
-              const _ActivityLine(),
-              const _TipLine(),
-              const SizedBox(height: 8),
-              if (recommendation != null) ...[
-                _LaggingCard(
-                  recommendation: recommendation,
-                  onStart: () {
-                    final notifier = ref.read(workoutProvider.notifier)
-                      ..start();
-                    final exercise = recommendation.exercise;
-                    if (exercise != null) notifier.addExercise(exercise);
+                WeekStrip(hero: hero),
+                const _ActivityLine(),
+                const _TipLine(),
+                const SizedBox(height: 8),
+                if (recommendation != null) ...[
+                  _LaggingCard(
+                    recommendation: recommendation,
+                    onStart: () {
+                      final notifier = ref.read(workoutProvider.notifier)
+                        ..start();
+                      final exercise = recommendation.exercise;
+                      if (exercise != null) notifier.addExercise(exercise);
+                      context.go('/workout');
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                ],
+                _PlateRow(hero: hero),
+                const SizedBox(height: 12),
+                FilledButton.icon(
+                  onPressed: () {
+                    ref.read(workoutProvider.notifier).startPlanned(today);
                     context.go('/workout');
                   },
+                  icon: const Icon(LucideIcons.dumbbell, size: 18),
+                  label: Text(planLabel(today)),
                 ),
-                const SizedBox(height: 8),
+                if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
               ],
-              _PlateRow(hero: hero),
-              const SizedBox(height: 12),
-              FilledButton.icon(
-                onPressed: () {
-                  ref.read(workoutProvider.notifier).startPlanned(today);
-                  context.go('/workout');
-                },
-                icon: const Icon(LucideIcons.dumbbell, size: 18),
-                label: Text(planLabel(today)),
-              ),
-              if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
-            ],
+            ),
           ),
         ),
       ),
@@ -156,41 +161,47 @@ class _Header extends ConsumerWidget {
         const SizedBox(height: 8),
         Row(
           children: [
-            _StatChip(
-              icon: LucideIcons.flame,
-              iconColor: AppColors.textSecondary,
-              value: Text(
-                '$streak',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+            Flexible(
+              child: _StatChip(
+                icon: LucideIcons.flame,
+                iconColor: AppColors.textSecondary,
+                value: Text(
+                  '$streak',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
+                semantics: 'Серия $streak дней',
               ),
-              semantics: 'Серия $streak дней',
             ),
             const SizedBox(width: 8),
-            _StatChip(
-              icon: LucideIcons.zap,
-              iconColor: accent,
-              value: Text(
-                '${hero.power}',
-                style: figureStyle(size: 15, color: accent),
+            Flexible(
+              child: _StatChip(
+                icon: LucideIcons.zap,
+                iconColor: accent,
+                value: Text(
+                  '${hero.power}',
+                  style: figureStyle(size: 15, color: accent),
+                ),
+                semantics: 'Сила ${hero.power}',
               ),
-              semantics: 'Сила ${hero.power}',
             ),
             const SizedBox(width: 8),
-            _StatChip(
-              icon: LucideIcons.coins,
-              iconColor: AppColors.textSecondary,
-              value: Text(
-                '${hero.coins}',
-                style: const TextStyle(
-                  fontSize: 15,
-                  fontWeight: FontWeight.w500,
+            Flexible(
+              child: _StatChip(
+                icon: LucideIcons.coins,
+                iconColor: AppColors.textSecondary,
+                value: Text(
+                  '${hero.coins}',
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
+                semantics: 'Монеты ${hero.coins}, открыть гардероб',
+                onTap: () => context.go('/wardrobe'),
               ),
-              semantics: 'Монеты ${hero.coins}, открыть гардероб',
-              onTap: () => context.go('/wardrobe'),
             ),
           ],
         ),
@@ -235,7 +246,10 @@ class _StatChip extends StatelessWidget {
             children: [
               Icon(icon, size: 16, color: iconColor),
               const SizedBox(width: 6),
-              value,
+              // Большие числа и крупный шрифт — уменьшаем, а не вылезаем за плашку.
+              Flexible(
+                child: FittedBox(fit: BoxFit.scaleDown, child: value),
+              ),
             ],
           ),
         ),
@@ -457,7 +471,11 @@ class _TipLine extends ConsumerWidget {
               padding: const EdgeInsets.symmetric(horizontal: 12),
               child: Row(
                 children: [
-                  const Icon(LucideIcons.lightbulb, size: 16, color: AppColors.textSecondary),
+                  const Icon(
+                    LucideIcons.lightbulb,
+                    size: 16,
+                    color: AppColors.textSecondary,
+                  ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: Text(
@@ -468,9 +486,16 @@ class _TipLine extends ConsumerWidget {
                     ),
                   ),
                   if (daily.answered)
-                    const Icon(LucideIcons.check, size: 16, color: AppColors.textMuted)
+                    const Icon(
+                      LucideIcons.check,
+                      size: 16,
+                      color: AppColors.textMuted,
+                    )
                   else
-                    Text('+${GameConfig.tipCoins}', style: TextStyle(fontSize: 13, color: accent)),
+                    Text(
+                      '+${GameConfig.tipCoins}',
+                      style: TextStyle(fontSize: 13, color: accent),
+                    ),
                 ],
               ),
             ),

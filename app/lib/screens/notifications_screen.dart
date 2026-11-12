@@ -16,7 +16,7 @@ class NotificationsScreen extends ConsumerWidget {
   Future<void> _markRead(WidgetRef ref, [List<String>? ids]) async {
     try {
       await ref.read(apiProvider).post('/v1/notifications/read', {
-        if (ids != null) 'ids': ids,
+        'ids': ?ids,
       });
     } on ApiException {
       // Нет сети — отметим в следующий раз.
@@ -193,10 +193,11 @@ String _ago(DateTime t, [DateTime? now]) {
   if (d.inMinutes < 60) return '${d.inMinutes} мин назад';
   if (d.inHours < 24 && t.day == n.day) return '${d.inHours} ч назад';
   final yesterday = DateTime(n.year, n.month, n.day - 1);
-  if (t.year == yesterday.year &&
+  final isYesterday =
+      t.year == yesterday.year &&
       t.month == yesterday.month &&
-      t.day == yesterday.day)
-    return 'вчера';
+      t.day == yesterday.day;
+  if (isYesterday) return 'вчера';
   return '${t.day.toString().padLeft(2, '0')}.${t.month.toString().padLeft(2, '0')}';
 }
 
@@ -232,10 +233,10 @@ class _NotificationSettingsState
       final s = await ref.read(apiProvider).get('/v1/me/notification-settings');
       if (mounted) setState(() => _settings = s);
     } on ApiException catch (e) {
-      if (mounted)
-        setState(
-          () => _error = e.isNetwork ? 'Нет связи с сервером' : e.message,
-        );
+      if (!mounted) return;
+      setState(
+        () => _error = e.isNetwork ? 'Нет связи с сервером' : e.message,
+      );
     }
   }
 

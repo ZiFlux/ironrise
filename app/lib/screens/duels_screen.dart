@@ -11,6 +11,7 @@ import '../state/duel_state.dart';
 import '../state/providers.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/fit_screen.dart';
 
 /// Дуэли (экран 9). С аккаунтом — боты дня и друзья через сервер,
 /// без аккаунта — локальные боты.
@@ -231,7 +232,7 @@ class _FighterList extends StatelessWidget {
       result: results[f.id],
       onFight: () => onFight(f),
     );
-    return Column(
+    final list = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Card(
@@ -246,16 +247,25 @@ class _FighterList extends StatelessWidget {
                   style: figureStyle(size: 20, color: accent),
                 ),
                 const SizedBox(width: 8),
-                const Text(
-                  'твоя сила',
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                const Flexible(
+                  child: Text(
+                    'твоя сила',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  ),
                 ),
-                const Spacer(),
-                Text(
-                  counter,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    counter,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                 ),
               ],
@@ -268,13 +278,17 @@ class _FighterList extends StatelessWidget {
             child: ListView.separated(
               itemCount: fighters.length,
               separatorBuilder: (_, _) => const SizedBox(height: 8),
-              itemBuilder: (_, i) =>
-                  SizedBox(height: 72, child: card(fighters[i])),
+              // Крупный системный шрифт — карточка выше, иначе текст не влезет.
+              itemBuilder: (_, i) => SizedBox(
+                height: MediaQuery.textScalerOf(context).scale(72),
+                child: card(fighters[i]),
+              ),
             ),
           )
         else
           for (final f in fighters)
-            Expanded(
+            FlexibleMin(
+              minHeight: MediaQuery.textScalerOf(context).scale(72),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: card(f),
@@ -288,6 +302,8 @@ class _FighterList extends StatelessWidget {
         ),
       ],
     );
+    // Боты (их 4) делят экран; не влезают — прокрутка. Друзья прокручиваются списком.
+    return scrollable ? list : FitScreen(child: list);
   }
 }
 

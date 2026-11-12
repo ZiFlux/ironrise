@@ -78,7 +78,8 @@ class HeartRateState {
 
 /// Живой пульс по Bluetooth. Хранит отсчёты последних часов для проверки тренировки.
 class HeartRateNotifier extends Notifier<HeartRateState> {
-  final _ble = FlutterReactiveBle();
+  // Создаётся при первом поиске датчика: без датчика Bluetooth при запуске не трогаем.
+  late final _ble = FlutterReactiveBle();
   final _samples = <PulseSample>[];
   StreamSubscription<DiscoveredDevice>? _scan;
   StreamSubscription<ConnectionStateUpdate>? _connection;

@@ -242,61 +242,67 @@ class _ExerciseRow extends StatelessWidget {
         .join(' · ');
     return InkWell(
       onTap: added ? null : onTap,
-      child: SizedBox(
-        height: 56,
-        child: Row(
-          children: [
-            Container(
-              width: 8,
-              height: 8,
-              decoration: BoxDecoration(
-                color: exercise.mainPart.color,
-                shape: BoxShape.circle,
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    exercise.name,
-                    style: TextStyle(
-                      fontSize: 15,
-                      color: added
-                          ? AppColors.textMuted
-                          : AppColors.textPrimary,
-                    ),
-                  ),
-                  Text(
-                    parts,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textMuted,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (added)
-              const Text(
-                'добавлено',
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-            if (onInfo != null)
-              IconButton(
-                onPressed: onInfo,
-                tooltip: 'Подробнее',
-                icon: const Icon(
-                  LucideIcons.info,
-                  size: 18,
-                  color: AppColors.textMuted,
+      // Длинное название переносится на вторую строку — строка растёт, а не обрезается.
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 56),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 6),
+          child: Row(
+            children: [
+              Container(
+                width: 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: exercise.mainPart.color,
+                  shape: BoxShape.circle,
                 ),
-              )
-            else
+              ),
               const SizedBox(width: 12),
-          ],
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      exercise.name,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: added
+                            ? AppColors.textMuted
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    Text(
+                      parts,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (added)
+                const Text(
+                  'добавлено',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+              if (onInfo != null)
+                IconButton(
+                  onPressed: onInfo,
+                  tooltip: 'Подробнее',
+                  icon: const Icon(
+                    LucideIcons.info,
+                    size: 18,
+                    color: AppColors.textMuted,
+                  ),
+                )
+              else
+                const SizedBox(width: 12),
+            ],
+          ),
         ),
       ),
     );

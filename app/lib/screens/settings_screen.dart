@@ -62,8 +62,12 @@ class SettingsScreen extends ConsumerWidget {
               ),
               title: const Text('Аккаунт и синхронизация'),
               subtitle: Text(
-                ref.watch(accountProvider).email ?? 'Не подключён — данные только на телефоне',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ref.watch(accountProvider).email ??
+                    'Не подключён — данные только на телефоне',
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
               ),
               trailing: const Icon(
                 LucideIcons.chevronRight,
@@ -86,7 +90,10 @@ class SettingsScreen extends ConsumerWidget {
                 ref.watch(healthProvider).connected
                     ? 'Health Connect подключён'
                     : 'Шаги и пульс с Galaxy Watch и других часов',
-                style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+                style: const TextStyle(
+                  color: AppColors.textMuted,
+                  fontSize: 13,
+                ),
               ),
               trailing: const Icon(
                 LucideIcons.chevronRight,
@@ -181,8 +188,15 @@ class _HeroInfo extends StatelessWidget {
                       label,
                       style: const TextStyle(color: AppColors.textSecondary),
                     ),
-                    const Spacer(),
-                    Text(value),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Text(
+                        value,
+                        textAlign: TextAlign.end,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -404,18 +418,38 @@ class _DebugTools extends ConsumerWidget {
   static const _devCoins = 1000;
 
   /// Показать смену лиги и плашку итога недели, не дожидаясь понедельника.
-  Future<void> _shiftLeague(BuildContext context, WidgetRef ref, int shift) async {
+  Future<void> _shiftLeague(
+    BuildContext context,
+    WidgetRef ref,
+    int shift,
+  ) async {
     final messenger = ScaffoldMessenger.of(context);
     if (!ref.read(accountProvider).signedIn) {
-      messenger.showSnackBar(const SnackBar(content: Text('Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»')));
+      messenger.showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»',
+          ),
+        ),
+      );
       return;
     }
     try {
       await ref.read(apiProvider).post('/v1/dev/league', {'shift': shift});
       ref.invalidate(serverLeagueProvider);
-      messenger.showSnackBar(const SnackBar(content: Text('Готово: откройте вкладку «Рейтинг»')));
+      messenger.showSnackBar(
+        const SnackBar(content: Text('Готово: откройте вкладку «Рейтинг»')),
+      );
     } on ApiException catch (e) {
-      messenger.showSnackBar(SnackBar(content: Text(e.status == 404 ? 'Это доступно только на сервере разработки' : e.message)));
+      messenger.showSnackBar(
+        SnackBar(
+          content: Text(
+            e.status == 404
+                ? 'Это доступно только на сервере разработки'
+                : e.message,
+          ),
+        ),
+      );
     }
   }
 
@@ -431,7 +465,13 @@ class _DebugTools extends ConsumerWidget {
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.status == 404 ? 'На этом сервере выдача монет выключена' : e.message)),
+        SnackBar(
+          content: Text(
+            e.status == 404
+                ? 'На этом сервере выдача монет выключена'
+                : e.message,
+          ),
+        ),
       );
     }
   }
@@ -489,9 +529,12 @@ class _DebugTools extends ConsumerWidget {
             ActionChip(
               avatar: const Icon(LucideIcons.layers, size: 16),
               label: Text(
-                ref.watch(programProvider).phase == ProgramPhase.start ? 'Фаза «База»' : 'Фаза «Старт»',
+                ref.watch(programProvider).phase == ProgramPhase.start
+                    ? 'Фаза «База»'
+                    : 'Фаза «Старт»',
               ),
-              onPressed: () => ref.read(programProvider.notifier).debugTogglePhase(),
+              onPressed: () =>
+                  ref.read(programProvider.notifier).debugTogglePhase(),
             ),
           ],
         ),
@@ -520,9 +563,17 @@ class _DataSection extends ConsumerWidget {
         children: [
           ListTile(
             onTap: () => context.push('/privacy'),
-            leading: const Icon(LucideIcons.shieldCheck, size: 18, color: AppColors.textSecondary),
+            leading: const Icon(
+              LucideIcons.shieldCheck,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
             title: const Text('Политика конфиденциальности'),
-            trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
+            trailing: const Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
           ),
           const Divider(height: 1),
           ListTile(
@@ -531,17 +582,33 @@ class _DataSection extends ConsumerWidget {
               applicationName: 'IronRise',
               applicationLegalese: 'IronRise использует открытые библиотеки на условиях их лицензий',
             ),
-            leading: const Icon(LucideIcons.scrollText, size: 18, color: AppColors.textSecondary),
+            leading: const Icon(
+              LucideIcons.scrollText,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
             title: const Text('Лицензии открытых библиотек'),
-            trailing: const Icon(LucideIcons.chevronRight, size: 18, color: AppColors.textMuted),
+            trailing: const Icon(
+              LucideIcons.chevronRight,
+              size: 18,
+              color: AppColors.textMuted,
+            ),
           ),
           const Divider(height: 1),
           ListTile(
-            onTap: signedIn ? () => context.go('/profile/account') : () => _confirmWipe(context, ref),
-            leading: const Icon(LucideIcons.trash2, size: 18, color: AppColors.textSecondary),
+            onTap: signedIn
+                ? () => context.go('/profile/account')
+                : () => _confirmWipe(context, ref),
+            leading: const Icon(
+              LucideIcons.trash2,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
             title: const Text('Удалить мои данные'),
             subtitle: Text(
-              signedIn ? 'Через удаление аккаунта' : 'Герой, тренировки и настройки на телефоне',
+              signedIn
+                  ? 'Через удаление аккаунта'
+                  : 'Герой, тренировки и настройки на телефоне',
               style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ),
@@ -556,10 +623,18 @@ class _DataSection extends ConsumerWidget {
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
         title: const Text('Удалить все данные'),
-        content: const Text('Герой, уровни, тренировки и покупки исчезнут с телефона. Вернуть их не получится'),
+        content: const Text(
+          'Герой, уровни, тренировки и покупки исчезнут с телефона. Вернуть их не получится',
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Отмена')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Удалить')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Отмена'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Удалить'),
+          ),
         ],
       ),
     );
@@ -578,10 +653,12 @@ class _EquipmentPicker extends ConsumerWidget {
     final current = ref.watch(programProvider).equipment;
     return SegmentedButton<Equipment>(
       segments: [
-        for (final e in Equipment.values) ButtonSegment(value: e, label: Text(e.label)),
+        for (final e in Equipment.values)
+          ButtonSegment(value: e, label: Text(e.label)),
       ],
       selected: {current},
-      onSelectionChanged: (v) => ref.read(programProvider.notifier).setEquipment(v.first),
+      onSelectionChanged: (v) =>
+          ref.read(programProvider.notifier).setEquipment(v.first),
     );
   }
 }

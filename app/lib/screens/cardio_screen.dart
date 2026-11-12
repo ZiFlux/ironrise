@@ -12,6 +12,7 @@ import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/fit_screen.dart';
 import '../widgets/format.dart';
 
 /// Кардио: таймер и живой пульс. Опыт идёт в часть тела «Кардио».
@@ -45,60 +46,66 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
       appBar: AppBar(title: const Text('Кардио')),
       body: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Text(
-                'Чем занимаешься?',
-                style: TextStyle(fontSize: 15, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 12),
-              Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  for (final a in CardioActivity.values)
-                    ChoiceChip(
-                      label: Text(a.label),
-                      selected: a == _activity,
-                      showCheckmark: false,
-                      onSelected: (_) => setState(() => _activity = a),
-                    ),
-                ],
-              ),
-              const Spacer(),
-              Icon(
-                LucideIcons.heartPulse,
-                size: 40,
-                color: BodyPart.cardio.color,
-              ),
-              const SizedBox(height: 12),
-              Text(
-                'Опыт идёт за минуты с пульсом от $zone уд/мин (зона 2). '
-                'Без датчика засчитывается половина времени',
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: AppColors.textSecondary,
+        // Маленький экран или крупный шрифт — прокрутка вместо наложения.
+        child: FitScreen(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Text(
+                  'Чем занимаешься?',
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
-              ),
-              if (!pulse.isConnected) ...[
-                const SizedBox(height: 8),
-                TextButton.icon(
-                  onPressed: () => context.go('/profile/heart-rate'),
-                  icon: const Icon(LucideIcons.bluetooth, size: 16),
-                  label: const Text('Подключить датчик пульса'),
+                const SizedBox(height: 12),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    for (final a in CardioActivity.values)
+                      ChoiceChip(
+                        label: Text(a.label),
+                        selected: a == _activity,
+                        showCheckmark: false,
+                        onSelected: (_) => setState(() => _activity = a),
+                      ),
+                  ],
+                ),
+                const Spacer(),
+                Icon(
+                  LucideIcons.heartPulse,
+                  size: 40,
+                  color: BodyPart.cardio.color,
+                ),
+                const SizedBox(height: 12),
+                Text(
+                  'Опыт идёт за минуты с пульсом от $zone уд/мин (зона 2). '
+                  'Без датчика засчитывается половина времени',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                if (!pulse.isConnected) ...[
+                  const SizedBox(height: 8),
+                  TextButton.icon(
+                    onPressed: () => context.go('/profile/heart-rate'),
+                    icon: const Icon(LucideIcons.bluetooth, size: 16),
+                    label: const Text('Подключить датчик пульса'),
+                  ),
+                ],
+                const Spacer(),
+                FilledButton(
+                  onPressed: () =>
+                      ref.read(cardioProvider.notifier).start(_activity),
+                  child: const Text('Старт'),
                 ),
               ],
-              const Spacer(),
-              FilledButton(
-                onPressed: () =>
-                    ref.read(cardioProvider.notifier).start(_activity),
-                child: const Text('Старт'),
-              ),
-            ],
+            ),
           ),
         ),
       ),
@@ -204,58 +211,61 @@ class _ActiveCardioState extends ConsumerState<_ActiveCardio> {
       ),
       body: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              const Spacer(),
-              Text(
-                formatClock(elapsed),
-                textAlign: TextAlign.center,
-                style: figureStyle(size: 64),
-              ),
-              if (elapsed.inMinutes >= GameConfig.cardioMaxMinutes)
-                const Text(
-                  'Больше 2 часов не засчитывается',
+        // Маленький экран или крупный шрифт — прокрутка вместо наложения.
+        child: FitScreen(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                const Spacer(),
+                Text(
+                  formatClock(elapsed),
                   textAlign: TextAlign.center,
-                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  style: figureStyle(size: 64),
                 ),
-              const SizedBox(height: 32),
-              Row(
-                children: [
-                  Expanded(
-                    child: _Stat(
-                      icon: LucideIcons.heart,
-                      iconColor: bpm == null
-                          ? AppColors.textMuted
-                          : BodyPart.cardio.color,
-                      value: bpm?.toString() ?? '—',
-                      label: 'уд/мин',
-                    ),
+                if (elapsed.inMinutes >= GameConfig.cardioMaxMinutes)
+                  const Text(
+                    'Больше 2 часов не засчитывается',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
-                  Expanded(
-                    child: _Stat(
-                      icon: LucideIcons.target,
-                      iconColor: accent,
-                      value: '${inZone.inMinutes}',
-                      label: 'мин в зоне',
+                const SizedBox(height: 32),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _Stat(
+                        icon: LucideIcons.heart,
+                        iconColor: bpm == null
+                            ? AppColors.textMuted
+                            : BodyPart.cardio.color,
+                        value: bpm?.toString() ?? '—',
+                        label: 'уд/мин',
+                      ),
                     ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 16),
-              Text(
-                zoneText,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 14, color: zoneColor),
-              ),
-              const Spacer(),
-              FilledButton(
-                onPressed: _finishing ? null : _finish,
-                child: const Text('Завершить'),
-              ),
-            ],
+                    Expanded(
+                      child: _Stat(
+                        icon: LucideIcons.target,
+                        iconColor: accent,
+                        value: '${inZone.inMinutes}',
+                        label: 'мин в зоне',
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  zoneText,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 14, color: zoneColor),
+                ),
+                const Spacer(),
+                FilledButton(
+                  onPressed: _finishing ? null : _finish,
+                  child: const Text('Завершить'),
+                ),
+              ],
+            ),
           ),
         ),
       ),

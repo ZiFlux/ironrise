@@ -124,7 +124,8 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             ),
             const SizedBox(height: 12),
             SizedBox(
-              height: 112,
+              // Крупный системный шрифт — плитки выше, иначе подпись не влезет.
+              height: MediaQuery.textScalerOf(context).scale(112),
               child: ListView.separated(
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),

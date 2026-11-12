@@ -10,6 +10,7 @@ import '../state/duel_state.dart';
 import '../state/server_game.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/fit_screen.dart';
 
 /// Рейтинг (экран 10): недельная лига. Пока с ботами, друзья и вуз — с сервером.
 class RatingScreen extends ConsumerWidget {
@@ -79,7 +80,8 @@ class _LeagueView extends StatelessWidget {
   _Zone _zoneOf(int place) {
     if (tier == null) return _Zone.none;
     if (place <= promoteTop && tier != LeagueTier.values.last) return _Zone.up;
-    if (place > table.length - demoteBottom && tier != LeagueTier.values.first) {
+    if (place > table.length - demoteBottom &&
+        tier != LeagueTier.values.first) {
       return _Zone.down;
     }
     return _Zone.none;
@@ -97,100 +99,108 @@ class _LeagueView extends StatelessWidget {
       appBar: AppBar(title: const Text('Рейтинг')),
       body: SafeArea(
         top: false,
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              if (header != null) ...[header!, const SizedBox(height: 8)],
-              if (lastWeek case final week?) ...[
-                _LastWeekBanner(result: week),
-                const SizedBox(height: 8),
-              ],
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          if (tier != null) ...[
-                            Icon(
-                              LucideIcons.medal,
-                              size: 18,
-                              color: tier!.color,
+        child: _fitOrList(
+          table.length <= _fitRows,
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                if (header != null) ...[header!, const SizedBox(height: 8)],
+                if (lastWeek case final week?) ...[
+                  _LastWeekBanner(result: week),
+                  const SizedBox(height: 8),
+                ],
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 12,
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            if (tier != null) ...[
+                              Icon(
+                                LucideIcons.medal,
+                                size: 18,
+                                color: tier!.color,
+                              ),
+                              const SizedBox(width: 8),
+                            ],
+                            Expanded(
+                              child: Text(
+                                tier?.title ?? title,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
                             ),
                             const SizedBox(width: 8),
+                            Text(
+                              daysLeft == 0
+                                  ? 'последний день'
+                                  : 'ещё $daysLeft дн.',
+                              style: const TextStyle(
+                                fontSize: 13,
+                                color: AppColors.textMuted,
+                              ),
+                            ),
                           ],
-                          Text(
-                            tier?.title ?? title,
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                          const Spacer(),
-                          Text(
-                            daysLeft == 0
-                                ? 'последний день'
-                                : 'ещё $daysLeft дн.',
-                            style: const TextStyle(
-                              fontSize: 13,
-                              color: AppColors.textMuted,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Тренировка +${GameConfig.leagueWorkoutPoints} · '
-                        'победа в дуэли +${GameConfig.leagueWinPoints}'
-                        '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
-                        '${tier == null ? '' : '\nПервые $promoteTop — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
-                        style: const TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textSecondary,
                         ),
-                      ),
-                    ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Тренировка +${GameConfig.leagueWorkoutPoints} · '
+                          'победа в дуэли +${GameConfig.leagueWinPoints}'
+                          '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
+                          '${tier == null ? '' : '\nПервые $promoteTop — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              if (table.length <= _fitRows)
-                for (final (i, entry) in table.indexed)
-                  Expanded(
-                    child: _Row(
-                      place: i + 1,
-                      entry: entry,
-                      zone: _zoneOf(i + 1),
-                    ),
-                  )
-              else
-                Expanded(
-                  child: ListView.builder(
-                    itemCount: table.length,
-                    itemBuilder: (_, i) => SizedBox(
-                      height: 48,
+                const SizedBox(height: 8),
+                if (table.length <= _fitRows)
+                  for (final (i, entry) in table.indexed)
+                    FlexibleMin(
+                      minHeight: MediaQuery.textScalerOf(context).scale(36),
                       child: _Row(
                         place: i + 1,
-                        entry: table[i],
+                        entry: entry,
                         zone: _zoneOf(i + 1),
+                      ),
+                    )
+                else
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: table.length,
+                      itemBuilder: (_, i) => SizedBox(
+                        height: MediaQuery.textScalerOf(context).scale(48),
+                        child: _Row(
+                          place: i + 1,
+                          entry: table[i],
+                          zone: _zoneOf(i + 1),
+                        ),
                       ),
                     ),
                   ),
+                const SizedBox(height: 8),
+                Text(
+                  footer,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                 ),
-              const SizedBox(height: 8),
-              Text(
-                footer,
-                textAlign: TextAlign.center,
-                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
@@ -387,3 +397,8 @@ class _LastWeekBanner extends StatelessWidget {
     );
   }
 }
+
+/// Таблица до 8 строк — на один экран (прокрутка, только если не влезает);
+/// длиннее — прокручивается сам список, шапка остаётся на месте.
+Widget _fitOrList(bool fits, Widget child) =>
+    fits ? FitScreen(child: child) : child;
