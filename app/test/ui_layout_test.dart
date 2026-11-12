@@ -375,4 +375,41 @@ void main() {
           '\nОшибки отображения (${problems.length}):\n${problems.join('\n')}',
     );
   });
+
+  testWidgets('переключение вкладок с анимацией — без ошибок', (tester) async {
+    tester.view.physicalSize = const Size(360, 780);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    SharedPreferences.setMockInitialValues({'hero_v1': _hero().encode()});
+    final prefs = await SharedPreferences.getInstance();
+    final container = ProviderContainer(
+      overrides: [prefsProvider.overrideWithValue(prefs)],
+    );
+    addTearDown(container.dispose);
+    await tester.pumpWidget(
+      UncontrolledProviderScope(
+        container: container,
+        child: const IronRiseApp(),
+      ),
+    );
+    await tester.pump();
+    // Быстро прыгаем по вкладкам, не дожидаясь конца анимаций, и возвращаемся.
+    for (final path in [
+      '/duels',
+      '/rating',
+      '/profile',
+      '/workout',
+      '/',
+      '/duels',
+      '/',
+    ]) {
+      container.read(routerProvider).go(path);
+      await tester.pump(const Duration(milliseconds: 90));
+    }
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.takeException(), isNull);
+    expect(find.text(_longNick), findsWidgets);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await tester.pump(const Duration(seconds: 2));
+  });
 }

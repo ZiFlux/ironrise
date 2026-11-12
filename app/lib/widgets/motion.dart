@@ -6,7 +6,7 @@ import '../theme.dart';
 /// Оборачивает уже нажимаемые карточки и плашки — сам нажатие не обрабатывает,
 /// только слушает касание, поэтому InkWell и onTap внутри работают как раньше.
 class Pressable extends StatefulWidget {
-  const Pressable({super.key, required this.child, this.scale = 0.97});
+  const Pressable({super.key, required this.child, this.scale = 0.95});
 
   final Widget child;
   final double scale;
@@ -36,34 +36,88 @@ class _PressableState extends State<Pressable> {
   );
 }
 
-/// Появление при открытии экрана: проявляется и чуть поднимается.
-/// [index] задаёт очередь: блоки выезжают один за другим, а не все разом.
-/// Без таймеров — задержка заложена в кривую, поэтому ничего не «висит» после ухода с экрана.
-class FadeSlideIn extends StatelessWidget {
+/// Счётчик заходов на вкладку: меняется при каждом переключении вкладок внизу.
+/// FadeSlideIn, увидев новый заход, проигрывает появление заново.
+class TabVisit extends InheritedWidget {
+  const TabVisit({super.key, required this.visit, required super.child});
+
+  final int visit;
+
+  static int of(BuildContext context) =>
+      context.dependOnInheritedWidgetOfExactType<TabVisit>()?.visit ?? 0;
+
+  @override
+  bool updateShouldNotify(TabVisit oldWidget) => visit != oldWidget.visit;
+}
+
+/// Появление: блок проявляется и поднимается снизу. [index] задаёт очередь —
+/// блоки выезжают один за другим. Повторяется при каждом заходе на вкладку,
+/// но сам блок не пересоздаётся (его состояние сохраняется).
+class FadeSlideIn extends StatefulWidget {
   const FadeSlideIn({super.key, required this.child, this.index = 0});
 
   final Widget child;
   final int index;
 
-  static const _step = 50; // мс между соседними блоками
-  static const _own = 320; // мс на появление одного блока
-  static const _maxDelayed = 8; // дальше — без задержки, чтобы длинные списки не ждали
+  @override
+  State<FadeSlideIn> createState() => _FadeSlideInState();
+}
+
+class _FadeSlideInState extends State<FadeSlideIn>
+    with SingleTickerProviderStateMixin {
+  static const _step = 60; // мс между соседними блоками
+  static const _own = 420; // мс на появление одного блока
+  static const _maxDelayed =
+      8; // дальше — без задержки, чтобы длинные списки не ждали
+  static const _rise = 24.0; // на сколько dp блок поднимается
+
+  late final AnimationController _c;
+  late final Animation<double> _t;
+  int? _visit;
 
   @override
-  Widget build(BuildContext context) {
-    final delay = _step * index.clamp(0, _maxDelayed);
+  void initState() {
+    super.initState();
+    final delay = _step * widget.index.clamp(0, _maxDelayed);
     final total = delay + _own;
-    return TweenAnimationBuilder<double>(
-      tween: Tween(begin: 0, end: 1),
+    _c = AnimationController(
+      vsync: this,
       duration: Duration(milliseconds: total),
+    );
+    _t = CurvedAnimation(
+      parent: _c,
       curve: Interval(delay / total, 1, curve: AppMotion.curve),
-      builder: (_, t, c) => Opacity(
-        opacity: t,
-        child: Transform.translate(offset: Offset(0, 12 * (1 - t)), child: c),
-      ),
-      child: child,
     );
   }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final visit = TabVisit.of(context);
+    if (visit != _visit) {
+      _visit = visit;
+      _c.forward(from: 0);
+    }
+  }
+
+  @override
+  void dispose() {
+    _c.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => AnimatedBuilder(
+    animation: _t,
+    builder: (_, child) => Opacity(
+      opacity: _t.value,
+      child: Transform.translate(
+        offset: Offset(0, _rise * (1 - _t.value)),
+        child: child,
+      ),
+    ),
+    child: widget.child,
+  );
 }
 
 /// Число, которое при изменении меняется с анимацией (монеты, сила, серия).
@@ -79,7 +133,10 @@ class AnimatedNumber extends StatelessWidget {
     switchInCurve: AppMotion.curve,
     transitionBuilder: (child, animation) => FadeTransition(
       opacity: animation,
-      child: ScaleTransition(scale: Tween(begin: 0.8, end: 1.0).animate(animation), child: child),
+      child: ScaleTransition(
+        scale: Tween(begin: 0.8, end: 1.0).animate(animation),
+        child: child,
+      ),
     ),
     child: Text('$value', key: ValueKey(value), style: style),
   );

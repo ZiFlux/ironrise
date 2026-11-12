@@ -24,6 +24,7 @@ import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
 import 'state/providers.dart';
+import 'widgets/motion.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
   return GoRouter(
@@ -151,15 +152,62 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
-class _Shell extends StatelessWidget {
+class _Shell extends StatefulWidget {
   const _Shell({required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
+  State<_Shell> createState() => _ShellState();
+}
+
+class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
+  int _visit = 0;
+
+  // Переключение вкладок «fade through» (Material): новая вкладка проявляется
+  // и чуть подрастает. Вкладки не пересоздаются — их состояние сохраняется.
+  late final AnimationController _switch = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 260),
+    value: 1,
+  );
+  late final Animation<double> _fade = CurvedAnimation(
+    parent: _switch,
+    curve: Curves.easeOutCubic,
+  );
+  late final Animation<double> _scale = Tween(
+    begin: 0.96,
+    end: 1.0,
+  ).animate(_fade);
+
+  @override
+  void dispose() {
+    _switch.dispose();
+    super.dispose();
+  }
+
+  @override
+  void didUpdateWidget(_Shell old) {
+    super.didUpdateWidget(old);
+    // Новая вкладка: плавный переход и повтор появления блоков на ней.
+    if (widget.shell.currentIndex != old.shell.currentIndex) {
+      _switch.forward(from: 0);
+      _visit++;
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
+    final shell = widget.shell;
+    // Новый заход на вкладку — блоки на ней появятся заново (FadeSlideIn).
     return Scaffold(
-      body: shell,
+      body: FadeTransition(
+        opacity: _fade,
+        child: ScaleTransition(
+          scale: _scale,
+          child: TabVisit(visit: _visit, child: shell),
+        ),
+      ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: (i) =>
