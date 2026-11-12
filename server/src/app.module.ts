@@ -7,6 +7,7 @@ import { AuthService } from './auth/auth.service';
 import { EconomyController } from './economy/economy.controller';
 import { EconomyService } from './economy/economy.service';
 import { HeroService } from './hero/hero.service';
+import { LogRetention, LogsController } from './logs/logs.controller';
 import { PrismaService } from './prisma.service';
 import { NotificationsController } from './push/notifications.controller';
 import { PushController } from './push/push.controller';
@@ -37,10 +38,11 @@ const jwtSecret = () => {
     }),
   ],
   controllers: [
+    LogsController,
     HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController, NotificationsController,
     // Только на сервере разработки: выдача монет и прочие инструменты.
     ...(devToolsEnabled ? [DevController] : []),
   ],
-  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService, PushService],
+  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService, PushService, LogRetention],
 })
 export class AppModule {}

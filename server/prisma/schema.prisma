@@ -49,6 +49,7 @@ model User {
   receivedFriendRequests Friendship[] @relation("FriendAddressee")
   devices                DeviceToken[]
   notifications          Notification[]
+  clientLogs             ClientLog[]
 }
 
 model Profile {
@@ -242,4 +243,28 @@ model Notification {
   createdAt DateTime  @default(now())
 
   @@index([userId, createdAt])
+}
+
+/// Логи приложения с телефонов тестеров — для отладки. Хранятся 14 дней.
+model ClientLog {
+  id         String   @id @default(uuid()) @db.Uuid
+  /// null — игрок не вошёл в аккаунт (лог пришёл анонимно).
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  /// Случайный id установки приложения: связывает логи до и после входа.
+  installId  String
+  /// Время события на телефоне.
+  at         DateTime
+  /// error | warn | info
+  level      String
+  message    String
+  stack      String?
+  appVersion String
+  os         String
+  env        String
+  createdAt  DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([installId, at])
+  @@index([userId, at])
 }

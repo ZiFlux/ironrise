@@ -3,9 +3,11 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import 'net/app_log.dart';
 import 'net/push.dart';
 import 'env.dart';
 import 'router.dart';
+import 'state/account_state.dart';
 import 'state/providers.dart';
 import 'state/settings.dart';
 import 'theme.dart';
@@ -15,10 +17,14 @@ Future<void> main() async {
   // Пока интерфейс рассчитан только на вертикальный экран.
   await SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
   final prefs = await SharedPreferences.getInstance();
-  runApp(ProviderScope(
-    overrides: [prefsProvider.overrideWithValue(prefs)],
-    child: const IronRiseApp(),
-  ));
+  // Журнал для отладки у тестеров: ловит ошибки с самого старта.
+  await AppLog.init(prefs);
+  runApp(
+    ProviderScope(
+      overrides: [prefsProvider.overrideWithValue(prefs)],
+      child: const IronRiseApp(),
+    ),
+  );
 }
 
 class IronRiseApp extends ConsumerWidget {
@@ -27,6 +33,7 @@ class IronRiseApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accent = ref.watch(accentProvider);
+    AppLog.startUploading(() => ref.read(apiProvider));
     return MaterialApp.router(
       title: 'IronRise',
       debugShowCheckedModeBanner: false,
@@ -52,9 +59,13 @@ class _NoStretchScrollBehavior extends MaterialScrollBehavior {
   const _NoStretchScrollBehavior();
 
   @override
-  Widget buildOverscrollIndicator(BuildContext context, Widget child, ScrollableDetails details) =>
-      child;
+  Widget buildOverscrollIndicator(
+    BuildContext context,
+    Widget child,
+    ScrollableDetails details,
+  ) => child;
 
   @override
-  ScrollPhysics getScrollPhysics(BuildContext context) => const ClampingScrollPhysics();
+  ScrollPhysics getScrollPhysics(BuildContext context) =>
+      const ClampingScrollPhysics();
 }

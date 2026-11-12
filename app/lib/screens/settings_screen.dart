@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/body_part.dart';
 import '../net/api_client.dart';
+import '../net/app_log.dart';
 import '../game/cardio.dart';
 import '../game/program.dart';
 import '../game/training_format.dart';
@@ -45,6 +46,8 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           const _SectionLabel('Данные'),
           const _DataSection(),
+          const SizedBox(height: 8),
+          const _LogsToggle(),
           const SizedBox(height: 24),
           const _SectionLabel('Пульсовые зоны'),
           _HeartZones(hero: hero),
@@ -661,4 +664,33 @@ class _EquipmentPicker extends ConsumerWidget {
           ref.read(programProvider.notifier).setEquipment(v.first),
     );
   }
+}
+
+/// Отчёты об ошибках для разработчика: что сломалось и где, без личных данных.
+class _LogsToggle extends StatefulWidget {
+  const _LogsToggle();
+
+  @override
+  State<_LogsToggle> createState() => _LogsToggleState();
+}
+
+class _LogsToggleState extends State<_LogsToggle> {
+  bool _on = AppLog.enabled;
+
+  @override
+  Widget build(BuildContext context) => Card(
+    child: SwitchListTile(
+      value: _on,
+      onChanged: (v) async {
+        setState(() => _on = v);
+        await AppLog.setEnabled(v);
+      },
+      title: const Text('Отправлять отчёты об ошибках'),
+      subtitle: const Text(
+        'Технический журнал приложения: ошибки и сбои связи. Помогает быстро чинить баги, '
+        'тренировки и пульс в него не попадают',
+        style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+      ),
+    ),
+  );
 }

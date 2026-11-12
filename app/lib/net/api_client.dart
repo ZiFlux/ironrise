@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import 'app_log.dart';
+
 /// Адрес API по умолчанию.
 /// dev: сервер разработки на компьютере; телефон видит его как 127.0.0.1 через
 /// `adb reverse tcp:3000 tcp:3000` (docs/DEV.md), эмулятор — так же.
@@ -111,11 +113,14 @@ class ApiClient {
       res = await http.Response.fromStream(
         await _http.send(request).timeout(_timeout),
       );
-    } on SocketException {
+    } on SocketException catch (e) {
+      _logFailure(method, path, 'нет связи: ${e.message}');
       throw const ApiException(0, 'Сервер недоступен');
-    } on http.ClientException {
+    } on http.ClientException catch (e) {
+      _logFailure(method, path, 'нет связи: ${e.message}');
       throw const ApiException(0, 'Сервер недоступен');
     } on TimeoutException {
+      _logFailure(method, path, 'таймаут');
       throw const ApiException(0, 'Сервер не отвечает');
     }
 
@@ -130,9 +135,19 @@ class ApiClient {
       final message = decoded is Map
           ? '${decoded['message'] ?? 'Ошибка ${res.statusCode}'}'
           : 'Ошибка ${res.statusCode}';
+      if (res.statusCode != 401) {
+        _logFailure(method, path, '${res.statusCode} $message');
+      }
       throw ApiException(res.statusCode, message);
     }
     return decoded;
+  }
+
+  /// В журнал тестера. Запросы самого журнала не пишем: без сети он забился бы
+  /// записями о том, что не смог отправиться.
+  void _logFailure(String method, String path, String what) {
+    if (path.startsWith('/v1/logs')) return;
+    AppLog.warn('API $method $path: $what');
   }
 
   /// Обменять refresh-токен на новую пару. Нет токена или он отозван — 401.
