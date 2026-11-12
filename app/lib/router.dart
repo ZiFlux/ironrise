@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'screens/account_screen.dart';
 import 'screens/cardio_screen.dart';
+import 'screens/devices_screen.dart';
 import 'screens/duel_battle_screen.dart';
 import 'screens/duels_screen.dart';
 import 'screens/exercise_library_screen.dart';
@@ -153,6 +154,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'account',
                     builder: (_, _) => const AccountScreen(),
+                  ),
+                  GoRoute(
+                    path: 'devices',
+                    builder: (_, _) => const DevicesScreen(),
                   ),
                   GoRoute(
                     path: 'friends',

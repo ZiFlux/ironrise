@@ -12,8 +12,6 @@ import '../game/cardio.dart';
 import '../game/program.dart';
 import '../game/training_format.dart';
 import '../state/account_state.dart';
-import '../state/health_state.dart';
-import '../state/heart_rate_state.dart';
 import '../state/hero.dart';
 import '../state/local_data.dart';
 import '../state/program_state.dart';
@@ -22,6 +20,7 @@ import '../state/settings.dart';
 import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import 'devices_screen.dart';
 import '../widgets/format.dart';
 import '../widgets/motion.dart';
 
@@ -42,13 +41,32 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           _HeroInfo(hero: hero),
           const SizedBox(height: 24),
+          // Сначала подключения — их ищут чаще всего; юридическое — в самом низу.
+          const _SectionLabel('Подключения'),
+          Card(
+            child: Column(
+              children: [
+                _NavTile(
+                  icon: LucideIcons.cloud,
+                  title: 'Аккаунт и синхронизация',
+                  subtitle:
+                      ref.watch(accountProvider).email ??
+                      'Не подключён — данные только на телефоне',
+                  path: '/profile/account',
+                ),
+                const Divider(height: 1),
+                _NavTile(
+                  icon: LucideIcons.watch,
+                  title: 'Часы и телефон',
+                  subtitle: devicesSummary(ref),
+                  path: '/profile/devices',
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 24),
           const _SectionLabel('Где тренируешься'),
           const _EquipmentPicker(),
-          const SizedBox(height: 24),
-          const _SectionLabel('Данные'),
-          const _DataSection(),
-          const SizedBox(height: 8),
-          const _LogsToggle(),
           const SizedBox(height: 24),
           const _SectionLabel('Пульсовые зоны'),
           _HeartZones(hero: hero),
@@ -56,82 +74,10 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionLabel('Цвет интерфейса'),
           const _AccentPicker(),
           const SizedBox(height: 24),
-          Card(
-            child: ListTile(
-              onTap: () => context.go('/profile/account'),
-              leading: const Icon(
-                LucideIcons.cloud,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              title: const Text('Аккаунт и синхронизация'),
-              subtitle: Text(
-                ref.watch(accountProvider).email ??
-                    'Не подключён — данные только на телефоне',
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 13,
-                ),
-              ),
-              trailing: const Icon(
-                LucideIcons.chevronRight,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
+          const _SectionLabel('Данные и конфиденциальность'),
+          const _DataSection(),
           const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              onTap: () => context.go('/profile/health'),
-              leading: const Icon(
-                LucideIcons.watch,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              title: const Text('Часы и здоровье'),
-              subtitle: Text(
-                ref.watch(healthProvider).connected
-                    ? 'Health Connect подключён'
-                    : 'Шаги и пульс с Galaxy Watch и других часов',
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 13,
-                ),
-              ),
-              trailing: const Icon(
-                LucideIcons.chevronRight,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Card(
-            child: ListTile(
-              onTap: () => context.go('/profile/heart-rate'),
-              leading: const Icon(
-                LucideIcons.heartPulse,
-                size: 18,
-                color: AppColors.textSecondary,
-              ),
-              title: const Text('Датчик пульса'),
-              subtitle: Text(
-                ref.watch(heartRateProvider).isConnected
-                    ? 'Подключён'
-                    : 'Часы или нагрудный датчик по Bluetooth',
-                style: const TextStyle(
-                  color: AppColors.textMuted,
-                  fontSize: 13,
-                ),
-              ),
-              trailing: const Icon(
-                LucideIcons.chevronRight,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ),
+          const _LogsToggle(),
           if (kDebugMode) ...[
             const SizedBox(height: 32),
             const _SectionLabel('Режим разработчика'),
@@ -294,11 +240,15 @@ class _HeartZones extends ConsumerWidget {
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Row(
             children: [
-              Text(
-                label,
-                style: const TextStyle(color: AppColors.textSecondary),
+              Expanded(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: AppColors.textSecondary),
+                ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Text(value),
               const SizedBox(width: 8),
               const Icon(
@@ -573,6 +523,39 @@ class _DebugTools extends ConsumerWidget {
 }
 
 /// Политика конфиденциальности и удаление данных (требование Google Play).
+/// Строка-переход в списке настроек.
+class _NavTile extends StatelessWidget {
+  const _NavTile({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.path,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final String path;
+
+  @override
+  Widget build(BuildContext context) => ListTile(
+    onTap: () => context.go(path),
+    leading: Icon(icon, size: 18, color: AppColors.textSecondary),
+    title: Text(title),
+    subtitle: Text(
+      subtitle,
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
+      style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+    ),
+    trailing: const Icon(
+      LucideIcons.chevronRight,
+      size: 18,
+      color: AppColors.textMuted,
+    ),
+  );
+}
+
 class _DataSection extends ConsumerWidget {
   const _DataSection();
 

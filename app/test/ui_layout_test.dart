@@ -351,6 +351,7 @@ void main() {
         '/profile/settings',
         '/profile/settings/schedule',
         '/profile/heart-rate',
+        '/profile/devices',
         '/profile/account',
         '/profile/friends',
         '/profile/health',

@@ -15,6 +15,7 @@ import '../state/providers.dart';
 import '../state/records_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
+import 'devices_screen.dart';
 import '../widgets/sign_up_card.dart';
 
 /// Профиль игрока: герой «было → стало», статистика, уровни силы.
@@ -166,6 +167,12 @@ class _Menu extends ConsumerWidget {
             ? account.email!
             : 'Не создан — прогресс только на телефоне',
         '/profile/account',
+      ),
+      (
+        LucideIcons.watch,
+        'Часы и телефон',
+        devicesSummary(ref),
+        '/profile/devices',
       ),
       (
         LucideIcons.users,
