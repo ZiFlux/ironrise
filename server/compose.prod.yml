@@ -27,7 +27,9 @@ services:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql://ironrise:${DB_PASSWORD}@db:5432/ironrise
+      # Таймауты 30 с: на одном ядре движок миграций Prisma стартует медленно,
+      # и стандартных 5 с на подключение к базе ему не хватает (ошибка P1001).
+      DATABASE_URL: postgresql://ironrise:${DB_PASSWORD}@db:5432/ironrise?connect_timeout=30&pool_timeout=30
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.prod}
       PORT: "3000"
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
