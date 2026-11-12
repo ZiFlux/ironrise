@@ -363,6 +363,7 @@ void main() {
         '/profile/account',
         '/profile/friends',
         '/profile/health',
+        '/profile/start-look',
         '/privacy',
         '/onboarding',
       ],

@@ -9,6 +9,7 @@ import { unpaidItems } from '../game/looks';
 import { MIN_TRAINING_DAYS, nextScheduleChangeAt } from '../game/schedule';
 import { premiumStatus } from '../game/premium';
 import { PREMIUM_ITEMS, priceOf } from '../game/shop';
+import { CREATOR_ITEMS, creatorOpen } from '../game/start-look';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
@@ -30,6 +31,12 @@ export const ScheduleSchema = z.object({
 
 export const AppearanceSchema = z.object({ appearance: z.record(z.string(), z.unknown()) });
 
+export const StartLookSchema = z.object({
+  appearance: z.record(z.string(), z.unknown()),
+  /** true — зафиксировать образ как «Старт» досрочно. */
+  lock: z.boolean().default(false),
+});
+
 /** Образ разбирается на вещи; некупленные платные — ошибка. */
 export const assertLookOwned = (look: Record<string, unknown>, owned: ReadonlySet<string>) => {
   const unpaid = unpaidItems(look, owned);
@@ -39,6 +46,13 @@ export const assertLookOwned = (look: Record<string, unknown>, owned: ReadonlySe
 
 const lockProfile = (tx: Prisma.TransactionClient, userId: string) =>
   tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
+
+/** Купленное и выданное; пока открыт редактор стартового образа — ещё и его вещи. */
+const wearable = async (db: Pick<Prisma.TransactionClient, 'inventoryItem' | 'profile'>, userId: string) => {
+  const owned = (await db.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map((i) => i.itemId);
+  const p = await db.profile.findUniqueOrThrow({ where: { userId }, select: { startLockedAt: true, startLookUntil: true } });
+  return new Set([...owned, ...(creatorOpen(p) ? CREATOR_ITEMS : [])]);
+};
 
 /** Дольше не подводим по неделям: человек начинает лигу заново. */
 const MAX_WEEKS_TO_SETTLE = 26;
@@ -61,14 +75,13 @@ export class EconomyService {
       if (unknown.length) throw new BadRequestException(`Unknown items: ${unknown.join(', ')}`);
       const profile = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { isTester: true, premiumUntil: true } });
 
-      const owned = new Set(
-        (await tx.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map((i) => i.itemId),
-      );
-      const toBuy = [...new Set(input.itemIds)].filter((id) => !owned.has(id) && priceOf(id)! > 0);
+      await this.hero.state(userId, tx); // зафиксирует стартовый образ, если окно уже закрылось
+      const all = await wearable(tx, userId);
+      const toBuy = [...new Set(input.itemIds)].filter((id) => !all.has(id) && priceOf(id)! > 0);
       if (toBuy.some((id) => PREMIUM_ITEMS.has(id)) && !premiumStatus(profile).active) {
         throw new ForbiddenException('Premium items need a subscription');
       }
-      assertLookOwned(input.appearance, new Set([...owned, ...toBuy]));
+      assertLookOwned(input.appearance, new Set([...all, ...toBuy]));
       const total = toBuy.reduce((s, id) => s + priceOf(id)!, 0);
       if (total > (await this.hero.coinsOf(userId, tx))) throw new ConflictException('Not enough coins');
 
@@ -110,10 +123,30 @@ export class EconomyService {
 
   /** Сохранить образ: всё надетое должно быть куплено или бесплатно. */
   async setAppearance(userId: string, appearance: Record<string, unknown>) {
-    const owned = await this.db.inventoryItem.findMany({ where: { userId }, select: { itemId: true } });
-    assertLookOwned(appearance, new Set(owned.map((i) => i.itemId)));
+    await this.hero.state(userId);
+    assertLookOwned(appearance, await wearable(this.db, userId));
     await this.db.profile.update({ where: { userId }, data: { appearance: appearance as Prisma.InputJsonValue } });
     return this.hero.state(userId);
+  }
+
+  /**
+   * Стартовый образ: пока открыт редактор, вещи редактора бесплатны. lock фиксирует
+   * образ как «Старт» досрочно; после фиксации или конца окна — 409.
+   */
+  setStartLook(userId: string, input: z.infer<typeof StartLookSchema>) {
+    return this.db.$transaction(async (tx) => {
+      await lockProfile(tx, userId);
+      await this.hero.state(userId, tx);
+      const p = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { startLockedAt: true, startLookUntil: true } });
+      if (!creatorOpen(p)) throw new ConflictException('Start look is already locked');
+      assertLookOwned(input.appearance, await wearable(tx, userId));
+      if (input.lock) {
+        await this.hero.lockStart(userId, input.appearance as Prisma.JsonValue, new Date(), tx);
+      } else {
+        await tx.profile.update({ where: { userId }, data: { appearance: input.appearance as Prisma.InputJsonValue } });
+      }
+      return this.hero.state(userId, tx);
+    });
   }
 
   /** Боты дня и итоги боёв с ними за сегодня. */

@@ -23,6 +23,7 @@ import 'screens/rating_screen.dart';
 import 'screens/schedule_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tip_screen.dart';
+import 'screens/start_look_screen.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
@@ -178,6 +179,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'health',
                     builder: (_, _) => const HealthScreen(),
+                  ),
+                  GoRoute(
+                    path: 'start-look',
+                    builder: (_, _) => const StartLookScreen(),
                   ),
                 ],
               ),

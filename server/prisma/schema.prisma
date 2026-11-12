@@ -70,6 +70,11 @@ model Profile {
   formatChangedAt  DateTime?
   /// Внешность аватара и косметика (AvatarLook с клиента).
   appearance       Json
+  /// Образ «Старт» на экране прогресса: фиксируется кнопкой или сам по истечении startLookUntil.
+  startAppearance  Json?
+  startLockedAt    DateTime?
+  /// До этой даты образ собирается бесплатно (src/game/start-look.ts).
+  startLookUntil   DateTime  @default(dbgenerated("(now() + '14 days'::interval)"))
   age              Int?
   restingHr        Int?
   /// IANA, например Europe/Moscow: по нему считаются календарные дни и серия.

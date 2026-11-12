@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@n
 import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
-import { AppearanceSchema, BuySchema, EconomyService, ScheduleSchema } from './economy.service';
+import { AppearanceSchema, BuySchema, EconomyService, ScheduleSchema, StartLookSchema } from './economy.service';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -30,6 +30,12 @@ export class EconomyController {
   @Put('me/appearance')
   appearance(@UserId() userId: string, @Body(new ZodPipe(AppearanceSchema)) body: z.infer<typeof AppearanceSchema>) {
     return this.economy.setAppearance(userId, body.appearance);
+  }
+
+  /** Стартовый образ: первые 14 дней бесплатно, lock — зафиксировать как «Старт». */
+  @Put('me/start-look')
+  startLook(@UserId() userId: string, @Body(new ZodPipe(StartLookSchema)) body: z.infer<typeof StartLookSchema>) {
+    return this.economy.setStartLook(userId, body);
   }
 
   @Get('duels/bots')

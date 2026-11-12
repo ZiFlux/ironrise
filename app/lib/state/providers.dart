@@ -25,10 +25,34 @@ class HeroNotifier extends Notifier<HeroProfile?> {
     final raw = ref.read(prefsProvider).getString(_heroKey);
     if (raw == null) return null;
     try {
-      return HeroProfile.decode(raw);
+      return _lockStartIfExpired(HeroProfile.decode(raw));
     } catch (_) {
       return null;
     }
+  }
+
+  /// Без аккаунта окно закрывается на телефоне; с аккаунтом то же сделает сервер.
+  HeroProfile _lockStartIfExpired(HeroProfile h) {
+    if (h.startLook != null || h.startLookOpen(DateTime.now())) return h;
+    return _withLockedStart(h, h.look);
+  }
+
+  static HeroProfile _withLockedStart(HeroProfile h, AvatarLook look) =>
+      h.copyWith(
+        look: look,
+        startLook: look,
+        startLocked: true,
+        ownedItems: {
+          ...h.ownedItems,
+          for (final i in ShopCatalog.creatorGrant(look, h.ownedItems)) i.id,
+        },
+      );
+
+  /// Стартовый образ без аккаунта: lock — зафиксировать как «Старт» досрочно.
+  Future<void> saveStartLook(AvatarLook look, {required bool lock}) async {
+    final h = state;
+    if (h == null || !h.startLookOpen(DateTime.now())) return;
+    await save(lock ? _withLockedStart(h, look) : h.copyWith(look: look));
   }
 
   Future<void> save(HeroProfile hero) async {
@@ -102,6 +126,15 @@ class HeroNotifier extends Notifier<HeroProfile?> {
     } catch (_) {
       look = null; // старый или неполный образ на сервере — оставляем свой
     }
+    AvatarLook? startLook;
+    if (me['startAppearance'] is Map) {
+      try {
+        startLook = AvatarLook.fromJson(
+          Map<String, dynamic>.from(me['startAppearance'] as Map),
+        );
+      } catch (_) {}
+    }
+    final startUntil = me['startLookUntil'] as String?;
     final xp = Map<String, dynamic>.from(me['xp'] as Map);
     final last = me['lastActiveDay'] as String?;
     final lastDay = last == null ? null : DateTime.parse(last);
@@ -127,6 +160,11 @@ class HeroNotifier extends Notifier<HeroProfile?> {
             ? null
             : DateTime.parse(me['nextScheduleChangeAt'] as String).toLocal(),
         scheduleChangeAllowed: me['nextScheduleChangeAt'] == null,
+        startLook: startLook,
+        startLookUntil: startUntil == null
+            ? null
+            : DateTime.parse(startUntil).toLocal(),
+        startLocked: startUntil == null && startLook != null,
       ),
     );
   }

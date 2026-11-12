@@ -5,6 +5,8 @@ import { laggingParts, levels, power } from '../game/progression';
 import { currentStreak, maxRestDaysInRow } from '../game/streak';
 import { premiumStatus, PremiumStatus } from '../game/premium';
 import { nextScheduleChangeAt } from '../game/schedule';
+import { creatorItemsToGrant } from '../game/start-look';
+import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
 
 /** Клиент Prisma или транзакция — у них одинаковые методы моделей. */
@@ -31,6 +33,10 @@ export interface HeroState {
   /** Купленные и выданные вещи (бесплатные есть у всех и сюда не входят). */
   ownedItems: string[];
   premium: PremiumStatus;
+  /** Образ «Старт» для экрана прогресса; null — ещё собирается. */
+  startAppearance: unknown;
+  /** До какого момента образ собирается бесплатно; null — уже зафиксирован. */
+  startLookUntil: Date | null;
 }
 
 @Injectable()
@@ -49,8 +55,11 @@ export class HeroService {
   }
 
   async state(userId: string, db: Db = this.db, now = new Date()): Promise<HeroState> {
-    const profile = await db.profile.findUnique({ where: { userId } });
+    let profile = await db.profile.findUnique({ where: { userId } });
     if (!profile) throw new NotFoundException('Profile not found');
+    if (!profile.startLockedAt && now >= profile.startLookUntil) {
+      profile = await this.lockStart(userId, profile.appearance, profile.startLookUntil, db);
+    }
     const xp = await this.xpOf(userId, db);
     const lv = levels(xp);
     const streak = currentStreak({
@@ -80,6 +89,24 @@ export class HeroService {
         (i) => i.itemId,
       ),
       premium: premiumStatus(profile, now),
+      startAppearance: profile.startAppearance,
+      startLookUntil: profile.startLockedAt ? null : profile.startLookUntil,
     };
+  }
+
+  /** Зафиксировать стартовый образ: он становится «Стартом», надетые вещи редактора — навсегда за игроком. */
+  async lockStart(userId: string, appearance: Prisma.JsonValue, at: Date, db: Db = this.db) {
+    const look = (appearance ?? {}) as Record<string, unknown>;
+    const owned = new Set(
+      (await db.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map((i) => i.itemId),
+    );
+    const grant = creatorItemsToGrant(look, owned);
+    if (grant.length) {
+      await db.inventoryItem.createMany({ data: grant.map((itemId) => ({ userId, itemId })), skipDuplicates: true });
+    }
+    return db.profile.update({
+      where: { userId },
+      data: { appearance: look as Prisma.InputJsonValue, startAppearance: look as Prisma.InputJsonValue, startLockedAt: at },
+    });
   }
 }

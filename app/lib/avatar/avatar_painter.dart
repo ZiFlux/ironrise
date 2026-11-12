@@ -11,7 +11,7 @@ import 'body_frame.dart';
 /// Рисует аватар слоями: тень, волосы сзади, руки, тело, рельеф, одежда, голова.
 class AvatarPainter extends CustomPainter {
   AvatarPainter({required this.levels, required this.look})
-    : frame = BodyFrame(levels, look.sex) {
+    : frame = BodyFrame(levels, look.sex, look.build) {
     layers = AvatarLayers(frame, look);
   }
 

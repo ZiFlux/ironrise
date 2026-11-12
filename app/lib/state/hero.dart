@@ -137,6 +137,8 @@ class HeroProfile {
     this.activeDays = const {},
     this.ownedItems = const {},
     this.premium = const PremiumInfo(),
+    this.startLook,
+    this.startLookUntil,
   });
 
   factory HeroProfile.create({
@@ -156,7 +158,11 @@ class HeroProfile {
     xp: {for (final p in BodyPart.values) p: 0},
     streakDays: 0,
     createdAt: DateTime.now(),
+    startLookUntil: DateTime.now().add(startLookWindow),
   );
+
+  /// Сколько дней образ собирается бесплатно, прежде чем стать «Стартом».
+  static const startLookWindow = Duration(days: 14);
 
   final String nickname;
   final Goal goal;
@@ -183,6 +189,21 @@ class HeroProfile {
   final Set<String> ownedItems;
 
   final PremiumInfo premium;
+
+  /// Образ «Старт» на экране прогресса; null — ещё собирается.
+  final AvatarLook? startLook;
+
+  /// До этого момента образ собирается бесплатно; null — уже зафиксирован.
+  final DateTime? startLookUntil;
+
+  /// Открыт ли редактор стартового образа.
+  bool startLookOpen(DateTime now) =>
+      startLook == null &&
+      startLookUntil != null &&
+      now.isBefore(startLookUntil!);
+
+  /// Каким герой был в первый день: зафиксированный образ или тот, что собирается.
+  AvatarLook get firstDayLook => startLook ?? look;
 
   /// V без часов: у бета-тестеров штрафа нет.
   double get unverifiedValidity =>
@@ -223,6 +244,9 @@ class HeroProfile {
     List<int>? trainingDays,
     DateTime? nextScheduleChangeAt,
     bool scheduleChangeAllowed = false,
+    AvatarLook? startLook,
+    DateTime? startLookUntil,
+    bool startLocked = false,
   }) => HeroProfile(
     nickname: nickname,
     goal: goal,
@@ -241,6 +265,8 @@ class HeroProfile {
     ownedItems: ownedItems ?? this.ownedItems,
     premium: premium ?? this.premium,
     createdAt: createdAt,
+    startLook: startLook ?? this.startLook,
+    startLookUntil: startLocked ? null : startLookUntil ?? this.startLookUntil,
   );
 
   String encode() => jsonEncode({
@@ -259,6 +285,8 @@ class HeroProfile {
     'nextScheduleChangeAt': nextScheduleChangeAt?.toIso8601String(),
     'ownedItems': ownedItems.toList()..sort(),
     'premium': premium.toJson(),
+    'startLook': startLook?.toJson(),
+    'startLookUntil': startLookUntil?.toIso8601String(),
   });
 
   factory HeroProfile.decode(String s) {
@@ -297,6 +325,17 @@ class HeroProfile {
       nextScheduleChangeAt: j['nextScheduleChangeAt'] == null
           ? null
           : DateTime.parse(j['nextScheduleChangeAt'] as String),
+      startLook: j['startLook'] == null
+          ? null
+          : AvatarLook.fromJson(
+              Map<String, dynamic>.from(j['startLook'] as Map),
+            ),
+      // Сохранения до этой функции: 14 дней с момента обновления.
+      startLookUntil: j['startLook'] != null
+          ? null
+          : j['startLookUntil'] == null
+          ? DateTime.now().add(startLookWindow)
+          : DateTime.parse(j['startLookUntil'] as String),
     );
   }
 }

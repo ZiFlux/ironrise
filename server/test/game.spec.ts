@@ -474,3 +474,38 @@ describe('утренние уведомления', () => {
     expect(parseSettings({})).toMatchObject({ daily_tip: true, duels_refreshed: true, morningHour: 9 });
   });
 });
+
+import { CREATOR_ITEMS, creatorItemsToGrant, creatorOpen } from '../src/game/start-look';
+
+describe('стартовый образ', () => {
+  const look = {
+    sex: 'female', skin: 'tan', hair: 'long', hairColor: 0xffd9b66e, top: 'tee', topColor: 0xffe8e8e8,
+    bottom: 'leggings', bottomColor: 0xff1e2a4a, sneakersColor: 0xffededed, accessories: [], accessoryColor: 0xffc6ff3d,
+    build: 'solid',
+  };
+
+  it('окно открыто 14 дней и до фиксации', () => {
+    const until = new Date('2026-11-26T00:00:00Z');
+    expect(creatorOpen({ startLockedAt: null, startLookUntil: until }, new Date('2026-11-20T00:00:00Z'))).toBe(true);
+    expect(creatorOpen({ startLockedAt: null, startLookUntil: until }, new Date('2026-11-27T00:00:00Z'))).toBe(false);
+    expect(creatorOpen({ startLockedAt: new Date(), startLookUntil: until }, new Date('2026-11-20T00:00:00Z'))).toBe(false);
+  });
+
+  it('при фиксации выдаются только надетые вещи редактора', () => {
+    expect(creatorItemsToGrant(look, new Set(['top_tee']))).toEqual([
+      'hair_long', 'hc_blond', 'tc_white', 'bottom_leggings', 'bc_navy', 'sn_white',
+    ]);
+  });
+
+  it('аксессуары, премиум и вещи тестеров в редактор не входят', () => {
+    for (const id of ['acc_cap', 'acc_gold_chain', 'tc_gold', 'sn_gold', 'top_beta_tee', 'acc_beta_cap']) {
+      expect(CREATOR_ITEMS.has(id)).toBe(false);
+    }
+    expect(creatorItemsToGrant({ ...look, accessories: ['cap'] }, new Set())).not.toContain('acc_cap');
+  });
+
+  it('неизвестное телосложение — образ некорректен', () => {
+    expect(wornItems({ ...look, build: 'huge' })).toBeNull();
+    expect(wornItems(look)).not.toBeNull();
+  });
+});

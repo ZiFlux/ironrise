@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
 import '../game/exercise_catalog.dart';
@@ -66,7 +67,12 @@ class PlayerScreen extends ConsumerWidget {
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
         children: [
           _Growth(hero: hero),
-          const SizedBox(height: 4),
+          if (hero.startLookOpen(DateTime.now())) ...[
+            const SizedBox(height: 8),
+            _StartLookCard(hero: hero),
+            const SizedBox(height: 8),
+          ] else
+            const SizedBox(height: 4),
           Text(
             'С IronRise $days ${_daysWord(days)} · сила ${hero.power}',
             textAlign: TextAlign.center,
@@ -112,13 +118,18 @@ class _Growth extends StatelessWidget {
       child: Row(
         children: [
           Expanded(
-            child: _Figure(label: 'Старт', levels: _firstDay, hero: hero),
+            child: _Figure(
+              label: 'Старт',
+              levels: _firstDay,
+              look: hero.firstDayLook,
+              onTap: () => context.go('/profile/start-look'),
+            ),
           ),
           Expanded(
             child: _Figure(
               label: 'Сейчас',
               levels: hero.avatarLevels,
-              hero: hero,
+              look: hero.look,
             ),
           ),
         ],
@@ -131,25 +142,93 @@ class _Figure extends StatelessWidget {
   const _Figure({
     required this.label,
     required this.levels,
-    required this.hero,
+    required this.look,
+    this.onTap,
   });
 
   final String label;
   final Map<BodyPart, num> levels;
-  final HeroProfile hero;
+  final AvatarLook look;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Column(
+    final figure = Column(
       children: [
         Expanded(
-          child: AvatarView(levels: levels, look: hero.look),
+          child: AvatarView(levels: levels, look: look),
         ),
         Text(
           label,
           style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
       ],
+    );
+    return onTap == null
+        ? figure
+        : GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: onTap,
+            child: figure,
+          );
+  }
+}
+
+/// Первые 14 дней: позвать собрать себя, пока «Старт» не зафиксирован.
+class _StartLookCard extends StatelessWidget {
+  const _StartLookCard({required this.hero});
+
+  final HeroProfile hero;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    final days = (hero.startLookUntil!.difference(DateTime.now()).inHours / 24)
+        .ceil();
+    return Material(
+      color: accent.withValues(alpha: 0.10),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(14),
+        side: BorderSide(color: accent.withValues(alpha: 0.35)),
+      ),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: () => context.go('/profile/start-look'),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
+          child: Row(
+            children: [
+              Icon(LucideIcons.personStanding, color: accent, size: 22),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Собери себя на старте',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Телосложение, причёска, одежда — бесплатно. '
+                      'Осталось дней: $days',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

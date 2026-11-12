@@ -32,18 +32,18 @@ Path smoothClosedPath(List<Offset> points) {
 
 /// Правая половина контура зеркалится в левую: точки заданы как (отступ от центра, y).
 Path mirroredPath(List<Offset> rightHalf) => smoothClosedPath([
-      for (final p in rightHalf) Offset(_centerX + p.dx, p.dy),
-      for (final p in rightHalf.reversed) Offset(_centerX - p.dx, p.dy),
-    ]);
+  for (final p in rightHalf) Offset(_centerX + p.dx, p.dy),
+  for (final p in rightHalf.reversed) Offset(_centerX - p.dx, p.dy),
+]);
 
 Path polygonPath(List<Offset> points) => Path()..addPolygon(points, true);
 
 /// Рука как ось от плеча к запястью. Положительная ширина смотрит к центру тела.
 class ArmGeometry {
   ArmGeometry({required this.start, required this.wrist, required int side})
-      : _axis = (wrist - start) / (wrist - start).distance,
-        _length = (wrist - start).distance,
-        _side = side.toDouble();
+    : _axis = (wrist - start) / (wrist - start).distance,
+      _length = (wrist - start).distance,
+      _side = side.toDouble();
 
   final Offset start;
   final Offset wrist;
@@ -53,23 +53,42 @@ class ArmGeometry {
 
   Offset get _inward => Offset(-_axis.dy * _side, _axis.dx * _side);
 
-  Offset at(double t, double width) => start + _axis * (_length * t) + _inward * width;
+  Offset at(double t, double width) =>
+      start + _axis * (_length * t) + _inward * width;
 
   Offset get handCenter => wrist + _axis * 9;
 
   /// Контур по станциям (t, полуширина): вниз по одной стороне, вверх по другой.
   Path outline(List<(double, double)> stations) => smoothClosedPath([
-        for (final (t, w) in stations) at(t, w),
-        for (final (t, w) in stations.reversed) at(t, -w),
-      ]);
+    for (final (t, w) in stations) at(t, w),
+    for (final (t, w) in stations.reversed) at(t, -w),
+  ]);
 }
 
 /// Все размеры тела, посчитанные из уровней и пола.
 class BodyFrame {
-  factory BodyFrame(Map<BodyPart, num> levels, AvatarSex sex) {
+  factory BodyFrame(
+    Map<BodyPart, num> levels,
+    AvatarSex sex, [
+    BodyBuild build = BodyBuild.average,
+  ]) {
     double g(BodyPart p) => growthOf(levels[p] ?? 1);
+    final burn = (g(BodyPart.cardio) + g(BodyPart.core)) / 2;
+    final muscle =
+        (g(BodyPart.chest) +
+            g(BodyPart.back) +
+            g(BodyPart.arms) +
+            g(BodyPart.legs)) /
+        4;
     return BodyFrame._(
       isFemale: sex == AvatarSex.female,
+      // Лишнее уходит с кардио и прессом, худоба — с ростом мышц, но не до нуля сразу.
+      fat: switch (build) {
+        BodyBuild.slim => -1 + muscle * 0.8,
+        BodyBuild.average => 0,
+        BodyBuild.solid => 0.5 * (1 - burn * 0.8),
+        BodyBuild.heavy => 1.0 * (1 - burn * 0.8),
+      },
       chest: g(BodyPart.chest),
       back: g(BodyPart.back),
       arms: g(BodyPart.arms),
@@ -81,6 +100,7 @@ class BodyFrame {
 
   BodyFrame._({
     required this.isFemale,
+    required this.fat,
     required this.chest,
     required this.back,
     required this.arms,
@@ -93,21 +113,30 @@ class BodyFrame {
   }
 
   final bool isFemale;
+
+  /// Телосложение: −1 худощавое … 0 среднее … 1 крупное (с поправкой на прогресс).
+  final double fat;
   final double chest, back, arms, legs, core, cardio;
   late final ArmGeometry rightArm;
   late final ArmGeometry leftArm;
 
   double _pick(double male, double female) => isFemale ? female : male;
 
-  late final double neck = _pick(8.5, 6.5) + back * 2;
-  late final double shoulder = _pick(34, 29) + back * _pick(14, 7) + chest * _pick(4, 2);
-  late final double lat = _pick(28, 24) + back * _pick(12, 5);
-  late final double waist = _pick(26, 21) - cardio * 4 - core + chest * _pick(1, 0);
+  late final double neck = _pick(8.5, 6.5) + back * 2 + fat * 3;
+  late final double shoulder =
+      _pick(34, 29) + back * _pick(14, 7) + chest * _pick(4, 2);
+  late final double lat = _pick(28, 24) + back * _pick(12, 5) + fat * 6;
+  late final double waist =
+      _pick(26, 21) -
+      cardio * 4 -
+      core +
+      chest * _pick(1, 0) +
+      fat * _pick(15, 11);
   late final double ribs = _lerp(lat, waist, 0.6);
-  late final double hip = _pick(26, 31) + legs * 2;
-  late final double thigh = _pick(25, 30) + legs * _pick(9, 6);
+  late final double hip = _pick(26, 31) + legs * 2 + fat * _pick(9, 10);
+  late final double thigh = _pick(25, 30) + legs * _pick(9, 6) + fat * 7;
   late final double knee = _pick(17, 16) + legs * 2;
-  late final double calf = _pick(18, 17) + legs * _pick(6, 4);
+  late final double calf = _pick(18, 17) + legs * _pick(6, 4) + fat * 3;
   late final double ankle = _pick(10, 9);
   late final double shin = _lerp(calf, ankle, 0.6);
   late final double waistband = _lerp(waist, hip, 0.7);
@@ -115,9 +144,11 @@ class BodyFrame {
 
   late final double deltSize = _pick(11, 8.6) + (arms + back) / 2 * _pick(7, 3);
   late final double deltWidth = _pick(10.5, 8.5) + arms * _pick(5, 2.5) + back;
-  late final double bicepWidth = _pick(8, 6.6) + arms * _pick(6.5, 3);
+  late final double bicepWidth =
+      _pick(8, 6.6) + arms * _pick(6.5, 3) + fat * 3.5;
   late final double elbowWidth = _pick(6.2, 5.2) + arms * 2;
-  late final double forearmWidth = _pick(6.8, 5.8) + arms * _pick(3.6, 2);
+  late final double forearmWidth =
+      _pick(6.8, 5.8) + arms * _pick(3.6, 2) + fat * 2;
   late final double wristWidth = _pick(4.1, 3.4);
 
   late final double headRx = _pick(16, 15);
@@ -125,44 +156,60 @@ class BodyFrame {
   static const headCenter = Offset(_centerX, 30);
 
   ArmGeometry _armFor(int side) => ArmGeometry(
-        start: Offset(_centerX + side * (shoulder - deltWidth + 1.5), 84),
-        wrist: Offset(_centerX + side * (shoulder + 7 + arms * 4), 206),
-        side: side,
-      );
+    start: Offset(_centerX + side * (shoulder - deltWidth + 1.5), 84),
+    wrist: Offset(_centerX + side * (shoulder + 7 + arms * 4), 206),
+    side: side,
+  );
 
   List<(double, double)> get armStations => [
-        (0, deltWidth * 0.8),
-        (0.06, deltWidth),
-        (0.2, deltWidth * 0.92),
-        (0.36, bicepWidth),
-        (0.52, elbowWidth),
-        (0.66, forearmWidth),
-        (0.9, wristWidth),
-        (1, wristWidth),
-      ];
+    (0, deltWidth * 0.8),
+    (0.06, deltWidth),
+    (0.2, deltWidth * 0.92),
+    (0.36, bicepWidth),
+    (0.52, elbowWidth),
+    (0.66, forearmWidth),
+    (0.9, wristWidth),
+    (1, wristWidth),
+  ];
 
   /// Контур тела без рук. Плечо сужено: стык с рукой закрывает дельта.
   Path get bodyOutline => mirroredPath([
-        Offset(neck - 0.5, 48), Offset(neck, 62), Offset(trapX, 70),
-        Offset(shoulder - deltSize * 0.45, 81), Offset(lat + 1, 112), Offset(lat, 124),
-        Offset(ribs, 150), Offset(waist, 172), Offset(hip, 200), Offset(thigh, 224),
-        Offset(thigh - 3, 254), Offset(knee + 1, 290), Offset(calf, 318), Offset(shin, 350),
-        Offset(ankle, 372), Offset(ankle + 4, 384), Offset(ankle + 2, 389), const Offset(4, 389),
-        const Offset(4.5, 370), Offset(calf * 0.35, 330), const Offset(4.5, 292),
-        const Offset(5, 254), const Offset(1.5, 228),
-      ]);
+    Offset(neck - 0.5, 48),
+    Offset(neck, 62),
+    Offset(trapX, 70),
+    Offset(shoulder - deltSize * 0.45, 81),
+    Offset(lat + 1, 112),
+    Offset(lat, 124),
+    Offset(ribs, 150),
+    Offset(waist, 172),
+    Offset(hip, 200),
+    Offset(thigh, 224),
+    Offset(thigh - 3, 254),
+    Offset(knee + 1, 290),
+    Offset(calf, 318),
+    Offset(shin, 350),
+    Offset(ankle, 372),
+    Offset(ankle + 4, 384),
+    Offset(ankle + 2, 389),
+    const Offset(4, 389),
+    const Offset(4.5, 370),
+    Offset(calf * 0.35, 330),
+    const Offset(4.5, 292),
+    const Offset(5, 254),
+    const Offset(1.5, 228),
+  ]);
 
   /// Дельта: округлый колпак на верхушке руки. grow расширяет его под рукав.
   Path deltCap(ArmGeometry arm, {double grow = 0}) => smoothClosedPath([
-        arm.at(-0.07, -(deltSize * 0.15 + grow)),
-        arm.at(-0.01, -(deltSize * 0.9 + grow)),
-        arm.at(0.09, -(deltSize * 1.14 + grow)),
-        arm.at(0.19, -(deltSize * 0.92 + grow)),
-        arm.at(0.27, -(deltSize * 0.3 + grow)),
-        arm.at(0.2, deltSize * 0.3 + grow),
-        arm.at(0.08, deltSize * 0.6 + grow),
-        arm.at(-0.03, deltSize * 0.42 + grow),
-      ]);
+    arm.at(-0.07, -(deltSize * 0.15 + grow)),
+    arm.at(-0.01, -(deltSize * 0.9 + grow)),
+    arm.at(0.09, -(deltSize * 1.14 + grow)),
+    arm.at(0.19, -(deltSize * 0.92 + grow)),
+    arm.at(0.27, -(deltSize * 0.3 + grow)),
+    arm.at(0.2, deltSize * 0.3 + grow),
+    arm.at(0.08, deltSize * 0.6 + grow),
+    arm.at(-0.03, deltSize * 0.42 + grow),
+  ]);
 
   double headHalfWidthAt(double y) =>
       headRx * sqrt(max(0, 1 - pow((y - headCenter.dy) / headRy, 2)));

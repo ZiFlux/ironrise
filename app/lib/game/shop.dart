@@ -377,6 +377,17 @@ class ShopCatalog {
 
   static ShopItem byId(String id) => all.firstWhere((i) => i.id == id);
 
+  /// Бесплатно, пока собирается стартовый образ: одежда, причёски и цвета
+  /// без аксессуаров, премиума и эксклюзивов. Совпадает с server/src/game/start-look.ts.
+  static bool inCreator(ShopItem i) =>
+      i.slot != ShopSlot.accessory && !i.premium && !i.testerOnly;
+
+  /// Вещи редактора, надетые в образе и ещё не купленные: их выдают при фиксации.
+  static List<ShopItem> creatorGrant(AvatarLook look, Set<String> owned) => [
+    for (final i in unpaid(look, owned))
+      if (inCreator(i)) i,
+  ];
+
   /// Платные (и эксклюзивные) вещи образа, которых ещё нет у игрока, — «корзина» примерки.
   static List<ShopItem> unpaid(AvatarLook look, Set<String> owned) => [
     for (final i in all)

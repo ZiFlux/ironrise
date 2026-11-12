@@ -19,6 +19,18 @@ enum SkinTone {
   final Color hand;
 }
 
+/// Телосложение на старте: каким герой был в первый день. Запас «лишнего»
+/// уходит с ростом кардио и пресса, худоба — с ростом мышц (body_frame.dart).
+enum BodyBuild {
+  slim('Худощавое'),
+  average('Среднее'),
+  solid('Плотное'),
+  heavy('Крупное');
+
+  const BodyBuild(this.label);
+  final String label;
+}
+
 enum HairStyle { short, buzz, curly, manBun, bob, ponytail, bun, long }
 
 enum TopKind {
@@ -67,6 +79,7 @@ class AvatarLook {
     this.sneakersColor,
     this.accessories = const {},
     this.accessoryColor = const Color(0xFFC6FF3D),
+    this.build = BodyBuild.average,
   });
 
   /// Базовый образ нового героя: без покупок из магазина.
@@ -89,6 +102,7 @@ class AvatarLook {
   final Color? sneakersColor;
   final Set<Accessory> accessories;
   final Color accessoryColor;
+  final BodyBuild build;
 
   bool get isFemale => sex == AvatarSex.female;
 
@@ -103,8 +117,10 @@ class AvatarLook {
     Color? sneakersColor,
     bool noSneakers = false,
     Set<Accessory>? accessories,
+    BodyBuild? build,
   }) => AvatarLook(
     sex: sex,
+    build: build ?? this.build,
     skin: skin ?? this.skin,
     hair: hair ?? this.hair,
     hairColor: hairColor ?? this.hairColor,
@@ -129,6 +145,7 @@ class AvatarLook {
     'sneakersColor': sneakersColor?.toARGB32(),
     'accessories': accessories.map((a) => a.name).toList(),
     'accessoryColor': accessoryColor.toARGB32(),
+    'build': build.name,
   };
 
   /// Неизвестные значения (вещи из более новой версии) не роняют разбор:
@@ -154,6 +171,7 @@ class AvatarLook {
           ?Accessory.values.asNameMap()[a],
       },
       accessoryColor: color('accessoryColor', starter.accessoryColor),
+      build: BodyBuild.values.asNameMap()[j['build']] ?? BodyBuild.average,
     );
   }
 }

@@ -1,5 +1,8 @@
 import { EXCLUSIVE_ITEMS, SHOP_PRICES } from './shop';
 
+/** Телосложение на старте (AvatarLook.build): каким герой был в первый день. */
+const BUILD_NAMES: readonly unknown[] = ['slim', 'average', 'solid', 'heavy'];
+
 /**
  * Разбор образа (AvatarLook.toJson с клиента) на вещи магазина — чтобы сервер мог
  * проверить, что всё надетое куплено. Значения совпадают с app/lib/game/shop.dart.
@@ -64,6 +67,7 @@ export const wornItems = (look: Record<string, unknown>): string[] | null => {
     ...accessories.map((a) => pick(ACCESSORY, a)),
   ];
   if (look.sex !== 'male' && look.sex !== 'female') return null;
+  if (look.build !== undefined && !BUILD_NAMES.includes(look.build)) return null;
   return items.every((i): i is string => i !== undefined) ? items : null;
 };
 
