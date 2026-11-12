@@ -1,3 +1,4 @@
+import { GameConfig } from '../game/config';
 import { ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
@@ -76,6 +77,7 @@ export class AuthService {
             },
           },
           avatarParts: { create: BODY_PARTS.map((part) => ({ part })) },
+          walletTx: { create: { amount: GameConfig.welcomeCoins, reason: 'welcome' } },
         },
       });
       return this.issue(user.id);

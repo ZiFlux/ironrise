@@ -341,6 +341,7 @@ void main() {
         '/workout/result',
         '/workout/exercises',
         '/workout/cardio',
+        '/workout/joint',
         '/duels',
         '/duels/battle',
         '/rating',
@@ -349,6 +350,7 @@ void main() {
         '/profile/settings/schedule',
         '/profile/heart-rate',
         '/profile/account',
+        '/profile/friends',
         '/profile/health',
         '/privacy',
         '/onboarding',
@@ -364,7 +366,9 @@ void main() {
         '/duels/friends',
         '/rating',
         '/notifications',
+        '/profile',
         '/profile/account',
+        '/workout/joint',
       ],
     );
 

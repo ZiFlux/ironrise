@@ -6,6 +6,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../theme.dart';
+import '../widgets/sign_up_card.dart';
 
 /// Аккаунт: регистрация, вход и состояние синхронизации тренировок.
 class AccountScreen extends ConsumerWidget {
@@ -102,8 +103,8 @@ class _SignedIn extends ConsumerWidget {
         ),
         const SizedBox(height: 12),
         const Text(
-          'Опыт и серию считает сервер: после синхронизации они берутся оттуда. '
-          'Монеты, магазин и дуэли пока хранятся на телефоне',
+          'Опыт, серию, монеты, покупки и дуэли считает сервер: '
+          'после синхронизации они берутся оттуда',
           style: TextStyle(fontSize: 13, color: AppColors.textMuted),
         ),
         const SizedBox(height: 24),
@@ -138,7 +139,9 @@ class _SignedIn extends ConsumerWidget {
     } on ApiException catch (e) {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.status == 401 ? 'Неверный пароль' : e.message)),
+        SnackBar(
+          content: Text(e.status == 401 ? 'Неверный пароль' : e.message),
+        ),
       );
     }
   }
@@ -224,24 +227,61 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
             _error = null;
           }),
         ),
+        if (_register) ...[
+          const SizedBox(height: 16),
+          for (final (icon, text) in signUpPerks)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                children: [
+                  Icon(
+                    icon,
+                    size: 16,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(text, style: const TextStyle(fontSize: 13)),
+                  ),
+                ],
+              ),
+            ),
+        ],
         const SizedBox(height: 20),
-        TextField(
-          controller: _email,
-          keyboardType: TextInputType.emailAddress,
-          autofillHints: const [AutofillHints.email],
-          decoration: const InputDecoration(hintText: 'E-mail'),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _password,
-          obscureText: true,
-          autofillHints: [
-            _register ? AutofillHints.newPassword : AutofillHints.password,
-          ],
-          decoration: InputDecoration(
-            hintText: _register ? 'Пароль, от 8 символов' : 'Пароль',
+        // Поля — одна группа автозаполнения, без подсказок и автозамены:
+        // иначе на части клавиатур символ в пароле («-») закрывал клавиатуру.
+        AutofillGroup(
+          child: Column(
+            children: [
+              TextField(
+                controller: _email,
+                keyboardType: TextInputType.emailAddress,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofillHints: const [AutofillHints.email],
+                decoration: const InputDecoration(hintText: 'E-mail'),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: _password,
+                obscureText: true,
+                keyboardType: TextInputType.visiblePassword,
+                textInputAction: TextInputAction.done,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofillHints: [
+                  _register
+                      ? AutofillHints.newPassword
+                      : AutofillHints.password,
+                ],
+                decoration: InputDecoration(
+                  hintText: _register ? 'Пароль, от 8 символов' : 'Пароль',
+                ),
+                onSubmitted: (_) => _submit(),
+              ),
+            ],
           ),
-          onSubmitted: (_) => _submit(),
         ),
         if (_error != null) ...[
           const SizedBox(height: 12),
@@ -374,9 +414,14 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
         ],
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Отмена')),
         TextButton(
-          onPressed: _password.text.isEmpty ? null : () => Navigator.pop(context, _password.text),
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Отмена'),
+        ),
+        TextButton(
+          onPressed: _password.text.isEmpty
+              ? null
+              : () => Navigator.pop(context, _password.text),
           child: const Text('Удалить навсегда'),
         ),
       ],

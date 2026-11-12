@@ -11,12 +11,14 @@ import '../game/game_config.dart';
 import '../game/progression.dart';
 import '../game/workout.dart';
 import '../state/account_state.dart';
+import '../state/joint_state.dart';
 import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 import '../widgets/next_time_card.dart';
+import '../widgets/sign_up_card.dart';
 import '../widgets/wellbeing_card.dart';
 
 /// Итог тренировки: опыт по частям тела, новые уровни, монеты.
@@ -62,6 +64,11 @@ class WorkoutResultScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 8),
           _Totals(summary: summary),
+          if (ref.watch(jointProvider).value case final j?
+              when j.bonusActive) ...[
+            const SizedBox(height: 16),
+            _JointCard(partners: j.partnersOf(hero.nickname)),
+          ],
           const SizedBox(height: 16),
           _ValidityCard(summary: summary),
           const SizedBox(height: 16),
@@ -81,12 +88,49 @@ class WorkoutResultScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             const WellbeingCard(),
           ],
+          if (!ref.watch(accountProvider).signedIn) ...[
+            const SizedBox(height: 16),
+            const SignUpCard(compact: true),
+          ],
           const SizedBox(height: 24),
           FilledButton(
             onPressed: () => context.go('/'),
             child: const Text('Готово'),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Тренировка в совместной сессии: бонус считает сервер при синхронизации.
+class _JointCard extends StatelessWidget {
+  const _JointCard({required this.partners});
+
+  final List<String> partners;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Icon(LucideIcons.users, size: 18, color: accent),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                'Вместе с ${partners.join(', ')}: '
+                '+${(GameConfig.jointBonus * 100).round()}% опыта и монет. '
+                'Бонус начислится после синхронизации с сервером',
+                style: const TextStyle(fontSize: 14),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -186,18 +230,22 @@ class _ValidityCard extends ConsumerWidget {
                     ),
                   ),
                   if (!verified)
-                    for (final reason in waiting || report == null
-                        ? [
-                            waiting
-                                ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
-                                : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
-                          ]
-                        : report.issues.map((i) => _explain(i, report)))
+                    for (final reason
+                        in waiting || report == null
+                            ? [
+                                waiting
+                                    ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
+                                    : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
+                              ]
+                            : report.issues.map((i) => _explain(i, report)))
                       Padding(
                         padding: const EdgeInsets.only(top: 4),
                         child: Text(
                           reason,
-                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                          style: const TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textSecondary,
+                          ),
                         ),
                       ),
                 ],
@@ -210,16 +258,23 @@ class _ValidityCard extends ConsumerWidget {
   }
 }
 
-String _decimal(double v) => v.toStringAsFixed(2).replaceAll(RegExp(r'0+$'), '').replaceAll(RegExp(r'\.$'), '').replaceAll('.', ',');
+String _decimal(double v) => v
+    .toStringAsFixed(2)
+    .replaceAll(RegExp(r'0+$'), '')
+    .replaceAll(RegExp(r'\.$'), '')
+    .replaceAll('.', ',');
 
 /// Человеческое объяснение, почему опыт урезан.
 String _explain(ValidityIssue issue, ValidityReport report) => switch (issue) {
-  ValidityIssue.noPulse => 'Пульса нет: подключите часы или датчик, и опыт будет полным',
+  ValidityIssue.noPulse =>
+    'Пульса нет: подключите часы или датчик, и опыт будет полным',
   ValidityIssue.partialPulse =>
     'Пульс записан только на ${(report.pulseCoverage * 100).round()}% тренировки, нужно от '
         '${(GameConfig.minPulseCoverage * 100).round()}%: часы передавали его не всё время',
-  ValidityIssue.lowIntensity => 'Пульс почти как в покое: так бывает, если записывать подходы сидя',
-  ValidityIssue.flatPulse => 'Пульс ровный, без подъёмов на подходах и спадов на отдыхе',
+  ValidityIssue.lowIntensity =>
+    'Пульс почти как в покое: так бывает, если записывать подходы сидя',
+  ValidityIssue.flatPulse =>
+    'Пульс ровный, без подъёмов на подходах и спадов на отдыхе',
   ValidityIssue.tooFast =>
     'Подходов больше, чем успеть за это время: на подход нужно от ${GameConfig.minTimePerSet.inSeconds} с',
 };

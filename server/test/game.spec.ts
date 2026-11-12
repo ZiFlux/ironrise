@@ -3,6 +3,7 @@ import { BodyPart, PartMap, partMap } from '../src/game/body-part';
 import { scoreCardio, secondsInZone, zoneLowerBound } from '../src/game/cardio';
 import { GameConfig as C } from '../src/game/config';
 import { FighterSnapshot, seededRandom, simulateDuel } from '../src/game/duel';
+import { countsForSession, jointCode, withJointBonus } from '../src/game/joint';
 import { power } from '../src/game/progression';
 import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../src/game/streak';
 import { applyDailyCap, scoreStrength, StrengthSession, withPlanBonus } from '../src/game/workout';
@@ -377,5 +378,40 @@ describe('колорит дуэлей', () => {
     const rnd = seededRandom(1);
     const names = botNames(Array(40).fill(false), rnd);
     expect(new Set(names).size).toBe(40);
+  });
+});
+
+describe('совместная тренировка', () => {
+  const xpBefore = { chest: 0, back: 0, arms: 0, legs: 0, core: 0, cardio: 0 };
+  const base = {
+    durationSec: 1800,
+    totalSets: 9,
+    validity: 1,
+    gains: [{ part: 'chest' as const, xp: 200, levelBefore: 1, levelAfter: 3, xpAfter: 200, wasLagging: false }],
+    coins: 40,
+  };
+
+  it('+25% опыта и монет с партнёрами, без партнёров — без изменений', () => {
+    const joint = withJointBonus(base, xpBefore, ['Стас']);
+    expect(joint.gains[0].xp).toBe(250);
+    expect(joint.coins).toBe(50);
+    expect(joint.joint).toEqual({ partners: ['Стас'], bonusXp: 50 });
+    expect(withJointBonus(base, xpBefore, [])).toBe(base);
+  });
+
+  it('дневной потолок действует и для совместной', () => {
+    const big = { ...base, gains: [{ ...base.gains[0], xp: 560 }] };
+    const capped = applyDailyCap(withJointBonus(big, xpBefore, ['Стас']), xpBefore, 0);
+    expect(capped.gains.reduce((s, g) => s + g.xp, 0)).toBeLessThanOrEqual(C.dailyXpCap);
+  });
+
+  it('засчитывается только тренировка внутри сессии и после входа', () => {
+    const s = { joinedAt: new Date('2026-11-12T10:00:00Z'), endsAt: new Date('2026-11-12T14:00:00Z') };
+    const w = (from: string, to: string) => ({ startedAt: new Date(from), finishedAt: new Date(to) });
+    expect(countsForSession(w('2026-11-12T09:50:00Z', '2026-11-12T11:00:00Z'), s)).toBe(true);
+    expect(countsForSession(w('2026-11-12T08:00:00Z', '2026-11-12T09:00:00Z'), s)).toBe(false);
+    expect(countsForSession(w('2026-11-12T15:00:00Z', '2026-11-12T16:00:00Z'), s)).toBe(false);
+    expect(jointCode(() => 0)).toBe('100000');
+    expect(jointCode(() => 0.999999)).toMatch(/^\d{6}$/);
   });
 });

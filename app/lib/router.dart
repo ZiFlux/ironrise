@@ -11,6 +11,7 @@ import 'screens/exercise_library_screen.dart';
 import 'screens/friends_screen.dart';
 import 'screens/health_screen.dart';
 import 'screens/heart_rate_screen.dart';
+import 'screens/joint_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -87,6 +88,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                     path: 'cardio',
                     builder: (_, _) => const CardioScreen(),
                   ),
+                  GoRoute(
+                    path: 'joint',
+                    builder: (_, _) => const JointScreen(),
+                  ),
                 ],
               ),
             ],
@@ -137,6 +142,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'account',
                     builder: (_, _) => const AccountScreen(),
+                  ),
+                  GoRoute(
+                    path: 'friends',
+                    builder: (_, _) => const FriendsScreen(),
                   ),
                   GoRoute(
                     path: 'health',

@@ -50,6 +50,8 @@ model User {
   devices                DeviceToken[]
   notifications          Notification[]
   clientLogs             ClientLog[]
+  jointSessions          JointSession[]
+  jointMemberships       JointMember[]
 }
 
 model Profile {
@@ -268,4 +270,31 @@ model ClientLog {
   @@index([createdAt])
   @@index([installId, at])
   @@index([userId, at])
+}
+
+/// Совместная тренировка (ТЗ 3.2): хозяин показывает код, друзья рядом его вводят.
+model JointSession {
+  id        String        @id @default(uuid()) @db.Uuid
+  hostId    String        @db.Uuid
+  host      User          @relation(fields: [hostId], references: [id], onDelete: Cascade)
+  code      String
+  /// До этого времени можно подключиться по коду.
+  codeUntil DateTime
+  /// До этого времени тренировки участников получают бонус.
+  endsAt    DateTime
+  createdAt DateTime      @default(now())
+  members   JointMember[]
+
+  @@index([code, codeUntil])
+}
+
+model JointMember {
+  sessionId String       @db.Uuid
+  session   JointSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  userId    String       @db.Uuid
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  joinedAt  DateTime     @default(now())
+
+  @@id([sessionId, userId])
+  @@index([userId, joinedAt])
 }

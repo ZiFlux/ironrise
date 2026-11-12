@@ -33,6 +33,13 @@ class GameConfig {
   /// Бонус монет за тренировку, выполненную по плану программы.
   static const double planCoinBonus = 0.2;
 
+  /// Совместная тренировка: +25% опыта и монет каждому (как на сервере).
+  static const double jointBonus = 0.25;
+  static const int jointSessionHours = 4;
+
+  /// Монеты за создание аккаунта (сервер начисляет один раз).
+  static const int welcomeCoins = 100;
+
   /// Монеты за правильный ответ на вопрос «Совета дня», раз в день.
   static const int tipCoins = 10;
 

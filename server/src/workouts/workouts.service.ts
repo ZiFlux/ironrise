@@ -6,7 +6,9 @@ import { CardioSummary, scoreCardio } from '../game/cardio';
 import { maxRestDaysInRow, streakAfterActivity } from '../game/streak';
 import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap, withPlanBonus } from '../game/workout';
 import { Prisma } from '../generated/prisma/client';
+import { withJointBonus } from '../game/joint';
 import { HeroService, HeroState } from '../hero/hero.service';
+import { JointService } from '../joint/joint.service';
 import { PrismaService } from '../prisma.service';
 
 const MAX_DURATION_MS = 6 * 3600_000;
@@ -59,6 +61,7 @@ export class WorkoutsService {
   constructor(
     private readonly db: PrismaService,
     private readonly hero: HeroService,
+    private readonly joint: JointService,
   ) {}
 
   submitStrength(userId: string, input: z.infer<typeof StrengthSchema>): Promise<WorkoutResult> {
@@ -134,8 +137,13 @@ export class WorkoutsService {
         _sum: { xp: true },
         where: { userId, workout: { day } },
       });
+      const partners = await this.joint.partnersFor(userId, { startedAt, finishedAt }, tx);
       const summary = withPlanBonus(
-        applyDailyCap(await score(xpBefore, profile.restingHr, profile.age), xpBefore, earnedToday._sum.xp ?? 0),
+        applyDailyCap(
+          withJointBonus(await score(xpBefore, profile.restingHr, profile.age), xpBefore, partners),
+          xpBefore,
+          earnedToday._sum.xp ?? 0,
+        ),
         planCompleted,
       );
 

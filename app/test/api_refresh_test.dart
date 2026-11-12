@@ -20,8 +20,9 @@ void main() {
           refreshes++;
           final sent = (jsonDecode(req.body) as Map)['refreshToken'];
           await Future<void>.delayed(const Duration(milliseconds: 20));
-          if (sent != current)
+          if (sent != current) {
             return http.Response('{"message":"Refresh token is invalid"}', 401);
+          }
           current = 'r${refreshes + 1}';
           return http.Response(
             jsonEncode({'accessToken': 'a', 'refreshToken': current}),

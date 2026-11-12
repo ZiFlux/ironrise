@@ -6,12 +6,16 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
 import '../game/exercise_catalog.dart';
+import '../game/game_config.dart';
 import '../game/strength.dart';
+import '../state/account_state.dart';
 import '../state/hero.dart';
+import '../state/joint_state.dart';
 import '../state/providers.dart';
 import '../state/records_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
+import '../widgets/sign_up_card.dart';
 
 /// Профиль игрока: герой «было → стало», статистика, уровни силы.
 class PlayerScreen extends ConsumerWidget {
@@ -48,6 +52,12 @@ class PlayerScreen extends ConsumerWidget {
           ),
           const SizedBox(height: 20),
           _Stats(hero: hero, records: records),
+          const SizedBox(height: 16),
+          if (!ref.watch(accountProvider).signedIn) ...[
+            const SignUpCard(),
+            const SizedBox(height: 16),
+          ],
+          const _Menu(),
           const SizedBox(height: 24),
           _StrengthSection(hero: hero, records: records),
         ],
@@ -77,8 +87,16 @@ class _Growth extends StatelessWidget {
       height: 240,
       child: Row(
         children: [
-          Expanded(child: _Figure(label: 'Старт', levels: _firstDay, hero: hero)),
-          Expanded(child: _Figure(label: 'Сейчас', levels: hero.avatarLevels, hero: hero)),
+          Expanded(
+            child: _Figure(label: 'Старт', levels: _firstDay, hero: hero),
+          ),
+          Expanded(
+            child: _Figure(
+              label: 'Сейчас',
+              levels: hero.avatarLevels,
+              hero: hero,
+            ),
+          ),
         ],
       ),
     );
@@ -86,7 +104,11 @@ class _Growth extends StatelessWidget {
 }
 
 class _Figure extends StatelessWidget {
-  const _Figure({required this.label, required this.levels, required this.hero});
+  const _Figure({
+    required this.label,
+    required this.levels,
+    required this.hero,
+  });
 
   final String label;
   final Map<BodyPart, num> levels;
@@ -96,9 +118,87 @@ class _Figure extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Expanded(child: AvatarView(levels: levels, look: hero.look)),
-        Text(label, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+        Expanded(
+          child: AvatarView(levels: levels, look: hero.look),
+        ),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+        ),
       ],
+    );
+  }
+}
+
+/// Разделы профиля: аккаунт, друзья, совместная тренировка, гардероб, настройки.
+class _Menu extends ConsumerWidget {
+  const _Menu();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final account = ref.watch(accountProvider);
+    final joint = ref.watch(jointProvider).value;
+    final items = [
+      (
+        LucideIcons.circleUser,
+        'Аккаунт',
+        account.signedIn
+            ? account.email!
+            : 'Не создан — прогресс только на телефоне',
+        '/profile/account',
+      ),
+      (
+        LucideIcons.users,
+        'Друзья',
+        account.signedIn
+            ? 'Заявки, поиск по нику, кто нападал'
+            : 'Нужен аккаунт',
+        '/profile/friends',
+      ),
+      (
+        LucideIcons.handshake,
+        'Тренировка вместе',
+        joint?.bonusActive ?? false
+            ? 'Идёт: +${(GameConfig.jointBonus * 100).round()}% опыта'
+            : '+${(GameConfig.jointBonus * 100).round()}% опыта, если рядом друзья',
+        '/workout/joint',
+      ),
+      (LucideIcons.shirt, 'Гардероб', 'Образ героя и вещи', '/wardrobe'),
+      (
+        LucideIcons.settings,
+        'Настройки',
+        'График, часы, пульс, данные',
+        '/profile/settings',
+      ),
+    ];
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Column(
+        children: [
+          for (final (i, (icon, title, subtitle, path)) in items.indexed) ...[
+            if (i > 0) const Divider(height: 1, indent: 56),
+            ListTile(
+              onTap: () => context.go(path),
+              leading: Icon(icon, size: 20),
+              title: Text(title),
+              subtitle: Text(
+                subtitle,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              trailing: const Icon(
+                LucideIcons.chevronRight,
+                size: 18,
+                color: AppColors.textMuted,
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -133,7 +233,13 @@ class _Stats extends StatelessWidget {
                 children: [
                   Text(value, style: figureStyle(size: 17)),
                   const SizedBox(height: 6),
-                  Text(label, style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -150,7 +256,9 @@ class _StrengthSection extends StatelessWidget {
   final HeroProfile hero;
   final TrainingRecords records;
 
-  bool get _female => hero.body.sex == Sex.female || (hero.body.sex == null && hero.look.isFemale);
+  bool get _female =>
+      hero.body.sex == Sex.female ||
+      (hero.body.sex == null && hero.look.isFemale);
 
   StrengthLevel? _levelOf(String exerciseId, BestLift lift) {
     if (StrengthStandards.usesReps(exerciseId)) {
@@ -158,16 +266,24 @@ class _StrengthSection extends StatelessWidget {
     }
     final oneRepMax = lift.oneRepMax;
     if (oneRepMax == null) return null;
-    return StrengthStandards.byOneRepMax(exerciseId, oneRepMax, hero.body.weightKg, female: _female);
+    return StrengthStandards.byOneRepMax(
+      exerciseId,
+      oneRepMax,
+      hero.body.weightKg,
+      female: _female,
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     final rows = [
       for (final id in StrengthStandards.exercises)
-        if (records.best[id] case final lift?) (id: id, lift: lift, level: _levelOf(id, lift)),
+        if (records.best[id] case final lift?)
+          (id: id, lift: lift, level: _levelOf(id, lift)),
     ];
-    final overall = StrengthStandards.overall(rows.map((r) => r.level).nonNulls);
+    final overall = StrengthStandards.overall(
+      rows.map((r) => r.level).nonNulls,
+    );
     final noWeight = hero.body.weightKg == null;
 
     return Column(
@@ -176,10 +292,19 @@ class _StrengthSection extends StatelessWidget {
         Row(
           children: [
             const Expanded(
-              child: Text('Сила', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500)),
+              child: Text(
+                'Сила',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
+              ),
             ),
             if (overall != null)
-              Text(overall.label, style: figureStyle(size: 15, color: Theme.of(context).colorScheme.primary)),
+              Text(
+                overall.label,
+                style: figureStyle(
+                  size: 15,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
+              ),
           ],
         ),
         const SizedBox(height: 8),
@@ -195,7 +320,11 @@ class _StrengthSection extends StatelessWidget {
               children: [
                 for (final (i, row) in rows.indexed) ...[
                   if (i > 0) const Divider(height: 1),
-                  _LiftRow(exerciseId: row.id, lift: row.lift, level: row.level),
+                  _LiftRow(
+                    exerciseId: row.id,
+                    lift: row.lift,
+                    level: row.level,
+                  ),
                 ],
               ],
             ),
@@ -213,7 +342,11 @@ class _StrengthSection extends StatelessWidget {
 }
 
 class _LiftRow extends StatelessWidget {
-  const _LiftRow({required this.exerciseId, required this.lift, required this.level});
+  const _LiftRow({
+    required this.exerciseId,
+    required this.lift,
+    required this.level,
+  });
 
   final String exerciseId;
   final BestLift lift;
@@ -222,7 +355,9 @@ class _LiftRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final exercise = ExerciseCatalog.byId(exerciseId);
-    final best = lift.weight > 0 ? '${formatWeight(lift.weight)} кг × ${lift.reps}' : '${lift.reps} повт.';
+    final best = lift.weight > 0
+        ? '${formatWeight(lift.weight)} кг × ${lift.reps}'
+        : '${lift.reps} повт.';
     final oneRepMax = lift.oneRepMax;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -235,13 +370,21 @@ class _LiftRow extends StatelessWidget {
                 Text(exercise.name, style: const TextStyle(fontSize: 14)),
                 const SizedBox(height: 2),
                 Text(
-                  oneRepMax == null ? 'Лучший: $best' : 'Лучший: $best · максимум ≈ ${formatWeight((oneRepMax * 2).round() / 2)} кг',
-                  style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+                  oneRepMax == null
+                      ? 'Лучший: $best'
+                      : 'Лучший: $best · максимум ≈ ${formatWeight((oneRepMax * 2).round() / 2)} кг',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
                 ),
               ],
             ),
           ),
-          Text(level?.label ?? '—', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+          Text(
+            level?.label ?? '—',
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+          ),
         ],
       ),
     );

@@ -13,6 +13,7 @@ import '../game/workout.dart';
 import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/program_state.dart';
+import '../state/joint_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
@@ -120,11 +121,39 @@ class _StartView extends ConsumerWidget {
                     : 'Продолжить кардио',
               ),
             ),
+            const SizedBox(height: 8),
+            _JointButton(),
           ],
         ),
       ),
     );
   }
+}
+
+/// Вход в совместную тренировку; если она идёт — с кем и до скольки.
+class _JointButton extends ConsumerWidget {
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final joint = ref.watch(jointProvider).value;
+    final accent = Theme.of(context).colorScheme.primary;
+    final active = joint?.bonusActive ?? false;
+    return OutlinedButton.icon(
+      onPressed: () => context.go('/workout/joint'),
+      icon: Icon(LucideIcons.users, size: 18, color: active ? accent : null),
+      label: Text(
+        active
+            ? 'Вместе: +${(GameConfig.jointBonus * 100).round()}% до ${_hm(joint!.endsAt)}'
+            : joint != null
+            ? 'Тренировка вместе: ждём друзей'
+            : 'Тренировка вместе',
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+    );
+  }
+
+  static String _hm(DateTime t) =>
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }
 
 // ---------- Идёт тренировка ----------

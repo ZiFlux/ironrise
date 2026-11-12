@@ -8,6 +8,7 @@ import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/sign_up_card.dart';
 
 /// Друзья (экран 8): поиск по нику, заявки, список и кто на тебя нападал.
 class FriendsScreen extends ConsumerStatefulWidget {
@@ -87,6 +88,22 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (!ref.watch(accountProvider).signedIn) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Друзья')),
+        body: ListView(
+          padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+          children: const [
+            Text(
+              'Друзья, заявки и дуэли с ними работают через сервер — нужен аккаунт.',
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 16),
+            SignUpCard(),
+          ],
+        ),
+      );
+    }
     final api = ref.read(apiProvider);
     final data = ref.watch(serverFriendsProvider);
     final attacks = ref.watch(serverAttacksProvider).value ?? const [];
