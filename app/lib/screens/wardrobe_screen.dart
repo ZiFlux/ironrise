@@ -11,6 +11,7 @@ import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/motion.dart';
 
 /// Магазин и гардероб (экран 11): примерка на аватаре, покупка за монеты.
 class WardrobeScreen extends ConsumerStatefulWidget {
@@ -131,12 +132,16 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 itemCount: items.length,
                 separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => _ItemTile(
-                  item: items[i],
-                  worn: items[i].isWorn(look),
-                  owned:
-                      items[i].isFree || hero.ownedItems.contains(items[i].id),
-                  onTap: () => _tap(items[i], look),
+                itemBuilder: (_, i) => Pressable(
+                  scale: 0.94,
+                  child: _ItemTile(
+                    item: items[i],
+                    worn: items[i].isWorn(look),
+                    owned:
+                        items[i].isFree ||
+                        hero.ownedItems.contains(items[i].id),
+                    onTap: () => _tap(items[i], look),
+                  ),
                 ),
               ),
             ),

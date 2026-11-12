@@ -16,15 +16,19 @@ class AvatarView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final avatar = CustomPaint(
-      painter: AvatarPainter(levels: levels, look: look),
-      size: Size.infinite,
+    // Свой слой: аватар не перерисовывается, когда меняется что-то рядом
+    // (таймер, анимация кнопки, прокрутка соседнего списка).
+    final avatar = RepaintBoundary(
+      child: CustomPaint(
+        painter: AvatarPainter(levels: levels, look: look),
+        size: Size.infinite,
+      ),
     );
     if (!withLamp) return avatar;
     return Stack(
       fit: StackFit.expand,
       children: [
-        const CustomPaint(painter: _LampPainter()),
+        const RepaintBoundary(child: CustomPaint(painter: _LampPainter())),
         avatar,
       ],
     );

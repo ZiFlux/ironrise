@@ -8,6 +8,7 @@ import '../net/push.dart';
 import '../state/account_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/motion.dart';
 
 /// Меню уведомлений: заявки, нападения, напоминания о серии.
 class NotificationsScreen extends ConsumerWidget {
@@ -15,9 +16,7 @@ class NotificationsScreen extends ConsumerWidget {
 
   Future<void> _markRead(WidgetRef ref, [List<String>? ids]) async {
     try {
-      await ref.read(apiProvider).post('/v1/notifications/read', {
-        'ids': ?ids,
-      });
+      await ref.read(apiProvider).post('/v1/notifications/read', {'ids': ?ids});
     } on ApiException {
       // Нет сети — отметим в следующий раз.
     }
@@ -64,12 +63,15 @@ class NotificationsScreen extends ConsumerWidget {
                   separatorBuilder: (_, _) => const Divider(height: 1),
                   itemBuilder: (_, i) {
                     final n = d.items[i];
-                    return _Tile(
-                      n: n,
-                      onTap: () {
-                        if (!n.read) _markRead(ref, [n.id]);
-                        context.go(n.path);
-                      },
+                    return FadeSlideIn(
+                      index: i,
+                      child: _Tile(
+                        n: n,
+                        onTap: () {
+                          if (!n.read) _markRead(ref, [n.id]);
+                          context.go(n.path);
+                        },
+                      ),
                     );
                   },
                 ),
@@ -234,9 +236,7 @@ class _NotificationSettingsState
       if (mounted) setState(() => _settings = s);
     } on ApiException catch (e) {
       if (!mounted) return;
-      setState(
-        () => _error = e.isNetwork ? 'Нет связи с сервером' : e.message,
-      );
+      setState(() => _error = e.isNetwork ? 'Нет связи с сервером' : e.message);
     }
   }
 

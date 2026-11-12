@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 
 import '../game/body_part.dart';
@@ -174,7 +175,9 @@ class AvatarPainter extends CustomPainter {
     ).createShader(path.getBounds());
 
   @override
-  bool shouldRepaint(AvatarPainter old) => old.levels != levels || old.look != look;
+  // Уровни сравниваются по значениям: при каждой пересборке экрана карта новая,
+  // а перерисовка дорогая (контуры тела, градиенты, рельеф).
+  bool shouldRepaint(AvatarPainter old) => old.look != look || !mapEquals(old.levels, levels);
 }
 
 class _ReliefStyle {

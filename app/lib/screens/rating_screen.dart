@@ -11,6 +11,7 @@ import '../state/server_game.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
+import '../widgets/motion.dart';
 
 /// Рейтинг (экран 10): недельная лига. Пока с ботами, друзья и вуз — с сервером.
 class RatingScreen extends ConsumerWidget {
@@ -173,10 +174,13 @@ class _LeagueView extends StatelessWidget {
                   for (final (i, entry) in table.indexed)
                     FlexibleMin(
                       minHeight: MediaQuery.textScalerOf(context).scale(36),
-                      child: _Row(
-                        place: i + 1,
-                        entry: entry,
-                        zone: _zoneOf(i + 1),
+                      child: FadeSlideIn(
+                        index: i,
+                        child: _Row(
+                          place: i + 1,
+                          entry: entry,
+                          zone: _zoneOf(i + 1),
+                        ),
                       ),
                     )
                 else
@@ -185,10 +189,13 @@ class _LeagueView extends StatelessWidget {
                       itemCount: table.length,
                       itemBuilder: (_, i) => SizedBox(
                         height: MediaQuery.textScalerOf(context).scale(48),
-                        child: _Row(
-                          place: i + 1,
-                          entry: table[i],
-                          zone: _zoneOf(i + 1),
+                        child: FadeSlideIn(
+                          index: i,
+                          child: _Row(
+                            place: i + 1,
+                            entry: table[i],
+                            zone: _zoneOf(i + 1),
+                          ),
                         ),
                       ),
                     ),

@@ -12,6 +12,7 @@ import '../state/providers.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
+import '../widgets/motion.dart';
 
 /// Дуэли (экран 9). С аккаунтом — боты дня и друзья через сервер,
 /// без аккаунта — локальные боты.
@@ -226,11 +227,16 @@ class _FighterList extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    Widget card(Fighter f) => _FighterCard(
-      fighter: f,
-      myPower: me.power,
-      result: results[f.id],
-      onFight: () => onFight(f),
+    Widget card(Fighter f, int i) => FadeSlideIn(
+      index: i,
+      child: Pressable(
+        child: _FighterCard(
+          fighter: f,
+          myPower: me.power,
+          result: results[f.id],
+          onFight: () => onFight(f),
+        ),
+      ),
     );
     final list = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -281,17 +287,17 @@ class _FighterList extends StatelessWidget {
               // Крупный системный шрифт — карточка выше, иначе текст не влезет.
               itemBuilder: (_, i) => SizedBox(
                 height: MediaQuery.textScalerOf(context).scale(72),
-                child: card(fighters[i]),
+                child: card(fighters[i], i),
               ),
             ),
           )
         else
-          for (final f in fighters)
+          for (final (i, f) in fighters.indexed)
             FlexibleMin(
               minHeight: MediaQuery.textScalerOf(context).scale(72),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
-                child: card(f),
+                child: card(f, i),
               ),
             ),
         const SizedBox(height: 4),

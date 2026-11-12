@@ -16,6 +16,7 @@ import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../theme.dart';
+import '../widgets/every_second.dart';
 import '../widgets/exercise_picker.dart';
 import '../widgets/format.dart';
 
@@ -138,7 +139,6 @@ class _ActiveWorkout extends ConsumerStatefulWidget {
 }
 
 class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
-  late final Timer _ticker;
   int _expanded = 0;
   DateTime? _restEndsAt;
 
@@ -147,17 +147,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   @override
   void initState() {
     super.initState();
-    _ticker = Timer.periodic(
-      const Duration(seconds: 1),
-      (_) => setState(() {}),
-    );
     ref.read(heartRateProvider.notifier).reconnectSaved();
-  }
-
-  @override
-  void dispose() {
-    _ticker.cancel();
-    super.dispose();
   }
 
   Duration? get _restLeft {
@@ -224,8 +214,6 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   Widget build(BuildContext context) {
     final session = widget.session;
     final program = ref.watch(programProvider);
-    final elapsed = DateTime.now().difference(session.startedAt);
-    final restLeft = _restLeft;
 
     return Scaffold(
       appBar: AppBar(
@@ -233,7 +221,13 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
         actions: [
           const _PulseIndicator(),
           const SizedBox(width: 16),
-          Text(formatClock(elapsed), style: figureStyle(size: 15)),
+          // Тикают только часы, а не весь экран с карточками упражнений.
+          EverySecond(
+            builder: (_) => Text(
+              formatClock(DateTime.now().difference(session.startedAt)),
+              style: figureStyle(size: 15),
+            ),
+          ),
           IconButton(
             tooltip: 'Отменить тренировку',
             onPressed: _confirmCancel,
@@ -248,11 +242,17 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
       ),
       body: Column(
         children: [
-          if (restLeft != null)
-            _RestBanner(
-              left: restLeft,
-              onSkip: () => setState(() => _restEndsAt = null),
-            ),
+          EverySecond(
+            builder: (_) {
+              final left = _restLeft;
+              return left == null
+                  ? const SizedBox.shrink()
+                  : _RestBanner(
+                      left: left,
+                      onSkip: () => setState(() => _restEndsAt = null),
+                    );
+            },
+          ),
           Expanded(
             child: session.entries.isEmpty
                 ? const _EmptyHint()

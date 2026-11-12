@@ -64,6 +64,12 @@ ThemeData buildTheme(Color accent) {
 
   return ThemeData(
     useMaterial3: true,
+    // Классическая волна вместо «искр»: искрам на Android нужен шейдер,
+    // который компилируется при первом нажатии и даёт рывок.
+    splashFactory: InkRipple.splashFactory,
+    pageTransitionsTheme: const PageTransitionsTheme(
+      builders: {TargetPlatform.android: FadeForwardsPageTransitionsBuilder()},
+    ),
     colorScheme: scheme,
     scaffoldBackgroundColor: AppColors.background,
     fontFamily: GoogleFonts.inter().fontFamily,

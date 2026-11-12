@@ -23,6 +23,7 @@ import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
+import '../widgets/motion.dart';
 
 /// Настройки и конфиденциальность: всё, что не про самого игрока.
 /// Вход — шестерёнка в профиле игрока.
@@ -136,7 +137,7 @@ class SettingsScreen extends ConsumerWidget {
             const _SectionLabel('Режим разработчика'),
             _DebugTools(hero: hero),
           ],
-        ],
+        ].indexed.map((e) => FadeSlideIn(index: e.$1, child: e.$2)).toList(),
       ),
     );
   }

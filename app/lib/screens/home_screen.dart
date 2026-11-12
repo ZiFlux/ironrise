@@ -20,6 +20,7 @@ import '../widgets/fit_screen.dart';
 import '../widgets/format.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
+import '../widgets/motion.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -45,7 +46,7 @@ class HomeScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                _Header(hero: hero),
+                FadeSlideIn(child: _Header(hero: hero)),
                 FlexibleMin(
                   minHeight: 130,
                   child: Semantics(
@@ -61,32 +62,40 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                WeekStrip(hero: hero),
+                FadeSlideIn(index: 1, child: WeekStrip(hero: hero)),
                 const _ActivityLine(),
                 const _TipLine(),
                 const SizedBox(height: 8),
                 if (recommendation != null) ...[
-                  _LaggingCard(
-                    recommendation: recommendation,
-                    onStart: () {
-                      final notifier = ref.read(workoutProvider.notifier)
-                        ..start();
-                      final exercise = recommendation.exercise;
-                      if (exercise != null) notifier.addExercise(exercise);
-                      context.go('/workout');
-                    },
+                  FadeSlideIn(
+                    index: 2,
+                    child: _LaggingCard(
+                      recommendation: recommendation,
+                      onStart: () {
+                        final notifier = ref.read(workoutProvider.notifier)
+                          ..start();
+                        final exercise = recommendation.exercise;
+                        if (exercise != null) notifier.addExercise(exercise);
+                        context.go('/workout');
+                      },
+                    ),
                   ),
                   const SizedBox(height: 8),
                 ],
-                _PlateRow(hero: hero),
+                FadeSlideIn(index: 3, child: _PlateRow(hero: hero)),
                 const SizedBox(height: 12),
-                FilledButton.icon(
-                  onPressed: () {
-                    ref.read(workoutProvider.notifier).startPlanned(today);
-                    context.go('/workout');
-                  },
-                  icon: const Icon(LucideIcons.dumbbell, size: 18),
-                  label: Text(planLabel(today)),
+                FadeSlideIn(
+                  index: 4,
+                  child: Pressable(
+                    child: FilledButton.icon(
+                      onPressed: () {
+                        ref.read(workoutProvider.notifier).startPlanned(today);
+                        context.go('/workout');
+                      },
+                      icon: const Icon(LucideIcons.dumbbell, size: 18),
+                      label: Text(planLabel(today)),
+                    ),
+                  ),
                 ),
                 if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
               ],
@@ -165,8 +174,8 @@ class _Header extends ConsumerWidget {
               child: _StatChip(
                 icon: LucideIcons.flame,
                 iconColor: AppColors.textSecondary,
-                value: Text(
-                  '$streak',
+                value: AnimatedNumber(
+                  value: streak,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
@@ -180,8 +189,8 @@ class _Header extends ConsumerWidget {
               child: _StatChip(
                 icon: LucideIcons.zap,
                 iconColor: accent,
-                value: Text(
-                  '${hero.power}',
+                value: AnimatedNumber(
+                  value: hero.power,
                   style: figureStyle(size: 15, color: accent),
                 ),
                 semantics: 'Сила ${hero.power}',
@@ -192,8 +201,8 @@ class _Header extends ConsumerWidget {
               child: _StatChip(
                 icon: LucideIcons.coins,
                 iconColor: AppColors.textSecondary,
-                value: Text(
-                  '${hero.coins}',
+                value: AnimatedNumber(
+                  value: hero.coins,
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,
@@ -227,7 +236,7 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Semantics(
+    final chip = Semantics(
       label: semantics,
       button: onTap != null,
       excludeSemantics: true,
@@ -255,6 +264,7 @@ class _StatChip extends StatelessWidget {
         ),
       ),
     );
+    return onTap == null ? chip : Pressable(child: chip);
   }
 }
 
