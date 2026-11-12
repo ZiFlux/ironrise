@@ -28,5 +28,10 @@ WHERE $($where -join ' AND ')
 ORDER BY l.at DESC LIMIT $Limit;
 "@
 
-$sql | ssh $Server 'cd /opt/ironrise && docker compose -f compose.prod.yml --env-file .env.prod exec -T db psql -U ironrise -d ironrise -P pager=off'
+# SQL — через файл: Windows PowerShell 5.1 добавляет BOM в stdin внешних программ.
+$local = Join-Path $env:TEMP 'ironrise-logs.sql'
+[IO.File]::WriteAllText($local, $sql, [Text.UTF8Encoding]::new($false))
+scp -q -o ConnectTimeout=60 $local "${Server}:/tmp/ironrise-logs.sql"
+if ($LASTEXITCODE -ne 0) { throw 'Не удалось связаться с сервером' }
+ssh -o ConnectTimeout=60 $Server 'cd /opt/ironrise && docker compose -f compose.prod.yml --env-file .env.prod exec -T db psql -U ironrise -d ironrise -P pager=off < /tmp/ironrise-logs.sql; rm -f /tmp/ironrise-logs.sql'
 if ($LASTEXITCODE -ne 0) { throw "Не удалось получить логи (код $LASTEXITCODE)" }
