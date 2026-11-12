@@ -83,10 +83,23 @@ class AccountState {
 const serverUrlKey = 'server_url';
 
 /// Адрес сервера: введённый в приложении или заданный при сборке.
+/// Адрес быстрого туннеля Cloudflare — так работала бета до переезда на VPS.
+bool isRetiredTunnelUrl(String url) =>
+    Uri.tryParse(url)?.host.endsWith('.trycloudflare.com') ?? false;
+
 class ServerUrlNotifier extends Notifier<String> {
   @override
-  String build() =>
-      ref.read(prefsProvider).getString(serverUrlKey) ?? apiBaseUrl;
+  String build() {
+    final prefs = ref.read(prefsProvider);
+    final saved = prefs.getString(serverUrlKey);
+    // Бета переехала с временного туннеля на постоянный сервер: старый адрес
+    // туннеля больше не работает, поэтому забываем его без участия тестера.
+    if (saved != null && isRetiredTunnelUrl(saved)) {
+      prefs.remove(serverUrlKey);
+      return apiBaseUrl;
+    }
+    return saved ?? apiBaseUrl;
+  }
 
   Future<void> set(String input) async {
     final url = normalizeServerUrl(input);

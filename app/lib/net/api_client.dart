@@ -5,16 +5,20 @@ import 'dart:io';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:http/http.dart' as http;
 
+import '../env.dart';
 import 'app_log.dart';
 
 /// Адрес API по умолчанию.
 /// dev: сервер разработки на компьютере; телефон видит его как 127.0.0.1 через
 /// `adb reverse tcp:3000 tcp:3000` (docs/DEV.md), эмулятор — так же.
-/// beta: задаётся при сборке --dart-define=API_URL=https://...
+/// beta: постоянный сервер беты на VPS (docs/DEPLOY.md).
+/// Переопределить при сборке: --dart-define=API_URL=https://...
 /// В приложении адрес можно сменить в «Профиль → Аккаунт».
+const betaServerUrl = 'https://api.ironrise.ru';
+
 const apiBaseUrl = String.fromEnvironment(
   'API_URL',
-  defaultValue: 'http://127.0.0.1:3000',
+  defaultValue: appEnv == AppEnv.beta ? betaServerUrl : 'http://127.0.0.1:3000',
 );
 
 class ApiException implements Exception {
