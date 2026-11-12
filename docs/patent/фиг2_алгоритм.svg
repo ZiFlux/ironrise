@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="1080" viewBox="0 0 760 1080" font-family="Times New Roman, serif" font-size="16" fill="none" stroke="#000" stroke-width="2">
+  <defs>
+    <marker id="a" markerWidth="10" markerHeight="10" refX="9" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10" fill="none" stroke="#000" stroke-width="1.5"/>
+    </marker>
+  </defs>
+  <g fill="#000" stroke="none" text-anchor="middle">
+    <text x="380" y="40">Начало тренировки, приём отсчётов ЧСС</text>
+    <text x="380" y="120">Записи о подходах, идентификатор тренировки</text>
+    <text x="380" y="200">Передача на сервер: время, подходы, отсчёты ЧСС</text>
+    <text x="380" y="272">Проверка времени; тренировка уже принята?</text>
+    <text x="380" y="372">Покрытие отсчётами ≥ 0,6 длительности?</text>
+    <text x="160" y="470">V = 0,5</text>
+    <text x="516" y="458">V = 1; ×0,3 если среднее ЧСС &lt; покой + 15;</text>
+    <text x="516" y="480">×0,6 если отклонение ЧСС &lt; 5</text>
+    <text x="380" y="572">×0,3 если длительность &lt; 45 с × число подходов</text>
+    <text x="380" y="652">Отстающие части тела: уровень &lt; средний − 1,5</text>
+    <text x="380" y="732">За подход: XP = 18 · d · B · V (не более 8 подходов)</text>
+    <text x="380" y="812">Суточное ограничение: сумма за сутки ≤ 600</text>
+    <text x="380" y="892">Сохранение приращений, очков мышц и журнала</text>
+    <text x="380" y="972">Перерисовка модели тела на мобильном устройстве</text>
+    <text x="690" y="262">Да: прежний</text>
+    <text x="690" y="284">результат</text>
+    <text x="60" y="420">Нет</text>
+    <text x="664" y="420">Да</text>
+    <text x="380" y="1060">Фиг. 2</text>
+  </g>
+  <g fill="#000" stroke="none" font-size="15">
+    <text x="20" y="40">101</text><text x="20" y="120">102</text><text x="20" y="200">103</text>
+    <text x="20" y="272">104</text><text x="20" y="372">105</text><text x="20" y="572">106</text>
+    <text x="20" y="652">107</text><text x="20" y="732">108</text><text x="20" y="812">109</text>
+    <text x="20" y="892">110, 111</text><text x="20" y="972">112</text>
+  </g>
+  <rect x="70" y="14" width="620" height="40" rx="20"/>
+  <rect x="70" y="94" width="620" height="40"/>
+  <rect x="70" y="174" width="620" height="40"/>
+  <polygon points="380,236 650,267 380,298 110,267"/>
+  <polygon points="380,336 650,367 380,398 110,367"/>
+  <rect x="60" y="446" width="200" height="40"/>
+  <polyline points="516,494 516,520 380,520"/>
+  <rect x="316" y="436" width="400" height="58"/>
+  <rect x="70" y="546" width="620" height="40"/>
+  <rect x="70" y="626" width="620" height="40"/>
+  <rect x="70" y="706" width="620" height="40"/>
+  <rect x="70" y="786" width="620" height="40"/>
+  <rect x="70" y="866" width="620" height="40"/>
+  <rect x="70" y="946" width="620" height="40" rx="20"/>
+  <g marker-end="url(#a)">
+    <line x1="380" y1="54" x2="380" y2="92"/>
+    <line x1="380" y1="134" x2="380" y2="172"/>
+    <line x1="380" y1="214" x2="380" y2="234"/>
+    <line x1="380" y1="298" x2="380" y2="334"/>
+    <polyline points="110,367 90,367 90,444"/>
+    <polyline points="650,367 690,367 690,434"/>
+    <polyline points="160,486 160,520 380,520 380,544"/>
+    <line x1="380" y1="586" x2="380" y2="624"/>
+    <line x1="380" y1="666" x2="380" y2="704"/>
+    <line x1="380" y1="746" x2="380" y2="784"/>
+    <line x1="380" y1="826" x2="380" y2="864"/>
+    <line x1="380" y1="906" x2="380" y2="944"/>
+    <polyline points="650,267 740,267 740,966 692,966"/>
+  </g>
+</svg>

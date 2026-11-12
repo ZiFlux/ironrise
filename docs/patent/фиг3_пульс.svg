@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="660" viewBox="0 0 800 660" font-family="Times New Roman, serif" font-size="16" fill="none" stroke="#000" stroke-width="2">
+  <!-- а) силовая тренировка: подъём на подходе, спад на отдыхе -->
+  <line x1="80" y1="250" x2="760" y2="250"/>
+  <line x1="80" y1="250" x2="80" y2="40"/>
+  <g fill="#000" stroke="none">
+    <text x="20" y="54">ЧСС</text>
+    <text x="730" y="274">t</text>
+    <text x="40" y="214">70</text>
+    <text x="34" y="124">130</text>
+    <text x="400" y="300" text-anchor="middle">а)</text>
+  </g>
+  <line x1="76" y1="210" x2="84" y2="210"/>
+  <line x1="76" y1="120" x2="84" y2="120"/>
+  <line x1="80" y1="185" x2="760" y2="185" stroke-dasharray="6 6" stroke-width="1"/>
+  <text x="640" y="178" fill="#000" stroke="none" font-size="14">покой + 15</text>
+  <polyline stroke-width="2.5" points="80,200 110,190 130,140 150,118 170,122 190,150 220,170 250,175 270,138 290,112 310,116 330,148 360,168 390,172 410,132 430,108 450,112 470,146 500,166 530,170 550,130 570,104 590,110 610,144 640,164 670,168 690,128 710,106 730,112 750,146"/>
+  <g stroke-width="1">
+    <line x1="130" y1="240" x2="170" y2="240"/><line x1="270" y1="240" x2="310" y2="240"/>
+    <line x1="410" y1="240" x2="450" y2="240"/><line x1="550" y1="240" x2="590" y2="240"/>
+    <line x1="690" y1="240" x2="730" y2="240"/>
+  </g>
+  <text x="150" y="234" fill="#000" stroke="none" font-size="13" text-anchor="middle">подход</text>
+  <text x="220" y="234" fill="#000" stroke="none" font-size="13" text-anchor="middle">отдых</text>
+
+  <!-- б) запись без нагрузки: ровный низкий пульс -->
+  <line x1="80" y1="560" x2="760" y2="560"/>
+  <line x1="80" y1="560" x2="80" y2="350"/>
+  <g fill="#000" stroke="none">
+    <text x="20" y="364">ЧСС</text>
+    <text x="730" y="584">t</text>
+    <text x="40" y="524">70</text>
+    <text x="34" y="434">130</text>
+    <text x="400" y="606" text-anchor="middle">б)</text>
+  </g>
+  <line x1="76" y1="520" x2="84" y2="520"/>
+  <line x1="76" y1="430" x2="84" y2="430"/>
+  <line x1="80" y1="495" x2="760" y2="495" stroke-dasharray="6 6" stroke-width="1"/>
+  <text x="640" y="488" fill="#000" stroke="none" font-size="14">покой + 15</text>
+  <polyline stroke-width="2.5" points="80,522 140,520 200,523 260,519 320,522 380,521 440,524 500,520 560,522 620,519 680,523 750,521"/>
+
+  <text x="400" y="650" fill="#000" stroke="none" text-anchor="middle">Фиг. 3</text>
+</svg>

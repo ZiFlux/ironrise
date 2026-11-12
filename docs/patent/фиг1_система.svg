@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="800" height="560" viewBox="0 0 800 560" font-family="Times New Roman, serif" font-size="18" fill="none" stroke="#000" stroke-width="2">
+  <!-- Носимое устройство -->
+  <rect x="40" y="60" width="200" height="150"/>
+  <text x="140" y="95" text-anchor="middle" fill="#000" stroke="none">Носимое</text>
+  <text x="140" y="118" text-anchor="middle" fill="#000" stroke="none">устройство</text>
+  <rect x="80" y="140" width="120" height="50"/>
+  <text x="140" y="170" text-anchor="middle" fill="#000" stroke="none">Датчик ЧСС</text>
+  <text x="30" y="52" fill="#000" stroke="none">1</text>
+  <text x="212" y="135" fill="#000" stroke="none">2</text>
+
+  <!-- Мобильное устройство -->
+  <rect x="300" y="40" width="200" height="230"/>
+  <text x="400" y="75" text-anchor="middle" fill="#000" stroke="none">Мобильное</text>
+  <text x="400" y="98" text-anchor="middle" fill="#000" stroke="none">устройство</text>
+  <rect x="320" y="115" width="160" height="40"/>
+  <text x="400" y="141" text-anchor="middle" fill="#000" stroke="none">Ввод тренировки</text>
+  <rect x="320" y="165" width="160" height="40"/>
+  <text x="400" y="191" text-anchor="middle" fill="#000" stroke="none">Справочник</text>
+  <rect x="320" y="215" width="160" height="40"/>
+  <text x="400" y="241" text-anchor="middle" fill="#000" stroke="none">Модель тела</text>
+  <text x="290" y="32" fill="#000" stroke="none">3</text>
+  <text x="486" y="140" fill="#000" stroke="none">6</text>
+  <text x="486" y="190" fill="#000" stroke="none">7</text>
+  <text x="486" y="240" fill="#000" stroke="none">8</text>
+
+  <!-- Связь часы — телефон -->
+  <line x1="240" y1="135" x2="300" y2="135"/>
+  <polyline points="290,128 300,135 290,142"/>
+  <text x="270" y="125" text-anchor="middle" font-size="14" fill="#000" stroke="none">ЧСС</text>
+
+  <!-- Сеть -->
+  <line x1="400" y1="270" x2="400" y2="330"/>
+  <polyline points="393,320 400,330 407,320"/>
+  <polyline points="393,280 400,270 407,280"/>
+  <text x="414" y="306" fill="#000" stroke="none">5</text>
+
+  <!-- Сервер -->
+  <rect x="160" y="330" width="480" height="200"/>
+  <text x="400" y="360" text-anchor="middle" fill="#000" stroke="none">Сервер</text>
+  <text x="150" y="322" fill="#000" stroke="none">4</text>
+  <rect x="180" y="380" width="140" height="56"/>
+  <text x="250" y="404" text-anchor="middle" fill="#000" stroke="none">Приём</text>
+  <text x="250" y="426" text-anchor="middle" fill="#000" stroke="none">тренировок</text>
+  <rect x="330" y="380" width="140" height="56"/>
+  <text x="400" y="404" text-anchor="middle" fill="#000" stroke="none">Коэффициент</text>
+  <text x="400" y="426" text-anchor="middle" fill="#000" stroke="none">достоверности</text>
+  <rect x="480" y="380" width="140" height="56"/>
+  <text x="550" y="404" text-anchor="middle" fill="#000" stroke="none">Начисление</text>
+  <text x="550" y="426" text-anchor="middle" fill="#000" stroke="none">показателей</text>
+  <rect x="255" y="456" width="140" height="56"/>
+  <text x="325" y="480" text-anchor="middle" fill="#000" stroke="none">Показатели</text>
+  <text x="325" y="502" text-anchor="middle" fill="#000" stroke="none">пользователей</text>
+  <rect x="405" y="456" width="140" height="56"/>
+  <text x="475" y="490" text-anchor="middle" fill="#000" stroke="none">Журнал</text>
+  <text x="172" y="376" fill="#000" stroke="none">9</text>
+  <text x="318" y="376" fill="#000" stroke="none">10</text>
+  <text x="468" y="376" fill="#000" stroke="none">11</text>
+  <text x="243" y="452" fill="#000" stroke="none">12</text>
+  <text x="550" y="470" fill="#000" stroke="none">13</text>
+  <line x1="320" y1="408" x2="330" y2="408"/>
+  <line x1="470" y1="408" x2="480" y2="408"/>
+  <line x1="550" y1="436" x2="550" y2="446"/>
+  <line x1="550" y1="446" x2="325" y2="446"/>
+  <line x1="325" y1="446" x2="325" y2="456"/>
+  <line x1="475" y1="446" x2="475" y2="456"/>
+
+  <text x="400" y="552" text-anchor="middle" fill="#000" stroke="none">Фиг. 1</text>
+</svg>
