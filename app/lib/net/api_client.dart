@@ -47,6 +47,9 @@ class TokenStore {
 
   String? access;
 
+  /// Идущий обмен refresh-токена — общий для всех клиентов (хранилище одно).
+  static Future<void>? _refreshing;
+
   Future<String?> readRefresh() => _storage.read(key: _refreshKey);
 
   Future<void> save(Map<String, dynamic> tokens) async {
@@ -155,7 +158,14 @@ class ApiClient {
   }
 
   /// Обменять refresh-токен на новую пару. Нет токена или он отозван — 401.
-  Future<void> _refresh() async {
+  ///
+  /// Обмен один на всё приложение: после входа вкладки шлют запросы разом,
+  /// и параллельные обмены одним токеном (сервер его меняет при каждом обмене)
+  /// получали 401 и стирали вход.
+  Future<void> _refresh() => TokenStore._refreshing ??= _doRefresh()
+      .whenComplete(() => TokenStore._refreshing = null);
+
+  Future<void> _doRefresh() async {
     final refresh = await tokens.readRefresh();
     if (refresh == null) throw const ApiException(401, 'Нужно войти в аккаунт');
     try {
@@ -163,7 +173,11 @@ class ApiClient {
         await post('/v1/auth/refresh', {'refreshToken': refresh}, auth: false),
       );
     } on ApiException catch (e) {
-      if (e.status == 401) await tokens.clear();
+      // Стираем вход, только если отклонён именно сохранённый сейчас токен:
+      // пока шёл запрос, мог успеть войти пользователь или пройти другой обмен.
+      if (e.status == 401 && await tokens.readRefresh() == refresh) {
+        await tokens.clear();
+      }
       rethrow;
     }
   }
