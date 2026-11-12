@@ -35,7 +35,10 @@ export const scoreCardio = (args: {
   xpBefore: PartMap<number>;
   restingHeartRate?: number;
   maxHeartRate?: number;
+  /** V без часов: 0,5 по умолчанию, у тестеров 1 (src/game/premium.ts). */
+  unverified?: number;
 }): CardioSummary => {
+  const unverified = args.unverified ?? C.unverifiedValidity;
   const durationSec = Math.round((args.finishedAt.getTime() - args.startedAt.getTime()) / 1000);
   const totalMin = Math.min(durationSec / 60, C.cardioMaxMinutes);
   const verified = hasEnoughPulse(args.pulse, durationSec);
@@ -43,14 +46,14 @@ export const scoreCardio = (args: {
   const zoneMin = verified ? Math.min(secondsInZone(args.pulse, zone) / 60, totalMin) : 0;
   const effectiveMin = verified
     ? zoneMin + (totalMin - zoneMin) * C.unverifiedValidity
-    : totalMin * C.unverifiedValidity;
+    : totalMin * unverified;
 
   const lagging = new Set(laggingParts(levels(args.xpBefore)));
   const bonus = lagging.has('cardio') ? C.laggingXpMultiplier : 1;
   const summary = buildSummary({ cardio: C.cardioXpPerMinute * effectiveMin * bonus }, args.xpBefore, lagging, {
     durationSec,
     totalSets: 0,
-    validity: verified ? 1 : C.unverifiedValidity,
+    validity: verified ? 1 : unverified,
   });
   return { ...summary, zoneMinutes: Math.round(zoneMin) };
 };

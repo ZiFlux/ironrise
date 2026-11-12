@@ -336,6 +336,8 @@ void main() {
       routes: const [
         '/',
         '/wardrobe',
+        '/shop',
+        '/shop/premium',
         '/tip',
         '/workout',
         '/workout/result',

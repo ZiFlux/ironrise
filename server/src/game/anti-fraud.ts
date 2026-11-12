@@ -33,10 +33,14 @@ export const strengthValidity = (args: {
   totalSets: number;
   pulse: PulseSample[];
   restingHeartRate?: number;
+  /** V без пульса: 0,5 по умолчанию, у тестеров 1 (src/game/premium.ts). */
+  unverified?: number;
 }): number => {
   const duration = seconds(args.startedAt, args.finishedAt);
   const rest = args.restingHeartRate ?? C.defaultRestingHeartRate;
-  const base = hasEnoughPulse(args.pulse, duration) ? pulseFactor(args.pulse, rest) : C.unverifiedValidity;
+  const base = hasEnoughPulse(args.pulse, duration)
+    ? pulseFactor(args.pulse, rest)
+    : (args.unverified ?? C.unverifiedValidity);
   const pace = duration < C.minSecondsPerSet * args.totalSets ? 0.3 : 1;
   return base * pace;
 };

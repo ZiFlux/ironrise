@@ -10,6 +10,7 @@ $icons = @{
   'Логи тестеров'                           = 'imageres.dll,97'
   'Скачать бэкапы базы'                     = 'imageres.dll,184'
   'Установить на устройства (Wi-Fi)'        = 'imageres.dll,25'
+  'Назначить тестера'                       = 'imageres.dll,74'
 }
 foreach ($name in $icons.Keys) {
   $lnk = $shell.CreateShortcut((Join-Path $Outbox "$name.lnk"))

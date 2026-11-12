@@ -19,8 +19,20 @@ void main() {
       'defender': fighter('bot_20261111_0', 4),
       'attackerWon': true,
       'log': [
-        {'byAttacker': true, 'part': 'legs', 'kind': 'crit', 'damage': 9, 'targetHpAfter': 41},
-        {'byAttacker': false, 'part': 'chest', 'kind': 'miss', 'damage': 0, 'targetHpAfter': 63},
+        {
+          'byAttacker': true,
+          'part': 'legs',
+          'kind': 'crit',
+          'damage': 9,
+          'targetHpAfter': 41,
+        },
+        {
+          'byAttacker': false,
+          'part': 'chest',
+          'kind': 'miss',
+          'damage': 0,
+          'targetHpAfter': 63,
+        },
       ],
     });
     expect(r.attackerWon, isTrue);
@@ -31,13 +43,36 @@ void main() {
     expect(r.attacker.power, 321);
   });
 
-  test('образ друга: полный разбирается, неполный — стартовый нужного пола', () {
-    final look = AvatarLook.starter(AvatarSex.female).copyWith(hair: HairStyle.ponytail);
-    final full = fighterFromJson({...fighter('f1', 3), 'appearance': look.toJson()});
-    expect(full.lookOrStarter.hair, HairStyle.ponytail);
+  test(
+    'образ друга: полный разбирается, неполный — стартовый нужного пола',
+    () {
+      final look = AvatarLook.starter(AvatarSex.female)
+          .copyWith(hair: HairStyle.ponytail);
+      final full = fighterFromJson({
+        ...fighter('f1', 3),
+        'appearance': look.toJson(),
+      });
+      expect(full.lookOrStarter.hair, HairStyle.ponytail);
 
-    final partial = fighterFromJson({...fighter('f2', 3), 'isFemale': true, 'appearance': {'sex': 'female'}});
-    expect(partial.look, isNull);
-    expect(partial.lookOrStarter.sex, AvatarSex.female);
-  });
+      final partial = fighterFromJson({
+        ...fighter('f2', 3),
+        'isFemale': true,
+        'appearance': {'sex': 'female'},
+      });
+      expect(partial.lookOrStarter.sex, AvatarSex.female);
+      expect(partial.lookOrStarter.hair, HairStyle.bob);
+
+      // Вещь из более новой версии не роняет разбор — незнакомое пропускается.
+      final future = fighterFromJson({
+        ...fighter('f3', 3),
+        'appearance': {
+          ...look.toJson(),
+          'hair': 'mohawk',
+          'accessories': ['jetpack', 'belt'],
+        },
+      });
+      expect(future.lookOrStarter.hair, HairStyle.bob);
+      expect(future.lookOrStarter.accessories, {Accessory.belt});
+    },
+  );
 }

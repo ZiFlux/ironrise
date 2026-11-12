@@ -70,6 +70,7 @@ class CardioScoring {
     required DateTime finishedAt,
     int restingHeartRate = GameConfig.defaultRestingHeartRate,
     int maxHeartRate = GameConfig.defaultMaxHeartRate,
+    double unverified = GameConfig.unverifiedValidity,
   }) {
     final duration = finishedAt.difference(session.startedAt);
     final totalMin = min(
@@ -89,7 +90,7 @@ class CardioScoring {
         : 0.0;
     final effectiveMin = verified
         ? zoneMin + (totalMin - zoneMin) * GameConfig.unverifiedValidity
-        : totalMin * GameConfig.unverifiedValidity;
+        : totalMin * unverified;
 
     final levelsBefore = Progression.levels(xpBefore);
     final lagging = Progression.laggingParts(levelsBefore)
@@ -113,7 +114,7 @@ class CardioScoring {
           ),
       ],
       coins: (xp * GameConfig.coinsPerXp).round(),
-      validity: verified ? 1 : GameConfig.unverifiedValidity,
+      validity: verified ? 1 : unverified,
       cardio: (activity: session.activity.label, zoneMinutes: zoneMin.round()),
     );
   }

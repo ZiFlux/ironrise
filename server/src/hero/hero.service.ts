@@ -3,6 +3,7 @@ import { localDay } from '../common/day';
 import { PartMap, partMap } from '../game/body-part';
 import { laggingParts, levels, power } from '../game/progression';
 import { currentStreak, maxRestDaysInRow } from '../game/streak';
+import { premiumStatus, PremiumStatus } from '../game/premium';
 import { nextScheduleChangeAt } from '../game/schedule';
 import { PrismaService } from '../prisma.service';
 
@@ -27,8 +28,9 @@ export interface HeroState {
   streakDays: number;
   lastActiveDay: string | null;
   coins: number;
-  /** Купленные вещи магазина (бесплатные есть у всех и сюда не входят). */
+  /** Купленные и выданные вещи (бесплатные есть у всех и сюда не входят). */
   ownedItems: string[];
+  premium: PremiumStatus;
 }
 
 @Injectable()
@@ -77,6 +79,7 @@ export class HeroService {
       ownedItems: (await db.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map(
         (i) => i.itemId,
       ),
+      premium: premiumStatus(profile, now),
     };
   }
 }

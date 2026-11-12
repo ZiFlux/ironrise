@@ -148,7 +148,8 @@ describe('дуэль', () => {
 });
 
 import { botsForDay, mondayOf, weeklyLeague } from '../src/game/bots';
-import { SHOP_PRICES } from '../src/game/shop';
+import { priceOf, SHOP_PRICES, TESTER_ITEMS } from '../src/game/shop';
+import { premiumStatus, unverifiedValidityFor, withPremiumCoins } from '../src/game/premium';
 
 describe('боты, лига, магазин', () => {
   const player = { levels: partMap(() => 5), streakDays: 4 };
@@ -176,14 +177,14 @@ describe('боты, лига, магазин', () => {
     for (let i = 1; i < sun.length; i++) expect(sun[i - 1].points).toBeGreaterThanOrEqual(sun[i].points);
   });
 
-  it('в магазине 41 вещь, из них 27 платных — как в клиенте', () => {
+  it('в магазине 55 вещей, из них 41 платная — как в клиенте', () => {
     const prices = Object.values(SHOP_PRICES);
-    expect(prices).toHaveLength(41);
-    expect(prices.filter((p) => p > 0)).toHaveLength(27);
+    expect(prices).toHaveLength(55);
+    expect(prices.filter((p) => p > 0)).toHaveLength(41);
   });
 });
 
-import { unpaidItems, wornItems } from '../src/game/looks';
+import { randomBotLook, unpaidItems, wornItems } from '../src/game/looks';
 
 describe('образ и купленные вещи', () => {
   // AvatarLook.starter(male).toJson() из клиента.
@@ -413,5 +414,44 @@ describe('совместная тренировка', () => {
     expect(countsForSession(w('2026-11-12T15:00:00Z', '2026-11-12T16:00:00Z'), s)).toBe(false);
     expect(jointCode(() => 0)).toBe('100000');
     expect(jointCode(() => 0.999999)).toMatch(/^\d{6}$/);
+  });
+});
+
+describe('премиум и тестеры', () => {
+  const look = {
+    sex: 'male', skin: 'iron', hair: 'short', hairColor: 0xff26262a, top: 'none', topColor: 0xff8b5cf6,
+    bottom: 'shorts', bottomColor: 0xff1f1f22, sneakersColor: null, accessories: ['betaCap'],
+  };
+
+  it('вещи тестеров не продаются и носятся только выданными', () => {
+    expect(priceOf('acc_beta_cap')).toBeUndefined();
+    expect(unpaidItems(look, new Set())).toEqual(['tc_beta', 'acc_beta_cap']);
+    expect(unpaidItems(look, new Set(TESTER_ITEMS))).toEqual([]);
+  });
+
+  it('боты не носят вещи тестеров', () => {
+    for (let s = 1; s < 300; s++) {
+      const worn = wornItems(randomBotLook(s % 2 === 0, seededRandom(s)))!;
+      expect(worn.some((id) => TESTER_ITEMS.includes(id))).toBe(false);
+    }
+  });
+
+  it('статус премиума: тестер навсегда, подписка до даты', () => {
+    const now = new Date('2026-11-12T12:00:00Z');
+    expect(premiumStatus({ isTester: true, premiumUntil: null }, now)).toMatchObject({ active: true, source: 'tester' });
+    expect(premiumStatus({ isTester: false, premiumUntil: new Date('2026-12-01') }, now).source).toBe('subscription');
+    expect(premiumStatus({ isTester: false, premiumUntil: new Date('2026-11-01') }, now).active).toBe(false);
+  });
+
+  it('у тестера без часов нет штрафа, у остальных V = 0,5', () => {
+    const args = { startedAt: new Date(0), finishedAt: new Date(3600_000), totalSets: 12, pulse: [] };
+    expect(strengthValidity({ ...args, unverified: unverifiedValidityFor(true) })).toBe(1);
+    expect(strengthValidity({ ...args, unverified: unverifiedValidityFor(false) })).toBe(0.5);
+  });
+
+  it('премиум: +25% монет, опыт тот же', () => {
+    const s = { durationSec: 1, totalSets: 1, validity: 1, gains: [], coins: 40 };
+    expect(withPremiumCoins(s, true).coins).toBe(50);
+    expect(withPremiumCoins(s, false).coins).toBe(40);
   });
 });

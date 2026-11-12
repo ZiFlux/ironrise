@@ -7,6 +7,7 @@ import { maxRestDaysInRow, streakAfterActivity } from '../game/streak';
 import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap, withPlanBonus } from '../game/workout';
 import { Prisma } from '../generated/prisma/client';
 import { withJointBonus } from '../game/joint';
+import { premiumStatus, unverifiedValidityFor, withPremiumCoins } from '../game/premium';
 import { HeroService, HeroState } from '../hero/hero.service';
 import { JointService } from '../joint/joint.service';
 import { PrismaService } from '../prisma.service';
@@ -65,13 +66,14 @@ export class WorkoutsService {
   ) {}
 
   submitStrength(userId: string, input: z.infer<typeof StrengthSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'strength', input, input.planCompleted ?? false, async (xpBefore, restingHr) => {
+    return this.submit(userId, input, 'strength', input, input.planCompleted ?? false, async (xpBefore, restingHr, _age, isTester) => {
       const validity = strengthValidity({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
         totalSets: input.entries.reduce((n, e) => n + e.sets.length, 0),
         pulse: input.pulse,
         restingHeartRate: restingHr ?? undefined,
+        unverified: unverifiedValidityFor(isTester),
       });
       try {
         return scoreStrength(input, xpBefore, validity);
@@ -83,7 +85,7 @@ export class WorkoutsService {
   }
 
   submitCardio(userId: string, input: z.infer<typeof CardioSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age) =>
+    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age, isTester) =>
       scoreCardio({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
@@ -91,6 +93,7 @@ export class WorkoutsService {
         xpBefore,
         restingHeartRate: restingHr ?? undefined,
         maxHeartRate: age ? 220 - age : undefined,
+        unverified: unverifiedValidityFor(isTester),
       }),
     );
   }
@@ -109,6 +112,7 @@ export class WorkoutsService {
       xpBefore: Awaited<ReturnType<HeroService['xpOf']>>,
       restingHr: number | null,
       age: number | null,
+      isTester: boolean,
     ) => Promise<WorkoutSummary | CardioSummary>,
   ): Promise<WorkoutResult> {
     const { startedAt, finishedAt } = base;
@@ -138,13 +142,16 @@ export class WorkoutsService {
         where: { userId, workout: { day } },
       });
       const partners = await this.joint.partnersFor(userId, { startedAt, finishedAt }, tx);
-      const summary = withPlanBonus(
-        applyDailyCap(
-          withJointBonus(await score(xpBefore, profile.restingHr, profile.age), xpBefore, partners),
-          xpBefore,
-          earnedToday._sum.xp ?? 0,
+      const summary = withPremiumCoins(
+        withPlanBonus(
+          applyDailyCap(
+            withJointBonus(await score(xpBefore, profile.restingHr, profile.age, profile.isTester), xpBefore, partners),
+            xpBefore,
+            earnedToday._sum.xp ?? 0,
+          ),
+          planCompleted,
         ),
-        planCompleted,
+        premiumStatus(profile).active,
       );
 
       const workout = await tx.workout.create({

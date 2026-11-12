@@ -31,6 +31,8 @@ class ShopItem {
     this.swatch,
     this.onlyFor,
     this.takeOff,
+    this.premium = false,
+    this.testerOnly = false,
   });
 
   final String id;
@@ -50,7 +52,16 @@ class ShopItem {
   /// Есть только у аксессуаров: их можно снять, остальное лишь заменить.
   final AvatarLook Function(AvatarLook)? takeOff;
 
-  bool get isFree => price == 0;
+  /// Купить можно только с премиумом (носить купленное — всегда).
+  final bool premium;
+
+  /// Эксклюзив бета-тестеров: не продаётся, выдаётся аккаунту.
+  final bool testerOnly;
+
+  bool get isFree => price == 0 && !testerOnly;
+
+  /// Продаётся в магазине (бесплатное и эксклюзивы — нет).
+  bool get forSale => price > 0 && !testerOnly;
 }
 
 ShopItem _hair(String id, String name, HairStyle s, int price, AvatarSex sex) =>
@@ -64,28 +75,37 @@ ShopItem _hair(String id, String name, HairStyle s, int price, AvatarSex sex) =>
       isWorn: (l) => l.hair == s,
     );
 
-ShopItem _color(String id, String name, ShopSlot slot, Color c, int price) =>
-    ShopItem(
-      id: id,
-      name: name,
-      slot: slot,
-      price: price,
-      swatch: c,
-      apply: (l) => switch (slot) {
-        ShopSlot.hairColor => l.copyWith(hairColor: c),
-        ShopSlot.topColor => l.copyWith(topColor: c),
-        ShopSlot.bottomColor => l.copyWith(bottomColor: c),
-        ShopSlot.sneakers => l.copyWith(sneakersColor: c),
-        _ => l,
-      },
-      isWorn: (l) => switch (slot) {
-        ShopSlot.hairColor => l.hairColor == c,
-        ShopSlot.topColor => l.topColor == c,
-        ShopSlot.bottomColor => l.bottomColor == c,
-        ShopSlot.sneakers => l.sneakersColor == c,
-        _ => false,
-      },
-    );
+ShopItem _color(
+  String id,
+  String name,
+  ShopSlot slot,
+  Color c,
+  int price, {
+  bool premium = false,
+  bool testerOnly = false,
+}) => ShopItem(
+  id: id,
+  name: name,
+  slot: slot,
+  price: price,
+  premium: premium,
+  testerOnly: testerOnly,
+  swatch: c,
+  apply: (l) => switch (slot) {
+    ShopSlot.hairColor => l.copyWith(hairColor: c),
+    ShopSlot.topColor => l.copyWith(topColor: c),
+    ShopSlot.bottomColor => l.copyWith(bottomColor: c),
+    ShopSlot.sneakers => l.copyWith(sneakersColor: c),
+    _ => l,
+  },
+  isWorn: (l) => switch (slot) {
+    ShopSlot.hairColor => l.hairColor == c,
+    ShopSlot.topColor => l.topColor == c,
+    ShopSlot.bottomColor => l.bottomColor == c,
+    ShopSlot.sneakers => l.sneakersColor == c,
+    _ => false,
+  },
+);
 
 ShopItem _top(String id, String name, TopKind k, int price, [AvatarSex? sex]) =>
     ShopItem(
@@ -107,11 +127,20 @@ ShopItem _bottom(String id, String name, BottomKind k, int price) => ShopItem(
   isWorn: (l) => l.bottom == k,
 );
 
-ShopItem _accessory(String id, String name, Accessory a, int price) => ShopItem(
+ShopItem _accessory(
+  String id,
+  String name,
+  Accessory a,
+  int price, {
+  bool premium = false,
+  bool testerOnly = false,
+}) => ShopItem(
   id: id,
   name: name,
   slot: ShopSlot.accessory,
   price: price,
+  premium: premium,
+  testerOnly: testerOnly,
   apply: (l) => l.copyWith(accessories: {...l.accessories, a}),
   isWorn: (l) => l.accessories.contains(a),
   takeOff: (l) => l.copyWith(accessories: {...l.accessories}..remove(a)),
@@ -172,6 +201,14 @@ class ShopCatalog {
       const Color(0xFFE6E2D8),
       60,
     ),
+    _color(
+      'hc_pink',
+      'Розовые',
+      ShopSlot.hairColor,
+      const Color(0xFFE86AA6),
+      70,
+    ),
+    _color('hc_blue', 'Синие', ShopSlot.hairColor, const Color(0xFF4A7BD9), 70),
     // Верх
     _top('top_none', 'Без верха', TopKind.none, 0, AvatarSex.male),
     _top('top_bra', 'Топ', TopKind.bra, 0, AvatarSex.female),
@@ -182,6 +219,30 @@ class ShopCatalog {
     _color('tc_lime', 'Лайм', ShopSlot.topColor, const Color(0xFFC6FF3D), 40),
     _color('tc_ember', 'Огонь', ShopSlot.topColor, const Color(0xFFFF7A3D), 40),
     _color('tc_ice', 'Лёд', ShopSlot.topColor, const Color(0xFF3DDCFF), 40),
+    _color(
+      'tc_navy',
+      'Тёмно-синий',
+      ShopSlot.topColor,
+      const Color(0xFF1E2A4A),
+      40,
+    ),
+    _color('tc_red', 'Красный', ShopSlot.topColor, const Color(0xFFD23C3C), 40),
+    _color(
+      'tc_gold',
+      'Золото',
+      ShopSlot.topColor,
+      const Color(0xFFD9B25A),
+      120,
+      premium: true,
+    ),
+    _color(
+      'tc_beta',
+      'Бета',
+      ShopSlot.topColor,
+      const Color(0xFF8B5CF6),
+      0,
+      testerOnly: true,
+    ),
     // Низ
     _bottom('bottom_shorts', 'Шорты', BottomKind.shorts, 0),
     _bottom('bottom_joggers', 'Джоггеры', BottomKind.joggers, 50),
@@ -206,6 +267,13 @@ class ShopCatalog {
       'Меланж',
       ShopSlot.bottomColor,
       const Color(0xFF8A8A90),
+      30,
+    ),
+    _color(
+      'bc_black',
+      'Чёрный',
+      ShopSlot.bottomColor,
+      const Color(0xFF0E0E10),
       30,
     ),
     // Обувь
@@ -233,9 +301,45 @@ class ShopCatalog {
       70,
     ),
     _color('sn_red', 'Красные', ShopSlot.sneakers, const Color(0xFFE5484D), 70),
+    _color('sn_blue', 'Синие', ShopSlot.sneakers, const Color(0xFF3D7BFF), 70),
+    _color(
+      'sn_gold',
+      'Золотые',
+      ShopSlot.sneakers,
+      const Color(0xFFD9B25B),
+      120,
+      premium: true,
+    ),
+    _color(
+      'sn_beta',
+      'Бета',
+      ShopSlot.sneakers,
+      const Color(0xFF8B5CF7),
+      0,
+      testerOnly: true,
+    ),
     // Аксессуары
     _accessory('acc_headband', 'Повязка', Accessory.headband, 50),
     _accessory('acc_wristbands', 'Напульсники', Accessory.wristbands, 50),
+    _accessory('acc_belt', 'Атлетический пояс', Accessory.belt, 90),
+    _accessory('acc_knee_sleeves', 'Наколенники', Accessory.kneeSleeves, 70),
+    _accessory('acc_cap', 'Кепка', Accessory.cap, 80),
+    _accessory('acc_glasses', 'Тёмные очки', Accessory.glasses, 60),
+    _accessory('acc_headphones', 'Наушники', Accessory.headphones, 100),
+    _accessory(
+      'acc_gold_chain',
+      'Золотая цепь',
+      Accessory.goldChain,
+      150,
+      premium: true,
+    ),
+    _accessory(
+      'acc_beta_cap',
+      'Кепка тестера',
+      Accessory.betaCap,
+      0,
+      testerOnly: true,
+    ),
     // Кожа — бесплатно: это внешность, а не награда.
     _skin('skin_iron', 'Железо', SkinTone.iron),
     _skin('skin_light', 'Светлая', SkinTone.light),
@@ -251,7 +355,7 @@ class ShopCatalog {
 
   static ShopItem byId(String id) => all.firstWhere((i) => i.id == id);
 
-  /// Платные вещи образа, которых ещё нет у игрока, — «корзина» примерки.
+  /// Платные (и эксклюзивные) вещи образа, которых ещё нет у игрока, — «корзина» примерки.
   static List<ShopItem> unpaid(AvatarLook look, Set<String> owned) => [
     for (final i in all)
       if (!i.isFree &&

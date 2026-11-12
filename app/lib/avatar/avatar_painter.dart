@@ -104,6 +104,14 @@ class AvatarPainter extends CustomPainter {
     for (final sleeve in layers.sleeves) {
       _fillCloth(canvas, sleeve, look.topColor, withFall: true);
     }
+    for (final sleeve in layers.kneeSleeves) {
+      _fillCloth(canvas, sleeve, _sleeveColor);
+    }
+    if (layers.belt case (final belt, final buckle)) {
+      _fillCloth(canvas, belt, _leather);
+      _fillSolid(canvas, buckle, _steel);
+    }
+    _fillSolid(canvas, layers.goldChain, _gold);
     final sneakers = look.sneakersColor;
     if (sneakers != null) {
       for (final shoe in layers.sneakers) {
@@ -130,7 +138,27 @@ class AvatarPainter extends CustomPainter {
     );
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.hairFront, look.hairColor);
+    _fillSolid(canvas, layers.glasses, _lens);
+    if (layers.cap case (final dome, final brim)) {
+      final beta = look.accessories.contains(Accessory.betaCap);
+      _fillCloth(canvas, dome, beta ? _beta : _capColor);
+      _fillSolid(canvas, brim, beta ? look.accessoryColor : _capBrim);
+    }
+    if (layers.headphones case (final band, final cups)) {
+      _fillSolid(canvas, band, _capColor);
+      _fillSolid(canvas, cups, look.accessoryColor);
+    }
   }
+
+  // Цвета аксессуаров: у каждой вещи свой, кроме акцентных деталей.
+  static const _leather = Color(0xFF5C3A21);
+  static const _steel = Color(0xFFC9CDD2);
+  static const _gold = Color(0xFFD9B25A);
+  static const _sleeveColor = Color(0xFF1A1A1D);
+  static const _lens = Color(0xFF111114);
+  static const _capColor = Color(0xFF2A2A2E);
+  static const _capBrim = Color(0xFF1C1C1F);
+  static const _beta = Color(0xFF8B5CF6);
 
   // ---------- Заливки ----------
 

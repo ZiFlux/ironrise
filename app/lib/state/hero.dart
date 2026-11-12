@@ -85,6 +85,41 @@ class BodyStats {
   );
 }
 
+/// Премиум и статус бета-тестера — приходят с сервера (src/game/premium.ts).
+class PremiumInfo {
+  const PremiumInfo({
+    this.active = false,
+    this.source,
+    this.until,
+    this.isTester = false,
+  });
+
+  factory PremiumInfo.fromJson(Map<String, dynamic>? j) => j == null
+      ? const PremiumInfo()
+      : PremiumInfo(
+          active: j['active'] == true,
+          source: j['source'] as String?,
+          until: j['until'] == null
+              ? null
+              : DateTime.parse(j['until'] as String).toLocal(),
+          isTester: j['isTester'] == true,
+        );
+
+  final bool active;
+
+  /// tester — навсегда у бета-тестеров; subscription — оплачен до [until].
+  final String? source;
+  final DateTime? until;
+  final bool isTester;
+
+  Map<String, dynamic> toJson() => {
+    'active': active,
+    'source': source,
+    'until': until?.toUtc().toIso8601String(),
+    'isTester': isTester,
+  };
+}
+
 class HeroProfile {
   const HeroProfile({
     required this.nickname,
@@ -101,6 +136,7 @@ class HeroProfile {
     this.lastActiveDay,
     this.activeDays = const {},
     this.ownedItems = const {},
+    this.premium = const PremiumInfo(),
   });
 
   factory HeroProfile.create({
@@ -146,6 +182,12 @@ class HeroProfile {
   /// Купленная косметика (id из ShopCatalog). Бесплатные вещи сюда не пишутся.
   final Set<String> ownedItems;
 
+  final PremiumInfo premium;
+
+  /// V без часов: у бета-тестеров штрафа нет.
+  double get unverifiedValidity =>
+      premium.isTester ? 1 : GameConfig.unverifiedValidity;
+
   Map<BodyPart, int> get levels => Progression.levels(xp);
 
   /// Для аватара: растёт плавно с каждым подходом.
@@ -176,6 +218,7 @@ class HeroProfile {
     DateTime? lastActiveDay,
     Set<String>? activeDays,
     Set<String>? ownedItems,
+    PremiumInfo? premium,
     TrainingFormat? format,
     List<int>? trainingDays,
     DateTime? nextScheduleChangeAt,
@@ -196,6 +239,7 @@ class HeroProfile {
     lastActiveDay: lastActiveDay ?? this.lastActiveDay,
     activeDays: activeDays ?? this.activeDays,
     ownedItems: ownedItems ?? this.ownedItems,
+    premium: premium ?? this.premium,
     createdAt: createdAt,
   );
 
@@ -214,6 +258,7 @@ class HeroProfile {
     'createdAt': createdAt.toIso8601String(),
     'nextScheduleChangeAt': nextScheduleChangeAt?.toIso8601String(),
     'ownedItems': ownedItems.toList()..sort(),
+    'premium': premium.toJson(),
   });
 
   factory HeroProfile.decode(String s) {
@@ -243,6 +288,9 @@ class HeroProfile {
       lastActiveDay: lastActive,
       activeDays: activeDays,
       ownedItems: Set<String>.from(j['ownedItems'] ?? const []),
+      premium: PremiumInfo.fromJson(
+        (j['premium'] as Map?)?.cast<String, dynamic>(),
+      ),
       createdAt: createdRaw == null
           ? lastActive ?? DateTime.now()
           : DateTime.parse(createdRaw),

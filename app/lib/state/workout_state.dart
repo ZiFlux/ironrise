@@ -107,6 +107,7 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
       pulse: pulse,
       finishedAt: finishedAt,
       restingHeartRate: hero.restingHeartRate,
+      unverified: hero.unverifiedValidity,
     );
     final summary = WorkoutScoring.summarize(
       session: session,

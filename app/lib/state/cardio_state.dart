@@ -59,6 +59,7 @@ class CardioNotifier extends Notifier<CardioSession?> {
       finishedAt: finishedAt,
       restingHeartRate: hero.restingHeartRate,
       maxHeartRate: hero.maxHeartRate,
+      unverified: hero.unverifiedValidity,
     );
     await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
     ref.read(lastSummaryProvider.notifier).show(summary);

@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { Bot, botsForDay, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, mondayOf, weeklyLeague } from '../game/bots';
@@ -7,7 +7,8 @@ import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
 import { unpaidItems } from '../game/looks';
 import { MIN_TRAINING_DAYS, nextScheduleChangeAt } from '../game/schedule';
-import { priceOf } from '../game/shop';
+import { premiumStatus } from '../game/premium';
+import { PREMIUM_ITEMS, priceOf } from '../game/shop';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
@@ -58,11 +59,15 @@ export class EconomyService {
       await lockProfile(tx, userId);
       const unknown = input.itemIds.filter((id) => priceOf(id) === undefined);
       if (unknown.length) throw new BadRequestException(`Unknown items: ${unknown.join(', ')}`);
+      const profile = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { isTester: true, premiumUntil: true } });
 
       const owned = new Set(
         (await tx.inventoryItem.findMany({ where: { userId }, select: { itemId: true } })).map((i) => i.itemId),
       );
       const toBuy = [...new Set(input.itemIds)].filter((id) => !owned.has(id) && priceOf(id)! > 0);
+      if (toBuy.some((id) => PREMIUM_ITEMS.has(id)) && !premiumStatus(profile).active) {
+        throw new ForbiddenException('Premium items need a subscription');
+      }
       assertLookOwned(input.appearance, new Set([...owned, ...toBuy]));
       const total = toBuy.reduce((s, id) => s + priceOf(id)!, 0);
       if (total > (await this.hero.coinsOf(userId, tx))) throw new ConflictException('Not enough coins');

@@ -40,6 +40,9 @@ class GameConfig {
   /// Монеты за создание аккаунта (сервер начисляет один раз).
   static const int welcomeCoins = 100;
 
+  /// Премиум: +25% монет за тренировку (как на сервере).
+  static const double premiumCoinBonus = 0.25;
+
   /// Монеты за правильный ответ на вопрос «Совета дня», раз в день.
   static const int tipCoins = 10;
 

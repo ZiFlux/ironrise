@@ -116,6 +116,9 @@ class HeroNotifier extends Notifier<HeroProfile?> {
         activeDays: {...h.activeDays, if (lastDay != null) dayKey(lastDay)},
         coins: (me['coins'] as num).toInt(),
         ownedItems: Set<String>.from(me['ownedItems'] as List? ?? const []),
+        premium: PremiumInfo.fromJson(
+          (me['premium'] as Map?)?.cast<String, dynamic>(),
+        ),
         look: look,
         // График тоже с сервера: его могли сменить на другом телефоне.
         format: TrainingFormat.values.asNameMap()[me['trainingFormat']],
@@ -129,9 +132,15 @@ class HeroNotifier extends Notifier<HeroProfile?> {
   }
 
   /// Сменить график без аккаунта: раз в 7 дней, первая смена — сразу.
-  Future<void> changeScheduleLocally(TrainingFormat format, List<int> days) async {
+  Future<void> changeScheduleLocally(
+    TrainingFormat format,
+    List<int> days,
+  ) async {
     final h = state;
-    if (h == null || !canChangeSchedule(h.nextScheduleChangeAt, DateTime.now())) return;
+    if (h == null ||
+        !canChangeSchedule(h.nextScheduleChangeAt, DateTime.now())) {
+      return;
+    }
     await save(
       h.copyWith(
         format: format,

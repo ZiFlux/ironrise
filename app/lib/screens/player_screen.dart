@@ -30,7 +30,27 @@ class PlayerScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(hero.nickname),
+        title: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(hero.nickname, overflow: TextOverflow.ellipsis),
+            ),
+            if (hero.premium.active) ...[
+              const SizedBox(width: 8),
+              Tooltip(
+                message: hero.premium.isTester
+                    ? 'Премиум бета-тестера'
+                    : 'Премиум',
+                child: const Icon(
+                  LucideIcons.crown,
+                  size: 18,
+                  color: Color(0xFFD9B25A),
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Настройки и конфиденциальность',
@@ -163,7 +183,20 @@ class _Menu extends ConsumerWidget {
             : '+${(GameConfig.jointBonus * 100).round()}% опыта, если рядом друзья',
         '/workout/joint',
       ),
-      (LucideIcons.shirt, 'Гардероб', 'Образ героя и вещи', '/wardrobe'),
+      (
+        LucideIcons.shoppingBag,
+        'Магазин',
+        (ref.watch(heroProvider)?.premium.active ?? false)
+            ? 'Одежда, аксессуары · премиум активен'
+            : 'Одежда, аксессуары, премиум',
+        '/shop',
+      ),
+      (
+        LucideIcons.shirt,
+        'Инвентарь',
+        'Ваши вещи — надеть и сменить образ',
+        '/wardrobe',
+      ),
       (
         LucideIcons.settings,
         'Настройки',

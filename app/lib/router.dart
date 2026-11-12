@@ -12,6 +12,7 @@ import 'screens/friends_screen.dart';
 import 'screens/health_screen.dart';
 import 'screens/heart_rate_screen.dart';
 import 'screens/joint_screen.dart';
+import 'screens/premium_screen.dart';
 import 'screens/home_screen.dart';
 import 'screens/notifications_screen.dart';
 import 'screens/onboarding_screen.dart';
@@ -54,6 +55,16 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'wardrobe',
                     builder: (_, _) => const WardrobeScreen(),
+                  ),
+                  GoRoute(
+                    path: 'shop',
+                    builder: (_, _) => const WardrobeScreen(shop: true),
+                    routes: [
+                      GoRoute(
+                        path: 'premium',
+                        builder: (_, _) => const PremiumScreen(),
+                      ),
+                    ],
                   ),
                   GoRoute(path: 'tip', builder: (_, _) => const TipScreen()),
                   GoRoute(

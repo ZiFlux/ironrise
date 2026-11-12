@@ -111,6 +111,89 @@ class AvatarLayers {
         arm.at(0.9, -_f.wristWidth - 1.2), arm.at(0.8, -_f.wristWidth - 1.4),
       ]);
 
+  bool _has(Accessory a) => look.accessories.contains(a);
+
+  /// Атлетический пояс на талии и пряжка.
+  (Path, Path)? get belt {
+    if (!_has(Accessory.belt)) return null;
+    final top = _lerp(_f.waist, _f.hip, 0.1) + 1.6;
+    final bottom = _lerp(_f.waist, _f.hip, 0.6) + 1.6;
+    return (
+      polygonPath([
+        Offset(100 - top, 175), Offset(100 + top, 175),
+        Offset(100 + bottom, 189), Offset(100 - bottom, 189),
+      ]),
+      Path()
+        ..addRRect(RRect.fromLTRBR(95.5, 177.5, 104.5, 186.5, const Radius.circular(1.5))),
+    );
+  }
+
+  /// Наколенники на обеих ногах.
+  List<Path> get kneeSleeves {
+    if (!_has(Accessory.kneeSleeves)) return const [];
+    final top = _lerp(_f.thigh - 3, _f.knee + 1, 24 / 36) + 1.4;
+    final bottom = _lerp(_f.knee + 1, _f.calf, 10 / 28) + 1.4;
+    return [
+      for (final s in const [-1.0, 1.0])
+        polygonPath([
+          Offset(100 + s * 4.2, 277), Offset(100 + s * top, 277),
+          Offset(100 + s * bottom, 301), Offset(100 + s * 4.3, 301),
+        ]),
+    ];
+  }
+
+  /// Цепь на шее: дуга от ключиц к груди.
+  Path? get goldChain {
+    if (!_has(Accessory.goldChain)) return null;
+    final x = _f.neck + 1.5;
+    return Path()
+      ..moveTo(100 - x, 61)
+      ..quadraticBezierTo(100, 96, 100 + x, 61)
+      ..lineTo(100 + x - 2.2, 61)
+      ..quadraticBezierTo(100, 91, 100 - x + 2.2, 61)
+      ..close();
+  }
+
+  /// Кепка (и кепка тестера): купол поверх волос и козырёк.
+  (Path, Path)? get cap {
+    if (!_has(Accessory.cap) && !_has(Accessory.betaCap)) return null;
+    final rx = _f.headRx;
+    return (
+      Path()
+        ..moveTo(100 - rx - 1.4, 21)
+        ..cubicTo(100 - rx, -1, 100 + rx, -1, 100 + rx + 1.4, 21)
+        ..close(),
+      Path()
+        ..addRRect(RRect.fromLTRBR(100 - rx - 4, 18.5, 100 + rx + 4, 23.5, const Radius.circular(2.5))),
+    );
+  }
+
+  /// Тёмные очки.
+  Path? get glasses {
+    if (!_has(Accessory.glasses)) return null;
+    return Path()
+      ..addRRect(RRect.fromLTRBR(86.5, 25, 98, 32.5, const Radius.circular(3)))
+      ..addRRect(RRect.fromLTRBR(102, 25, 113.5, 32.5, const Radius.circular(3)))
+      ..addRect(const Rect.fromLTRB(97.5, 26.5, 102.5, 28));
+  }
+
+  /// Наушники: дуга над головой и чашки.
+  (Path, Path)? get headphones {
+    if (!_has(Accessory.headphones)) return null;
+    final rx = _f.headRx;
+    return (
+      Path()
+        ..moveTo(100 - rx - 2.5, 30)
+        ..cubicTo(100 - rx - 2, -4, 100 + rx + 2, -4, 100 + rx + 2.5, 30)
+        ..lineTo(100 + rx - 0.5, 30)
+        ..cubicTo(100 + rx - 1, 0, 100 - rx + 1, 0, 100 - rx + 0.5, 30)
+        ..close(),
+      Path()
+        ..addRRect(RRect.fromLTRBR(100 - rx - 5, 22, 100 - rx + 2, 40, const Radius.circular(3)))
+        ..addRRect(RRect.fromLTRBR(100 + rx - 2, 22, 100 + rx + 5, 40, const Radius.circular(3))),
+    );
+  }
+
   // ---------- Волосы ----------
 
   Path _cap(double lowY, double crownY) {

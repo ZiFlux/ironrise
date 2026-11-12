@@ -25,7 +25,19 @@ enum TopKind { none, tank, tee, bra }
 
 enum BottomKind { shorts, joggers, leggings }
 
-enum Accessory { headband, wristbands }
+enum Accessory {
+  headband,
+  wristbands,
+  belt,
+  kneeSleeves,
+  cap,
+  glasses,
+  headphones,
+  goldChain,
+
+  /// Эксклюзив бета-тестеров.
+  betaCap,
+}
 
 class AvatarLook {
   const AvatarLook({
@@ -104,23 +116,29 @@ class AvatarLook {
     'accessoryColor': accessoryColor.toARGB32(),
   };
 
+  /// Неизвестные значения (вещи из более новой версии) не роняют разбор:
+  /// берётся стартовое, а незнакомый аксессуар пропускается.
   factory AvatarLook.fromJson(Map<String, dynamic> j) {
+    final sex = AvatarSex.values.asNameMap()[j['sex']] ?? AvatarSex.male;
+    final starter = AvatarLook.starter(sex);
     final sneakers = j['sneakersColor'] as int?;
+    Color color(String key, Color fallback) =>
+        j[key] is int ? Color(j[key] as int) : fallback;
     return AvatarLook(
-      sex: AvatarSex.values.byName(j['sex']),
-      skin: SkinTone.values.byName(j['skin']),
-      hair: HairStyle.values.byName(j['hair']),
-      hairColor: Color(j['hairColor']),
-      top: TopKind.values.byName(j['top']),
-      topColor: Color(j['topColor']),
-      bottom: BottomKind.values.byName(j['bottom']),
-      bottomColor: Color(j['bottomColor']),
+      sex: sex,
+      skin: SkinTone.values.asNameMap()[j['skin']] ?? starter.skin,
+      hair: HairStyle.values.asNameMap()[j['hair']] ?? starter.hair,
+      hairColor: color('hairColor', starter.hairColor),
+      top: TopKind.values.asNameMap()[j['top']] ?? starter.top,
+      topColor: color('topColor', starter.topColor),
+      bottom: BottomKind.values.asNameMap()[j['bottom']] ?? starter.bottom,
+      bottomColor: color('bottomColor', starter.bottomColor),
       sneakersColor: sneakers == null ? null : Color(sneakers),
       accessories: {
         for (final a in List<String>.from(j['accessories'] ?? const []))
-          Accessory.values.byName(a),
+          ?Accessory.values.asNameMap()[a],
       },
-      accessoryColor: Color(j['accessoryColor']),
+      accessoryColor: color('accessoryColor', starter.accessoryColor),
     );
   }
 }

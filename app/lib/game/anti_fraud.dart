@@ -56,11 +56,13 @@ class AntiFraud {
     restingHeartRate: restingHeartRate,
   ).value;
 
+  /// [unverified] — V без пульса: 0,5, у бета-тестеров 1 (как на сервере).
   static ValidityReport check({
     required WorkoutSession session,
     required List<PulseSample> pulse,
     required DateTime finishedAt,
     int restingHeartRate = GameConfig.defaultRestingHeartRate,
+    double unverified = GameConfig.unverifiedValidity,
   }) {
     final duration = finishedAt.difference(session.startedAt);
     final coverage = _coverage(pulse, duration);
@@ -69,14 +71,17 @@ class AntiFraud {
 
     if (pulse.length < 2) {
       issues.add(ValidityIssue.noPulse);
-      value = GameConfig.unverifiedValidity;
+      value = unverified;
     } else if (coverage < GameConfig.minPulseCoverage) {
       issues.add(ValidityIssue.partialPulse);
-      value = GameConfig.unverifiedValidity;
+      value = unverified;
     } else {
       final values = [for (final s in pulse) s.bpm];
       final mean = values.reduce((a, b) => a + b) / values.length;
-      final spread = sqrt(values.map((v) => pow(v - mean, 2)).reduce((a, b) => a + b) / values.length);
+      final spread = sqrt(
+        values.map((v) => pow(v - mean, 2)).reduce((a, b) => a + b) /
+            values.length,
+      );
       if (mean < restingHeartRate + GameConfig.minPulseAboveRest) {
         issues.add(ValidityIssue.lowIntensity);
         value *= 0.3;
@@ -96,7 +101,8 @@ class AntiFraud {
 
   static double _coverage(List<PulseSample> pulse, Duration duration) {
     if (pulse.length < 2 || duration.inSeconds == 0) return 0;
-    final covered = pulse.last.at.difference(pulse.first.at).inSeconds / duration.inSeconds;
+    final covered =
+        pulse.last.at.difference(pulse.first.at).inSeconds / duration.inSeconds;
     return covered.clamp(0, 1).toDouble();
   }
 }

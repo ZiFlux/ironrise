@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../avatar/avatar_look.dart';
@@ -13,9 +14,13 @@ import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/motion.dart';
 
-/// Магазин и гардероб (экран 11): примерка на аватаре, покупка за монеты.
+/// Инвентарь и магазин (экран 11): примерка на аватаре.
+/// Инвентарь — только свои вещи; магазин — всё, что продаётся, с покупкой за монеты.
 class WardrobeScreen extends ConsumerStatefulWidget {
-  const WardrobeScreen({super.key});
+  const WardrobeScreen({super.key, this.shop = false});
+
+  /// true — магазин, false — инвентарь.
+  final bool shop;
 
   @override
   ConsumerState<WardrobeScreen> createState() => _WardrobeScreenState();
@@ -81,12 +86,36 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     final cart = ShopCatalog.unpaid(look, hero.ownedItems);
     final total = cart.fold<int>(0, (s, i) => s + i.price);
     final changed = !_same(look, hero.look);
-    final items = ShopCatalog.forSlot(_slot, look.sex);
+    bool owns(ShopItem i) => i.isFree || hero.ownedItems.contains(i.id);
+    final shop = widget.shop;
+    // В магазине — то, что продаётся (и эксклюзивы как витрина), в инвентаре — своё.
+    final items = [
+      for (final i in ShopCatalog.forSlot(_slot, look.sex))
+        if (shop ? !i.isFree : owns(i)) i,
+    ];
+    final needsPremium = cart.any((i) => i.premium) && !hero.premium.active;
+    final testerLocked = cart.any((i) => i.testerOnly);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Гардероб'),
+        title: Text(shop ? 'Магазин' : 'Инвентарь'),
         actions: [
+          if (shop)
+            IconButton(
+              tooltip: 'Премиум',
+              onPressed: () => context.go('/shop/premium'),
+              icon: Icon(
+                LucideIcons.crown,
+                size: 20,
+                color: hero.premium.active ? _gold : null,
+              ),
+            )
+          else
+            IconButton(
+              tooltip: 'Магазин',
+              onPressed: () => context.go('/shop'),
+              icon: const Icon(LucideIcons.shoppingBag, size: 20),
+            ),
           _Coins(coins: hero.coins),
           const SizedBox(width: 16),
         ],
@@ -111,15 +140,16 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
                   for (final slot in ShopSlot.values)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: ChoiceChip(
-                        label: Text(slot.label),
-                        selected: slot == _slot,
-                        showCheckmark: false,
-                        onSelected: (_) => setState(() => _slot = slot),
+                    if (!shop || slot != ShopSlot.skin)
+                      Padding(
+                        padding: const EdgeInsets.only(right: 8),
+                        child: ChoiceChip(
+                          label: Text(slot.label),
+                          selected: slot == _slot,
+                          showCheckmark: false,
+                          onSelected: (_) => setState(() => _slot = slot),
+                        ),
                       ),
-                    ),
                 ],
               ),
             ),
@@ -127,23 +157,31 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             SizedBox(
               // Крупный системный шрифт — плитки выше, иначе подпись не влезет.
               height: MediaQuery.textScalerOf(context).scale(112),
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                itemCount: items.length,
-                separatorBuilder: (_, _) => const SizedBox(width: 8),
-                itemBuilder: (_, i) => Pressable(
-                  scale: 0.94,
-                  child: _ItemTile(
-                    item: items[i],
-                    worn: items[i].isWorn(look),
-                    owned:
-                        items[i].isFree ||
-                        hero.ownedItems.contains(items[i].id),
-                    onTap: () => _tap(items[i], look),
-                  ),
-                ),
-              ),
+              child: items.isEmpty
+                  ? Center(
+                      child: Text(
+                        shop
+                            ? 'Здесь всё бесплатное — оно уже в инвентаре'
+                            : 'Пока ничего — загляните в магазин',
+                        style: const TextStyle(color: AppColors.textMuted),
+                      ),
+                    )
+                  : ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) => Pressable(
+                        scale: 0.94,
+                        child: _ItemTile(
+                          item: items[i],
+                          worn: items[i].isWorn(look),
+                          owned: owns(items[i]),
+                          locked: items[i].premium && !hero.premium.active,
+                          onTap: () => _tap(items[i], look),
+                        ),
+                      ),
+                    ),
             ),
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -157,12 +195,22 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
-                      onPressed: !changed || total > hero.coins
-                          ? null
+                      onPressed:
+                          !changed ||
+                              total > hero.coins ||
+                              needsPremium ||
+                              testerLocked
+                          ? (needsPremium
+                                ? () => context.go('/shop/premium')
+                                : null)
                           : () => _confirm(cart, look),
                       child: Text(switch ((changed, cart.isEmpty)) {
                         (false, _) => 'Это твой образ',
                         (true, true) => 'Сохранить образ',
+                        (true, false) when testerLocked =>
+                          'Только для бета-тестеров',
+                        (true, false) when needsPremium =>
+                          'Нужен премиум — подробнее',
                         (true, false) when total > hero.coins =>
                           'Не хватает ${total - hero.coins} монет',
                         (true, false) => 'Купить за $total',
@@ -178,6 +226,8 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     );
   }
 }
+
+const _gold = Color(0xFFD9B25A);
 
 class _Coins extends StatelessWidget {
   const _Coins({required this.coins});
@@ -200,12 +250,16 @@ class _ItemTile extends StatelessWidget {
     required this.worn,
     required this.owned,
     required this.onTap,
+    this.locked = false,
   });
 
   final ShopItem item;
   final bool worn;
   final bool owned;
   final VoidCallback onTap;
+
+  /// Премиум-вещь, а премиума нет: примерить можно, купить — нет.
+  final bool locked;
 
   static const _slotIcons = {
     ShopSlot.hair: LucideIcons.scissors,
@@ -274,17 +328,26 @@ class _ItemTile extends StatelessWidget {
                     color: worn ? accent : AppColors.textMuted,
                   ),
                 )
+              else if (item.testerOnly)
+                const Text(
+                  'тестерам',
+                  style: TextStyle(fontSize: 11, color: Color(0xFF8B5CF6)),
+                )
               else
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(
-                      LucideIcons.coins,
+                    Icon(
+                      item.premium ? LucideIcons.crown : LucideIcons.coins,
                       size: 12,
-                      color: AppColors.textSecondary,
+                      color: item.premium ? _gold : AppColors.textSecondary,
                     ),
                     const SizedBox(width: 3),
-                    Text('${item.price}', style: figureStyle(size: 12)),
+                    Text(
+                      '${item.price}',
+                      style: figureStyle(size: 12)
+                          .copyWith(color: locked ? AppColors.textMuted : null),
+                    ),
                   ],
                 ),
             ],
