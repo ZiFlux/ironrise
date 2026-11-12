@@ -96,6 +96,7 @@ class HeroProfile {
     required this.xp,
     required this.streakDays,
     required this.createdAt,
+    this.nextScheduleChangeAt,
     this.coins = 0,
     this.lastActiveDay,
     this.activeDays = const {},
@@ -139,6 +140,9 @@ class HeroProfile {
 
   final DateTime createdAt;
 
+  /// Когда можно сменить график; null — уже можно (раз в 7 дней, PLAN 4.3).
+  final DateTime? nextScheduleChangeAt;
+
   /// Купленная косметика (id из ShopCatalog). Бесплатные вещи сюда не пишутся.
   final Set<String> ownedItems;
 
@@ -172,11 +176,18 @@ class HeroProfile {
     DateTime? lastActiveDay,
     Set<String>? activeDays,
     Set<String>? ownedItems,
+    TrainingFormat? format,
+    List<int>? trainingDays,
+    DateTime? nextScheduleChangeAt,
+    bool scheduleChangeAllowed = false,
   }) => HeroProfile(
     nickname: nickname,
     goal: goal,
-    format: format,
-    trainingDays: trainingDays,
+    format: format ?? this.format,
+    trainingDays: trainingDays ?? this.trainingDays,
+    nextScheduleChangeAt: scheduleChangeAllowed
+        ? null
+        : nextScheduleChangeAt ?? this.nextScheduleChangeAt,
     body: body ?? this.body,
     look: look ?? this.look,
     xp: xp ?? this.xp,
@@ -201,6 +212,7 @@ class HeroProfile {
     'lastActiveDay': lastActiveDay?.toIso8601String(),
     'activeDays': activeDays.toList()..sort(),
     'createdAt': createdAt.toIso8601String(),
+    'nextScheduleChangeAt': nextScheduleChangeAt?.toIso8601String(),
     'ownedItems': ownedItems.toList()..sort(),
   });
 
@@ -234,6 +246,9 @@ class HeroProfile {
       createdAt: createdRaw == null
           ? lastActive ?? DateTime.now()
           : DateTime.parse(createdRaw),
+      nextScheduleChangeAt: j['nextScheduleChangeAt'] == null
+          ? null
+          : DateTime.parse(j['nextScheduleChangeAt'] as String),
     );
   }
 }

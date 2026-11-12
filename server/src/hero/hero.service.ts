@@ -3,6 +3,7 @@ import { localDay } from '../common/day';
 import { PartMap, partMap } from '../game/body-part';
 import { laggingParts, levels, power } from '../game/progression';
 import { currentStreak, maxRestDaysInRow } from '../game/streak';
+import { nextScheduleChangeAt } from '../game/schedule';
 import { PrismaService } from '../prisma.service';
 
 /** Клиент Prisma или транзакция — у них одинаковые методы моделей. */
@@ -12,6 +13,8 @@ export interface HeroState {
   nickname: string;
   goal: string;
   trainingFormat: string;
+  /** Когда можно сменить график; null — уже можно (docs/PLAN.md 4.3). */
+  nextScheduleChangeAt: Date | null;
   scheduleDays: number[];
   appearance: unknown;
   age: number | null;
@@ -58,6 +61,7 @@ export class HeroService {
       nickname: profile.nickname,
       goal: profile.goal,
       trainingFormat: profile.trainingFormat,
+      nextScheduleChangeAt: nextScheduleChangeAt(profile.formatChangedAt, now),
       scheduleDays: profile.scheduleDays,
       appearance: profile.appearance,
       age: profile.age,

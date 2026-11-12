@@ -60,7 +60,8 @@ model Profile {
   trainingFormat   String
   /// 0 = понедельник … 6 = воскресенье.
   scheduleDays     Int[]
-  formatChangedAt  DateTime  @default(now())
+  /// Последняя смена графика игроком; null — ещё не менял (первая смена — в любой момент).
+  formatChangedAt  DateTime?
   /// Внешность аватара и косметика (AvatarLook с клиента).
   appearance       Json
   age              Int?

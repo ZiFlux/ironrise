@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@n
 import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
-import { AppearanceSchema, BuySchema, EconomyService } from './economy.service';
+import { AppearanceSchema, BuySchema, EconomyService, ScheduleSchema } from './economy.service';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -19,6 +19,12 @@ export class EconomyController {
   @HttpCode(200)
   buy(@UserId() userId: string, @Body(new ZodPipe(BuySchema)) body: z.infer<typeof BuySchema>) {
     return this.economy.buy(userId, body);
+  }
+
+  /** Сменить формат и дни тренировок — не чаще раза в 7 дней. */
+  @Put('me/schedule')
+  schedule(@UserId() userId: string, @Body(new ZodPipe(ScheduleSchema)) body: z.infer<typeof ScheduleSchema>) {
+    return this.economy.changeSchedule(userId, body);
   }
 
   @Put('me/appearance')

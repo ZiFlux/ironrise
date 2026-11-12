@@ -315,3 +315,16 @@ describe('лиги', () => {
     expect(addWeeks('2026-11-09', 1)).toBe('2026-11-16');
   });
 });
+
+import { nextScheduleChangeAt } from '../src/game/schedule';
+
+describe('смена графика', () => {
+  const now = new Date('2026-11-12T12:00:00Z');
+  it('первая смена — сразу', () => {
+    expect(nextScheduleChangeAt(null, now)).toBeNull();
+  });
+  it('следующая — через 7 дней', () => {
+    expect(nextScheduleChangeAt(new Date('2026-11-10T12:00:00Z'), now)?.toISOString()).toBe('2026-11-17T12:00:00.000Z');
+    expect(nextScheduleChangeAt(new Date('2026-11-05T11:00:00Z'), now)).toBeNull();
+  });
+});

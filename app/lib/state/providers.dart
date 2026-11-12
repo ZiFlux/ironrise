@@ -7,6 +7,8 @@ import '../game/calendar.dart';
 import '../game/shop.dart';
 import '../game/streak.dart';
 import '../game/workout.dart';
+import '../game/schedule.dart';
+import '../game/training_format.dart';
 import 'hero.dart';
 
 /// Подменяется в main() уже загруженным экземпляром.
@@ -115,6 +117,26 @@ class HeroNotifier extends Notifier<HeroProfile?> {
         coins: (me['coins'] as num).toInt(),
         ownedItems: Set<String>.from(me['ownedItems'] as List? ?? const []),
         look: look,
+        // График тоже с сервера: его могли сменить на другом телефоне.
+        format: TrainingFormat.values.asNameMap()[me['trainingFormat']],
+        trainingDays: (me['scheduleDays'] as List?)?.cast<int>(),
+        nextScheduleChangeAt: me['nextScheduleChangeAt'] == null
+            ? null
+            : DateTime.parse(me['nextScheduleChangeAt'] as String).toLocal(),
+        scheduleChangeAllowed: me['nextScheduleChangeAt'] == null,
+      ),
+    );
+  }
+
+  /// Сменить график без аккаунта: раз в 7 дней, первая смена — сразу.
+  Future<void> changeScheduleLocally(TrainingFormat format, List<int> days) async {
+    final h = state;
+    if (h == null || !canChangeSchedule(h.nextScheduleChangeAt, DateTime.now())) return;
+    await save(
+      h.copyWith(
+        format: format,
+        trainingDays: [...days]..sort(),
+        nextScheduleChangeAt: DateTime.now().add(scheduleChangeCooldown),
       ),
     );
   }

@@ -346,6 +346,7 @@ void main() {
         '/rating',
         '/profile',
         '/profile/settings',
+        '/profile/settings/schedule',
         '/profile/heart-rate',
         '/profile/account',
         '/profile/health',

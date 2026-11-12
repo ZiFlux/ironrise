@@ -17,6 +17,7 @@ import 'screens/onboarding_screen.dart';
 import 'screens/player_screen.dart';
 import 'screens/privacy_screen.dart';
 import 'screens/rating_screen.dart';
+import 'screens/schedule_screen.dart';
 import 'screens/settings_screen.dart';
 import 'screens/tip_screen.dart';
 import 'screens/wardrobe_screen.dart';
@@ -121,6 +122,12 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'settings',
                     builder: (_, _) => const SettingsScreen(),
+                    routes: [
+                      GoRoute(
+                        path: 'schedule',
+                        builder: (_, _) => const ScheduleScreen(),
+                      ),
+                    ],
                   ),
                   GoRoute(
                     path: 'heart-rate',

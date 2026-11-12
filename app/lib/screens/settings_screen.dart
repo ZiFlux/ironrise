@@ -170,37 +170,54 @@ class _HeroInfo extends StatelessWidget {
       if (body.heightCm != null) '${body.heightCm} см',
       if (body.weightKg != null) '${formatWeight(body.weightKg!)} кг',
     ].join(', ');
-    final rows = [
-      ('Ник', hero.nickname),
-      ('Цель', hero.goal.label),
-      ('Формат', hero.format.label),
-      ('Дни', hero.trainingDays.map((d) => weekdayShort[d]).join(' ')),
-      ('Комплекция', bodyText.isEmpty ? 'не указана' : bodyText),
+    // Формат и дни меняются на отдельном экране (раз в неделю).
+    void schedule() => context.go('/profile/settings/schedule');
+    final rows = <(String, String, VoidCallback?)>[
+      ('Ник', hero.nickname, null),
+      ('Цель', hero.goal.label, null),
+      ('Формат', hero.format.label, schedule),
+      (
+        'Дни',
+        hero.trainingDays.map((d) => weekdayShort[d]).join(' '),
+        schedule,
+      ),
+      ('Комплекция', bodyText.isEmpty ? 'не указана' : bodyText, null),
     ];
     return Card(
       child: Column(
         children: [
-          for (final (label, value) in rows)
-            SizedBox(
-              height: 44,
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  children: [
-                    Text(
-                      label,
-                      style: const TextStyle(color: AppColors.textSecondary),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Text(
-                        value,
-                        textAlign: TextAlign.end,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+          for (final (label, value, onTap) in rows)
+            InkWell(
+              onTap: onTap,
+              child: SizedBox(
+                height: 44,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(color: AppColors.textSecondary),
                       ),
-                    ),
-                  ],
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Text(
+                          value,
+                          textAlign: TextAlign.end,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      if (onTap != null) ...[
+                        const SizedBox(width: 8),
+                        const Icon(
+                          LucideIcons.chevronRight,
+                          size: 16,
+                          color: AppColors.textMuted,
+                        ),
+                      ],
+                    ],
+                  ),
                 ),
               ),
             ),

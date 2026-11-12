@@ -6,6 +6,7 @@ import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, PROMOTE_TOP, settleWee
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
 import { unpaidItems } from '../game/looks';
+import { MIN_TRAINING_DAYS, nextScheduleChangeAt } from '../game/schedule';
 import { priceOf } from '../game/shop';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService } from '../hero/hero.service';
@@ -15,6 +16,15 @@ export const BuySchema = z.object({
   itemIds: z.array(z.string().min(1).max(64)).max(20),
   /** Образ после покупки (AvatarLook с клиента). */
   appearance: z.record(z.string(), z.unknown()),
+});
+
+export const ScheduleSchema = z.object({
+  trainingFormat: z.string().min(1).max(32),
+  scheduleDays: z
+    .array(z.number().int().min(0).max(6))
+    .min(MIN_TRAINING_DAYS)
+    .max(7)
+    .refine((d) => new Set(d).size === d.length, 'days must be unique'),
 });
 
 export const AppearanceSchema = z.object({ appearance: z.record(z.string(), z.unknown()) });
@@ -66,6 +76,28 @@ export class EconomyService {
       await tx.profile.update({
         where: { userId },
         data: { appearance: input.appearance as Prisma.InputJsonValue },
+      });
+      return this.hero.state(userId, tx);
+    });
+  }
+
+  /** Сменить график: раз в 7 дней, первая смена — сразу. 409 с датой, если рано. */
+  changeSchedule(userId: string, input: z.infer<typeof ScheduleSchema>) {
+    return this.db.$transaction(async (tx) => {
+      await lockProfile(tx, userId);
+      const p = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { formatChangedAt: true } });
+      const now = new Date();
+      const next = nextScheduleChangeAt(p.formatChangedAt, now);
+      if (next) {
+        throw new ConflictException({ message: 'Schedule can be changed once a week', nextScheduleChangeAt: next });
+      }
+      await tx.profile.update({
+        where: { userId },
+        data: {
+          trainingFormat: input.trainingFormat,
+          scheduleDays: [...input.scheduleDays].sort((a, b) => a - b),
+          formatChangedAt: now,
+        },
       });
       return this.hero.state(userId, tx);
     });
