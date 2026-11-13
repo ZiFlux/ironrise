@@ -29,7 +29,8 @@ Invoke-Step 'папки на сервере' { ssh $Server 'mkdir -p /opt/ironri
 Invoke-Step 'копирование образа' { scp compose.prod.yml Caddyfile .env.prod.example api.tar.gz "${Server}:/opt/ironrise/" }
 Invoke-Step 'копирование скриптов' { scp deploy/setup-server.sh deploy/backup.sh "${Server}:/opt/ironrise/deploy/" }
 # Сайт (../site): заменяем целиком, чтобы удалённые файлы не оставались.
-Invoke-Step 'копирование сайта' { ssh $Server 'rm -rf /opt/ironrise/site && mkdir -p /opt/ironrise/site' }
+# Чистим содержимое, а не саму папку: Caddy смонтировал её и иначе видел бы удалённую.
+Invoke-Step 'копирование сайта' { ssh $Server 'mkdir -p /opt/ironrise/site && find /opt/ironrise/site -mindepth 1 -delete' }
 Invoke-Step 'scp сайта' { scp -r ../site/. "${Server}:/opt/ironrise/site/" }
 Remove-Item api.tar.gz
 $firebase = Test-Path secrets/firebase.json
