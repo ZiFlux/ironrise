@@ -197,18 +197,16 @@ class MainActivity : ComponentActivity() {
     private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /**
-     * Зона пульса по проценту от максимума. Возраста на часах нет — берём
-     * максимум 190 (≈ 30 лет); точные зоны считает телефон.
+     * Цвет пульса: до 100 — зелёный (норма), до 125 — жёлтый (повышен),
+     * выше 125 — красный (высокий). Простая шкала, понятная с одного взгляда.
      */
     private enum class Zone(val label: String, val color: Int, val upTo: Int) {
-        Rest("покой", Color.parseColor("#85858B"), 114),
-        Z2("зона 2", Color.parseColor("#3DDCFF"), 133),
-        Z3("зона 3", Color.parseColor("#C6FF3D"), 152),
-        Z4("зона 4", Color.parseColor("#FF8A1F"), 171),
-        Z5("зона 5", Color.parseColor("#E5484D"), Int.MAX_VALUE);
+        Normal("норма", Color.parseColor("#2EBD59"), 101),
+        Raised("повышен", Color.parseColor("#FFC93D"), 126),
+        High("высокий", Color.parseColor("#E5484D"), Int.MAX_VALUE);
 
         companion object {
-            fun of(bpm: Int?): Zone = if (bpm == null) Rest else entries.first { bpm < it.upTo }
+            fun of(bpm: Int?): Zone = if (bpm == null) Normal else entries.first { bpm < it.upTo }
         }
     }
 
