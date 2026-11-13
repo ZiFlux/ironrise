@@ -205,12 +205,44 @@ class BaseProgram {
     ]),
   ];
 
+  /// Сплит (п. 41 бэклога): у каждого дня свои мышцы, дни идут по кругу.
+  static final _split = [
+    _day('S1', 'Спина и бицепс', [
+      'lat_pulldown',
+      'db_row',
+      'back_extension',
+      'db_curl',
+      'hammer_curl',
+    ]),
+    _day('S2', 'Грудь, трицепс, предплечья', [
+      'bench_press',
+      'db_bench_press',
+      'triceps_pushdown',
+      'french_press',
+      'hammer_curl',
+    ]),
+    _day('S3', 'Ноги и плечи', [
+      'barbell_squat',
+      'romanian_deadlift',
+      'lunges',
+      'db_shoulder_press',
+      'lateral_raise',
+      'calf_raise',
+    ]),
+  ];
+
   /// День отстающей части: упражнения добираются под отстающую часть тела.
   static final _focusDay = ProgramDay('F', 'День отстающей части', const []);
 
-  /// 3 тренировки в неделю — фулбоди, 4 — верх/низ, 5 и больше — ещё день отстающей части.
-  static List<ProgramDay> days(Equipment equipment, int sessionsPerWeek) {
+  /// 3 тренировки в неделю — фулбоди, 4 — верх/низ, 5 и больше — ещё день отстающей
+  /// части. Формат «Сплит» — дни по группам мышц по кругу, сколько бы дней ни было.
+  static List<ProgramDay> days(
+    Equipment equipment,
+    int sessionsPerWeek, {
+    bool split = false,
+  }) {
     final template = switch (sessionsPerWeek) {
+      _ when split => _split,
       <= 3 => _fullBody,
       4 => _upperLower,
       _ => [..._upperLower, _focusDay],
@@ -464,4 +496,27 @@ class DoubleProgression {
 double? estimatedOneRepMax(SetRecord set) {
   if (set.weight <= 0 || set.reps < 1 || set.reps > 12) return null;
   return set.weight * (1 + set.reps / 30);
+}
+
+/// Раскладка на неделю: какой день что тренировать — «Пн — Спина и бицепс».
+/// [days] — дни программы по кругу, [nextIndex] — какой из них следующий,
+/// [trainingDays] — дни недели по графику (0 — понедельник), [today] — от какого дня.
+List<({int weekday, String title})> weekLayout({
+  required List<ProgramDay> days,
+  required int nextIndex,
+  required List<int> trainingDays,
+  required DateTime today,
+}) {
+  if (days.isEmpty || trainingDays.isEmpty) return const [];
+  final sorted = [...trainingDays]..sort();
+  final todayIndex = today.weekday - 1;
+  // Ближайшие дни по графику, начиная с сегодняшнего, — на неделю вперёд.
+  final upcoming = [
+    ...sorted.where((d) => d >= todayIndex),
+    ...sorted.where((d) => d < todayIndex),
+  ];
+  return [
+    for (final (i, d) in upcoming.indexed)
+      (weekday: d, title: days[(nextIndex + i) % days.length].title),
+  ];
 }

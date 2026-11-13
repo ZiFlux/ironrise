@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/body_part.dart';
 import '../game/exercise_ladder.dart';
 import '../game/program.dart';
+import '../game/training_format.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
 import 'hero.dart';
@@ -68,10 +69,15 @@ class UserProgram {
   ProgramPhase get phase => ProgramPhase.after(completedWorkouts);
 
   /// Дни текущей фазы. «Старт» — всегда 3 тренировки в неделю, «База» — по формату.
-  List<ProgramDay> days(int sessionsPerWeek) => switch (phase) {
-    ProgramPhase.start => StartProgram.days(equipment),
-    ProgramPhase.base => BaseProgram.days(equipment, sessionsPerWeek),
-  };
+  List<ProgramDay> days(int sessionsPerWeek, {bool split = false}) =>
+      switch (phase) {
+        ProgramPhase.start => StartProgram.days(equipment),
+        ProgramPhase.base => BaseProgram.days(
+          equipment,
+          sessionsPerWeek,
+          split: split,
+        ),
+      };
 
   /// Зоны, которые сейчас бережём после «болит».
   Set<PainZone> avoidedZones(DateTime now) => {
@@ -86,8 +92,9 @@ class UserProgram {
     required int sessionsPerWeek,
     BodyPart? lagging,
     int startLevel = 1,
+    bool split = false,
   }) {
-    final all = days(sessionsPerWeek);
+    final all = days(sessionsPerWeek, split: split);
     var day = ExerciseLadder.adapt(
       all[nextDayIndex % all.length],
       (pattern) => levelOf(pattern, start: startLevel),
@@ -422,6 +429,7 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       sessionsPerWeek: hero?.trainingDays.length ?? 3,
       lagging: hero?.lagging.firstOrNull,
       startLevel: startLevelOf(hero),
+      split: hero?.format == TrainingFormat.split,
     );
 
 /// Стартовая ступень по анкете: регулярно тренируется — 2, иначе — с самых простых.

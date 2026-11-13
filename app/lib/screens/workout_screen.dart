@@ -14,6 +14,8 @@ import '../game/set_effort.dart';
 import '../game/warmup.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
+import '../state/hero.dart';
+import '../game/training_format.dart';
 import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/program_state.dart';
@@ -57,6 +59,23 @@ String _phaseLine(UserProgram program) => switch (program.phase) {
   ProgramPhase.base => 'Фаза «База»: 3 подхода и упражнение на отстающую часть',
 };
 
+/// Сплит: какой день недели что тренировать — «Пн спина и бицепс · Ср грудь…».
+String? _splitLine(UserProgram program, HeroProfile? hero) {
+  if (hero?.format != TrainingFormat.split ||
+      program.phase != ProgramPhase.base) {
+    return null;
+  }
+  final layout = weekLayout(
+    days: program.days(hero!.trainingDays.length, split: true),
+    nextIndex: program.nextDayIndex,
+    trainingDays: hero.trainingDays,
+    today: DateTime.now(),
+  );
+  return layout
+      .map((d) => '${weekdayShort[d.weekday]} ${d.title.toLowerCase()}')
+      .join(' · ');
+}
+
 class _StartView extends ConsumerWidget {
   const _StartView();
 
@@ -73,6 +92,7 @@ class _StartView extends ConsumerWidget {
     final strengthDone = doneToday(log, WorkoutKind.strength, now);
     final cardioDone = doneToday(log, WorkoutKind.cardio, now);
     final notes = [
+      ?_splitLine(program, ref.watch(heroProvider)),
       if (adapted.eased) 'План облегчён: на подход меньше',
       if (adapted.boosted) 'План усилен: на подход больше',
       if (ref.watch(heroProvider) case final h?
