@@ -20,13 +20,15 @@ class JournalActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(32, 36, 32, 48)
+            gravity = Gravity.CENTER
+            // Круглый экран: по бокам ~14 %, сверху и снизу ~18 % — строки не режутся краем.
+            val w = resources.displayMetrics.widthPixels
+            setPadding((w * 0.14f).toInt(), (w * 0.18f).toInt(), (w * 0.14f).toInt(), (w * 0.22f).toInt())
         }
-        list.addView(text("Журнал", 17f, PRIMARY, bold = true))
+        list.addView(text("Журнал", 15f, PRIMARY, bold = true))
         val entries = WorkoutJournal.all(this)
         if (entries.isEmpty()) {
-            list.addView(text("Тренировок на часах пока нет", 13f, SECONDARY))
+            list.addView(text("Тренировок на часах пока нет", 12f, SECONDARY))
         }
         val day = SimpleDateFormat("d MMM", Locale("ru"))
         val time = SimpleDateFormat("HH:mm", Locale("ru"))
@@ -36,17 +38,19 @@ class JournalActivity : ComponentActivity() {
                 text(
                     "${day.format(Date(e.startedAtMillis))}, ${time.format(Date(e.startedAtMillis))}–" +
                         "${time.format(Date(e.endedAtMillis))} · $minutes мин",
-                    14f,
+                    12f,
                     PRIMARY,
-                ).apply { setPadding(0, 14, 0, 0) },
+                ).apply { setPadding(0, 12, 0, 0) },
             )
             val pulse = listOfNotNull(e.avgBpm?.let { "ср $it" }, e.maxBpm?.let { "макс $it" }, "${e.steps} шаг.")
-            list.addView(text(pulse.joinToString(" · "), 12f, SECONDARY))
+            list.addView(text(pulse.joinToString(" · "), 11f, SECONDARY))
         }
         setContentView(
             ScrollView(this).apply {
                 setBackgroundColor(Color.parseColor("#0F0F10"))
                 isVerticalScrollBarEnabled = false
+                // Записей мало — список по центру круга, много — прокрутка.
+                isFillViewport = true
                 addView(list, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             },
         )

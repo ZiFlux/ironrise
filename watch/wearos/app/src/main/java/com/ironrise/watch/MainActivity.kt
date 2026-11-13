@@ -14,6 +14,7 @@ import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
 import android.view.WindowManager
 import android.widget.Button
+import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.activity.ComponentActivity
@@ -35,6 +36,7 @@ class MainActivity : ComponentActivity() {
     private lateinit var zoneText: TextView
     private lateinit var detailsText: TextView
     private lateinit var actionButton: Button
+    private lateinit var ring: RingView
 
     private val permissionRequest =
         registerForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { granted ->
@@ -77,7 +79,10 @@ class MainActivity : ComponentActivity() {
         bpmText.setTextColor(if (state.active) zone.color else MUTED)
         zoneText.text = if (state.active && state.bpm != null) "уд/мин · ${zone.label}" else "уд/мин"
         actionButton.text = if (state.active) "Завершить" else "Начать"
-        actionButton.backgroundTintList = android.content.res.ColorStateList.valueOf(if (state.active) STOP else ACCENT)
+        (actionButton.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (state.active) STOP else ACCENT)
+        // Дуга по краю: пульс от максимума (190), цвет зоны.
+        ring.color = zone.color
+        ring.fraction = if (state.active) (state.bpm ?: 0) / 190f else 0f
         if (state.active) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         renderTime(state)
@@ -121,47 +126,60 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun buildLayout(): LinearLayout {
+    private fun buildLayout(): FrameLayout {
         timeText = TextView(this).apply {
-            textSize = 20f
+            textSize = 15f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             gravity = Gravity.CENTER
         }
         bpmText = TextView(this).apply {
-            textSize = 46f
+            textSize = 34f
             typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
             gravity = Gravity.CENTER
+            includeFontPadding = false
         }
         zoneText = TextView(this).apply {
-            textSize = 12f
+            textSize = 11f
             setTextColor(MUTED)
             gravity = Gravity.CENTER
         }
         detailsText = TextView(this).apply {
-            textSize = 13f
+            textSize = 11f
             setTextColor(SECONDARY)
             gravity = Gravity.CENTER
-            setPadding(0, 6, 0, 10)
+            maxLines = 2
+            setPadding(0, dp(2), 0, dp(6))
         }
         actionButton = Button(this).apply {
             setTextColor(ON_ACCENT)
             isAllCaps = false
-            textSize = 15f
+            textSize = 13f
+            gravity = Gravity.CENTER
+            minHeight = 0
+            minimumHeight = 0
+            minWidth = 0
+            minimumWidth = 0
+            setPadding(dp(18), dp(6), dp(18), dp(6))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                cornerRadius = dp(20).toFloat()
+                setColor(ACCENT)
+            }
         }
         val journal = TextView(this).apply {
             text = "Журнал"
-            textSize = 13f
+            textSize = 11f
             setTextColor(ACCENT)
             gravity = Gravity.CENTER
-            setPadding(16, 10, 16, 4)
+            setPadding(dp(12), dp(6), dp(12), dp(2))
             setOnClickListener { startActivity(Intent(this@MainActivity, JournalActivity::class.java)) }
         }
-        return LinearLayout(this).apply {
+        ring = RingView(this)
+        // Всё — во вписанном в круг квадрате (сторона ≈ 0,7 диаметра), по центру:
+        // на круглом экране ничего не уходит за край.
+        val side = (resources.displayMetrics.widthPixels * 0.72f).toInt()
+        val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
-            setBackgroundColor(BACKGROUND)
-            // Круглый экран: поля по краям, чтобы текст не обрезался.
-            setPadding(28, 28, 28, 20)
             addView(timeText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             addView(bpmText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             addView(zoneText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
@@ -169,7 +187,14 @@ class MainActivity : ComponentActivity() {
             addView(actionButton, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
             addView(journal, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
         }
+        return FrameLayout(this).apply {
+            setBackgroundColor(BACKGROUND)
+            addView(ring, FrameLayout.LayoutParams(MATCH_PARENT, MATCH_PARENT))
+            addView(content, FrameLayout.LayoutParams(side, side, Gravity.CENTER))
+        }
     }
+
+    private fun dp(v: Int) = (v * resources.displayMetrics.density).toInt()
 
     /**
      * Зона пульса по проценту от максимума. Возраста на часах нет — берём
