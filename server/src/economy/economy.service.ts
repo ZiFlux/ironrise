@@ -24,7 +24,7 @@ import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
 import { SEASON_POINTS } from '../game/season';
 import { addSeasonPoints, seasonState } from '../season/season';
-import { auraSnapshot, auraState, equipAura, trainAura } from '../season/aura-service';
+import { AuraTrainingSchema, auraSnapshot, auraState, equipAura, trainAura } from '../season/aura-service';
 
 export const BuySchema = z.object({
   itemIds: z.array(z.string().min(1).max(64)).max(20),
@@ -472,8 +472,8 @@ export class EconomyService {
     return auraState(this.db, userId);
   }
 
-  trainAura(userId: string, kind: string) {
-    return trainAura(this.db, userId, kind);
+  trainAura(userId: string, kind: string, input: z.infer<typeof AuraTrainingSchema>) {
+    return trainAura(this.db, userId, kind, input);
   }
 
   equipAura(userId: string, kind: string | null) {

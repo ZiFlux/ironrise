@@ -2,6 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@n
 import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
+import { AuraTrainingSchema } from '../season/aura-service';
 import { AppearanceSchema, BuySchema, EconomyService, NicknameChangeSchema, ScheduleSchema, ShowcaseSchema, StepsSchema, StartLookSchema, TipRewardSchema } from './economy.service';
 
 @Controller()
@@ -23,8 +24,12 @@ export class EconomyController {
   /** Тренировка ауры: не больше двух в неделю. */
   @Post('auras/:kind/train')
   @HttpCode(200)
-  trainAura(@UserId() userId: string, @Param('kind') kind: string) {
-    return this.economy.trainAura(userId, kind);
+  trainAura(
+    @UserId() userId: string,
+    @Param('kind') kind: string,
+    @Body(new ZodPipe(AuraTrainingSchema)) body: z.infer<typeof AuraTrainingSchema>,
+  ) {
+    return this.economy.trainAura(userId, kind, body);
   }
 
   /** Выбрать ауру для дуэлей; kind = none — снять. */

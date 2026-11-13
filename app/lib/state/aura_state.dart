@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../game/anti_fraud.dart';
 import '../game/aura.dart';
 import 'account_state.dart';
 
@@ -10,6 +11,7 @@ typedef AuraProgress = ({AuraKind kind, int sessions, int level, int? toNext});
 class AuraInfo {
   const AuraInfo({
     required this.equipped,
+    this.trainedToday = false,
     required this.sessionsThisWeek,
     required this.perWeek,
     required this.auras,
@@ -17,6 +19,7 @@ class AuraInfo {
 
   factory AuraInfo.fromJson(Map<String, dynamic> j) => AuraInfo(
     equipped: AuraKind.values.asNameMap()[j['equipped']],
+    trainedToday: j['trainedToday'] == true,
     sessionsThisWeek: (j['sessionsThisWeek'] as num).toInt(),
     perWeek: (j['perWeek'] as num).toInt(),
     auras: [
@@ -32,11 +35,14 @@ class AuraInfo {
   );
 
   final AuraKind? equipped;
+
+  /// Сегодня тренировка ауры уже была: следующая — завтра.
+  final bool trainedToday;
   final int sessionsThisWeek;
   final int perWeek;
   final List<AuraProgress> auras;
 
-  bool get canTrain => sessionsThisWeek < perWeek;
+  bool get canTrain => !trainedToday && sessionsThisWeek < perWeek;
 }
 
 class AuraNotifier extends AsyncNotifier<AuraInfo> {
@@ -44,11 +50,22 @@ class AuraNotifier extends AsyncNotifier<AuraInfo> {
   Future<AuraInfo> build() async =>
       AuraInfo.fromJson(await ref.read(apiProvider).get('/v1/auras'));
 
-  /// Тренировка ауры пройдена: +1 к прогрессу (сервер следит за лимитом).
-  Future<void> train(AuraKind kind) async {
-    final j = await ref
-        .read(apiProvider)
-        .post('/v1/auras/${kind.name}/train', const {});
+  /// Тренировка ауры пройдена: +1 к прогрессу. Сервер проверяет лимит
+  /// (раз в день, два в неделю) и пульс с часов за время тренировки.
+  Future<void> train(
+    AuraKind kind, {
+    required DateTime startedAt,
+    required DateTime finishedAt,
+    required List<PulseSample> pulse,
+  }) async {
+    final j = await ref.read(apiProvider).post('/v1/auras/${kind.name}/train', {
+      'startedAt': startedAt.toUtc().toIso8601String(),
+      'finishedAt': finishedAt.toUtc().toIso8601String(),
+      'pulse': [
+        for (final s in pulse)
+          {'at': s.at.toUtc().toIso8601String(), 'bpm': s.bpm},
+      ],
+    });
     state = AsyncData(AuraInfo.fromJson(j));
   }
 

@@ -13,6 +13,11 @@ export const AURA_KINDS = ['fury', 'guard', 'haste', 'focus'] as const;
 export type AuraKind = (typeof AURA_KINDS)[number];
 
 export const AURA_SESSIONS_PER_WEEK = 2;
+
+/** Тренировка ауры подтверждается пульсом: длительность и средний пульс. */
+export const AURA_MIN_SECONDS = 6 * 60;
+export const AURA_MAX_SECONDS = 40 * 60;
+export const AURA_MIN_AVG_BPM = 95;
 export const AURA_MAX_LEVEL = 5;
 
 /** Сколько тренировок ауры нужно для уровня 1…5 (накопительно). */

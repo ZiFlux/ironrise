@@ -121,6 +121,8 @@ model Profile {
   auraEquipped     String?
   auraWeek         String?
   auraSessions     Int       @default(0)
+  /// День последней тренировки ауры: не больше одной в день.
+  auraLastDay      String?
   /// Понедельник недели, до которой лига уже подведена (YYYY-MM-DD).
   leagueWeek       String?
   /// Итог последней подведённой недели: место и куда сдвинулась лига.

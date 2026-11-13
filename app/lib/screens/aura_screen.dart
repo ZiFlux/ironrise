@@ -10,6 +10,7 @@ import '../game/aura.dart';
 import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../state/aura_state.dart';
+import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/aura_flame.dart';
@@ -41,7 +42,8 @@ class AuraScreen extends ConsumerWidget {
             Text(
               'Аура срабатывает в дуэли один раз: когда здоровья меньше 65 % '
               'или осталось 3 раунда. Тренировок ауры на этой неделе: '
-              '${a.sessionsThisWeek} из ${a.perWeek} — отдельно от основных.',
+              '${a.sessionsThisWeek} из ${a.perWeek}, не чаще раза в день — '
+              'отдельно от основных. Засчитываются с пульсом с часов или датчика.',
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
@@ -50,6 +52,7 @@ class AuraScreen extends ConsumerWidget {
                 progress: p,
                 equipped: a.equipped == p.kind,
                 canTrain: a.canTrain,
+                limitLabel: a.trainedToday ? 'Завтра' : 'Лимит недели',
               ),
           ],
         ),
@@ -70,11 +73,13 @@ class _AuraCard extends ConsumerWidget {
     required this.progress,
     required this.equipped,
     required this.canTrain,
+    required this.limitLabel,
   });
 
   final AuraProgress progress;
   final bool equipped;
   final bool canTrain;
+  final String limitLabel;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -100,9 +105,14 @@ class _AuraCard extends ConsumerWidget {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (open) AuraFlame(kind: kind),
                   if (hero != null)
-                    AvatarView(levels: hero.avatarLevels, look: hero.look),
+                    AuraHero(
+                      kind: open ? kind : null,
+                      child: AvatarView(
+                        levels: hero.avatarLevels,
+                        look: hero.look,
+                      ),
+                    ),
                 ],
               ),
             ),
@@ -163,7 +173,7 @@ class _AuraCard extends ConsumerWidget {
                         onPressed: canTrain
                             ? () => context.push('/duels/auras/${kind.name}')
                             : null,
-                        child: Text(canTrain ? 'Тренировка' : 'Лимит недели'),
+                        child: Text(canTrain ? 'Тренировка' : limitLabel),
                       ),
                       if (open)
                         OutlinedButton(
@@ -207,6 +217,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
   ];
 
   Timer? _timer;
+  DateTime? _startedAt;
   int _index = -1;
   int _left = 0;
   bool _saving = false;
@@ -218,6 +229,9 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
   }
 
   void _start() {
+    _startedAt = DateTime.now();
+    // Часы начинают передавать пульс — он подтверждает тренировку ауры.
+    ref.read(heartRateProvider.notifier).startWatch();
     setState(() {
       _index = 0;
       _left = _steps[0].seconds;
@@ -245,15 +259,32 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
 
   Future<void> _finish() async {
     setState(() => _saving = true);
+    final end = DateTime.now();
+    final hr = ref.read(heartRateProvider.notifier);
+    final pulse = hr.samplesBetween(_startedAt ?? end, end);
+    await hr.stopWatch();
     try {
-      await ref.read(auraProvider.notifier).train(widget.kind);
+      await ref
+          .read(auraProvider.notifier)
+          .train(
+            widget.kind,
+            startedAt: _startedAt ?? end,
+            finishedAt: end,
+            pulse: pulse,
+          );
       showStatus(
         'Аура «${widget.kind.label}» прокачана',
         kind: StatusKind.success,
       );
       if (mounted) context.pop();
-    } on ApiException {
-      showStatusError('Не удалось сохранить — лимит недели или нет связи');
+    } on ApiException catch (e) {
+      showStatusError(switch (e.status) {
+        422 when e.message.contains('6-40') =>
+          'Тренировка короче 6 минут — не засчитана',
+        422 => 'Нет пульса с часов — тренировка ауры не засчитана',
+        409 => 'Тренировка ауры уже была — следующая завтра',
+        _ => 'Нет связи с сервером — попробуйте ещё раз',
+      }, network: e.isNetwork);
       if (mounted) setState(() => _saving = false);
     }
   }
@@ -281,32 +312,52 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                   fit: StackFit.expand,
                   children: [
                     // Пока идёт работа — аура горит.
-                    if (started && !step!.rest) AuraFlame(kind: kind),
                     if (hero != null)
-                      AvatarView(levels: hero.avatarLevels, look: hero.look),
+                      AuraHero(
+                        kind: started && !step!.rest ? kind : null,
+                        child: AvatarView(
+                          levels: hero.avatarLevels,
+                          look: hero.look,
+                        ),
+                      ),
                   ],
                 ),
               ),
               const SizedBox(height: 12),
               if (!started) ...[
-                Text(
-                  kind.trainingTitle,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(fontSize: 16),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  [for (final m in kind.moves) '${m.name} — ${m.seconds} с']
-                      .join('\n'),
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '${AuraKind.rounds} круга, отдых ${AuraKind.restSeconds} с · '
-                  '~${(kind.totalSeconds / 60).round()} мин',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: AppColors.textMuted),
+                // Описание прокручивается на маленьком экране; кнопка — всегда видна.
+                Flexible(
+                  child: SingleChildScrollView(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Text(
+                          kind.trainingTitle,
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(fontSize: 16),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          [
+                            for (final m in kind.moves)
+                              '${m.name} — ${m.seconds} с',
+                          ].join('\n'),
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          '${AuraKind.rounds} круга, отдых ${AuraKind.restSeconds} с · '
+                          '~${(kind.totalSeconds / 60).round()} мин. Наденьте часы: '
+                          'без пульса тренировка не засчитается',
+                          textAlign: TextAlign.center,
+                          style: const TextStyle(color: AppColors.textMuted),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
                 const SizedBox(height: 16),
                 FilledButton(onPressed: _start, child: const Text('Начать')),

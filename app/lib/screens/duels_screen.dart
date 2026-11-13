@@ -8,6 +8,8 @@ import '../game/duel.dart';
 import '../game/game_config.dart';
 import '../net/api_client.dart';
 import '../state/account_state.dart';
+import '../state/aura_state.dart';
+import '../state/season_state.dart';
 import '../state/duel_state.dart';
 import '../state/providers.dart';
 import '../state/server_game.dart';
@@ -61,11 +63,6 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     final incoming = friends.value?.incoming.length ?? 0;
     return _Page(
       actions: [
-        IconButton(
-          tooltip: 'Ауры',
-          onPressed: () => context.go('/duels/auras'),
-          icon: const Icon(LucideIcons.flame, size: 20),
-        ),
         GuideTarget(
           id: 'duels.friends',
           child: IconButton(
@@ -80,14 +77,22 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
         ),
         const SizedBox(width: 8),
       ],
-      header: SegmentedButton<bool>(
-        segments: const [
-          ButtonSegment(value: false, label: Text('Боты дня')),
-          ButtonSegment(value: true, label: Text('Друзья')),
+      header: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Сезон и аура — на виду: прогресс батлпаса и способность для боя.
+          const _Perks(),
+          const SizedBox(height: 4),
+          SegmentedButton<bool>(
+            segments: const [
+              ButtonSegment(value: false, label: Text('Боты дня')),
+              ButtonSegment(value: true, label: Text('Друзья')),
+            ],
+            selected: {_friendsTab},
+            showSelectedIcon: false,
+            onSelectionChanged: (s) => setState(() => _friendsTab = s.first),
+          ),
         ],
-        selected: {_friendsTab},
-        showSelectedIcon: false,
-        onSelectionChanged: (s) => setState(() => _friendsTab = s.first),
       ),
       body: _friendsTab
           ? friends.when(
@@ -133,8 +138,139 @@ String _botsCounter(Iterable<int> fights) =>
     'боёв сегодня: ${fights.fold(0, (a, b) => a + b)}';
 
 final _botsFooter =
-    'С ботом — снова через ${GameConfig.duelCooldown.inHours} ч, повторный бой за сутки — половина монет. '
-    'Новые соперники каждый день';
+    'С ботом — раз в ${GameConfig.duelCooldown.inHours} ч, повтор за сутки — ½ монет. Новые — каждый день';
+
+/// Две плашки над списком: сезон (уровень и прогресс) и аура (какая выбрана).
+class _Perks extends ConsumerWidget {
+  const _Perks();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final season = ref.watch(seasonProvider).value;
+    final auras = ref.watch(auraProvider).value;
+    final aura = auras?.equipped;
+    final auraLevel = aura == null
+        ? 0
+        : auras!.auras.firstWhere((a) => a.kind == aura).level;
+    return SizedBox(
+      height: MediaQuery.textScalerOf(context).scale(48),
+      child: Row(
+        children: [
+          Expanded(
+            child: _PerkCard(
+              color: const Color(0xFFD9B25A),
+              icon: LucideIcons.sparkles,
+              title: season == null
+                  ? 'Сезон'
+                  : 'Сезон ${season.number} · ур. ${season.level}',
+              subtitle: season == null
+                  ? 'Батлпас: награды за бои'
+                  : season.level >= season.maxLevel
+                  ? 'Все уровни взяты'
+                  : '${season.pointsIntoLevel}/${season.levelPoints} до ур. ${season.level + 1}',
+              progress: season == null
+                  ? null
+                  : season.level >= season.maxLevel
+                  ? 1
+                  : season.pointsIntoLevel / season.levelPoints,
+              onTap: () => context.push('/season'),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _PerkCard(
+              color: aura?.color ?? const Color(0xFFFF5A1F),
+              icon: LucideIcons.flame,
+              title: aura == null ? 'Ауры' : 'Аура: ${aura.label}',
+              subtitle: aura == null
+                  ? 'Способность в бою — открой'
+                  : 'ур. $auraLevel · ${auras!.sessionsThisWeek}/${auras.perWeek} трен. за неделю',
+              onTap: () => context.go('/duels/auras'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PerkCard extends StatelessWidget {
+  const _PerkCard({
+    required this.color,
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.progress,
+  });
+
+  final Color color;
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final double? progress;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Material(
+    color: Color.alphaBlend(color.withValues(alpha: 0.12), AppColors.surface),
+    shape: RoundedRectangleBorder(
+      borderRadius: BorderRadius.circular(12),
+      side: BorderSide(color: color.withValues(alpha: 0.7)),
+    ),
+    child: InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+        child: Row(
+          children: [
+            Icon(icon, size: 20, color: color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  Text(
+                    subtitle,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                  if (progress case final p?) ...[
+                    const SizedBox(height: 1),
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(2),
+                      child: LinearProgressIndicator(
+                        value: p.clamp(0, 1),
+                        minHeight: 3,
+                        color: color,
+                        backgroundColor: AppColors.raised,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
+}
 
 class _Page extends StatelessWidget {
   const _Page({required this.body, this.header, this.actions});
@@ -153,7 +289,7 @@ class _Page extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            if (header != null) ...[header!, const SizedBox(height: 8)],
+            if (header != null) ...[header!, const SizedBox(height: 4)],
             GuideTarget(
               id: 'duels.list',
               child: Expanded(child: body),
@@ -265,44 +401,37 @@ class _FighterList extends StatelessWidget {
     final list = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                Icon(LucideIcons.zap, size: 18, color: accent),
-                const SizedBox(width: 8),
-                Text(
-                  '${me.power}',
-                  style: figureStyle(size: 20, color: accent),
-                ),
-                const SizedBox(width: 8),
-                const Flexible(
-                  child: Text(
-                    'твоя сила',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    counter,
-                    textAlign: TextAlign.end,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                    ),
-                  ),
-                ),
-              ],
+        // Сила и счётчик боёв — одной строкой: место над списком у сезона и ауры.
+        Row(
+          children: [
+            Icon(LucideIcons.zap, size: 16, color: accent),
+            const SizedBox(width: 6),
+            Text('${me.power}', style: figureStyle(size: 16, color: accent)),
+            const SizedBox(width: 6),
+            const Flexible(
+              child: Text(
+                'твоя сила',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+              ),
             ),
-          ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                counter,
+                textAlign: TextAlign.end,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 4),
         if (scrollable)
           Expanded(
             child: ListView.separated(
@@ -318,7 +447,7 @@ class _FighterList extends StatelessWidget {
         else
           for (final (i, f) in fighters.indexed)
             FlexibleMin(
-              minHeight: MediaQuery.textScalerOf(context).scale(72),
+              minHeight: MediaQuery.textScalerOf(context).scale(66),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: card(f, i),
@@ -431,7 +560,7 @@ class _FighterCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     _FightButton(label: 'Ещё бой', onTap: onFight),
-                    const SizedBox(height: 2),
+                    const SizedBox(height: 1),
                     const Text(
                       '½ монет',
                       style: TextStyle(

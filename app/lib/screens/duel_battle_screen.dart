@@ -54,14 +54,36 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
     super.dispose();
   }
 
-  /// Аура бойца на этом ударе: какая и вспышка ли (разовая или только началась).
-  ({AuraKind kind, bool burst})? _auraOf(
-    DuelHit? hit, {
+  /// Аура бойца на ударе [index]: горит от первого до последнего удара,
+  /// где она отмечена, — и на ударах соперника между ними (не мигает).
+  /// Разовая (скорость, фокус) держится до конца своего хода.
+  ({AuraKind kind, bool burst, int from})? _auraAt(
+    List<DuelHit> all,
+    int index, {
     required bool attacker,
   }) {
-    final mark = hit?.auras.where((m) => m.attacker == attacker).firstOrNull;
-    if (mark == null) return null;
-    return (kind: mark.kind, burst: mark.kind.burst);
+    if (index < 0) return null;
+    int? from, to;
+    AuraKind? kind;
+    for (final (i, h) in all.indexed) {
+      for (final m in h.auras) {
+        if (m.attacker != attacker) continue;
+        kind ??= m.kind;
+        from ??= i;
+        to = i;
+      }
+    }
+    if (kind == null || from == null || to == null) return null;
+    // Разовая — до конца хода владельца: следующие подряд его удары.
+    if (kind.burst) {
+      var end = to;
+      while (end + 1 < all.length && all[end + 1].byAttacker == attacker) {
+        end++;
+      }
+      to = end;
+    }
+    if (index < from || index > to) return null;
+    return (kind: kind, burst: kind.burst, from: from);
   }
 
   void _skip(int total) {
@@ -122,8 +144,7 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                             ? _shown
                             : null,
                         hitPart: last != null && !last.byAttacker ? last : null,
-                        aura: _auraOf(last, attacker: true),
-                        auraKey: _shown,
+                        aura: _auraAt(duel.hits, _shown - 1, attacker: true),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -135,8 +156,7 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                         isPlayer: false,
                         hitKey: last != null && last.byAttacker ? _shown : null,
                         hitPart: last != null && last.byAttacker ? last : null,
-                        aura: _auraOf(last, attacker: false),
-                        auraKey: _shown,
+                        aura: _auraAt(duel.hits, _shown - 1, attacker: false),
                       ),
                     ),
                   ],
@@ -198,12 +218,10 @@ class _FighterPanel extends StatelessWidget {
     required this.hitKey,
     this.hitPart,
     this.aura,
-    this.auraKey,
   });
 
-  /// Аура, горящая на текущем ударе, и ключ удара (новая вспышка — заново).
-  final ({AuraKind kind, bool burst})? aura;
-  final int? auraKey;
+  /// Аура, горящая сейчас: какая, разовая ли и с какого удара (ключ анимации).
+  final ({AuraKind kind, bool burst, int from})? aura;
 
   /// Удар, который сейчас пришёлся по этому бойцу: где вспыхнуть.
   final DuelHit? hitPart;
@@ -263,14 +281,15 @@ class _FighterPanel extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
-                if (aura case final a?)
-                  AuraFlame(
-                    // Длительная аура горит без перезапуска, вспышка — на каждом ударе.
-                    key: ValueKey(a.burst ? 'burst$auraKey' : 'aura${a.kind}'),
-                    kind: a.kind,
-                    burst: a.burst,
-                  ),
-                isPlayer ? avatar : Transform.flip(flipX: true, child: avatar),
+                AuraHero(
+                  // Один ключ на весь срок ауры — анимация не начинается заново.
+                  key: ValueKey('aura${aura?.from}'),
+                  kind: aura?.kind,
+                  burst: aura?.burst ?? false,
+                  child: isPlayer
+                      ? avatar
+                      : Transform.flip(flipX: true, child: avatar),
+                ),
                 if (hitPart case final hit?
                     when hit.kind != HitKind.miss &&
                         hit.kind != HitKind.skip &&
