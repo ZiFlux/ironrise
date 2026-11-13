@@ -57,8 +57,8 @@ export interface SeasonReward {
 /** Вещи сезонов: по номеру сезона, уровню и дорожке. */
 export const SEASON_ITEM_TABLE: Record<number, Record<SeasonTrack, Record<number, string>>> = {
   1: {
-    free: { 5: 'sn_s1', 15: 'tc_s1', 25: 'bc_s1' },
-    premium: { 10: 'hc_s1', 20: 'sn_s1p', 30: 'tc_s1p' },
+    free: { 5: 'sn_s1', 15: 'tc_s1', 20: 'hair_wolfcut', 25: 'bc_s1' },
+    premium: { 10: 'hc_s1', 20: 'sn_s1p', 25: 'acc_bucket', 30: 'tc_s1p' },
   },
 };
 

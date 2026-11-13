@@ -195,6 +195,15 @@ class AvatarPainter extends CustomPainter {
       layers.bottom,
       betaBottom ? _betaDark : look.bottomColor,
     );
+    if (layers.cargoPockets case final pockets?) {
+      canvas.drawPath(
+        pockets,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..color = Color.lerp(look.bottomColor, Colors.black, 0.45)!,
+      );
+    }
     if (layers.joggerPockets case final pockets?) {
       canvas.drawPath(
         pockets,
@@ -272,6 +281,7 @@ class AvatarPainter extends CustomPainter {
       _fillSolid(canvas, buckle, _steel);
     }
     _fillSolid(canvas, layers.goldChain, _gold);
+    _fillSolid(canvas, layers.silverChain, const Color(0xFFD7DADF));
   }
 
   /// Кроссовки рисуются отдельно: в стойке их сдвигают за ногой, не поворачивая,
@@ -309,6 +319,7 @@ class AvatarPainter extends CustomPainter {
       ),
     );
     _fillSolid(canvas, layers.headband, look.accessoryColor);
+    _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
     _fillSolid(canvas, layers.hairFront, look.hairColor);
     for (final (tuft, color) in layers.wigTufts) {
       _fillSolid(canvas, tuft, _rainbow[color]);
@@ -320,6 +331,10 @@ class AvatarPainter extends CustomPainter {
       final beta = look.accessories.contains(Accessory.betaCap);
       _fillCloth(canvas, dome, beta ? _beta : _capColor);
       _fillSolid(canvas, brim, beta ? look.accessoryColor : _capBrim);
+    }
+    if (layers.bucketHat case (final dome, final brim)) {
+      _fillCloth(canvas, dome, const Color(0xFFD9C9A3));
+      _fillSolid(canvas, brim, const Color(0xFFC9B88F));
     }
     if (layers.headphones case (final band, final cups)) {
       _fillSolid(canvas, band, _capColor);

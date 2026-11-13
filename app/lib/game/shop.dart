@@ -88,6 +88,29 @@ ShopItem _hair(String id, String name, HairStyle s, int price, AvatarSex sex) =>
       isWorn: (l) => l.hair == s,
     );
 
+/// Причёска для обоих полов (новые модные стрижки).
+ShopItem _hairAny(String id, String name, HairStyle s, int price) => ShopItem(
+  id: id,
+  name: name,
+  slot: ShopSlot.hair,
+  price: price,
+  apply: (l) => l.copyWith(hair: s),
+  isWorn: (l) => l.hair == s,
+);
+
+/// Модель обуви. Без обуви — надеваем в белом.
+ShopItem _shoe(String id, String name, ShoeKind k, int price) => ShopItem(
+  id: id,
+  name: name,
+  slot: ShopSlot.sneakers,
+  price: price,
+  apply: (l) => l.copyWith(
+    shoes: k,
+    sneakersColor: l.sneakersColor ?? AvatarLook.starterSneakersColor,
+  ),
+  isWorn: (l) => l.sneakersColor != null && l.shoes == k,
+);
+
 ShopItem _color(
   String id,
   String name,
@@ -208,6 +231,19 @@ class ShopCatalog {
     _hair('hair_ponytail', 'Хвост', HairStyle.ponytail, 40, AvatarSex.female),
     _hair('hair_bun', 'Пучок', HairStyle.bun, 60, AvatarSex.female),
     _hair('hair_long', 'Длинные', HairStyle.long, 80, AvatarSex.female),
+    _hairAny('hair_spiky', 'Взъерошенные', HairStyle.spiky, 70),
+    _hairAny('hair_mane', 'Грива', HairStyle.mane, 90),
+    _hairAny('hair_mullet', 'Маллет', HairStyle.mullet, 80),
+    ShopItem(
+      id: 'hair_wolfcut',
+      name: 'Вульфкат',
+      slot: ShopSlot.hair,
+      price: 0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+      apply: (l) => l.copyWith(hair: HairStyle.wolfcut),
+      isWorn: (l) => l.hair == HairStyle.wolfcut,
+    ),
     ShopItem(
       id: 'hair_clown',
       name: 'Парик клоуна',
@@ -255,12 +291,36 @@ class ShopCatalog {
       70,
     ),
     _color('hc_blue', 'Синие', ShopSlot.hairColor, const Color(0xFF4A7BD9), 70),
+    _color(
+      'hc_white',
+      'Снежные',
+      ShopSlot.hairColor,
+      const Color(0xFFF2F2EE),
+      70,
+    ),
+    _color(
+      'hc_silver',
+      'Серебро',
+      ShopSlot.hairColor,
+      const Color(0xFFB8BEC6),
+      60,
+    ),
+    _color(
+      'hc_cherry',
+      'Вишня',
+      ShopSlot.hairColor,
+      const Color(0xFF8E1B2E),
+      70,
+    ),
     // Верх
     _top('top_none', 'Без верха', TopKind.none, 0, AvatarSex.male),
     _top('top_bra', 'Топ', TopKind.bra, 0, AvatarSex.female),
     _top('top_tank', 'Майка', TopKind.tank, 50),
     _top('top_tee', 'Футболка', TopKind.tee, 40),
     _top('top_beta_tee', 'Футболка тестера', TopKind.betaTee, 0, null, true),
+    _top('top_vneck', 'Футболка с V-вырезом', TopKind.vneck, 50),
+    _top('top_oversize', 'Оверсайз', TopKind.oversize, 60),
+    _top('top_crop', 'Кроп-топ', TopKind.crop, 50),
     ShopItem(
       id: 'top_clown',
       name: 'Костюм клоуна',
@@ -282,6 +342,14 @@ class ShopCatalog {
     ),
     _color('tc_graphite', 'Графит', ShopSlot.topColor, _graphite, 0),
     _color('tc_white', 'Белый', ShopSlot.topColor, const Color(0xFFE8E8E8), 30),
+    _color(
+      'tc_cream',
+      'Молочный',
+      ShopSlot.topColor,
+      const Color(0xFFEDE6D6),
+      30,
+    ),
+    _color('tc_sage', 'Шалфей', ShopSlot.topColor, const Color(0xFF8FA98A), 40),
     _color('tc_lime', 'Лайм', ShopSlot.topColor, const Color(0xFFC6FF3D), 40),
     _color('tc_ember', 'Огонь', ShopSlot.topColor, const Color(0xFFFF7A3D), 40),
     _color('tc_ice', 'Лёд', ShopSlot.topColor, const Color(0xFF3DDCFF), 40),
@@ -313,6 +381,9 @@ class ShopCatalog {
     _bottom('bottom_shorts', 'Шорты', BottomKind.shorts, 0),
     _bottom('bottom_joggers', 'Джоггеры', BottomKind.joggers, 50),
     _bottom('bottom_leggings', 'Леггинсы', BottomKind.leggings, 50),
+    _bottom('bottom_wide_shorts', 'Широкие шорты', BottomKind.wideShorts, 60),
+    _bottom('bottom_harem', 'Шаровары', BottomKind.harem, 80),
+    _bottom('bottom_cargo', 'Карго', BottomKind.cargo, 70),
     _bottom(
       'bottom_beta_joggers',
       'Джоггеры тестера',
@@ -349,6 +420,27 @@ class ShopCatalog {
       const Color(0xFF0E0E10),
       30,
     ),
+    _color(
+      'bc_white',
+      'Белый',
+      ShopSlot.bottomColor,
+      const Color(0xFFF2F2EE),
+      30,
+    ),
+    _color(
+      'bc_denim',
+      'Деним',
+      ShopSlot.bottomColor,
+      const Color(0xFF4F6D93),
+      40,
+    ),
+    _color(
+      'bc_sand',
+      'Бежевый',
+      ShopSlot.bottomColor,
+      const Color(0xFFD9C9A3),
+      30,
+    ),
     // Обувь
     ShopItem(
       id: 'sneakers_none',
@@ -358,6 +450,9 @@ class ShopCatalog {
       apply: (l) => l.copyWith(noSneakers: true),
       isWorn: (l) => l.sneakersColor == null,
     ),
+    _shoe('sh_sneakers', 'Кроссовки', ShoeKind.sneakers, 0),
+    _shoe('sh_slippers', 'Чешки', ShoeKind.slippers, 60),
+    _shoe('sh_chunky', 'Массивные кроссовки', ShoeKind.chunky, 90),
     _color('sn_white', 'Белые', ShopSlot.sneakers, const Color(0xFFEDEDED), 40),
     _color(
       'sn_black',
@@ -516,6 +611,27 @@ class ShopCatalog {
       testerOnly: true,
     ),
     _accessory('acc_clown_nose', 'Красный нос', Accessory.clownNose, 60),
+    _accessory('acc_bandana', 'Бандана', Accessory.bandana, 60),
+    _accessory(
+      'acc_silver_chain',
+      'Серебряная цепь',
+      Accessory.silverChain,
+      90,
+    ),
+    ShopItem(
+      id: 'acc_bucket',
+      name: 'Панама',
+      slot: ShopSlot.accessory,
+      price: 0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+      apply: (l) =>
+          l.copyWith(accessories: {...l.accessories, Accessory.bucketHat}),
+      isWorn: (l) => l.accessories.contains(Accessory.bucketHat),
+      takeOff: (l) => l.copyWith(
+        accessories: {...l.accessories}..remove(Accessory.bucketHat),
+      ),
+    ),
     ShopItem(
       id: 'acc_smartwatch',
       name: 'Смарт-часы',

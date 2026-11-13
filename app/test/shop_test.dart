@@ -39,12 +39,12 @@ void main() {
     expect(male.every((i) => i.onlyFor != AvatarSex.female), isTrue);
   });
 
-  test('id предметов уникальны, в магазине 30–60 вещей на продажу', () {
+  test('id предметов уникальны, в магазине 30–100 вещей на продажу', () {
     final ids = ShopCatalog.all.map((i) => i.id).toList();
     expect(ids.toSet().length, ids.length);
     expect(
       ShopCatalog.all.where((i) => i.forSale).length,
-      inInclusiveRange(30, 60),
+      inInclusiveRange(30, 100),
     );
   });
 

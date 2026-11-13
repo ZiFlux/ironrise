@@ -38,23 +38,55 @@ class AvatarLayers {
       Offset(_f.hip + 1.4, 206),
       const Offset(0, 208),
     ]),
-    TopKind.tee ||
-    TopKind.betaTee ||
-    TopKind.clownSuit ||
-    TopKind.creatorTee => mirroredPath([
+    TopKind.vneck => Path.combine(
+      PathOperation.difference,
+      _teePath,
+      Path()
+        ..moveTo(100 - _f.neck - 2.5, 62)
+        ..lineTo(100 + _f.neck + 2.5, 62)
+        ..lineTo(100, 100)
+        ..close(),
+    ),
+    TopKind.oversize => mirroredPath([
+      const Offset(0, 72),
+      Offset(_f.neck + 2, 63),
+      Offset(_f.trapX + 2, 70),
+      Offset(_f.shoulder + 1, 88),
+      Offset(_f.lat + 5, 116),
+      Offset(_f.lat + 5.5, 150),
+      Offset(_f.hip + 5, 214),
+      Offset(_f.hip + 5, 222),
+      const Offset(0, 224),
+    ]),
+    TopKind.crop => mirroredPath([
       const Offset(0, 72),
       Offset(_f.neck + 1.5, 63),
       Offset(_f.trapX + 1, 69.5),
       Offset(_f.shoulder - _f.deltSize * 0.45 + 1, 81),
       Offset(_f.lat + 1.6, 112),
       Offset(_f.lat + 1.2, 124),
-      Offset(_f.ribs + 1.2, 150),
-      Offset(_f.waist + 1.4, 172),
-      Offset(_f.hip + 1.6, 200),
-      Offset(_f.hip + 1.8, 208),
-      const Offset(0, 210),
+      Offset(_f.ribs + 1.2, 146),
+      const Offset(0, 148),
     ]),
+    TopKind.tee ||
+    TopKind.betaTee ||
+    TopKind.clownSuit ||
+    TopKind.creatorTee => _teePath,
   };
+
+  Path get _teePath => mirroredPath([
+    const Offset(0, 72),
+    Offset(_f.neck + 1.5, 63),
+    Offset(_f.trapX + 1, 69.5),
+    Offset(_f.shoulder - _f.deltSize * 0.45 + 1, 81),
+    Offset(_f.lat + 1.6, 112),
+    Offset(_f.lat + 1.2, 124),
+    Offset(_f.ribs + 1.2, 150),
+    Offset(_f.waist + 1.4, 172),
+    Offset(_f.hip + 1.6, 200),
+    Offset(_f.hip + 1.8, 208),
+    const Offset(0, 210),
+  ]);
 
   /// Рукава футболки повторяют дельту и доходят до середины бицепса.
   List<Path> get sleeves => look.top.teeCut
@@ -166,6 +198,47 @@ class AvatarLayers {
       const Offset(4.2, 254),
       const Offset(1.3, 232),
     ]),
+    BottomKind.wideShorts => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.4, 192),
+      Offset(_f.hip + 2.6, 200),
+      Offset(_f.thigh + 5, 226),
+      Offset(_f.thigh + 6.5, 274),
+      const Offset(2.6, 276),
+      const Offset(1.4, 234),
+    ]),
+    // Шаровары: объём от бёдер до голени, низкий шаг, узкий манжет у щиколотки.
+    BottomKind.harem => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.6, 192),
+      Offset(_f.hip + 4, 204),
+      Offset(_f.thigh + 9, 236),
+      Offset(_f.knee + 14, 288),
+      Offset(_f.calf + 12, 326),
+      Offset(_f.shin + 7, 350),
+      Offset(_f.ankle + 3, 362),
+      Offset(_f.ankle + 2.6, 374),
+      const Offset(3.4, 374),
+      const Offset(3.4, 362),
+      const Offset(1.6, 330),
+      const Offset(0.6, 286),
+    ]),
+    BottomKind.cargo => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.4, 192),
+      Offset(_f.hip + 2.4, 200),
+      Offset(_f.thigh + 3, 224),
+      Offset(_f.thigh + 1.6, 256),
+      Offset(_f.knee + 4.6, 292),
+      Offset(_f.calf + 4, 320),
+      Offset(_f.shin + 5, 352),
+      Offset(_f.ankle + 6, 374),
+      const Offset(3, 374),
+      const Offset(3.4, 350),
+      const Offset(3.8, 292),
+      const Offset(4.2, 254),
+      const Offset(1.3, 232),
+    ]),
     BottomKind.leggings => mirroredPath([
       const Offset(0, 186),
       Offset(_lerp(_f.waist, _f.hip, 0.55) + 0.6, 188),
@@ -188,21 +261,62 @@ class AvatarLayers {
       look.sneakersColor == null ? const [] : [_shoe(1), _shoe(-1)];
 
   Path _shoe(int side) => smoothClosedPath([
-    for (final p in [
-      Offset(_f.ankle + 0.8, 367),
-      Offset(_f.ankle + 5.8, 381),
-      Offset(_f.ankle + 4.6, 391),
-      const Offset(3, 391),
-      const Offset(2.8, 369),
-    ])
+    for (final p in switch (look.shoes) {
+      // Чешки: низкие, по стопе.
+      ShoeKind.slippers => [
+        Offset(_f.ankle + 0.4, 377),
+        Offset(_f.ankle + 5.2, 384),
+        Offset(_f.ankle + 4.6, 391),
+        const Offset(3, 391),
+        const Offset(2.8, 379),
+      ],
+      // Массивные: выше и шире, толстая подошва.
+      ShoeKind.chunky => [
+        Offset(_f.ankle + 1.4, 363),
+        Offset(_f.ankle + 7.6, 379),
+        Offset(_f.ankle + 7, 393),
+        const Offset(2.4, 393),
+        const Offset(2.2, 366),
+      ],
+      ShoeKind.sneakers => [
+        Offset(_f.ankle + 0.8, 367),
+        Offset(_f.ankle + 5.8, 381),
+        Offset(_f.ankle + 4.6, 391),
+        const Offset(3, 391),
+        const Offset(2.8, 369),
+      ],
+    })
       Offset(100 + side * p.dx, p.dy),
   ]);
 
-  Path get soles => Path()
-    ..moveTo(103.4, 389.6)
-    ..lineTo(100 + _f.ankle + 4.6, 389.6)
-    ..moveTo(96.6, 389.6)
-    ..lineTo(100 - _f.ankle - 4.6, 389.6);
+  /// Боковые карманы карго: прямоугольники на внешней стороне бедра.
+  Path? get cargoPockets {
+    if (look.bottom != BottomKind.cargo) return null;
+    final path = Path();
+    for (final side in const [-1.0, 1.0]) {
+      final x = 100 + side * (_f.thigh + 1.6);
+      path.addRRect(
+        RRect.fromLTRBR(
+          side < 0 ? x : x - 9,
+          262,
+          side < 0 ? x + 9 : x,
+          284,
+          const Radius.circular(1.5),
+        ),
+      );
+    }
+    return path;
+  }
+
+  Path get soles {
+    final reach = look.shoes == ShoeKind.chunky ? 7 : 4.6;
+    final y = look.shoes == ShoeKind.chunky ? 390.6 : 389.6;
+    return Path()
+      ..moveTo(103.4, y)
+      ..lineTo(100 + _f.ankle + reach, y)
+      ..moveTo(96.6, y)
+      ..lineTo(100 - _f.ankle - reach, y);
+  }
 
   // ---------- Аксессуары ----------
 
@@ -305,6 +419,58 @@ class AvatarLayers {
     return path
       ..lineTo(100 + w, 13)
       ..close();
+  }
+
+  /// Бандана: повязка пониже и узел-уголок сзади сбоку.
+  Path? get bandana {
+    if (!_has(Accessory.bandana)) return null;
+    final top = _f.headHalfWidthAt(13) + 0.8;
+    final bottom = _f.headHalfWidthAt(22) + 0.8;
+    return Path.combine(
+      PathOperation.union,
+      polygonPath([
+        Offset(100 - top, 13),
+        Offset(100 + top, 13),
+        Offset(100 + bottom, 22),
+        Offset(100 - bottom, 22),
+      ]),
+      polygonPath([
+        Offset(100 + bottom - 1, 16),
+        Offset(100 + bottom + 7, 20),
+        Offset(100 + bottom + 4, 27),
+        Offset(100 + bottom - 1, 22),
+      ]),
+    );
+  }
+
+  /// Серебряная цепь: тоньше золотой и ниже.
+  Path? get silverChain {
+    if (!_has(Accessory.silverChain)) return null;
+    final x = _f.neck + 2.5;
+    return Path()
+      ..moveTo(100 - x, 62)
+      ..quadraticBezierTo(100, 104, 100 + x, 62)
+      ..lineTo(100 + x - 1.4, 62)
+      ..quadraticBezierTo(100, 100.5, 100 - x + 1.4, 62)
+      ..close();
+  }
+
+  /// Панама: купол и широкие опущенные поля.
+  (Path, Path)? get bucketHat {
+    if (!_has(Accessory.bucketHat)) return null;
+    final rx = _f.headRx;
+    return (
+      Path()
+        ..moveTo(100 - rx - 0.5, 19)
+        ..cubicTo(100 - rx + 1, -2, 100 + rx - 1, -2, 100 + rx + 0.5, 19)
+        ..close(),
+      polygonPath([
+        Offset(100 - rx - 1, 16),
+        Offset(100 + rx + 1, 16),
+        Offset(100 + rx + 8, 25),
+        Offset(100 - rx - 8, 25),
+      ]),
+    );
   }
 
   /// Цепь на шее: дуга от ключиц к груди.
@@ -435,6 +601,23 @@ class AvatarLayers {
   Path? get hairBack {
     final rx = _f.headRx;
     return switch (look.hair) {
+      HairStyle.mane => _backHair(84, 13),
+      HairStyle.wolfcut => _backHair(58, 7),
+      // Маллет: длинные пряди сзади по шее до плеч.
+      HairStyle.mullet =>
+        Path()
+          ..moveTo(100 - rx + 1, 28)
+          ..cubicTo(
+            100 - rx - 3,
+            50,
+            100 - _f.neck - 6,
+            64,
+            100 - _f.neck - 4,
+            72,
+          )
+          ..lineTo(100 + _f.neck + 4, 72)
+          ..cubicTo(100 + _f.neck + 6, 64, 100 + rx + 3, 50, 100 + rx - 1, 28)
+          ..close(),
       HairStyle.bob => _backHair(64, 4),
       HairStyle.long => _backHair(88, 7),
       HairStyle.ponytail =>
@@ -471,6 +654,18 @@ class AvatarLayers {
   /// Волосы поверх головы.
   Path get hairFront => switch (look.hair) {
     HairStyle.clownWig => Path(),
+    HairStyle.spiky => Path.combine(
+      PathOperation.union,
+      _cap(24, 1.4),
+      _spikes,
+    ),
+    HairStyle.mane => _cap(36, 4, 17),
+    HairStyle.mullet => _cap(26, 1.8),
+    HairStyle.wolfcut => Path.combine(
+      PathOperation.union,
+      _cap(32, 2.6, 20),
+      _flicks,
+    ),
     HairStyle.short => _cap(26, 1.6),
     HairStyle.buzz => _cap(22, 0.7, 15),
     HairStyle.curly => Path.combine(PathOperation.union, _cap(26, 1.4), _curls),
@@ -487,6 +682,61 @@ class AvatarLayers {
       _circle(100, 6, 7),
     ),
   };
+
+  /// Торчащие пряди: крупные неровные зубцы с наклоном, вверх и в стороны.
+  Path get _spikes {
+    final top = BodyFrame.headCenter.dy - _f.headRy;
+    final rx = _f.headRx;
+    final path = Path();
+    // (смещение основания, ширина, высота, наклон кончика)
+    for (final (dx, w, h, tilt) in const [
+      (-14.0, 8.0, 9.0, -7.0),
+      (-8.0, 9.0, 13.0, -4.0),
+      (-1.0, 9.0, 15.0, 1.0),
+      (6.0, 9.0, 13.0, 4.0),
+      (12.0, 8.0, 10.0, 7.0),
+    ]) {
+      path.addPath(
+        polygonPath([
+          Offset(100 + dx - w / 2, top + 6),
+          Offset(100 + dx + w / 2, top + 6),
+          Offset(100 + dx + tilt, (top + 6 - h).clamp(0.5, 40)),
+        ]),
+        Offset.zero,
+      );
+    }
+    // Боковые пряди над ушами.
+    for (final side in const [-1.0, 1.0]) {
+      path.addPath(
+        polygonPath([
+          Offset(100 + side * (rx - 3), 12),
+          Offset(100 + side * (rx + 5), 14),
+          Offset(100 + side * (rx + 0.5), 22),
+        ]),
+        Offset.zero,
+      );
+    }
+    return path;
+  }
+
+  /// Вульфкат: рваные пряди-отскоки по бокам у скул.
+  Path get _flicks {
+    final rx = _f.headRx;
+    final path = Path();
+    for (final side in const [-1.0, 1.0]) {
+      path.addPath(
+        polygonPath([
+          Offset(100 + side * (rx - 1), 26),
+          Offset(100 + side * (rx + 4), 34),
+          Offset(100 + side * (rx + 1.5), 33),
+          Offset(100 + side * (rx + 3), 41),
+          Offset(100 + side * (rx - 2), 34),
+        ]),
+        Offset.zero,
+      );
+    }
+    return path;
+  }
 
   Path get _curls {
     final path = Path();

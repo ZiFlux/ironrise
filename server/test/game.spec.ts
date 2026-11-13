@@ -177,10 +177,10 @@ describe('боты, лига, магазин', () => {
     for (let i = 1; i < sun.length; i++) expect(sun[i - 1].points).toBeGreaterThanOrEqual(sun[i].points);
   });
 
-  it('в магазине 58 вещей, из них 44 платные — как в клиенте', () => {
+  it('в магазине 80 вещей, из них 65 платных — как в клиенте', () => {
     const prices = Object.values(SHOP_PRICES);
-    expect(prices).toHaveLength(58);
-    expect(prices.filter((p) => p > 0)).toHaveLength(44);
+    expect(prices).toHaveLength(80);
+    expect(prices.filter((p) => p > 0)).toHaveLength(65);
   });
 });
 
@@ -707,11 +707,11 @@ describe('сезоны', () => {
 
   it('награды уровней: монеты каждый уровень, вещи на 5/15/25 и премиум на 10/20/30', () => {
     const free = seasonRewardsBetween(1, 'free', 0, 30);
-    expect(free.items).toEqual(['sn_s1', 'tc_s1', 'bc_s1']);
+    expect(free.items).toEqual(['sn_s1', 'tc_s1', 'hair_wolfcut', 'bc_s1']);
     expect(free.coins).toBe(30 * 15 + 200);
     const paid = seasonRewardsBetween(1, 'premium', 0, 30);
-    expect(paid.items).toEqual(['hc_s1', 'sn_s1p', 'tc_s1p']);
+    expect(paid.items).toEqual(['hc_s1', 'sn_s1p', 'acc_bucket', 'tc_s1p']);
     expect(seasonRewardsBetween(1, 'free', 4, 5).items).toEqual(['sn_s1']);
-    expect(SEASON_ITEMS).toHaveLength(6);
+    expect(SEASON_ITEMS).toHaveLength(8);
   });
 });

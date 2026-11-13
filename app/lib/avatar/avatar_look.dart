@@ -43,6 +43,29 @@ enum HairStyle {
 
   /// Парик клоуна: разноцветные кудри по бокам, макушка открыта.
   clownWig,
+
+  /// Взъерошенные: пряди торчат вверх.
+  spiky,
+
+  /// Грива: длинные густые волосы до плеч и ниже.
+  mane,
+
+  /// Маллет: коротко сверху и по бокам, длинно сзади.
+  mullet,
+
+  /// Вульфкат: рваные слои, чёлка (батлпас).
+  wolfcut,
+}
+
+/// Модель обуви; цвет — отдельно (sneakersColor).
+enum ShoeKind {
+  sneakers,
+
+  /// Чешки: мягкая обувь на тонкой подошве.
+  slippers,
+
+  /// Массивные кроссовки на толстой подошве.
+  chunky,
 }
 
 enum TopKind {
@@ -58,11 +81,27 @@ enum TopKind {
   clownSuit,
 
   /// Футболка создателя: чёрная с золотой эмблемой (эксклюзив).
-  creatorTee;
+  creatorTee,
+
+  /// Футболка с глубоким V-вырезом.
+  vneck,
+
+  /// Оверсайз: шире и длиннее, плечо ниже.
+  oversize,
+
+  /// Кроп-топ: короткая футболка выше пупка.
+  crop;
 
   /// Крой футболки (с рукавами).
-  bool get teeCut =>
-      this == tee || this == betaTee || this == clownSuit || this == creatorTee;
+  bool get teeCut => const {
+    tee,
+    betaTee,
+    clownSuit,
+    creatorTee,
+    vneck,
+    oversize,
+    crop,
+  }.contains(this);
 
   /// Свой цвет, выбранный «цвет верха» к нему не применяется.
   bool get fixedColor =>
@@ -76,6 +115,15 @@ enum BottomKind {
 
   /// Джоггеры бета-тестера: тёмные с лаймовыми лампасами (эксклюзив).
   betaJoggers,
+
+  /// Широкие шорты до колена.
+  wideShorts,
+
+  /// Шаровары: широкие в бёдрах, на манжете у щиколотки.
+  harem,
+
+  /// Карго: прямые широкие брюки с боковыми карманами.
+  cargo,
 }
 
 enum Accessory {
@@ -99,6 +147,15 @@ enum Accessory {
 
   /// Смарт-часы на левом запястье — за первое подключение часов.
   smartwatch,
+
+  /// Бандана на голове.
+  bandana,
+
+  /// Серебряная цепь.
+  silverChain,
+
+  /// Панама (батлпас).
+  bucketHat,
 }
 
 class AvatarLook {
@@ -112,6 +169,7 @@ class AvatarLook {
     this.bottom = BottomKind.shorts,
     this.bottomColor = const Color(0xFF1F1F22),
     this.sneakersColor,
+    this.shoes = ShoeKind.sneakers,
     this.accessories = const {},
     this.accessoryColor = const Color(0xFFC6FF3D),
     this.build = BodyBuild.average,
@@ -143,6 +201,7 @@ class AvatarLook {
 
   /// null — без обуви.
   final Color? sneakersColor;
+  final ShoeKind shoes;
   final Set<Accessory> accessories;
   final Color accessoryColor;
   final BodyBuild build;
@@ -159,6 +218,7 @@ class AvatarLook {
     Color? bottomColor,
     Color? sneakersColor,
     bool noSneakers = false,
+    ShoeKind? shoes,
     Set<Accessory>? accessories,
     BodyBuild? build,
   }) => AvatarLook(
@@ -172,6 +232,7 @@ class AvatarLook {
     bottom: bottom ?? this.bottom,
     bottomColor: bottomColor ?? this.bottomColor,
     sneakersColor: noSneakers ? null : sneakersColor ?? this.sneakersColor,
+    shoes: shoes ?? this.shoes,
     accessories: accessories ?? this.accessories,
     accessoryColor: accessoryColor,
   );
@@ -186,6 +247,7 @@ class AvatarLook {
     'bottom': bottom.name,
     'bottomColor': bottomColor.toARGB32(),
     'sneakersColor': sneakersColor?.toARGB32(),
+    if (shoes != ShoeKind.sneakers) 'shoes': shoes.name,
     'accessories': accessories.map((a) => a.name).toList(),
     'accessoryColor': accessoryColor.toARGB32(),
     'build': build.name,
@@ -209,6 +271,7 @@ class AvatarLook {
       bottom: BottomKind.values.asNameMap()[j['bottom']] ?? starter.bottom,
       bottomColor: color('bottomColor', starter.bottomColor),
       sneakersColor: sneakers == null ? null : Color(sneakers),
+      shoes: ShoeKind.values.asNameMap()[j['shoes']] ?? ShoeKind.sneakers,
       accessories: {
         for (final a in List<String>.from(j['accessories'] ?? const []))
           ?Accessory.values.asNameMap()[a],
