@@ -27,12 +27,17 @@ const text = (t, extra = {}) => new TextRun({ text: t, font: FONT, size: SIZE, .
 // Поля для заполнения — строка с подчёркиванием, а не пустая клетка.
 const BLANK = '________________________________________';
 
+// Автор и правообладатель: вторым аргументом — ФИО, третьим — папка вывода.
+// В репозитории — шаблон с пустыми строками, именная версия собирается вне его.
+const author = process.argv[2] || BLANK;
+const outDir = process.argv[3] || dir;
+
 const rows = [
   ['Номер регистрации (свидетельства)', 'заполняет Роспатент'],
   ['Дата регистрации', 'заполняет Роспатент'],
   ['Номер и дата поступления заявки', 'заполняет Роспатент'],
-  ['Автор(ы)', BLANK],
-  ['Правообладатель(и)', BLANK],
+  ['Автор(ы)', author],
+  ['Правообладатель(и)', author],
   ['Название программы для ЭВМ', field('Название')],
   ['Год создания', field('Год создания')],
   ['Тип реализующей ЭВМ', field('Тип ЭВМ')],
@@ -101,7 +106,7 @@ const doc = new Document({
   }],
 });
 
-const out = path.join(dir, 'IronRise_реферат.docx');
+const out = path.join(outDir, 'IronRise_реферат.docx');
 Packer.toBuffer(doc).then((buf) => {
   fs.writeFileSync(out, buf);
   console.log(`${out}: ${buf.length} bytes, аннотация ${abstract.length} знаков`);
