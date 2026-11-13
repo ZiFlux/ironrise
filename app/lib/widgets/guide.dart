@@ -258,10 +258,12 @@ class _GuideOverlayState extends State<_GuideOverlay> {
       type: MaterialType.transparency,
       child: Stack(
         children: [
-          // Всё, кроме окна, — затемнено и размыто; нажатие — следующий шаг.
+          // Во время гайда экран не нажимается — ни размытая часть, ни окно:
+          // листают только кнопки карточки, и гайд не сломать случайным тапом.
+          const Positioned.fill(child: AbsorbPointer(child: SizedBox.expand())),
+          // Всё, кроме окна, — затемнено и размыто.
           Positioned.fill(
-            child: GestureDetector(
-              onTap: _next,
+            child: IgnorePointer(
               child: ClipPath(
                 clipper: _HoleClipper(
                   RRect.fromRectAndRadius(hole, const Radius.circular(14)),
