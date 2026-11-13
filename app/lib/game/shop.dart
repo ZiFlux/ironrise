@@ -36,6 +36,10 @@ class ShopItem {
     this.exclusiveLabel,
   });
 
+  /// Вещь за серию: сколько дней (на плитке — огонёк и число).
+  int? get streakDays =>
+      int.tryParse(RegExp(r'(\d+)').firstMatch(exclusiveLabel ?? '')?[1] ?? '');
+
   final String id;
   final String name;
   final ShopSlot slot;

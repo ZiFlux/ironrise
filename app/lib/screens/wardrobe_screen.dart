@@ -169,7 +169,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
             const SizedBox(height: 12),
             SizedBox(
               // Крупный системный шрифт — плитки выше, иначе подпись не влезет.
-              height: MediaQuery.textScalerOf(context).scale(112),
+              height: MediaQuery.textScalerOf(context).scale(120),
               child: items.isEmpty
                   ? Center(
                       child: Text(
@@ -333,9 +333,32 @@ class _ItemTile extends StatelessWidget {
                     color: worn ? accent : AppColors.textMuted,
                   ),
                 )
+              else if (item.streakDays case final days?)
+                // Вещь за серию: огонёк и число дней — коротко, в одну строку.
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      LucideIcons.flame,
+                      size: 12,
+                      color: Color(0xFFFF8A3D),
+                    ),
+                    const SizedBox(width: 2),
+                    Text(
+                      '$days',
+                      style: figureStyle(
+                        size: 12,
+                        color: const Color(0xFFFF8A3D),
+                      ),
+                    ),
+                  ],
+                )
               else if (item.testerOnly)
                 Text(
                   item.exclusiveLabel ?? 'тестерам',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  softWrap: false,
                   style: TextStyle(
                     fontSize: 11,
                     color: item.exclusiveLabel != null
