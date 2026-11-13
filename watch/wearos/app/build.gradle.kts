@@ -25,8 +25,8 @@ android {
         targetSdk = 36
         // Google Play требует, чтобы коды версий часов и телефона не совпадали:
         // у часов они начинаются с 1 000 000.
-        versionCode = 1_000_001
-        versionName = "0.1.0"
+        versionCode = 1_000_002
+        versionName = "1.0.0"
     }
 
     signingConfigs {
