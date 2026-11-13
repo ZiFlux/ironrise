@@ -8,6 +8,7 @@ import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/recommendation.dart';
 import '../state/account_state.dart';
+import '../state/body_log.dart';
 import '../state/health_state.dart';
 import '../state/hero.dart';
 import '../state/program_state.dart';
@@ -24,6 +25,7 @@ import '../widgets/format.dart';
 import '../widgets/body_part_sheet.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
+import '../widgets/weigh_in.dart';
 import '../widgets/motion.dart';
 import '../widgets/shop_entry.dart';
 
@@ -79,6 +81,7 @@ class HomeScreen extends ConsumerWidget {
                 FadeSlideIn(index: 1, child: WeekStrip(hero: hero)),
                 const _ActivityLine(),
                 const _TipLine(),
+                const _WeighInLine(),
                 const SizedBox(height: 8),
                 if (recommendation != null && !strengthDone) ...[
                   FadeSlideIn(
@@ -497,6 +500,60 @@ class _ActivityLine extends ConsumerWidget {
 }
 
 /// «Совет дня» одной строкой: открывает совет, показывает, получена ли награда.
+/// «Пора взвеситься» — раз в 3 дня, пока вес не записан.
+class _WeighInLine extends ConsumerWidget {
+  const _WeighInLine();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    if (!weighInDue(ref.watch(bodyLogProvider), DateTime.now())) {
+      return const SizedBox.shrink();
+    }
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: const BorderSide(color: AppColors.hairline),
+        ),
+        child: InkWell(
+          onTap: () => showWeighIn(context, ref),
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 40,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Icon(
+                    LucideIcons.scale,
+                    size: 18,
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Пора взвеситься — и анализ тела на часах',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Icon(
+                    LucideIcons.chevronRight,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TipLine extends ConsumerWidget {
   const _TipLine();
 

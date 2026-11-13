@@ -66,6 +66,7 @@ class BodyStats {
   final int? restingHeartRate;
 
   BodyStats copyWith({
+    double? weightKg,
     int? age,
     int? restingHeartRate,
     Experience? experience,
@@ -74,7 +75,7 @@ class BodyStats {
   }) => BodyStats(
     sex: sex,
     heightCm: heightCm,
-    weightKg: weightKg,
+    weightKg: weightKg ?? this.weightKg,
     experience: experience ?? this.experience,
     age: age ?? this.age,
     restingHeartRate: restingHeartRate ?? this.restingHeartRate,

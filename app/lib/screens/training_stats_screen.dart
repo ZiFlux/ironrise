@@ -11,6 +11,7 @@ import '../state/records_state.dart';
 import '../state/training_log.dart';
 import '../state/providers.dart';
 import '../widgets/training_analysis_view.dart';
+import '../widgets/weigh_in.dart';
 import '../widgets/week_recap.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
@@ -72,6 +73,9 @@ class TrainingStatsScreen extends ConsumerWidget {
                     plannedPerWeek: hero.trainingDays.length,
                   ),
                 ],
+                const SizedBox(height: 20),
+                const _Title('Тело'),
+                const BodySummary(),
                 const SizedBox(height: 20),
                 const _Title('Активность за 12 недель'),
                 _ActivityGrid(days: stats.activeDays, now: now, accent: accent),

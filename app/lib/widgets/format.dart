@@ -67,3 +67,8 @@ const _monthsOf = [
 
 /// «1 декабря».
 String formatDate(DateTime d) => '${d.day} ${_monthsOf[d.month - 1]}';
+
+/// Вес без лишнего нуля: 82 → «82», 82.5 → «82,5».
+String formatKg(double kg) => kg == kg.roundToDouble()
+    ? kg.toStringAsFixed(0)
+    : kg.toStringAsFixed(1).replaceAll('.', ',');

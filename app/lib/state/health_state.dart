@@ -14,6 +14,15 @@ const _types = [
   HealthDataType.HEART_RATE,
   HealthDataType.STEPS,
   HealthDataType.DISTANCE_DELTA,
+  ...bodyTypes,
+];
+
+/// Состав тела: анализ тела на часах (Samsung Health и др.) пишет это в Health Connect.
+const bodyTypes = [
+  HealthDataType.BODY_FAT_PERCENTAGE,
+  HealthDataType.LEAN_BODY_MASS,
+  HealthDataType.BODY_WATER_MASS,
+  HealthDataType.BASAL_ENERGY_BURNED,
 ];
 
 enum HealthStatus {
@@ -192,6 +201,38 @@ class HealthNotifier extends Notifier<HealthState> {
       debugPrint('Health Connect источники: $e');
       return const [];
     }
+  }
+
+  /// Точки состава тела с [since]. Нет доступа (подключались до появления
+  /// анализа тела) — просим его один раз; пусто, если Health Connect не подключён.
+  Future<List<HealthDataPoint>> bodyComposition({
+    required DateTime since,
+  }) async {
+    if (!state.connected || !await _available()) return const [];
+    try {
+      final has = await _health.hasPermissions(
+        bodyTypes,
+        permissions: [for (final _ in bodyTypes) HealthDataAccess.READ],
+      );
+      if (has != true) return const [];
+      return await _health.getHealthDataFromTypes(
+        types: bodyTypes,
+        startTime: since,
+        endTime: DateTime.now(),
+      );
+    } catch (e) {
+      debugPrint('Health Connect состав тела: $e');
+      return const [];
+    }
+  }
+
+  /// Доступ к составу тела для тех, кто подключил Health Connect раньше.
+  Future<bool> requestBodyAccess() async {
+    if (!await _available()) return false;
+    return _health.requestAuthorization(
+      bodyTypes,
+      permissions: [for (final _ in bodyTypes) HealthDataAccess.READ],
+    );
   }
 
   static double _number(HealthDataPoint p) {
