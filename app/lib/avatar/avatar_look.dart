@@ -31,7 +31,19 @@ enum BodyBuild {
   final String label;
 }
 
-enum HairStyle { short, buzz, curly, manBun, bob, ponytail, bun, long }
+enum HairStyle {
+  short,
+  buzz,
+  curly,
+  manBun,
+  bob,
+  ponytail,
+  bun,
+  long,
+
+  /// Парик клоуна: разноцветные кудри по бокам, макушка открыта.
+  clownWig,
+}
 
 enum TopKind {
   none,
@@ -41,6 +53,20 @@ enum TopKind {
 
   /// Футболка бета-тестера: фиолетовая с эмблемой β (эксклюзив).
   betaTee,
+
+  /// Костюм клоуна: жёлтый в горошек, с воротником-жабо.
+  clownSuit,
+
+  /// Футболка создателя: чёрная с золотой эмблемой (эксклюзив).
+  creatorTee;
+
+  /// Крой футболки (с рукавами).
+  bool get teeCut =>
+      this == tee || this == betaTee || this == clownSuit || this == creatorTee;
+
+  /// Свой цвет, выбранный «цвет верха» к нему не применяется.
+  bool get fixedColor =>
+      this == betaTee || this == clownSuit || this == creatorTee;
 }
 
 enum BottomKind {
@@ -64,6 +90,12 @@ enum Accessory {
 
   /// Эксклюзив бета-тестеров.
   betaCap,
+
+  /// Красный нос клоуна.
+  clownNose,
+
+  /// Корона создателя (эксклюзив).
+  crown,
 }
 
 class AvatarLook {

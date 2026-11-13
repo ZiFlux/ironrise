@@ -34,7 +34,11 @@ class ShopItem {
     this.premium = false,
     this.testerOnly = false,
     this.exclusiveLabel,
+    this.costume = false,
   });
+
+  /// Костюм (клоун): в редакторе стартового образа его нет — только покупка.
+  final bool costume;
 
   /// Вещь за серию: сколько дней (на плитке — огонёк и число).
   int? get streakDays =>
@@ -106,7 +110,7 @@ ShopItem _color(
     ShopSlot.hairColor => l.copyWith(hairColor: c),
     ShopSlot.topColor => l.copyWith(
       topColor: c,
-      top: l.top == TopKind.betaTee ? TopKind.tee : null,
+      top: l.top.fixedColor ? TopKind.tee : null,
     ),
     ShopSlot.bottomColor => l.copyWith(
       bottomColor: c,
@@ -117,7 +121,7 @@ ShopItem _color(
   },
   isWorn: (l) => switch (slot) {
     ShopSlot.hairColor => l.hairColor == c,
-    ShopSlot.topColor => l.top != TopKind.betaTee && l.topColor == c,
+    ShopSlot.topColor => !l.top.fixedColor && l.topColor == c,
     ShopSlot.bottomColor =>
       l.bottom != BottomKind.betaJoggers && l.bottomColor == c,
     ShopSlot.sneakers => l.sneakersColor == c,
@@ -203,6 +207,15 @@ class ShopCatalog {
     _hair('hair_ponytail', 'Хвост', HairStyle.ponytail, 40, AvatarSex.female),
     _hair('hair_bun', 'Пучок', HairStyle.bun, 60, AvatarSex.female),
     _hair('hair_long', 'Длинные', HairStyle.long, 80, AvatarSex.female),
+    ShopItem(
+      id: 'hair_clown',
+      name: 'Парик клоуна',
+      slot: ShopSlot.hair,
+      price: 120,
+      costume: true,
+      apply: (l) => l.copyWith(hair: HairStyle.clownWig),
+      isWorn: (l) => l.hair == HairStyle.clownWig,
+    ),
     // Цвет волос
     _color(
       'hc_black',
@@ -247,6 +260,25 @@ class ShopCatalog {
     _top('top_tank', 'Майка', TopKind.tank, 50),
     _top('top_tee', 'Футболка', TopKind.tee, 40),
     _top('top_beta_tee', 'Футболка тестера', TopKind.betaTee, 0, null, true),
+    ShopItem(
+      id: 'top_clown',
+      name: 'Костюм клоуна',
+      slot: ShopSlot.top,
+      price: 150,
+      costume: true,
+      apply: (l) => l.copyWith(top: TopKind.clownSuit),
+      isWorn: (l) => l.top == TopKind.clownSuit,
+    ),
+    ShopItem(
+      id: 'top_creator_tee',
+      name: 'Футболка создателя',
+      slot: ShopSlot.top,
+      price: 0,
+      testerOnly: true,
+      exclusiveLabel: 'создатель',
+      apply: (l) => l.copyWith(top: TopKind.creatorTee),
+      isWorn: (l) => l.top == TopKind.creatorTee,
+    ),
     _color('tc_graphite', 'Графит', ShopSlot.topColor, _graphite, 0),
     _color('tc_white', 'Белый', ShopSlot.topColor, const Color(0xFFE8E8E8), 30),
     _color('tc_lime', 'Лайм', ShopSlot.topColor, const Color(0xFFC6FF3D), 40),
@@ -417,6 +449,20 @@ class ShopCatalog {
       0,
       testerOnly: true,
     ),
+    _accessory('acc_clown_nose', 'Красный нос', Accessory.clownNose, 60),
+    ShopItem(
+      id: 'acc_crown',
+      name: 'Корона создателя',
+      slot: ShopSlot.accessory,
+      price: 0,
+      testerOnly: true,
+      exclusiveLabel: 'создатель',
+      apply: (l) =>
+          l.copyWith(accessories: {...l.accessories, Accessory.crown}),
+      isWorn: (l) => l.accessories.contains(Accessory.crown),
+      takeOff: (l) =>
+          l.copyWith(accessories: {...l.accessories}..remove(Accessory.crown)),
+    ),
     // Кожа — бесплатно: это внешность, а не награда.
     _skin('skin_iron', 'Железо', SkinTone.iron),
     _skin('skin_light', 'Светлая', SkinTone.light),
@@ -435,7 +481,7 @@ class ShopCatalog {
   /// Бесплатно, пока собирается стартовый образ: одежда, причёски и цвета
   /// без аксессуаров, премиума и эксклюзивов. Совпадает с server/src/game/start-look.ts.
   static bool inCreator(ShopItem i) =>
-      i.slot != ShopSlot.accessory && !i.premium && !i.testerOnly;
+      i.slot != ShopSlot.accessory && !i.premium && !i.testerOnly && !i.costume;
 
   /// Вещи редактора, надетые в образе и ещё не купленные: их выдают при фиксации.
   static List<ShopItem> creatorGrant(AvatarLook look, Set<String> owned) => [

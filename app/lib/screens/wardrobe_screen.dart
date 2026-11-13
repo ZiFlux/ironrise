@@ -222,8 +222,10 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                         (false, _) => 'Это твой образ',
                         (true, true) => 'Сохранить образ',
                         (true, false) when testerLocked =>
-                          cart.any((i) => i.exclusiveLabel != null)
+                          cart.any((i) => i.streakDays != null)
                               ? 'Выдаётся за серию'
+                              : cart.any((i) => i.exclusiveLabel != null)
+                              ? 'Не продаётся'
                               : 'Только для бета-тестеров',
                         (true, false) when needsPremium =>
                           'Нужен премиум — подробнее',

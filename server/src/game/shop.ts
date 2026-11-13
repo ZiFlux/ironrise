@@ -14,6 +14,8 @@ export const SHOP_PRICES: Readonly<Record<string, number>> = {
   sneakers_none: 0, sn_white: 40, sn_black: 40, sn_lime: 70, sn_red: 70, sn_blue: 70,
   acc_headband: 50, acc_wristbands: 50, acc_belt: 90, acc_knee_sleeves: 70, acc_cap: 80,
   acc_glasses: 60, acc_headphones: 100,
+  // Костюм клоуна: только покупка, в редакторе старта его нет (COSTUME_ITEMS).
+  hair_clown: 120, top_clown: 150, acc_clown_nose: 60,
   skin_iron: 0, skin_light: 0, skin_tan: 0, skin_brown: 0, skin_dark: 0,
   // Премиум: купить можно только с подпиской, носить — всегда, раз куплено.
   tc_gold: 120, sn_gold: 120, acc_gold_chain: 150,
@@ -30,7 +32,13 @@ export const TESTER_ITEMS: readonly string[] = [
   'acc_beta_cap', 'tc_beta', 'sn_beta', 'top_beta_tee', 'bottom_beta_joggers',
 ];
 
-/** Вещи, которых нет в продаже: носить можно только выданные (тестерам и за серию). */
-export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([...TESTER_ITEMS, ...STREAK_ITEMS]);
+/** Одежда создателя проекта: не продаётся, выдаётся через админку (give). */
+export const AUTHOR_ITEMS: readonly string[] = ['top_creator_tee', 'acc_crown'];
+
+/** Костюмы: продаются, но бесплатно в редакторе стартового образа их не надеть. */
+export const COSTUME_ITEMS: ReadonlySet<string> = new Set(['hair_clown', 'top_clown']);
+
+/** Вещи, которых нет в продаже: носить можно только выданные (тестерам, за серию, создателю). */
+export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([...TESTER_ITEMS, ...STREAK_ITEMS, ...AUTHOR_ITEMS]);
 
 export const priceOf = (itemId: string): number | undefined => SHOP_PRICES[itemId];

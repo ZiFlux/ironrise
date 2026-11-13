@@ -12,7 +12,7 @@ import { BODY_PARTS, BodyPart } from '../game/body-part';
 import { premiumStatus } from '../game/premium';
 import { levelFromXp } from '../game/progression';
 import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
-import { EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
+import { AUTHOR_ITEMS, EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
 import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
@@ -247,6 +247,7 @@ async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
         ...groups.map(([name, test]) => `${name}: ${forSale.filter(test).map((id) => `${id} (${SHOP_PRICES[id]})`).join(', ')}`),
         `Тестерам: ${TESTER_ITEMS.join(', ')}`,
         `За серию: ${STREAK_ITEMS.join(', ')}`,
+        `Создателю: ${AUTHOR_ITEMS.join(', ')}`,
       ].join('\n');
     }
 

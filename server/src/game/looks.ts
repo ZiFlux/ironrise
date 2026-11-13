@@ -10,7 +10,7 @@ const BUILD_NAMES: readonly unknown[] = ['slim', 'average', 'solid', 'heavy'];
  */
 const HAIR: Record<string, string> = {
   short: 'hair_short', buzz: 'hair_buzz', curly: 'hair_curly', manBun: 'hair_manbun',
-  bob: 'hair_bob', ponytail: 'hair_ponytail', bun: 'hair_bun', long: 'hair_long',
+  bob: 'hair_bob', ponytail: 'hair_ponytail', bun: 'hair_bun', long: 'hair_long', clownWig: 'hair_clown',
 };
 const HAIR_COLOR: Record<number, string> = {
   0xff26262a: 'hc_black', 0xff5a3a24: 'hc_brown', 0xffd9b66e: 'hc_blond',
@@ -19,6 +19,7 @@ const HAIR_COLOR: Record<number, string> = {
 };
 const TOP: Record<string, string> = {
   none: 'top_none', bra: 'top_bra', tank: 'top_tank', tee: 'top_tee', betaTee: 'top_beta_tee',
+  clownSuit: 'top_clown', creatorTee: 'top_creator_tee',
 };
 const TOP_COLOR: Record<number, string> = {
   0xff1f1f22: 'tc_graphite', 0xffe8e8e8: 'tc_white', 0xffc6ff3d: 'tc_lime',
@@ -39,7 +40,7 @@ const SNEAKERS: Record<number, string> = {
 const ACCESSORY: Record<string, string> = {
   headband: 'acc_headband', wristbands: 'acc_wristbands', belt: 'acc_belt', kneeSleeves: 'acc_knee_sleeves',
   cap: 'acc_cap', glasses: 'acc_glasses', headphones: 'acc_headphones', goldChain: 'acc_gold_chain',
-  betaCap: 'acc_beta_cap',
+  betaCap: 'acc_beta_cap', clownNose: 'acc_clown_nose', crown: 'acc_crown',
 };
 const SKIN: Record<string, string> = {
   iron: 'skin_iron', light: 'skin_light', tan: 'skin_tan', brown: 'skin_brown', dark: 'skin_dark',

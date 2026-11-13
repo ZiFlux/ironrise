@@ -63,11 +63,17 @@ void main() {
     final streak = RegExp(r"STREAK_ITEMS[^=]*=[^\[]*\[([^\]]*)\]").firstMatch(
       File('../server/src/game/streak-rewards.ts').readAsStringSync(),
     )![1]!;
+    final author = RegExp(r"AUTHOR_ITEMS[^=]*=[^\[]*\[([^\]]*)\]")
+        .firstMatch(ts)![1]!;
     for (final i in ShopCatalog.all) {
       if (i.testerOnly) {
-        // Эксклюзивы: тестерам — в TESTER_ITEMS, за серию — в STREAK_ITEMS.
+        // Эксклюзивы: тестерам — TESTER_ITEMS, за серию — STREAK_ITEMS, создателю — AUTHOR_ITEMS.
         expect(
-          i.exclusiveLabel != null ? streak : tester,
+          i.streakDays != null
+              ? streak
+              : i.exclusiveLabel != null
+              ? author
+              : tester,
           contains("'${i.id}'"),
           reason: i.id,
         );

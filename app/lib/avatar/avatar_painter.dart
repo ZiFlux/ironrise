@@ -208,14 +208,50 @@ class AvatarPainter extends CustomPainter {
           ..color = look.accessoryColor,
       );
     }
-    final betaTop = look.top == TopKind.betaTee;
-    final topColor = betaTop ? _beta : look.topColor;
+    final topColor = switch (look.top) {
+      TopKind.betaTee => _beta,
+      TopKind.clownSuit => _clownYellow,
+      TopKind.creatorTee => _creatorBlack,
+      _ => look.topColor,
+    };
     final top = layers.top;
     if (top != null) _fillCloth(canvas, top, topColor, withFall: true);
     for (final sleeve in layers.sleeves) {
       _fillCloth(canvas, sleeve, topColor, withFall: true);
     }
-    if (betaTop) _paintEmblem(canvas, layers.chestEmblem);
+    if (look.top == TopKind.betaTee) {
+      _paintEmblem(canvas, layers.chestEmblem);
+    }
+    if (look.top == TopKind.creatorTee) {
+      _paintEmblem(
+        canvas,
+        layers.chestEmblem,
+        fill: _gold,
+        label: 'IR',
+        size: 9,
+        radius: 9,
+      );
+    }
+    if (top != null && look.top == TopKind.clownSuit) {
+      final suit = Path.combine(
+        PathOperation.union,
+        top,
+        layers.sleeves.fold(
+          Path(),
+          (a, b) => Path.combine(PathOperation.union, a, b),
+        ),
+      );
+      canvas
+        ..save()
+        ..clipPath(suit);
+      for (final (at, color) in layers.clownDots) {
+        canvas.drawCircle(at, 4.2, Paint()..color = _clownDots[color]);
+      }
+      canvas.restore();
+      for (final at in layers.ruffle) {
+        canvas.drawCircle(at, 6, Paint()..color = const Color(0xFFF4F4F0));
+      }
+    }
     for (final sleeve in layers.kneeSleeves) {
       _fillCloth(canvas, sleeve, _sleeveColor);
     }
@@ -262,6 +298,11 @@ class AvatarPainter extends CustomPainter {
     );
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.hairFront, look.hairColor);
+    for (final (tuft, color) in layers.wigTufts) {
+      _fillSolid(canvas, tuft, _rainbow[color]);
+    }
+    _fillSolid(canvas, layers.clownNose, const Color(0xFFE5302A));
+    _fillSolid(canvas, layers.crown, _gold);
     _fillSolid(canvas, layers.glasses, _lens);
     if (layers.cap case (final dome, final brim)) {
       final beta = look.accessories.contains(Accessory.betaCap);
@@ -284,15 +325,37 @@ class AvatarPainter extends CustomPainter {
   static const _capBrim = Color(0xFF1C1C1F);
   static const _beta = Color(0xFF8B5CF6);
   static const _betaDark = Color(0xFF17171A);
+  static const _clownYellow = Color(0xFFFFD23F);
+  static const _creatorBlack = Color(0xFF26262B);
+  static const _clownDots = [
+    Color(0xFFE5302A),
+    Color(0xFF3D7BFF),
+    Color(0xFF2EBD59),
+  ];
+  static const _rainbow = [
+    Color(0xFFE5302A),
+    Color(0xFFFF8A1F),
+    Color(0xFFFFD23F),
+    Color(0xFF2EBD59),
+    Color(0xFF3D7BFF),
+    Color(0xFF9B5CF6),
+  ];
 
-  /// Эмблема бета-тестера: лаймовый круг с «β».
-  void _paintEmblem(Canvas canvas, Offset at) {
-    canvas.drawCircle(at, 6.5, Paint()..color = look.accessoryColor);
+  /// Эмблема на груди: у тестера — лаймовый круг с «β», у создателя — золотой с «IR».
+  void _paintEmblem(
+    Canvas canvas,
+    Offset at, {
+    Color? fill,
+    String label = 'β',
+    double size = 10,
+    double radius = 6.5,
+  }) {
+    canvas.drawCircle(at, radius, Paint()..color = fill ?? look.accessoryColor);
     final text = TextPainter(
-      text: const TextSpan(
-        text: 'β',
+      text: TextSpan(
+        text: label,
         style: TextStyle(
-          fontSize: 10,
+          fontSize: size,
           fontWeight: FontWeight.w700,
           color: Color(0xFF17171A),
         ),

@@ -1,5 +1,5 @@
 import { unpaidItems } from './looks';
-import { PREMIUM_ITEMS, SHOP_PRICES } from './shop';
+import { COSTUME_ITEMS, PREMIUM_ITEMS, SHOP_PRICES } from './shop';
 
 /**
  * Стартовый образ: первые 14 дней (Profile.startLookUntil) игрок бесплатно собирает «себя» — телосложение,
@@ -8,7 +8,7 @@ import { PREMIUM_ITEMS, SHOP_PRICES } from './shop';
  */
 /** Что можно надеть бесплатно, пока открыт редактор: одежда и причёски без аксессуаров и премиума. */
 export const CREATOR_ITEMS: ReadonlySet<string> = new Set(
-  Object.keys(SHOP_PRICES).filter((id) => !id.startsWith('acc_') && !PREMIUM_ITEMS.has(id)),
+  Object.keys(SHOP_PRICES).filter((id) => !id.startsWith('acc_') && !PREMIUM_ITEMS.has(id) && !COSTUME_ITEMS.has(id)),
 );
 
 export const creatorOpen = (p: { startLockedAt: Date | null; startLookUntil: Date }, now = new Date()) =>

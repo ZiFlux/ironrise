@@ -38,7 +38,10 @@ class AvatarLayers {
       Offset(_f.hip + 1.4, 206),
       const Offset(0, 208),
     ]),
-    TopKind.tee || TopKind.betaTee => mirroredPath([
+    TopKind.tee ||
+    TopKind.betaTee ||
+    TopKind.clownSuit ||
+    TopKind.creatorTee => mirroredPath([
       const Offset(0, 72),
       Offset(_f.neck + 1.5, 63),
       Offset(_f.trapX + 1, 69.5),
@@ -54,10 +57,32 @@ class AvatarLayers {
   };
 
   /// Рукава футболки повторяют дельту и доходят до середины бицепса.
-  List<Path> get sleeves =>
-      look.top == TopKind.tee || look.top == TopKind.betaTee
+  List<Path> get sleeves => look.top.teeCut
       ? [_sleeveOf(_f.rightArm), _sleeveOf(_f.leftArm)]
       : const [];
+
+  /// Горошек костюма клоуна: кружки по сетке (обрезаются по костюму при рисовании).
+  List<(Offset, int)> get clownDots {
+    if (look.top != TopKind.clownSuit) return const [];
+    return [
+      for (var row = 0; row < 7; row++)
+        for (var col = -3; col <= 3; col++)
+          (
+            Offset(100 + col * 11.0 + (row.isOdd ? 5.5 : 0), 74 + row * 17.0),
+            (row + col) % 3,
+          ),
+    ];
+  }
+
+  /// Воротник-жабо: белые полукруги вокруг шеи.
+  List<Offset> get ruffle {
+    if (look.top != TopKind.clownSuit) return const [];
+    final w = _f.neck + 11;
+    return [
+      for (var i = 0; i <= 6; i++)
+        Offset(100 - w + i * (2 * w / 6), 65 + (i == 0 || i == 6 ? -1 : 1.5)),
+    ];
+  }
 
   /// Центр эмблемы на груди футболки тестера.
   Offset get chestEmblem => Offset(100 + _f.lat * 0.42, 100);
@@ -240,6 +265,26 @@ class AvatarLayers {
     ];
   }
 
+  /// Красный нос клоуна.
+  Path? get clownNose =>
+      _has(Accessory.clownNose) ? _circle(100, 36, 3.8) : null;
+
+  /// Корона создателя: зубцы над макушкой.
+  Path? get crown {
+    if (!_has(Accessory.crown)) return null;
+    const w = 13.0;
+    final path = Path()..moveTo(100 - w, 13);
+    for (var i = 0; i < 5; i++) {
+      final x = 100 - w + i * (2 * w / 4);
+      path
+        ..lineTo(x, i == 2 ? 0.5 : 3)
+        ..lineTo(x + (i < 4 ? w / 4 : 0), i < 4 ? 8 : 13);
+    }
+    return path
+      ..lineTo(100 + w, 13)
+      ..close();
+  }
+
   /// Цепь на шее: дуга от ключиц к груди.
   Path? get goldChain {
     if (!_has(Accessory.goldChain)) return null;
@@ -319,12 +364,22 @@ class AvatarLayers {
 
   // ---------- Волосы ----------
 
-  Path _cap(double lowY, double crownY) {
-    final rx = _f.headRx;
+  /// Шапка волос: от виска [lowY] через макушку — на [lift] выше макушки головы
+  /// (объём причёски). Бока прилегают к голове на высоте виска. Надо лбом — почти
+  /// прямая линия волос на высоте [hairline] (по умолчанию на 8 выше виска).
+  Path _cap(double lowY, double lift, [double? hairline]) {
+    final headTop = BodyFrame.headCenter.dy - _f.headRy;
+    // Вершина кубической дуги — 0,25·виск + 0,75·контрольная точка.
+    final crownY = (headTop - lift - 0.25 * lowY) / 0.75;
+    final side = _f.headHalfWidthAt(lowY) + 0.9;
+    // Контрольные точки чуть шире головы: дуга обнимает её, а не режет.
+    final rx = _f.headRx + 0.9;
+    final h = hairline ?? lowY - 8;
     return Path()
-      ..moveTo(100 - rx - 0.6, lowY)
-      ..cubicTo(100 - rx, crownY, 100 + rx, crownY, 100 + rx + 0.6, lowY)
-      ..cubicTo(108, lowY - 11, 92, lowY - 11, 100 - rx - 0.6, lowY)
+      ..moveTo(100 - side, lowY)
+      ..cubicTo(100 - rx, crownY, 100 + rx, crownY, 100 + side, lowY)
+      ..lineTo(100 + side - 3, h + 2)
+      ..quadraticBezierTo(100, h - 2, 100 - side + 3, h + 2)
       ..close();
   }
 
@@ -370,21 +425,43 @@ class AvatarLayers {
     };
   }
 
+  /// Пряди парика клоуна: кружки по бокам головы, у каждой свой цвет радуги.
+  List<(Path, int)> get wigTufts {
+    if (look.hair != HairStyle.clownWig) return const [];
+    final rx = _f.headRx;
+    final tufts = <(Path, int)>[];
+    var i = 0;
+    for (final side in const [-1.0, 1.0]) {
+      for (final (dx, y) in const [
+        (2.0, 12.0),
+        (7.0, 18.0),
+        (9.0, 26.0),
+        (7.0, 34.0),
+        (10.0, 13.0),
+        (11.0, 22.0),
+      ]) {
+        tufts.add((_circle(100 + side * (rx - 1 + dx), y, 6.8), i++ % 6));
+      }
+    }
+    return tufts;
+  }
+
   /// Волосы поверх головы.
   Path get hairFront => switch (look.hair) {
-    HairStyle.short => _cap(26, 6),
-    HairStyle.buzz => _cap(20, 9),
-    HairStyle.curly => Path.combine(PathOperation.union, _cap(26, 7), _curls),
+    HairStyle.clownWig => Path(),
+    HairStyle.short => _cap(26, 1.6),
+    HairStyle.buzz => _cap(22, 0.7, 15),
+    HairStyle.curly => Path.combine(PathOperation.union, _cap(26, 1.4), _curls),
     HairStyle.manBun => Path.combine(
       PathOperation.union,
-      _cap(25, 7),
+      _cap(25, 1.4),
       _circle(100, 7, 6),
     ),
-    HairStyle.bob || HairStyle.long => _cap(30, 4),
-    HairStyle.ponytail => _cap(27, 5),
+    HairStyle.bob || HairStyle.long => _cap(36, 2.2, 18),
+    HairStyle.ponytail => _cap(30, 1.8, 18),
     HairStyle.bun => Path.combine(
       PathOperation.union,
-      _cap(27, 5),
+      _cap(27, 1.8),
       _circle(100, 6, 7),
     ),
   };
