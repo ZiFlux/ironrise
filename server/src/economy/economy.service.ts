@@ -1,3 +1,4 @@
+import { stepsXp } from '../game/steps';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { localDay } from '../common/day';
@@ -10,6 +11,14 @@ import { MIN_TRAINING_DAYS, nextScheduleChangeAt } from '../game/schedule';
 import { premiumStatus } from '../game/premium';
 import { PREMIUM_ITEMS, priceOf } from '../game/shop';
 import { CREATOR_ITEMS, creatorOpen } from '../game/start-look';
+import {
+  NICKNAME_CHANGE_COINS,
+  NicknameSchema,
+  isReservedNickname,
+  nextNicknameChangeAt,
+  nicknameHoldUntil,
+  nicknameKey,
+} from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
 import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
@@ -18,6 +27,35 @@ export const BuySchema = z.object({
   itemIds: z.array(z.string().min(1).max(64)).max(20),
   /** Образ после покупки (AvatarLook с клиента). */
   appearance: z.record(z.string(), z.unknown()),
+});
+
+/** Итог опроса по советам дня. Старые клиенты шлют пустое тело — один верный ответ. */
+export const TipRewardSchema = z
+  .object({
+    correct: z.number().int().min(0).max(C.tipsPerDayMax).default(1),
+    total: z.number().int().min(1).max(C.tipsPerDayMax).default(1),
+  })
+  .refine((b) => b.correct <= b.total, { message: 'correct > total' });
+
+/** Монеты за опрос: за каждый верный ответ и бонус, если верны все. */
+export const tipQuizCoins = (correct: number, total: number) =>
+  correct * C.tipCoinsPerAnswer + (correct === total ? C.tipQuizBonus : 0);
+
+/** Витрина профиля: готовая аватарка, фон и поза героя (null — сам меняет позы). */
+export const ShowcaseSchema = z.object({
+  icon: z.string().regex(/^[a-z_]{1,24}$/),
+  background: z.number().int().min(0).max(31),
+  pose: z.enum(['relaxed', 'doubleBiceps', 'latSpread', 'handsBehindHead', 'victory']).nullable().optional(),
+});
+
+/** Шаги за сегодня из Health Connect (день отдыха). */
+export const StepsSchema = z.object({ steps: z.number().int().min(0).max(100_000) });
+
+
+export const NicknameChangeSchema = z.object({
+  nickname: NicknameSchema,
+  /** Сменить раньше срока за NICKNAME_CHANGE_COINS монет. */
+  paid: z.boolean().optional(),
 });
 
 export const ScheduleSchema = z.object({
@@ -53,6 +91,8 @@ const wearable = async (db: Pick<Prisma.TransactionClient, 'inventoryItem' | 'pr
   const p = await db.profile.findUniqueOrThrow({ where: { userId }, select: { startLockedAt: true, startLookUntil: true } });
   return new Set([...owned, ...(creatorOpen(p) ? CREATOR_ITEMS : [])]);
 };
+
+const HOUR = 60 * 60 * 1000;
 
 /** Дольше не подводим по неделям: человек начинает лигу заново. */
 const MAX_WEEKS_TO_SETTLE = 26;
@@ -121,6 +161,87 @@ export class EconomyService {
     });
   }
 
+  /**
+   * Сменить ник: раз в 30 дней (первая смена — сразу), раньше — за монеты (paid).
+   * Ключ без регистра и похожих букв должен быть свободен и не в брони у другого игрока;
+   * прежний ник 30 дней закреплён за игроком. Смена только регистра или пробелов — бесплатно и без кулдауна.
+   */
+  changeNickname(userId: string, input: z.infer<typeof NicknameChangeSchema>) {
+    return this.db.$transaction(async (tx) => {
+      await lockProfile(tx, userId);
+      const p = await tx.profile.findUniqueOrThrow({
+        where: { userId },
+        select: { nickname: true, nicknameKey: true, nicknameChangedAt: true },
+      });
+      const now = new Date();
+      const key = nicknameKey(input.nickname);
+      if (input.nickname === p.nickname) return this.hero.state(userId, tx);
+      if (isReservedNickname(input.nickname)) throw new BadRequestException('Nickname is reserved');
+      const sameKey = key === p.nicknameKey;
+      if (!sameKey) {
+        const owner = await tx.profile.findUnique({ where: { nicknameKey: key }, select: { userId: true } });
+        const hold = await tx.nicknameHold.findUnique({ where: { key } });
+        if (owner || (hold && hold.userId !== userId && hold.until > now)) {
+          throw new ConflictException('Nickname is taken');
+        }
+        const next = nextNicknameChangeAt(p.nicknameChangedAt, now);
+        if (next) {
+          if (!input.paid) {
+            throw new ConflictException({ message: 'Nickname can be changed once in 30 days', nextNicknameChangeAt: next });
+          }
+          if ((await this.hero.coinsOf(userId, tx)) < NICKNAME_CHANGE_COINS) {
+            throw new ConflictException('Not enough coins');
+          }
+          await tx.walletTx.create({ data: { userId, amount: -NICKNAME_CHANGE_COINS, reason: 'nickname' } });
+        }
+        if (hold) await tx.nicknameHold.delete({ where: { key } });
+        await tx.nicknameHold.upsert({
+          where: { key: p.nicknameKey },
+          create: { key: p.nicknameKey, userId, until: nicknameHoldUntil(now) },
+          update: { userId, until: nicknameHoldUntil(now) },
+        });
+      }
+      await tx.profile.update({
+        where: { userId },
+        data: { nickname: input.nickname, nicknameKey: key, ...(sameKey ? {} : { nicknameChangedAt: now }) },
+      });
+      return this.hero.state(userId, tx);
+    });
+  }
+
+  /**
+   * Шаги в день отдыха (PLAN 4.8, п. 3): немного опыта кардио, раз в день и только
+   * если сегодня не было тренировки. Серия от шагов не зависит.
+   */
+  claimSteps(userId: string, steps: number) {
+    return this.db.$transaction(async (tx) => {
+      await lockProfile(tx, userId);
+      const p = await tx.profile.findUniqueOrThrow({
+        where: { userId },
+        select: { timezone: true, stepsRewardDay: true },
+      });
+      const day = localDay(new Date(), p.timezone);
+      if (p.stepsRewardDay === day) throw new ConflictException('Steps already counted today');
+      if (await tx.workout.findFirst({ where: { userId, day }, select: { id: true } })) {
+        throw new ConflictException('Steps count only on rest days');
+      }
+      const xp = stepsXp(steps);
+      if (xp > 0) {
+        await tx.avatarPart.update({ where: { userId_part: { userId, part: 'cardio' } }, data: { xp: { increment: xp } } });
+        await tx.xpEvent.create({ data: { userId, part: 'cardio', xp, validity: 1, wasLagging: false } });
+        const coins = Math.round(xp * C.coinsPerXp);
+        if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'steps' } });
+      }
+      await tx.profile.update({ where: { userId }, data: { stepsRewardDay: day } });
+      return { xp, hero: await this.hero.state(userId, tx) };
+    });
+  }
+
+  async setShowcase(userId: string, showcase: z.infer<typeof ShowcaseSchema>) {
+    await this.db.profile.update({ where: { userId }, data: { showcase: showcase as Prisma.InputJsonValue } });
+    return this.hero.state(userId);
+  }
+
   /** Сохранить образ: всё надетое должно быть куплено или бесплатно. */
   async setAppearance(userId: string, appearance: Record<string, unknown>) {
     await this.hero.state(userId);
@@ -155,13 +276,26 @@ export class EconomyService {
     const hero = await this.hero.state(userId);
     const fought = await this.db.duel.findMany({
       where: { attackerId: userId, day, opponentKind: 'bot' },
-      select: { opponentId: true, attackerWon: true },
+      select: { opponentId: true, attackerWon: true, createdAt: true },
+      orderBy: { createdAt: 'asc' },
     });
-    const results = Object.fromEntries(fought.map((f) => [f.opponentId, f.attackerWon]));
-    return { day, bots: botsForDay(hero, day), results };
+    // Исход — последнего боя; следующий бой — через duelCooldownHours после него.
+    const results: Record<string, boolean> = {};
+    const fights: Record<string, number> = {};
+    const nextFightAt: Record<string, string> = {};
+    for (const f of fought) {
+      results[f.opponentId] = f.attackerWon;
+      fights[f.opponentId] = (fights[f.opponentId] ?? 0) + 1;
+      const next = new Date(f.createdAt.getTime() + C.duelCooldownHours * HOUR);
+      if (next > new Date()) nextFightAt[f.opponentId] = next.toISOString();
+    }
+    return { day, bots: botsForDay(hero, day), results, fights, nextFightAt };
   }
 
-  /** Бой с ботом дня: исход, лог и монеты считает сервер. Каждого бота — раз в день. */
+  /**
+   * Бой с ботом дня: исход, лог и монеты считает сервер. С тем же ботом — снова
+   * через duelCooldownHours; повторные бои за сутки дают duelRepeatCoinFactor монет.
+   */
   async fightBot(userId: string, botId: string) {
     return this.db.$transaction(async (tx) => {
       await lockProfile(tx, userId);
@@ -170,14 +304,25 @@ export class EconomyService {
       const hero = await this.hero.state(userId, tx);
       const bot: Bot | undefined = botsForDay(hero, day).find((b) => b.id === botId);
       if (!bot) throw new BadRequestException('No such bot today');
-      if (await tx.duel.findUnique({ where: { attackerId_opponentId_day: { attackerId: userId, opponentId: botId, day } } })) {
-        throw new ConflictException('Already fought this bot today');
+      const earlier = await tx.duel.findMany({
+        where: { attackerId: userId, opponentId: botId, day },
+        select: { createdAt: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      const last = earlier[0];
+      if (last) {
+        const next = new Date(last.createdAt.getTime() + C.duelCooldownHours * HOUR);
+        if (next > new Date()) {
+          throw new ConflictException({ message: 'Bot is on cooldown', nextFightAt: next.toISOString() });
+        }
       }
+      const repeat = earlier.length > 0;
 
       const attacker = { id: userId, name: hero.nickname, levels: hero.levels, streakDays: hero.streakDays };
       const seed = Math.floor(Math.random() * 2 ** 31);
       const result = simulateDuel(attacker, bot, seed);
-      const coins = result.attackerWon ? C.duelWinCoins : C.duelLossCoins;
+      const base = result.attackerWon ? C.duelWinCoins : C.duelLossCoins;
+      const coins = repeat ? Math.round(base * C.duelRepeatCoinFactor) : base;
       const duel = await tx.duel.create({
         data: {
           attackerId: userId,
@@ -194,8 +339,8 @@ export class EconomyService {
           coins,
         },
       });
-      await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
-      return { duelId: duel.id, attacker, defender: bot, ...result, coins, hero: await this.hero.state(userId, tx) };
+      if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
+      return { duelId: duel.id, attacker, defender: bot, ...result, coins, repeat, hero: await this.hero.state(userId, tx) };
     });
   }
 
@@ -273,15 +418,16 @@ export class EconomyService {
   }
 
   /** Награда за «Совет дня»: раз в календарный день пользователя. */
-  async tipReward(userId: string) {
+  async tipReward(userId: string, quiz: z.infer<typeof TipRewardSchema> = { correct: 1, total: 1 }) {
     const day = await this.today(userId);
     return this.db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
       const profile = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { tipRewardDay: true } });
       if (profile.tipRewardDay === day) throw new ConflictException('Награда за совет сегодня уже получена');
-      await tx.walletTx.create({ data: { userId, amount: C.tipCoins, reason: 'tip' } });
+      const coins = tipQuizCoins(quiz.correct, quiz.total);
+      if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'tip' } });
       await tx.profile.update({ where: { userId }, data: { tipRewardDay: day } });
-      return { coins: C.tipCoins };
+      return { coins };
     });
   }
 

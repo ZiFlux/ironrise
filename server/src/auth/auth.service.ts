@@ -1,10 +1,12 @@
 import { GameConfig } from '../game/config';
-import { ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
 import { isValidTimeZone } from '../common/day';
 import { assertLookOwned } from '../economy/economy.service';
 import { BODY_PARTS } from '../game/body-part';
+import { CREATOR_ITEMS } from '../game/start-look';
+import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
 import { hashPassword, newRefreshToken, sha256, verifyPassword } from './passwords';
@@ -16,7 +18,7 @@ export const RegisterSchema = z.object({
   password: z.string().min(8).max(128),
   /** ТЗ: приложение 18+, без подтверждения аккаунт не создаётся. */
   adultConfirmed: z.literal(true),
-  nickname: z.string().trim().min(3).max(20).regex(/^[\p{L}\d_ ]+$/u),
+  nickname: NicknameSchema,
   goal: z.string().min(1).max(32),
   trainingFormat: z.string().min(1).max(32),
   scheduleDays: z
@@ -67,8 +69,17 @@ export class AuthService {
     const { email, password, nickname, goal, trainingFormat, scheduleDays, appearance, timezone, age, restingHr } =
       input;
     const consentAt = input.healthConsent ? new Date() : null;
-    // Новый герой — только в бесплатных вещах.
-    assertLookOwned(appearance, new Set());
+    // У нового героя открыт редактор старта: можно всё, что в нём бесплатно.
+    assertLookOwned(appearance, CREATOR_ITEMS);
+    if (isReservedNickname(nickname)) throw new BadRequestException('Nickname is reserved');
+    const key = nicknameKey(nickname);
+    if (await this.db.user.findUnique({ where: { email }, select: { id: true } })) {
+      throw new ConflictException('Email is taken');
+    }
+    const held = await this.db.nicknameHold.findFirst({ where: { key, until: { gt: new Date() } } });
+    if (held || (await this.db.profile.findUnique({ where: { nicknameKey: key }, select: { userId: true } }))) {
+      throw new ConflictException('Nickname is taken');
+    }
     try {
       const user = await this.db.user.create({
         data: {
@@ -78,6 +89,7 @@ export class AuthService {
           profile: {
             create: {
               nickname,
+              nicknameKey: key,
               goal,
               trainingFormat,
               scheduleDays,
@@ -96,7 +108,8 @@ export class AuthService {
       return this.issue(user.id);
     } catch (e) {
       if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === 'P2002') {
-        throw new ConflictException('Email or nickname is already taken');
+        // Гонка двух регистраций: что именно заняли, уже не важно.
+        throw new ConflictException('Email or nickname is taken');
       }
       throw e;
     }

@@ -5,6 +5,8 @@ import { laggingParts, levels, power } from '../game/progression';
 import { currentStreak, maxRestDaysInRow } from '../game/streak';
 import { premiumStatus, PremiumStatus } from '../game/premium';
 import { nextScheduleChangeAt } from '../game/schedule';
+import { Boosters, readBoosters } from '../game/streak-rewards';
+import { NICKNAME_CHANGE_COINS, nextNicknameChangeAt } from '../game/nickname';
 import { creatorItemsToGrant } from '../game/start-look';
 import { addMusclePoints, MusclePoints, musclePointsOf } from '../game/muscles';
 import { Prisma } from '../generated/prisma/client';
@@ -15,6 +17,13 @@ type Db = Pick<PrismaService, 'profile' | 'avatarPart' | 'walletTx' | 'inventory
 
 export interface HeroState {
   nickname: string;
+  /** Когда можно бесплатно сменить ник; null — уже можно. Раньше — за nicknameChangeCoins. */
+  nextNicknameChangeAt: Date | null;
+  nicknameChangeCoins: number;
+  /** Витрина профиля; null — не настроена. */
+  showcase: unknown;
+  /** Бустеры за серию на следующие тренировки. */
+  boosters: Boosters;
   goal: string;
   trainingFormat: string;
   /** Когда можно сменить график; null — уже можно (docs/PLAN.md 4.3). */
@@ -75,6 +84,10 @@ export class HeroService {
     });
     return {
       nickname: profile.nickname,
+      nextNicknameChangeAt: nextNicknameChangeAt(profile.nicknameChangedAt, now),
+      nicknameChangeCoins: NICKNAME_CHANGE_COINS,
+      showcase: profile.showcase,
+      boosters: readBoosters(profile.boosters),
       goal: profile.goal,
       trainingFormat: profile.trainingFormat,
       nextScheduleChangeAt: nextScheduleChangeAt(profile.formatChangedAt, now),

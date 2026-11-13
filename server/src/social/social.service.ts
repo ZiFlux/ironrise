@@ -1,3 +1,4 @@
+import { nicknameKey } from '../game/nickname';
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import { localDay } from '../common/day';
@@ -9,6 +10,7 @@ import { EconomyService } from '../economy/economy.service';
 import { HeroService, HeroState } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
 import { PushService } from '../push/push.service';
+import { mondayOfDay, pairStreak } from '../game/social-progress';
 
 /** Боёв с друзьями в день (ТЗ 4.5: «не больше N атак в день»). */
 export const FRIEND_DUELS_PER_DAY = 5;
@@ -71,7 +73,7 @@ export class SocialService {
   /** Заявка по нику. Если тот уже звал нас — сразу дружба. */
   async request(userId: string, nickname: string) {
     const target = await this.db.profile.findFirst({
-      where: { nickname: { equals: nickname, mode: 'insensitive' } },
+      where: { nicknameKey: nicknameKey(nickname) },
       select: { userId: true, nickname: true },
     });
     if (!target) throw new NotFoundException('Player not found');
@@ -169,8 +171,9 @@ export class SocialService {
 
       const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
       const day = localDay(new Date(), profile.timezone);
-      const duelKey = { attackerId_opponentId_day: { attackerId: userId, opponentId: friendId, day } };
-      if (await tx.duel.findUnique({ where: duelKey })) throw new ConflictException('Already fought this friend today');
+      if (await tx.duel.findFirst({ where: { attackerId: userId, opponentId: friendId, day }, select: { id: true } })) {
+        throw new ConflictException('Already fought this friend today');
+      }
       const today = await tx.duel.count({ where: { attackerId: userId, opponentKind: 'user', day } });
       if (today >= FRIEND_DUELS_PER_DAY) throw new ConflictException('Daily friend duel limit reached');
 
@@ -219,6 +222,7 @@ export class SocialService {
     });
     return duels.map((d) => ({
       attacker: d.attacker.profile?.nickname ?? '—',
+      attackerId: d.attackerId,
       attackerWon: d.attackerWon,
       powerA: d.powerA,
       powerD: d.powerD,
@@ -227,6 +231,156 @@ export class SocialService {
   }
 
   /** Лига среди друзей: я и друзья по недельным очкам активности. */
+  /**
+   * Витрина друга: герой, сила, серия, аватарка и поза, итоги. Только друзьям —
+   * чужой профиль по id не открыть. Пульс и тренировки по дням не показываются.
+   */
+  async profile(userId: string, otherId: string) {
+    if (otherId !== userId) {
+      const rel = await this.relation(userId, otherId, this.db);
+      if (rel?.status !== 'accepted') throw new NotFoundException('Not a friend');
+    }
+    const h = await this.hero.state(otherId);
+    const [workouts, wins, user] = await Promise.all([
+      this.db.workout.count({ where: { userId: otherId, status: 'accepted' } }),
+      this.db.duel.count({ where: { attackerId: otherId, attackerWon: true } }),
+      this.db.user.findUniqueOrThrow({ where: { id: otherId }, select: { createdAt: true } }),
+    ]);
+    return {
+      id: otherId,
+      nickname: h.nickname,
+      levels: h.levels,
+      xp: h.xp,
+      power: h.power,
+      streakDays: h.streakDays,
+      appearance: h.appearance,
+      muscles: h.muscles,
+      showcase: h.showcase,
+      premium: h.premium,
+      stats: { workouts, duelWins: wins, since: user.createdAt },
+    };
+  }
+
+  /** id друзей (принятые заявки). */
+  private async friendIds(userId: string): Promise<string[]> {
+    const rows = await this.db.friendship.findMany({
+      where: { status: 'accepted', OR: [{ requesterId: userId }, { addresseeId: userId }] },
+      select: { requesterId: true, addresseeId: true },
+    });
+    return rows.map((r) => (r.requesterId === userId ? r.addresseeId : r.requesterId));
+  }
+
+  /** Лента: свои события и друзей за две недели, с «кулаками». */
+  async feed(userId: string) {
+    const ids = [userId, ...(await this.friendIds(userId))];
+    const events = await this.db.feedEvent.findMany({
+      where: { userId: { in: ids }, createdAt: { gte: new Date(Date.now() - 14 * 86_400_000) } },
+      orderBy: { createdAt: 'desc' },
+      take: 60,
+      include: {
+        user: { select: { profile: { select: { nickname: true, showcase: true } } } },
+        fists: { select: { userId: true } },
+      },
+    });
+    return events.map((e) => ({
+      id: e.id,
+      userId: e.userId,
+      nickname: e.user.profile?.nickname ?? '—',
+      showcase: e.user.profile?.showcase ?? null,
+      kind: e.kind,
+      data: e.data,
+      at: e.createdAt,
+      fists: e.fists.length,
+      myFist: e.fists.some((f) => f.userId === userId),
+      mine: e.userId === userId,
+    }));
+  }
+
+  /** «Кулак» на событие друга — поставить или убрать. */
+  async toggleFist(userId: string, eventId: string) {
+    const e = await this.db.feedEvent.findUnique({ where: { id: eventId }, select: { userId: true } });
+    if (!e) throw new NotFoundException('No such event');
+    if (e.userId !== userId && !(await this.friendIds(userId)).includes(e.userId)) {
+      throw new NotFoundException('No such event');
+    }
+    const key = { eventId_userId: { eventId, userId } };
+    if (await this.db.feedFist.findUnique({ where: key })) {
+      await this.db.feedFist.delete({ where: key });
+      return { myFist: false };
+    }
+    await this.db.feedFist.create({ data: { eventId, userId } });
+    return { myFist: true };
+  }
+
+  private pairOf(userId: string) {
+    return this.db.streakPair.findFirst({
+      where: { OR: [{ aId: userId }, { bId: userId }] },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /** Напарник по серии: кто, статус, общая серия в неделях и эта неделя. */
+  async pair(userId: string) {
+    const p = await this.pairOf(userId);
+    if (!p) return { pair: null };
+    const otherId = p.aId === userId ? p.bId : p.aId;
+    const other = await this.db.profile.findUnique({
+      where: { userId: otherId },
+      select: { nickname: true, showcase: true },
+    });
+    const base = {
+      id: p.id,
+      partnerId: otherId,
+      nickname: other?.nickname ?? '—',
+      showcase: other?.showcase ?? null,
+      status: p.status,
+      invitedByMe: p.aId === userId,
+    };
+    if (p.status !== 'active' || !p.since) return { pair: base };
+    const today = await this.economy.today(userId);
+    const days = async (id: string) =>
+      (await this.db.workout.findMany({ where: { userId: id, day: { gte: p.since! } }, select: { day: true } })).map(
+        (w) => w.day,
+      );
+    const streak = pairStreak(await days(userId), await days(otherId), p.since, today);
+    return { pair: { ...base, ...streak } };
+  }
+
+  /** Позвать друга в напарники. У каждого — один напарник. */
+  async invitePair(userId: string, friendId: string) {
+    if (!(await this.friendIds(userId)).includes(friendId)) throw new BadRequestException('Not friends');
+    if (await this.pairOf(userId)) throw new ConflictException('You already have a partner');
+    if (await this.pairOf(friendId)) throw new ConflictException('Friend already has a partner');
+    await this.db.streakPair.create({ data: { aId: userId, bId: friendId } });
+    this.push.notify(friendId, {
+      type: 'friend_request',
+      title: 'Тебя зовут в напарники по серии',
+      body: `${await this.nicknameOf(userId)} хочет держать общую серию: по 2 тренировки в неделю у каждого`,
+      screen: 'friends',
+    });
+    return this.pair(userId);
+  }
+
+  async acceptPair(userId: string) {
+    const p = await this.pairOf(userId);
+    if (!p || p.bId !== userId || p.status !== 'pending') throw new NotFoundException('No invitation');
+    const today = await this.economy.today(userId);
+    await this.db.streakPair.update({ where: { id: p.id }, data: { status: 'active', since: mondayOfDay(today) } });
+    this.push.notify(p.aId, {
+      type: 'friend_accepted',
+      title: 'Напарник согласился',
+      body: `${await this.nicknameOf(userId)} держит с тобой общую серию. Не подведи!`,
+      screen: 'friends',
+    });
+    return this.pair(userId);
+  }
+
+  async leavePair(userId: string) {
+    const p = await this.pairOf(userId);
+    if (p) await this.db.streakPair.delete({ where: { id: p.id } });
+    return { pair: null };
+  }
+
   async friendsLeague(userId: string) {
     const day = await this.economy.today(userId);
     const monday = mondayOf(day);

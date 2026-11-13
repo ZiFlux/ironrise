@@ -37,9 +37,9 @@ describe('опыт за силовую тренировку', () => {
     expect(s.gains[0]).toMatchObject({ part: 'legs', xp: 27, wasLagging: true });
   });
 
-  it('больше 8 подходов не засчитываются', () => {
+  it('больше 4 подходов не засчитываются', () => {
     const s = scoreStrength(session('db_curl', 12, 90), xpAll(0), 1);
-    expect(gainsOf(s).arms).toBe(18 * 8);
+    expect(gainsOf(s).arms).toBe(18 * 4);
   });
 
   it('неизвестное упражнение — ошибка, а не тихий ноль', () => {
@@ -227,7 +227,7 @@ describe('настройки уведомлений', () => {
   it('по умолчанию всё включено, напоминание в 19', () => {
     expect(parseSettings({})).toEqual({
       friend_request: true, friend_accepted: true, attacked: true, streak_risk: true, streakReminderHour: 19,
-      daily_tip: true, duels_refreshed: true, morningHour: 9,
+      daily_tip: true, duels_refreshed: true, morningHour: 9, training_reminder: true,
     });
   });
 
@@ -497,6 +497,12 @@ describe('стартовый образ', () => {
     ]);
   });
 
+  it('стартовый образ приложения (майка, тёмно-синий, белые кроссовки) проходит регистрацию', () => {
+    const starter = { ...look, sex: 'male', hair: 'short', top: 'tank', topColor: 0xff1e2a4a, bottom: 'shorts' };
+    expect(unpaidItems(starter, CREATOR_ITEMS)).toEqual([]);
+    expect(unpaidItems({ ...starter, accessories: ['cap'] }, CREATOR_ITEMS)).toEqual(['acc_cap']);
+  });
+
   it('аксессуары, премиум и вещи тестеров в редактор не входят', () => {
     for (const id of ['acc_cap', 'acc_gold_chain', 'tc_gold', 'sn_gold', 'top_beta_tee', 'acc_beta_cap']) {
       expect(CREATOR_ITEMS.has(id)).toBe(false);
@@ -530,5 +536,103 @@ describe('мышцы', () => {
     expect(p.biceps).toBeCloseTo(1.2);
     expect(p.forearms).toBeCloseTo(0.3);
     expect(addMusclePoints(p, p).biceps).toBeCloseTo(2.4);
+  });
+});
+
+import { NicknameSchema, isReservedNickname, nextNicknameChangeAt, nicknameKey } from '../src/game/nickname';
+
+describe('ники', () => {
+  it('регистр, пробелы, «_» и похожая латиница дают один ключ', () => {
+    const key = nicknameKey('Юра');
+    for (const n of ['юра', 'ЮРА', 'Ю ра', 'Ю_ра', 'Юpa', 'ЮPA']) expect(nicknameKey(n)).toBe(key);
+    expect(nicknameKey('Genka')).toBe(nicknameKey('genka'));
+    expect(nicknameKey('Ёжик')).toBe(nicknameKey('ежик'));
+    expect(nicknameKey('Юля')).not.toBe(key);
+  });
+
+  it('запрещённые ники ловятся и в маскировке', () => {
+    for (const n of ['IronRise', 'iron rise', 'Admin_Юра', 'Поддержка', 'АДМИН']) expect(isReservedNickname(n)).toBe(true);
+    expect(isReservedNickname('Genka')).toBe(false);
+  });
+
+  it('ник: 3–20 знаков, буквы, цифры, «_», пробелы сжимаются', () => {
+    expect(NicknameSchema.parse('  Юра   Иванов ')).toBe('Юра Иванов');
+    expect(NicknameSchema.safeParse('Юр').success).toBe(false);
+    expect(NicknameSchema.safeParse('Юра!').success).toBe(false);
+  });
+
+  it('смена раз в 30 дней, первая — сразу', () => {
+    const now = new Date('2026-11-12T12:00:00Z');
+    expect(nextNicknameChangeAt(null, now)).toBeNull();
+    expect(nextNicknameChangeAt(new Date('2026-11-01T12:00:00Z'), now)).toEqual(new Date('2026-12-01T12:00:00Z'));
+    expect(nextNicknameChangeAt(new Date('2026-10-01T12:00:00Z'), now)).toBeNull();
+  });
+});
+
+import { STREAK_ITEMS, dailyStreakCoins, milestoneFor, streakReward } from '../src/game/streak-rewards';
+import { EXCLUSIVE_ITEMS } from '../src/game/shop';
+
+describe('награды за серию', () => {
+  it('продление без рубежа — только монеты за день, растут с серией до 10', () => {
+    expect(streakReward(1, 2)).toMatchObject({ coins: dailyStreakCoins(2), milestones: [] });
+    expect(dailyStreakCoins(2)).toBeLessThan(dailyStreakCoins(20));
+    expect(dailyStreakCoins(100)).toBe(10);
+  });
+
+  it('пройденные рубежи суммируются, даже если серия прыгнула через отдых', () => {
+    const r = streakReward(4, 7)!;
+    expect(r.milestones).toEqual([5, 7]);
+    expect(r.boosters.xp).toBe(1);
+    expect(r.items).toEqual(['sn_streak']);
+  });
+
+  it('не растёт — награды нет; после 60 — рубеж каждые 30 дней', () => {
+    expect(streakReward(5, 5)).toBeNull();
+    expect(milestoneFor(90)).toBeDefined();
+    expect(milestoneFor(91)).toBeUndefined();
+  });
+
+  it('вещи за серию — эксклюзивы, их нельзя купить', () => {
+    for (const id of STREAK_ITEMS) expect(EXCLUSIVE_ITEMS.has(id)).toBe(true);
+  });
+});
+
+import { stepsXp } from '../src/game/steps';
+
+describe('шаги в день отдыха', () => {
+  it('3 опыта за тысячу шагов, не больше 30', () => {
+    expect(stepsXp(999)).toBe(0);
+    expect(stepsXp(4500)).toBe(12);
+    expect(stepsXp(40000)).toBe(30);
+  });
+});
+
+import { habitHour } from '../src/push/settings';
+
+describe('напоминание по привычке', () => {
+  it('медиана часа начала, нужно минимум 3 тренировки', () => {
+    expect(habitHour([18, 19])).toBeNull();
+    expect(habitHour([18, 19, 20, 7, 19])).toBe(19);
+  });
+});
+
+import { heroMilestonesDue, mondayOfDay, pairStreak } from '../src/game/social-progress';
+
+describe('вехи героя и напарники', () => {
+  it('вехи 5/10/20 выдаются один раз, пропущенные — разом', () => {
+    expect(heroMilestonesDue(0, 4)).toEqual([]);
+    expect(heroMilestonesDue(0, 11).map((m) => m.level)).toEqual([5, 10]);
+    expect(heroMilestonesDue(10, 11)).toEqual([]);
+  });
+
+  it('общая серия — недели, где у обоих по 2 тренировки; текущая не сжигает', () => {
+    const since = '2026-10-19';
+    const a = ['2026-10-20', '2026-10-22', '2026-10-27', '2026-10-29', '2026-11-03', '2026-11-05'];
+    const b = ['2026-10-21', '2026-10-23', '2026-10-28', '2026-10-30', '2026-11-04'];
+    // Неделя 2 ноября у b — одна тренировка: серия считается с конца, обрывается на ней.
+    expect(pairStreak(a, b, since, '2026-11-10').weeks).toBe(0);
+    expect(pairStreak(a, b, since, '2026-11-02').weeks).toBe(2);
+    expect(pairStreak(a, b, since, '2026-11-04').thisWeek).toEqual({ a: 2, b: 1 });
+    expect(mondayOfDay('2026-11-13')).toBe('2026-11-09');
   });
 });

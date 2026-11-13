@@ -4,6 +4,13 @@
  * меняться без релиза.
  */
 export const GameConfig = {
+  /** Шаги в день отдыха: опыт кардио за каждую тысячу и потолок за день. */
+  stepsXpPerThousand: 3,
+  stepsXpCap: 30,
+  /** С тем же ботом — снова через столько часов. */
+  duelCooldownHours: 5,
+  /** Повторный бой с ботом за те же сутки — такая доля монет. */
+  duelRepeatCoinFactor: 0.5,
   baseXpPerSet: 18,
   xpPerLevel: 100,
   laggingThreshold: 1.5,
@@ -12,7 +19,7 @@ export const GameConfig = {
   powerBonusBalanced: 1.05,
   streakCap: 30,
   unverifiedValidity: 0.5,
-  maxSetsPerExercise: 8,
+  maxSetsPerExercise: 4,
   coinsPerXp: 0.2,
   /**
    * Потолок опыта за календарный день, все тренировки вместе (ТЗ 4.4).
@@ -24,6 +31,11 @@ export const GameConfig = {
   planCoinBonus: 0.2,
   /** Монеты за правильный ответ на вопрос «Совета дня», раз в день. */
   tipCoins: 10,
+  /** Советы дня: монеты за каждый верный ответ подборки и бонус, если верны все. */
+  tipCoinsPerAnswer: 4,
+  tipQuizBonus: 10,
+  /** Больше советов в подборке не бывает. */
+  tipsPerDayMax: 5,
   /** Монеты за создание аккаунта — один раз. */
   welcomeCoins: 100,
   /** Премиум: +25% монет за тренировку (косметика, на силу не влияет). */

@@ -7,6 +7,7 @@ export const NOTIFICATION_TYPES = [
   'streak_risk',
   'daily_tip',
   'duels_refreshed',
+  'training_reminder',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -23,7 +24,16 @@ export const SettingsSchema = z.object({
   /** «Новые соперники в дуэлях» — через 4 часа после morningHour. */
   duels_refreshed: z.boolean().default(true),
   morningHour: z.number().int().min(6).max(12).default(9),
+  /** «Скоро твоё время тренировки» — за час до привычного часа, в день по графику. */
+  training_reminder: z.boolean().default(true),
 });
+
+/** Привычный час тренировки: медиана часа начала последних тренировок. Нужно минимум 3. */
+export const habitHour = (startHours: number[]): number | null => {
+  if (startHours.length < 3) return null;
+  const sorted = [...startHours].sort((a, b) => a - b);
+  return sorted[Math.floor(sorted.length / 2)];
+};
 
 /** Ежедневные напоминания — только тем, кто тренировался за последние 14 дней. */
 export const DAILY_ACTIVE_DAYS = 14;

@@ -14,6 +14,45 @@ export class SocialController {
     return this.social.search(userId, nick);
   }
 
+  @Get('feed')
+  feed(@UserId() userId: string) {
+    return this.social.feed(userId);
+  }
+
+  @Post('feed/:id/fist')
+  @HttpCode(200)
+  fist(@UserId() userId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.social.toggleFist(userId, id);
+  }
+
+  @Get('pair')
+  pair(@UserId() userId: string) {
+    return this.social.pair(userId);
+  }
+
+  @Post('pair/invite/:id')
+  @HttpCode(200)
+  invitePair(@UserId() userId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.social.invitePair(userId, id);
+  }
+
+  @Post('pair/accept')
+  @HttpCode(200)
+  acceptPair(@UserId() userId: string) {
+    return this.social.acceptPair(userId);
+  }
+
+  @Delete('pair')
+  leavePair(@UserId() userId: string) {
+    return this.social.leavePair(userId);
+  }
+
+  /** Витрина друга (или своя). */
+  @Get('users/:id/profile')
+  profile(@UserId() userId: string, @Param('id', ParseUUIDPipe) id: string) {
+    return this.social.profile(userId, id);
+  }
+
   @Get('friends')
   list(@UserId() userId: string) {
     return this.social.list(userId);

@@ -1,3 +1,4 @@
+import { STREAK_ITEMS } from './streak-rewards';
 /**
  * Цены косметики. Совпадают с app/lib/game/shop.dart; клиент показывает цены,
  * но списывает монеты только сервер по этой таблице. 0 — есть у всех с начала.
@@ -29,7 +30,7 @@ export const TESTER_ITEMS: readonly string[] = [
   'acc_beta_cap', 'tc_beta', 'sn_beta', 'top_beta_tee', 'bottom_beta_joggers',
 ];
 
-/** Вещи, которых нет в продаже: носить можно только выданные. */
-export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set(TESTER_ITEMS);
+/** Вещи, которых нет в продаже: носить можно только выданные (тестерам и за серию). */
+export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([...TESTER_ITEMS, ...STREAK_ITEMS]);
 
 export const priceOf = (itemId: string): number | undefined => SHOP_PRICES[itemId];

@@ -41,6 +41,7 @@ model User {
   banReason        String?
 
   profile       Profile?
+  nicknameHolds NicknameHold[]
   avatarParts   AvatarPart[]
   workouts      Workout[]
   xpEvents      XpEvent[]
@@ -56,12 +57,28 @@ model User {
   jointSessions          JointSession[]
   jointMemberships       JointMember[]
   adminActions           AdminAction[]
+  feedEvents             FeedEvent[]
+  feedFists              FeedFist[]
+  pairsStarted           StreakPair[] @relation("PairA")
+  pairsJoined            StreakPair[] @relation("PairB")
 }
 
 model Profile {
   userId           String    @id @db.Uuid
   user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   nickname         String    @unique
+  /// Ключ уникальности ника: без регистра, пробелов и похожих латинских букв (src/game/nickname.ts).
+  nicknameKey      String    @unique
+  /// Последняя смена ника; null — ещё не менял (первая смена — сразу).
+  nicknameChangedAt DateTime?
+  /// Витрина профиля: аватарка, фон, поза героя (видят друзья).
+  showcase         Json?
+  /// Бустеры за серию на следующую тренировку: {xp, coins} — сколько штук.
+  boosters         Json      @default("{}")
+  /// День, за который уже начислены шаги дня отдыха (YYYY-MM-DD).
+  stepsRewardDay   String?
+  /// Последняя выданная веха героя (средний уровень 5/10/20).
+  heroMilestone    Int       @default(0)
   goal             String
   trainingFormat   String
   /// 0 = понедельник … 6 = воскресенье.
@@ -103,6 +120,8 @@ model Profile {
   /// Дни, когда уже напомнили о совете дня и о новых дуэлях — не чаще раза в день.
   tipReminderDay   String?
   duelsReminderDay String?
+  /// День, когда уже напомнили «скоро твоё время тренировки».
+  trainingReminderDay String?
   /// Бета-тестер: премиум навсегда, без штрафа за тренировки без часов, эксклюзивные вещи.
   isTester         Boolean   @default(false)
   /// Оплаченный премиум до этой даты (оплаты пока нет).
@@ -217,8 +236,8 @@ model Duel {
   coins       Int
   createdAt   DateTime @default(now())
 
-  /// Один бой с одним соперником в день (ТЗ 4.5).
-  @@unique([attackerId, opponentId, day])
+  /// С ботом — снова через 5 часов, с другом — раз в день (проверяет сервис).
+  @@index([attackerId, opponentId, day])
   @@index([attackerId, day])
   /// Лента «кто на тебя нападал».
   @@index([opponentKind, opponentId, createdAt])
@@ -331,4 +350,55 @@ model AdminAction {
   details Json
 
   @@index([at])
+}
+
+/// Прежний ник игрока закреплён за ним NICKNAME_HOLD_DAYS дней после смены: его нельзя сразу занять.
+model NicknameHold {
+  key    String   @id
+  userId String   @db.Uuid
+  user   User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  until  DateTime
+
+  @@index([userId])
+}
+
+/// Напарник по серии (PLAN 4.8, п. 6): общая серия в неделях. a — пригласил, b — принял.
+model StreakPair {
+  id        String    @id @default(uuid()) @db.Uuid
+  aId       String    @db.Uuid
+  a         User      @relation("PairA", fields: [aId], references: [id], onDelete: Cascade)
+  bId       String    @db.Uuid
+  b         User      @relation("PairB", fields: [bId], references: [id], onDelete: Cascade)
+  /// pending — ждёт ответа, active — серия идёт.
+  status    String    @default("pending")
+  createdAt DateTime  @default(now())
+  /// Понедельник недели, с которой считается общая серия (YYYY-MM-DD).
+  since     String?
+
+  @@index([aId])
+  @@index([bId])
+}
+
+/// Лента друзей (PLAN 4.8, п. 7): события без пульса и тренировок по дням.
+model FeedEvent {
+  id        String     @id @default(uuid()) @db.Uuid
+  userId    String     @db.Uuid
+  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// level_up | streak | comeback | hero_level | pair_week
+  kind      String
+  data      Json
+  createdAt DateTime   @default(now())
+  fists     FeedFist[]
+
+  @@index([userId, createdAt])
+}
+
+/// Реакция «кулак» на событие ленты.
+model FeedFist {
+  eventId String    @db.Uuid
+  event   FeedEvent @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  userId  String    @db.Uuid
+  user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([eventId, userId])
 }

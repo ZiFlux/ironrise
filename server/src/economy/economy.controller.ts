@@ -2,7 +2,7 @@ import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@n
 import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
-import { AppearanceSchema, BuySchema, EconomyService, ScheduleSchema, StartLookSchema } from './economy.service';
+import { AppearanceSchema, BuySchema, EconomyService, NicknameChangeSchema, ScheduleSchema, ShowcaseSchema, StepsSchema, StartLookSchema, TipRewardSchema } from './economy.service';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -11,8 +11,8 @@ export class EconomyController {
 
   @Post('tips/reward')
   @HttpCode(200)
-  tipReward(@UserId() userId: string) {
-    return this.economy.tipReward(userId);
+  tipReward(@UserId() userId: string, @Body(new ZodPipe(TipRewardSchema)) body: z.infer<typeof TipRewardSchema>) {
+    return this.economy.tipReward(userId, body);
   }
 
   @Post('shop/buy')
@@ -25,6 +25,24 @@ export class EconomyController {
   @Put('me/schedule')
   schedule(@UserId() userId: string, @Body(new ZodPipe(ScheduleSchema)) body: z.infer<typeof ScheduleSchema>) {
     return this.economy.changeSchedule(userId, body);
+  }
+
+  /** Сменить ник — раз в 30 дней, раньше — за монеты (paid). */
+  @Put('me/nickname')
+  nickname(@UserId() userId: string, @Body(new ZodPipe(NicknameChangeSchema)) body: z.infer<typeof NicknameChangeSchema>) {
+    return this.economy.changeNickname(userId, body);
+  }
+
+  /** Шаги дня отдыха — опыт кардио, раз в день. */
+  @Post('me/steps')
+  @HttpCode(200)
+  steps(@UserId() userId: string, @Body(new ZodPipe(StepsSchema)) body: z.infer<typeof StepsSchema>) {
+    return this.economy.claimSteps(userId, body.steps);
+  }
+
+  @Put('me/showcase')
+  showcase(@UserId() userId: string, @Body(new ZodPipe(ShowcaseSchema)) body: z.infer<typeof ShowcaseSchema>) {
+    return this.economy.setShowcase(userId, body);
   }
 
   @Put('me/appearance')

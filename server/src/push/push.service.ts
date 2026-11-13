@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { localDay } from '../common/day';
 import { isStreakAtRisk } from '../game/streak';
 import { PrismaService } from '../prisma.service';
-import { dailyReminderDue, DUELS_AFTER_MORNING_HOURS, NotificationType, parseSettings } from './settings';
+import { DAILY_ACTIVE_DAYS, dailyReminderDue, DUELS_AFTER_MORNING_HOURS, habitHour, NotificationType, parseSettings } from './settings';
 
 interface ServiceAccount {
   project_id: string;
@@ -17,7 +17,7 @@ export interface PushMessage {
   title: string;
   body: string;
   /** Куда вести по нажатию: friends | duels | home | tip. */
-  screen: 'friends' | 'duels' | 'home' | 'tip';
+  screen: 'friends' | 'duels' | 'home' | 'tip' | 'workout';
 }
 
 const REMINDER_EVERY_MS = 15 * 60_000;
@@ -41,6 +41,7 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
     this.timer = setInterval(() => {
       void this.remindStreaks().catch((e) => this.log.warn(String(e)));
       void this.remindDaily().catch((e) => this.log.warn(String(e)));
+      void this.remindTraining().catch((e) => this.log.warn(String(e)));
     }, REMINDER_EVERY_MS);
     const path = process.env.FIREBASE_SERVICE_ACCOUNT;
     if (!path) {
@@ -166,6 +167,50 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
         title: `Серия ${p.streakDays} дн. под угрозой`,
         body: 'Сегодня последний день отдыха. Короткая тренировка или 20 минут кардио сохранят серию',
         screen: 'home',
+      });
+    }
+  }
+
+  /**
+   * Напоминание по привычке (PLAN 4.8, п. 10): в день тренировки по графику, если
+   * сегодня ещё не тренировался, — за час до часа, когда человек обычно начинает.
+   */
+  async remindTraining(now = new Date()) {
+    const profiles = await this.db.profile.findMany({
+      where: { lastActiveDay: { not: null } },
+      select: {
+        userId: true,
+        timezone: true,
+        lastActiveDay: true,
+        scheduleDays: true,
+        trainingReminderDay: true,
+        notificationSettings: true,
+      },
+    });
+    for (const p of profiles) {
+      const s = parseSettings(p.notificationSettings);
+      const today = localDay(now, p.timezone);
+      if (!s.training_reminder || p.trainingReminderDay === today) continue;
+      const days = (Date.parse(today) - Date.parse(p.lastActiveDay!)) / 86_400_000;
+      if (days > DAILY_ACTIVE_DAYS) continue;
+      // 0 — понедельник, как scheduleDays.
+      const weekday = (new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7;
+      if (!p.scheduleDays.includes(weekday)) continue;
+      if (await this.db.workout.findFirst({ where: { userId: p.userId, day: today }, select: { id: true } })) continue;
+      const recent = await this.db.workout.findMany({
+        where: { userId: p.userId },
+        orderBy: { startedAt: 'desc' },
+        take: 10,
+        select: { startedAt: true },
+      });
+      const habit = habitHour(recent.map((w) => localHour(w.startedAt, p.timezone)));
+      if (habit === null || localHour(now, p.timezone) !== habit - 1) continue;
+      await this.db.profile.update({ where: { userId: p.userId }, data: { trainingReminderDay: today } });
+      this.notify(p.userId, {
+        type: 'training_reminder',
+        title: 'Через час — твоё время тренировки',
+        body: `Ты обычно начинаешь около ${habit}:00. План на сегодня уже ждёт`,
+        screen: 'workout',
       });
     }
   }
