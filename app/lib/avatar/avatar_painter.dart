@@ -139,12 +139,8 @@ class AvatarPainter extends CustomPainter {
     }
     final handPaint = Paint()..color = look.skin.hand;
     for (final arm in [frame.rightArm, frame.leftArm]) {
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: arm.handCenter,
-          width: look.isFemale ? 9.2 : 10.8,
-          height: look.isFemale ? 16 : 18,
-        ),
+      canvas.drawPath(
+        arm.hand(frame.wristWidth, look.isFemale ? 15 : 17),
         handPaint,
       );
     }

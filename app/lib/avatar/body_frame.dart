@@ -84,6 +84,23 @@ class ArmGeometry {
 
   Offset get handCenter => wrist + _fore * 9;
 
+  /// Кисть: от запястья вдоль предплечья — шире у ладони, скруглённый край.
+  /// Поворачивается вместе с рукой (овал не поворачивался и висел «ракеткой»).
+  Path hand(double wristHalf, double length) {
+    final d = _fore;
+    final n = Offset(-d.dy, d.dx);
+    Offset p(double along, double across) => wrist + d * along + n * across;
+    return smoothClosedPath([
+      p(-1.5, wristHalf + 0.3),
+      p(length * 0.4, wristHalf + 1.9),
+      p(length * 0.78, wristHalf + 1.3),
+      p(length, 0),
+      p(length * 0.78, -wristHalf - 1.3),
+      p(length * 0.4, -wristHalf - 1.9),
+      p(-1.5, -wristHalf - 0.3),
+    ]);
+  }
+
   /// Контур по станциям (t, полуширина): вниз по одной стороне, вверх по другой.
   Path outline(List<(double, double)> stations) => smoothClosedPath([
     for (final (t, w) in stations) at(t, w),
@@ -192,7 +209,7 @@ class BodyFrame {
 
   double _pick(double male, double female) => isFemale ? female : male;
 
-  late final double neck = _pick(8.5, 6.5) + traps * 2 + fat * 3;
+  late final double neck = _pick(9.6, 7.2) + traps * 2 + fat * 3;
   late final double shoulder =
       _pick(34, 29) + (lats + traps) / 2 * _pick(14, 7) + chest * _pick(4, 2);
   late final double lat =
@@ -200,19 +217,26 @@ class BodyFrame {
       lats * _pick(12, 5) +
       fat * 6 +
       (pose == AvatarPose.latSpread ? poseT * 3 : 0);
-  late final double waist =
-      _pick(26, 21) -
-      cardio * 4 -
-      core +
-      chest * _pick(1, 0) +
-      fat * _pick(15, 11);
+  late final double waist = max(
+    // Даже у худых талия не «осиная»: не уже этого минимума.
+    _pick(19, 16.5),
+    _pick(26, 21) -
+        cardio * 4 -
+        core +
+        chest * _pick(1, 0) +
+        fat * _pick(15, 11),
+  );
   late final double ribs = _lerp(lat, waist, 0.6);
   late final double hip =
       _pick(26, 31) + glutes * _pick(2, 4) + fat * _pick(9, 10);
   late final double thigh = _pick(25, 30) + thighs * _pick(9, 6) + fat * 7;
-  late final double knee = _pick(17, 16) + legs * 2;
-  late final double calf = _pick(18, 17) + calves * _pick(6, 4) + fat * 3;
-  late final double ankle = _pick(10, 9);
+  late final double knee = max(
+    _pick(17, 16) + legs * 2 + fat * 4,
+    // Колено не уже икры на 1,5 и не глубже бедра на 9 — нога ровная, без перехвата.
+    min(calf - 1.5, thigh - 9),
+  );
+  late final double calf = _pick(18, 17) + calves * _pick(6, 4) + fat * 5;
+  late final double ankle = _pick(10, 9) + max(fat, 0.0) * 2;
   late final double shin = _lerp(calf, ankle, 0.6);
   late final double waistband = _lerp(waist, hip, 0.7);
   late final double trapX = _lerp(neck, shoulder, 0.5);
@@ -233,11 +257,11 @@ class BodyFrame {
       upperArm * _pick(6.5, 3) +
       // Перекачанный бицепс выпирает сильнее, чем растёт обычный.
       max(0.0, upperArm - 1) * _pick(6, 3) +
-      fat * 3.5;
+      max(fat, -0.4) * 3.5;
   late final double elbowWidth =
       _pick(6.2, 5.2) + (upperArm + forearms) / 2 * 2;
   late final double forearmWidth =
-      _pick(6.8, 5.8) + forearms * _pick(3.6, 2) + fat * 2;
+      _pick(6.8, 5.8) + forearms * _pick(3.6, 2) + max(fat, -0.4) * 2;
   late final double wristWidth = _pick(4.1, 3.4);
 
   late final double headRx = _pick(16, 15);

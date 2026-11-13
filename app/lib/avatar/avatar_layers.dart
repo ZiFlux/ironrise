@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'avatar_look.dart';
@@ -81,8 +82,8 @@ class AvatarLayers {
     Offset(_f.shoulder - _f.deltSize * 0.45 + 1, 81),
     Offset(_f.lat + 1.6, 112),
     Offset(_f.lat + 1.2, 124),
-    Offset(_f.ribs + 1.2, 150),
-    Offset(_f.waist + 1.4, 172),
+    Offset(max(_f.ribs, _f.lat - 3) + 1.2, 150),
+    Offset(max(_f.waist, _f.lat - 5) + 1.6, 172),
     Offset(_f.hip + 1.6, 200),
     Offset(_f.hip + 1.8, 208),
     const Offset(0, 210),
@@ -160,14 +161,15 @@ class AvatarLayers {
     return path;
   }
 
+  /// Рукав облегает дельту и бицепс: чуть шире руки, без «шара».
   Path _sleeveOf(ArmGeometry arm) => smoothClosedPath([
-    arm.at(-0.08, -(_f.deltSize * 0.15 + 1.6)),
-    arm.at(-0.01, -(_f.deltSize * 0.9 + 1.6)),
-    arm.at(0.09, -(_f.deltSize * 1.14 + 1.6)),
-    arm.at(0.34, -(_f.bicepWidth + 2)),
-    arm.at(0.34, _f.bicepWidth + 2),
-    arm.at(0.08, _f.deltSize * 0.6 + 1.8),
-    arm.at(-0.04, _f.deltSize * 0.42 + 1.6),
+    arm.at(-0.08, -(_f.deltSize * 0.15 + 1.2)),
+    arm.at(-0.01, -(_f.deltSize * 0.82 + 1.2)),
+    arm.at(0.1, -(_f.deltSize * 0.95 + 1.2)),
+    arm.at(0.32, -(_f.bicepWidth + 1.3)),
+    arm.at(0.32, _f.bicepWidth + 1.3),
+    arm.at(0.08, _f.deltSize * 0.55 + 1.4),
+    arm.at(-0.04, _f.deltSize * 0.4 + 1.2),
   ]);
 
   Path get bottom => switch (look.bottom) {
