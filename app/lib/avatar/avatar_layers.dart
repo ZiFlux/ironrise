@@ -62,6 +62,26 @@ class AvatarLayers {
   /// Центр эмблемы на груди футболки тестера.
   Offset get chestEmblem => Offset(100 + _f.lat * 0.42, 100);
 
+  /// Косые карманы джоггеров: от пояса к боку бедра.
+  Path? get joggerPockets {
+    if (look.bottom != BottomKind.joggers &&
+        look.bottom != BottomKind.betaJoggers) {
+      return null;
+    }
+    final path = Path();
+    for (final s in const [-1.0, 1.0]) {
+      path
+        ..moveTo(100 + s * (_f.waistband - 4.5), 193.5)
+        ..quadraticBezierTo(
+          100 + s * (_f.hip - 3.5),
+          199,
+          100 + s * (_f.hip + 1.2),
+          214,
+        );
+    }
+    return path;
+  }
+
   /// Лампасы джоггеров тестера — по внешнему краю штанин.
   Path get sideStripes {
     final path = Path();
@@ -441,9 +461,11 @@ class AvatarLayers {
   Path get deltLines {
     final path = Path();
     for (final arm in [_f.rightArm, _f.leftArm]) {
-      final a = arm.at(0.1, _f.deltSize * 0.5);
-      final b = arm.at(0.24, _f.deltSize * 0.05);
-      final c = arm.at(0.21, -_f.deltSize * 0.8);
+      // Только внешняя складка между дельтой и бицепсом: со стороны груди
+      // плечо переходит в туловище без шва.
+      final a = arm.at(0.25, -_f.deltSize * 0.05);
+      final b = arm.at(0.25, -_f.deltSize * 0.45);
+      final c = arm.at(0.2, -_f.deltSize * 0.85);
       path
         ..moveTo(a.dx, a.dy)
         ..quadraticBezierTo(b.dx, b.dy, c.dx, c.dy);

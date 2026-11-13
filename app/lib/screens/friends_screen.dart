@@ -2,13 +2,19 @@ import 'dart:async';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../state/server_game.dart';
+import '../game/duel.dart';
+import '../state/duel_state.dart';
 import '../theme.dart';
+import 'feed_screen.dart';
+import '../widgets/pair_card.dart';
 import '../widgets/sign_up_card.dart';
+import '../widgets/status_toast.dart';
 
 /// Друзья (экран 8): поиск по нику, заявки, список и кто на тебя нападал.
 class FriendsScreen extends ConsumerStatefulWidget {
@@ -67,8 +73,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ref.invalidate(serverFriendsProvider);
       ref.invalidate(serverFriendsLeagueProvider);
       if (done != null && mounted) {
-        ScaffoldMessenger.of(context)
-            .showSnackBar(SnackBar(content: Text(done)));
+        showStatus(done, kind: StatusKind.success);
       }
     } on ApiException catch (e) {
       _toast(e);
@@ -78,12 +83,11 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   void _toast(ApiException e) {
     if (!mounted) return;
     final text = switch (e.status) {
-      0 => 'Нет связи с сервером',
       404 => 'Игрок не найден',
       409 => 'Вы уже друзья',
       _ => e.message,
     };
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(text)));
+    showStatusError(text, network: e.isNetwork);
   }
 
   @override
@@ -116,11 +120,23 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       ],
     };
 
+    final pair = ref.watch(pairProvider).value;
     return Scaffold(
-      appBar: AppBar(title: const Text('Друзья')),
+      appBar: AppBar(
+        title: const Text('Друзья'),
+        actions: [
+          IconButton(
+            tooltip: 'Лента друзей',
+            onPressed: () => context.push('/feed'),
+            icon: const Icon(feedIcon, size: 20),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          const PairCard(),
           TextField(
             onChanged: _onQuery,
             textInputAction: TextInputAction.search,
@@ -219,19 +235,35 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               ),
             for (final f in d.friends)
               _Row(
+                onTap: () => context.push('/friend/${f.id}'),
                 title: f.name,
-                subtitle: 'сила ${f.power}',
-                trailing: IconButton(
-                  tooltip: 'Удалить из друзей',
-                  onPressed: () => _confirmRemove(
-                    f.name,
-                    () => api.delete('/v1/friends/${f.id}'),
-                  ),
-                  icon: const Icon(
-                    LucideIcons.userMinus,
-                    size: 18,
-                    color: AppColors.textMuted,
-                  ),
+                subtitle: 'сила ${f.power} · витрина',
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (pair == null)
+                      IconButton(
+                        tooltip: 'Позвать в напарники по серии',
+                        onPressed: () => invitePartner(ref, f.id, f.name),
+                        icon: const Icon(
+                          LucideIcons.handshake,
+                          size: 18,
+                          color: Color(0xFFFF8A3D),
+                        ),
+                      ),
+                    IconButton(
+                      tooltip: 'Удалить из друзей',
+                      onPressed: () => _confirmRemove(
+                        f.name,
+                        () => api.delete('/v1/friends/${f.id}'),
+                      ),
+                      icon: const Icon(
+                        LucideIcons.userMinus,
+                        size: 18,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
                 ),
               ),
             if (d.outgoing.isNotEmpty) ...[
@@ -254,20 +286,45 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 title: a.attacker,
                 subtitle:
                     '${a.at.day}.${a.at.month.toString().padLeft(2, '0')}',
-                trailing: Text(
-                  a.attackerWon ? 'победил' : 'ты отбился',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: a.attackerWon
-                        ? AppColors.textMuted
-                        : Theme.of(context).colorScheme.primary,
-                  ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      a.attackerWon ? 'победил' : 'ты отбился',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: a.attackerWon
+                            ? AppColors.textMuted
+                            : Theme.of(context).colorScheme.primary,
+                      ),
+                    ),
+                    // Ответить тем же: бой с этим другом, если сегодня ещё не было.
+                    if (d?.friends
+                            .where((f) => f.id == a.attackerId)
+                            .firstOrNull
+                        case final friend?
+                        when !(d?.results.containsKey(friend.id) ?? true))
+                      TextButton(
+                        onPressed: () => _answer(friend),
+                        child: const Text('Ответить'),
+                      ),
+                  ],
                 ),
               ),
           ],
         ],
       ),
     );
+  }
+
+  /// Ответ на атаку: сразу бой с напавшим другом.
+  Future<void> _answer(Fighter friend) async {
+    try {
+      await ref.read(duelProvider.notifier).fightFriendOnServer(friend);
+      if (mounted) context.go('/duels/battle');
+    } on ApiException catch (e) {
+      showStatusError(e.message, network: e.isNetwork);
+    }
   }
 
   Future<void> _confirmRemove(
@@ -311,44 +368,53 @@ class _Section extends StatelessWidget {
 }
 
 class _Row extends StatelessWidget {
-  const _Row({required this.title, required this.trailing, this.subtitle});
+  const _Row({
+    required this.title,
+    required this.trailing,
+    this.subtitle,
+    this.onTap,
+  });
 
+  final VoidCallback? onTap;
   final String title;
   final String? subtitle;
   final Widget trailing;
 
   @override
-  Widget build(BuildContext context) => Container(
-    constraints: const BoxConstraints(minHeight: 52),
-    decoration: const BoxDecoration(
-      border: Border(bottom: BorderSide(color: AppColors.hairline)),
-    ),
-    child: Row(
-      children: [
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                title,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 15),
-              ),
-              if (subtitle != null)
+  Widget build(BuildContext context) => InkWell(
+    onTap: onTap,
+    child: Container(
+      constraints: const BoxConstraints(minHeight: 52),
+      decoration: const BoxDecoration(
+        border: Border(bottom: BorderSide(color: AppColors.hairline)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
                 Text(
-                  subtitle!,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
-                  ),
+                  title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 15),
                 ),
-            ],
+                if (subtitle != null)
+                  Text(
+                    subtitle!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+              ],
+            ),
           ),
-        ),
-        trailing,
-      ],
+          trailing,
+        ],
+      ),
     ),
   );
 }

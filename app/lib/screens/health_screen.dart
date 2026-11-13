@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../state/health_state.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
+import '../widgets/status_toast.dart';
 
 /// Часы и здоровье: подключение Health Connect и инструкции для разных часов.
 class HealthScreen extends ConsumerWidget {
@@ -44,12 +45,9 @@ class HealthScreen extends ConsumerWidget {
                   onPressed: () async {
                     final ok = await notifier.connect();
                     if (!ok && context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text(
-                            'Доступ не выдан. Его можно включить в настройках Health Connect',
-                          ),
-                        ),
+                      showStatus(
+                        'Доступ не выдан. Его можно включить в настройках Health Connect',
+                        kind: StatusKind.error,
                       );
                     }
                   },
@@ -78,30 +76,27 @@ class HealthScreen extends ConsumerWidget {
               ],
             ),
           ],
-          const _Guide(
-            title: 'Galaxy Watch',
-            steps: [
-              'Откройте Samsung Health на телефоне',
-              '⋮ → Настройки → Health Connect',
-              'Разрешите Samsung Health записывать шаги, расстояние и пульс',
-              'Вернитесь сюда и нажмите «Подключить Health Connect»',
-            ],
-            note:
-                'Samsung Health передаёт данные с задержкой в несколько минут. Пульс за тренировку '
-                'подтянется при синхронизации, и сервер пересчитает опыт. Живой пульс на экране '
-                'тренировки — через датчик по Bluetooth (Профиль → Датчик пульса)',
+          if (health.connected) const _Sources(),
+          const Padding(
+            padding: EdgeInsets.only(top: 24, bottom: 8),
+            child: Text(
+              'Подключить приложение',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
           ),
-          const _Guide(
-            title: 'Другие часы',
-            steps: [
-              'Pixel Watch, Fitbit — приложение Fitbit → Health Connect',
-              'Xiaomi, Redmi — Mi Fitness → Профиль → Health Connect',
-              'Amazfit — Zepp → Профиль → Health Connect',
-              'Garmin — Garmin Connect → Настройки → Health Connect',
-            ],
-            note:
-                'Если приложения часов нет в списке Health Connect, его данные сюда не попадут. '
-                'Тогда подойдёт трансляция пульса по Bluetooth, если её поддерживают часы',
+          const Text(
+            'Приложения часов и браслетов передают данные в Health Connect, '
+            'а IronRise берёт их оттуда. Включите передачу в своём приложении:',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 8),
+          for (final app in _apps) _AppGuide(app: app),
+          const SizedBox(height: 12),
+          const Text(
+            'Живой пульс на экране тренировки — через датчик по Bluetooth или часы Wear OS '
+            '(Профиль → Устройства). Через Health Connect пульс приходит с задержкой, '
+            'и сервер пересчитывает опыт после синхронизации',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
         ],
       ),
@@ -223,25 +218,111 @@ class _Action extends StatelessWidget {
   );
 }
 
-class _Guide extends StatelessWidget {
-  const _Guide({required this.title, required this.steps, required this.note});
+typedef _App = ({String name, String devices, List<String> steps});
 
-  final String title;
-  final List<String> steps;
-  final String note;
+const _apps = <_App>[
+  (
+    name: 'Samsung Health',
+    devices: 'Galaxy Watch, Galaxy Fit',
+    steps: [
+      'Откройте Samsung Health',
+      '⋮ → Настройки → Health Connect',
+      'Разрешите запись шагов, расстояния и пульса',
+    ],
+  ),
+  (
+    name: 'Mi Fitness',
+    devices: 'Xiaomi, Redmi',
+    steps: [
+      'Откройте Mi Fitness',
+      'Профиль → Подключения → Health Connect',
+      'Включите передачу пульса и шагов',
+    ],
+  ),
+  (
+    name: 'Zepp',
+    devices: 'Amazfit',
+    steps: [
+      'Откройте Zepp',
+      'Профиль → Добавить аккаунты → Health Connect',
+      'Разрешите пульс, шаги и тренировки',
+    ],
+  ),
+  (
+    name: 'Huawei Health',
+    devices: 'Huawei, Honor',
+    steps: [
+      'Обновите Huawei Health до последней версии',
+      'Я → Настройки → Общий доступ к данным → Health Connect',
+      'Если пункта нет — версия Huawei Health не поддерживает Health Connect',
+    ],
+  ),
+  (
+    name: 'Google Fit',
+    devices: 'Wear OS, телефон',
+    steps: [
+      'Откройте Google Fit',
+      'Профиль → ⚙ → Синхронизация с Health Connect',
+      'Включите синхронизацию',
+    ],
+  ),
+  (
+    name: 'Fitbit',
+    devices: 'Fitbit, Pixel Watch',
+    steps: [
+      'Откройте Fitbit',
+      'Аккаунт → Health Connect',
+      'Разрешите пульс и шаги',
+    ],
+  ),
+  (
+    name: 'Garmin Connect',
+    devices: 'Garmin',
+    steps: [
+      'Откройте Garmin Connect',
+      'Ещё → Настройки → Health Connect',
+      'Включите передачу данных',
+    ],
+  ),
+  (
+    name: 'Polar Flow',
+    devices: 'Polar',
+    steps: [
+      'Откройте Polar Flow',
+      'Ещё → Общие настройки → Health Connect',
+      'Разрешите передачу пульса и тренировок',
+    ],
+  ),
+  (
+    name: 'Suunto',
+    devices: 'Suunto',
+    steps: [
+      'Откройте Suunto',
+      'Профиль → Партнёрские сервисы → Health Connect',
+      'Включите передачу',
+    ],
+  ),
+];
+
+class _AppGuide extends StatelessWidget {
+  const _AppGuide({required this.app});
+
+  final _App app;
 
   @override
-  Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(top: 24),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget build(BuildContext context) => Card(
+    margin: const EdgeInsets.only(bottom: 8),
+    clipBehavior: Clip.antiAlias,
+    child: ExpansionTile(
+      shape: const Border(),
+      title: Text(app.name, style: const TextStyle(fontSize: 15)),
+      subtitle: Text(
+        app.devices,
+        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+      ),
+      childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 8),
-        for (final (i, s) in steps.indexed)
+        for (final (i, step) in app.steps.indexed)
           Padding(
             padding: const EdgeInsets.only(bottom: 6),
             child: Row(
@@ -254,16 +335,119 @@ class _Guide extends StatelessWidget {
                     style: const TextStyle(color: AppColors.textMuted),
                   ),
                 ),
-                Expanded(child: Text(s, style: const TextStyle(fontSize: 14))),
+                Expanded(
+                  child: Text(step, style: const TextStyle(fontSize: 14)),
+                ),
               ],
             ),
           ),
-        const SizedBox(height: 4),
-        Text(
-          note,
-          style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+        const Align(
+          alignment: Alignment.centerLeft,
+          child: Text(
+            'Потом вернитесь сюда — приложение появится в «Откуда приходят данные»',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
         ),
       ],
     ),
   );
+}
+
+/// Какие приложения реально пишут пульс и шаги за неделю.
+class _Sources extends ConsumerStatefulWidget {
+  const _Sources();
+
+  @override
+  ConsumerState<_Sources> createState() => _SourcesState();
+}
+
+class _SourcesState extends ConsumerState<_Sources> {
+  late Future<List<HealthSource>> _sources = _load();
+
+  Future<List<HealthSource>> _load() =>
+      ref.read(healthProvider.notifier).sources();
+
+  static String _ago(DateTime t) {
+    final d = DateTime.now().difference(t);
+    if (d.inMinutes < 60) return '${d.inMinutes} мин назад';
+    if (d.inHours < 24) return '${d.inHours} ч назад';
+    return '${d.inDays} дн. назад';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(top: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Откуда приходят данные',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Проверить снова',
+                onPressed: () => setState(() => _sources = _load()),
+                icon: const Icon(LucideIcons.refreshCw, size: 18),
+              ),
+            ],
+          ),
+          FutureBuilder(
+            future: _sources,
+            builder: (context, snap) {
+              if (snap.connectionState != ConnectionState.done) {
+                return const Padding(
+                  padding: EdgeInsets.all(12),
+                  child: LinearProgressIndicator(minHeight: 2),
+                );
+              }
+              final list = snap.data ?? const <HealthSource>[];
+              if (list.isEmpty) {
+                return const Text(
+                  'За неделю никто не передал пульс и шаги. Включите передачу '
+                  'в приложении часов — инструкции ниже',
+                  style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                );
+              }
+              return Card(
+                child: Column(
+                  children: [
+                    for (final s in list)
+                      ListTile(
+                        dense: true,
+                        leading: Icon(
+                          LucideIcons.circleCheck,
+                          size: 18,
+                          color: accent,
+                        ),
+                        title: Text(
+                          s.name,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                        subtitle: Text(
+                          [
+                            if (s.hasPulse) 'пульс',
+                            if (s.hasSteps) 'шаги',
+                            _ago(s.lastAt),
+                          ].join(' · '),
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppColors.textMuted,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
 }

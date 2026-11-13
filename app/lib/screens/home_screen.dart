@@ -3,7 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
-import '../avatar/avatar_view.dart';
+import '../avatar/posing_avatar.dart';
 import '../game/body_part.dart';
 import '../game/game_config.dart';
 import '../game/recommendation.dart';
@@ -15,9 +15,13 @@ import '../state/providers.dart';
 import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../state/workout_state.dart';
+import '../game/training_stats.dart';
+import '../state/training_log.dart';
+import '../widgets/streak_sheet.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/format.dart';
+import '../widgets/body_part_sheet.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
 import '../widgets/motion.dart';
@@ -55,10 +59,14 @@ class HomeScreen extends ConsumerWidget {
                     label: 'Открыть гардероб',
                     child: GestureDetector(
                       onTap: () => context.go('/wardrobe'),
-                      child: AvatarView(
+                      child: PosingAvatar(
                         levels: hero.avatarLevels,
                         look: hero.look,
                         muscles: hero.muscles,
+                        focus: recentMuscles(
+                          ref.watch(trainingLogProvider),
+                          DateTime.now(),
+                        ),
                         withLamp: true,
                       ),
                     ),
@@ -177,6 +185,7 @@ class _Header extends ConsumerWidget {
           children: [
             Flexible(
               child: _StatChip(
+                onTap: () => showStreakSheet(context),
                 icon: LucideIcons.flame,
                 iconColor: AppColors.textSecondary,
                 value: AnimatedNumber(
@@ -314,6 +323,8 @@ class _LaggingCard extends StatelessWidget {
                     const SizedBox(height: 2),
                     Text(
                       '${recommendation.text}, опыт ×1,5',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -348,20 +359,28 @@ class _LaggingCard extends StatelessWidget {
   }
 }
 
-class _PlateRow extends StatelessWidget {
+class _PlateRow extends ConsumerWidget {
   const _PlateRow({required this.hero});
 
   final HeroProfile hero;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final lagging = hero.lagging;
+    // Что качается чаще всего за две недели — «горит».
+    final hot = hotParts(
+      ref.watch(trainingLogProvider),
+      DateTime.now(),
+      muscles: hero.muscles,
+    );
     return Row(
       children: [
         for (final (i, part) in BodyPart.values.indexed) ...[
           if (i > 0) const SizedBox(width: 6),
           Expanded(
             child: LevelPlate(
+              hot: hot.contains(part),
+              onTap: () => showBodyPartSheet(context, part),
               part: part,
               xp: hero.xp[part]!,
               lagging: lagging.contains(part),
@@ -469,7 +488,7 @@ class _TipLine extends ConsumerWidget {
     final daily = ref.watch(tipsProvider);
     if (daily == null) return const SizedBox.shrink();
     final accent = Theme.of(context).colorScheme.primary;
-    final fresh = !daily.answered;
+    final fresh = !daily.done;
     return Padding(
       padding: const EdgeInsets.only(top: 8),
       child: Material(
@@ -522,14 +541,19 @@ class _TipLine extends ConsumerWidget {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: fresh ? 'Новый совет: ' : 'Совет дня: ',
+                            text: 'Советы дня: ',
                             style: TextStyle(
                               fontWeight: fresh
                                   ? FontWeight.w500
                                   : FontWeight.w400,
                             ),
                           ),
-                          TextSpan(text: daily.tip.title),
+                          TextSpan(
+                            text: fresh
+                                ? '${daily.answeredCount} из ${daily.tips.length} · '
+                                      '${daily.tips.firstWhere((t) => !daily.answered(t)).title}'
+                                : 'верно ${daily.correctCount} из ${daily.tips.length}',
+                          ),
                         ],
                       ),
                       maxLines: 1,
@@ -542,7 +566,7 @@ class _TipLine extends ConsumerWidget {
                       ),
                     ),
                   ),
-                  if (daily.answered)
+                  if (daily.done)
                     const Icon(
                       LucideIcons.check,
                       size: 16,
@@ -550,7 +574,7 @@ class _TipLine extends ConsumerWidget {
                     )
                   else
                     Text(
-                      '+${GameConfig.tipCoins}',
+                      'до +${daily.maxCoins}',
                       style: TextStyle(fontSize: 13, color: accent),
                     ),
                 ],

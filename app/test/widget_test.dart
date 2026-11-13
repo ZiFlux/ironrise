@@ -4,8 +4,8 @@ import 'package:ironrise/game/progression.dart';
 import 'package:ironrise/game/training_format.dart';
 
 Map<BodyPart, int> lv(List<int> l) => {
-      for (var i = 0; i < BodyPart.values.length; i++) BodyPart.values[i]: l[i],
-    };
+  for (var i = 0; i < BodyPart.values.length; i++) BodyPart.values[i]: l[i],
+};
 
 void main() {
   test('уровень растёт каждые 100 XP', () {
@@ -33,8 +33,10 @@ void main() {
   });
 
   test('опыт за подход: 18 · 0,7 · 1,5 · 1', () {
-    expect(Progression.xpForSet(share: 0.7, isLagging: true, validity: 1),
-        closeTo(18.9, 1e-9));
+    expect(
+      Progression.xpForSet(share: 0.7, isLagging: true, validity: 1),
+      closeTo(18.9, 1e-9),
+    );
   });
 
   test('допустимый отдых подряд по графику', () {

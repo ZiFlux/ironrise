@@ -4,7 +4,8 @@ import 'package:flutter_test/flutter_test.dart';
 
 import '../tool/gen_privacy.dart';
 
-String _read(String path) => File(path).readAsStringSync().replaceAll('\r\n', '\n');
+String _read(String path) =>
+    File(path).readAsStringSync().replaceAll('\r\n', '\n');
 
 void main() {
   test('копии политики совпадают с текстом приложения', () {

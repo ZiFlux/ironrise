@@ -159,6 +159,41 @@ class HealthNotifier extends Notifier<HealthState> {
     }
   }
 
+  /// Кто пишет в Health Connect пульс и шаги за неделю: приложение, сколько
+  /// записей и когда последняя. Пусто — нет доступа или данных.
+  Future<List<HealthSource>> sources() async {
+    if (!state.connected || !await _available()) return const [];
+    try {
+      final now = DateTime.now();
+      final points = await _health.getHealthDataFromTypes(
+        types: const [HealthDataType.HEART_RATE, HealthDataType.STEPS],
+        startTime: now.subtract(const Duration(days: 7)),
+        endTime: now,
+      );
+      final bySource = <String, HealthSource>{};
+      for (final p in points) {
+        final name = p.sourceName.isNotEmpty ? p.sourceName : p.sourceId;
+        final old = bySource[name];
+        final pulse = p.type == HealthDataType.HEART_RATE;
+        bySource[name] = HealthSource(
+          name: appLabelFor(name),
+          id: name,
+          records: (old?.records ?? 0) + 1,
+          hasPulse: (old?.hasPulse ?? false) || pulse,
+          hasSteps: (old?.hasSteps ?? false) || !pulse,
+          lastAt: old == null || p.dateTo.isAfter(old.lastAt)
+              ? p.dateTo
+              : old.lastAt,
+        );
+      }
+      return bySource.values.toList()
+        ..sort((a, b) => b.lastAt.compareTo(a.lastAt));
+    } catch (e) {
+      debugPrint('Health Connect источники: $e');
+      return const [];
+    }
+  }
+
   static double _number(HealthDataPoint p) {
     final v = p.value;
     return v is NumericHealthValue ? v.numericValue.toDouble() : 0;
@@ -168,3 +203,41 @@ class HealthNotifier extends Notifier<HealthState> {
 final healthProvider = NotifierProvider<HealthNotifier, HealthState>(
   HealthNotifier.new,
 );
+
+/// Приложение, которое пишет данные в Health Connect.
+class HealthSource {
+  const HealthSource({
+    required this.name,
+    required this.id,
+    required this.records,
+    required this.hasPulse,
+    required this.hasSteps,
+    required this.lastAt,
+  });
+
+  final String name;
+  final String id;
+  final int records;
+  final bool hasPulse;
+  final bool hasSteps;
+  final DateTime lastAt;
+}
+
+/// Понятное имя по пакету приложения: com.sec.android.app.shealth → Samsung Health.
+String appLabelFor(String packageOrName) {
+  const known = {
+    'com.sec.android.app.shealth': 'Samsung Health',
+    'com.mi.health': 'Mi Fitness',
+    'com.xiaomi.wearable': 'Mi Fitness',
+    'com.huami.watch.hmwatchmanager': 'Zepp',
+    'com.huawei.health': 'Huawei Health',
+    'com.google.android.apps.fitness': 'Google Fit',
+    'com.fitbit.FitbitMobile': 'Fitbit',
+    'com.garmin.android.apps.connectmobile': 'Garmin Connect',
+    'fi.polar.polarflow': 'Polar Flow',
+    'com.stt.android.suunto': 'Suunto',
+    'com.google.android.apps.healthdata': 'Health Connect',
+  };
+  return known[packageOrName] ??
+      (packageOrName.startsWith('com.ironrise') ? 'IronRise' : packageOrName);
+}

@@ -16,7 +16,11 @@ enum DayKind {
 }
 
 class CalendarDay {
-  const CalendarDay({required this.date, required this.kind, required this.isToday});
+  const CalendarDay({
+    required this.date,
+    required this.kind,
+    required this.isToday,
+  });
 
   final DateTime date;
   final DayKind kind;
@@ -30,7 +34,8 @@ String dayKey(DateTime d) =>
 DateTime dateOnly(DateTime d) => DateTime(d.year, d.month, d.day);
 
 /// Понедельник недели, в которую входит [d].
-DateTime mondayOf(DateTime d) => DateTime(d.year, d.month, d.day - (d.weekday - 1));
+DateTime mondayOf(DateTime d) =>
+    DateTime(d.year, d.month, d.day - (d.weekday - 1));
 
 class ActivityCalendar {
   const ActivityCalendar._();
@@ -47,13 +52,25 @@ class ActivityCalendar {
     final monday = t.subtract(Duration(days: t.weekday - 1));
     return [
       for (var i = 0; i < 7; i++)
-        _day(DateTime(monday.year, monday.month, monday.day + i), t, activeDays,
-            trainingDays, maxRestDays, dateOnly(startDay)),
+        _day(
+          DateTime(monday.year, monday.month, monday.day + i),
+          t,
+          activeDays,
+          trainingDays,
+          maxRestDays,
+          dateOnly(startDay),
+        ),
     ];
   }
 
-  static CalendarDay _day(DateTime date, DateTime today, Set<String> active,
-      List<int> trainingDays, int maxRestDays, DateTime start) {
+  static CalendarDay _day(
+    DateTime date,
+    DateTime today,
+    Set<String> active,
+    List<int> trainingDays,
+    int maxRestDays,
+    DateTime start,
+  ) {
     final isToday = date == today;
     DayKind kind;
     if (active.contains(dayKey(date))) {
@@ -65,7 +82,9 @@ class ActivityCalendar {
     } else if (date.isBefore(start)) {
       kind = DayKind.none;
     } else {
-      kind = _restRunIndex(date, active, start) > maxRestDays ? DayKind.missed : DayKind.rest;
+      kind = _restRunIndex(date, active, start) > maxRestDays
+          ? DayKind.missed
+          : DayKind.rest;
     }
     return CalendarDay(date: date, kind: kind, isToday: isToday);
   }

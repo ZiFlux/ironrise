@@ -8,15 +8,15 @@ void main() {
   // Неделя 9–15 ноября 2026, сегодня четверг 12-е. График Пн/Ср/Пт, лимит отдыха 2.
   final today = DateTime(2026, 11, 12, 18);
   List<DayKind> weekKinds(Set<String> active, {DateTime? start}) => [
-        for (final d in ActivityCalendar.week(
-          today: today,
-          activeDays: active,
-          trainingDays: const [0, 2, 4],
-          maxRestDays: 2,
-          startDay: start ?? DateTime(2026, 11, 1),
-        ))
-          d.kind,
-      ];
+    for (final d in ActivityCalendar.week(
+      today: today,
+      activeDays: active,
+      trainingDays: const [0, 2, 4],
+      maxRestDays: 2,
+      startDay: start ?? DateTime(2026, 11, 1),
+    ))
+      d.kind,
+  ];
 
   group('календарь недели', () {
     test('тренировки, отдых и план на будущее', () {
@@ -59,7 +59,11 @@ void main() {
     test('сгорает, когда отдых превысил лимит', () {
       final last = DateTime(2026, 11, 9);
       int at(int day) => Streak.current(
-          streakDays: 5, lastActiveDay: last, today: DateTime(2026, 11, day), maxRestDays: 2);
+        streakDays: 5,
+        lastActiveDay: last,
+        today: DateTime(2026, 11, day),
+        maxRestDays: 2,
+      );
       expect(at(12), 5); // 2 дня отдыха
       expect(at(13), 0); // 3 дня отдыха
     });

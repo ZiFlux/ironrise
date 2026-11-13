@@ -18,4 +18,6 @@ class AccentNotifier extends Notifier<AccentOption> {
   }
 }
 
-final accentProvider = NotifierProvider<AccentNotifier, AccentOption>(AccentNotifier.new);
+final accentProvider = NotifierProvider<AccentNotifier, AccentOption>(
+  AccentNotifier.new,
+);

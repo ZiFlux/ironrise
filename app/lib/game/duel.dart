@@ -72,12 +72,29 @@ class DuelResult {
     required this.defender,
     required this.hits,
     required this.attackerWon,
+    this.coins,
+    this.repeat = false,
   });
 
   final Fighter attacker;
   final Fighter defender;
   final List<DuelHit> hits;
   final bool attackerWon;
+
+  /// Монеты за бой; null — не известны (показываем по правилам).
+  final int? coins;
+
+  /// Повторный бой с этим ботом за сутки — монет вдвое меньше.
+  final bool repeat;
+
+  DuelResult withCoins(int coins, {required bool repeat}) => DuelResult(
+    attacker: attacker,
+    defender: defender,
+    hits: hits,
+    attackerWon: attackerWon,
+    coins: coins,
+    repeat: repeat,
+  );
 
   int get attackerHpLeft => hpAfter(hits.length).attacker;
   int get defenderHpLeft => hpAfter(hits.length).defender;
@@ -153,7 +170,10 @@ class DuelSimulator {
             GameConfig.duelHealMin +
             rng.nextDouble() *
                 (GameConfig.duelHealMax - GameConfig.duelHealMin);
-        final after = min<int>(f.power, hpSelf + max<int>(1, (f.power * share).round()));
+        final after = min<int>(
+          f.power,
+          hpSelf + max<int>(1, (f.power * share).round()),
+        );
         return _Turn.of(
           _strike(f, rng, 1),
           eventId: e.id,

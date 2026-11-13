@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../avatar/avatar_view.dart';
 import '../game/duel.dart';
+import '../game/game_config.dart';
 import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../state/duel_state.dart';
@@ -13,6 +14,7 @@ import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/motion.dart';
+import '../widgets/status_toast.dart';
 
 /// Дуэли (экран 9). С аккаунтом — боты дня и друзья через сервер,
 /// без аккаунта — локальные боты.
@@ -32,11 +34,7 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
       if (r != null && mounted) context.go('/duels/battle');
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.isNetwork ? 'Нет связи с сервером' : e.message),
-        ),
-      );
+      showStatusError(e.message, network: e.isNetwork);
     }
   }
 
@@ -48,15 +46,21 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     final duels = ref.read(duelProvider.notifier);
 
     if (!ref.watch(accountProvider).signedIn) {
-      ref.watch(duelProvider);
-      final bots = DuelBots.forDay(me, DateTime.now());
+      final day = ref.watch(duelProvider);
+      final now = DateTime.now();
+      final bots = DuelBots.forDay(me, now);
       return _Page(
         body: _FighterList(
           me: me,
           fighters: bots,
           results: duels.today,
-          counter: 'боёв ${duels.today.length} из ${bots.length}',
-          footer: 'Новые соперники каждый день. Войди в аккаунт, чтобы драться с друзьями',
+          repeatable: true,
+          nextFightAt: {
+            for (final b in bots)
+              if (day.nextFightAt(b.id, now) case final at?) b.id: at,
+          },
+          counter: _botsCounter(day.fights.values),
+          footer: _botsFooter,
           onFight: (bot) => _open(() => duels.fight(bot)),
         ),
       );
@@ -110,8 +114,10 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
                     me: me,
                     fighters: d.bots,
                     results: d.results,
-                    counter: 'боёв ${d.results.length} из ${d.bots.length}',
-                    footer: 'Новые соперники каждый день',
+                    repeatable: true,
+                    nextFightAt: d.nextFightAt,
+                    counter: _botsCounter(d.fights.values),
+                    footer: _botsFooter,
                     onFight: (bot) => _open(() => duels.fightOnServer(bot)),
                   ),
                   loading: () =>
@@ -122,6 +128,14 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     );
   }
 }
+
+/// «боёв сегодня: 5».
+String _botsCounter(Iterable<int> fights) =>
+    'боёв сегодня: ${fights.fold(0, (a, b) => a + b)}';
+
+final _botsFooter =
+    'С ботом — снова через ${GameConfig.duelCooldown.inHours} ч, повторный бой за сутки — половина монет. '
+    'Новые соперники каждый день';
 
 class _Page extends StatelessWidget {
   const _Page({required this.body, this.header, this.actions});
@@ -214,11 +228,17 @@ class _FighterList extends StatelessWidget {
     required this.footer,
     required this.onFight,
     this.scrollable = false,
+    this.repeatable = false,
+    this.nextFightAt = const {},
   });
 
   final Fighter me;
   final List<Fighter> fighters;
   final Map<String, bool> results;
+
+  /// С ботами можно драться снова после перезарядки; с друзьями — раз в день.
+  final bool repeatable;
+  final Map<String, DateTime> nextFightAt;
   final String counter;
   final String footer;
   final void Function(Fighter) onFight;
@@ -234,6 +254,8 @@ class _FighterList extends StatelessWidget {
           fighter: f,
           myPower: me.power,
           result: results[f.id],
+          repeatable: repeatable,
+          nextFightAt: nextFightAt[f.id],
           onFight: () => onFight(f),
         ),
       ),
@@ -319,12 +341,26 @@ class _FighterCard extends StatelessWidget {
     required this.myPower,
     required this.result,
     required this.onFight,
+    this.repeatable = false,
+    this.nextFightAt,
   });
 
   final Fighter fighter;
   final int myPower;
   final bool? result;
   final VoidCallback onFight;
+  final bool repeatable;
+
+  /// Перезарядка: снова можно драться с этого времени.
+  final DateTime? nextFightAt;
+
+  /// «через 3 ч 12 мин».
+  static String _wait(DateTime at) {
+    final left = at.difference(DateTime.now());
+    final h = left.inHours;
+    final m = left.inMinutes % 60 + 1;
+    return h > 0 ? 'через $h ч $m мин' : 'через $m мин';
+  }
 
   String get _strength {
     final ratio = fighter.power / myPower;
@@ -381,28 +417,70 @@ class _FighterCard extends StatelessWidget {
                 ],
               ),
             ),
-            switch (result) {
-              // Четыре соперника — четыре одинаковые кнопки: лайм был бы везде,
-              // поэтому кнопка спокойная, а лайм остаётся за победой.
-              null => Center(
-                child: OutlinedButton(
-                  onPressed: onFight,
-                  style: OutlinedButton.styleFrom(
-                    minimumSize: const Size(88, 40),
-                    backgroundColor: AppColors.raised,
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                  ),
-                  child: const Text('В бой'),
+            // Четыре соперника — четыре одинаковые кнопки: лайм был бы везде,
+            // поэтому кнопка спокойная, а лайм остаётся за победой.
+            if (result == null)
+              Center(
+                child: _FightButton(label: 'В бой', onTap: onFight),
+              )
+            else if (repeatable && nextFightAt == null)
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _FightButton(label: 'Ещё бой', onTap: onFight),
+                    const SizedBox(height: 2),
+                    const Text(
+                      '½ монет',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    _ResultTag(result! ? 'Победа' : 'Поражение', result!),
+                    if (repeatable && nextFightAt != null)
+                      Text(
+                        _wait(nextFightAt!),
+                        style: const TextStyle(
+                          fontSize: 11,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                  ],
                 ),
               ),
-              true => const Center(child: _ResultTag('Победа', true)),
-              false => const Center(child: _ResultTag('Поражение', false)),
-            },
           ],
         ),
       ),
     );
   }
+}
+
+class _FightButton extends StatelessWidget {
+  const _FightButton({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => OutlinedButton(
+    onPressed: onTap,
+    style: OutlinedButton.styleFrom(
+      minimumSize: const Size(88, 40),
+      backgroundColor: AppColors.raised,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+    ),
+    child: Text(label),
+  );
 }
 
 class _ResultTag extends StatelessWidget {

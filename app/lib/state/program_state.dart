@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/body_part.dart';
+import '../game/exercise_ladder.dart';
 import '../game/program.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
@@ -22,6 +23,10 @@ class UserProgram {
     this.hardInARow = 0,
     this.easeNext = false,
     this.painReports = const [],
+    this.levels = const {},
+    this.easyInARow = 0,
+    this.boostNext = false,
+    this.disliked = const {},
   });
 
   final Equipment equipment;
@@ -35,6 +40,30 @@ class UserProgram {
   /// Следующая тренировка по плану облегчена.
   final bool easeNext;
   final List<PainReport> painReports;
+
+  /// Ступень в каждом движении (pattern → 1–3): лесенка «проще → сложнее».
+  final Map<String, int> levels;
+
+  /// Сколько тренировок подряд человек отметил «легко».
+  final int easyInARow;
+
+  /// Следующая тренировка по плану усилена: на подход больше.
+  final bool boostNext;
+
+  /// Упражнения, которые «не зашли»: id → когда отмечено. Месяц их заменяем.
+  final Map<String, DateTime> disliked;
+
+  Set<String> dislikedNow(DateTime now) => {
+    for (final e in disliked.entries)
+      if (now.difference(e.value).inDays < Wellbeing.dislikeDays) e.key,
+  };
+
+  int levelOf(String pattern, {required int start}) => ExerciseLadder.levelOf(
+    pattern,
+    levels: levels,
+    progress: progress,
+    start: start,
+  );
 
   ProgramPhase get phase => ProgramPhase.after(completedWorkouts);
 
@@ -52,11 +81,28 @@ class UserProgram {
 
   /// План на сегодня: день фазы, точечное упражнение на отстающую часть («База»),
   /// облегчение и больные зоны.
-  AdaptedDay planFor({required DateTime now, required int sessionsPerWeek, BodyPart? lagging}) {
+  AdaptedDay planFor({
+    required DateTime now,
+    required int sessionsPerWeek,
+    BodyPart? lagging,
+    int startLevel = 1,
+  }) {
     final all = days(sessionsPerWeek);
-    var day = all[nextDayIndex % all.length];
-    if (phase == ProgramPhase.base) day = BaseProgram.withAccessories(day, lagging, equipment);
-    return Wellbeing.adapt(day, ease: easeNext, avoid: avoidedZones(now), equipment: equipment);
+    var day = ExerciseLadder.adapt(
+      all[nextDayIndex % all.length],
+      (pattern) => levelOf(pattern, start: startLevel),
+      equipment,
+    );
+    if (phase == ProgramPhase.base)
+      day = BaseProgram.withAccessories(day, lagging, equipment);
+    return Wellbeing.adapt(
+      day,
+      ease: easeNext,
+      boost: boostNext,
+      avoid: avoidedZones(now),
+      disliked: dislikedNow(now),
+      equipment: equipment,
+    );
   }
 
   ExerciseProgress progressOf(String exerciseId) =>
@@ -70,7 +116,15 @@ class UserProgram {
     int? hardInARow,
     bool? easeNext,
     List<PainReport>? painReports,
+    Map<String, int>? levels,
+    int? easyInARow,
+    bool? boostNext,
+    Map<String, DateTime>? disliked,
   }) => UserProgram(
+    levels: levels ?? this.levels,
+    easyInARow: easyInARow ?? this.easyInARow,
+    boostNext: boostNext ?? this.boostNext,
+    disliked: disliked ?? this.disliked,
     equipment: equipment ?? this.equipment,
     nextDayIndex: nextDayIndex ?? this.nextDayIndex,
     completedWorkouts: completedWorkouts ?? this.completedWorkouts,
@@ -88,6 +142,12 @@ class UserProgram {
     'hardInARow': hardInARow,
     'easeNext': easeNext,
     'painReports': [for (final r in painReports) r.toJson()],
+    'levels': levels,
+    'easyInARow': easyInARow,
+    'boostNext': boostNext,
+    'disliked': {
+      for (final e in disliked.entries) e.key: e.value.toIso8601String(),
+    },
   };
 
   factory UserProgram.fromJson(Map<String, dynamic> j) => UserProgram(
@@ -100,7 +160,20 @@ class UserProgram {
     },
     hardInARow: j['hardInARow'] ?? 0,
     easeNext: j['easeNext'] ?? false,
-    painReports: [for (final r in j['painReports'] as List? ?? const []) PainReport.fromJson(r)],
+    painReports: [
+      for (final r in j['painReports'] as List? ?? const [])
+        PainReport.fromJson(r),
+    ],
+    levels: {
+      for (final e in (j['levels'] as Map? ?? const {}).entries)
+        e.key as String: (e.value as num).toInt(),
+    },
+    easyInARow: j['easyInARow'] ?? 0,
+    boostNext: j['boostNext'] ?? false,
+    disliked: {
+      for (final e in (j['disliked'] as Map? ?? const {}).entries)
+        e.key as String: DateTime.parse(e.value as String),
+    },
   );
 }
 
@@ -110,7 +183,10 @@ class PainReport {
   final PainZone zone;
   final DateTime at;
 
-  Map<String, dynamic> toJson() => {'zone': zone.name, 'at': at.toIso8601String()};
+  Map<String, dynamic> toJson() => {
+    'zone': zone.name,
+    'at': at.toIso8601String(),
+  };
 
   factory PainReport.fromJson(Map<String, dynamic> j) =>
       PainReport(PainZone.values.byName(j['zone']), DateTime.parse(j['at']));
@@ -118,13 +194,23 @@ class PainReport {
 
 /// Что приложение ответило на самочувствие.
 class WellbeingResponse {
-  const WellbeingResponse({required this.feeling, this.zone, this.easeNext = false, this.repeatedPain = false, this.plan});
+  const WellbeingResponse({
+    required this.feeling,
+    this.zone,
+    this.easeNext = false,
+    this.boostNext = false,
+    this.repeatedPain = false,
+    this.plan,
+  });
 
   final Feeling feeling;
   final PainZone? zone;
 
   /// Следующая тренировка будет облегчена.
   final bool easeNext;
+
+  /// Следующая тренировка будет усилена.
+  final bool boostNext;
 
   /// Боль в этой зоне уже была недавно.
   final bool repeatedPain;
@@ -135,10 +221,17 @@ class WellbeingResponse {
 
 /// Итог по программе для экрана итогов: что изменится в следующий раз.
 class PlanResult {
-  const PlanResult({required this.changes, required this.bonusCoins});
+  const PlanResult({
+    required this.changes,
+    required this.bonusCoins,
+    this.levelUps = const [],
+  });
 
   final List<ProgressChange> changes;
   final int bonusCoins;
+
+  /// Освоенные упражнения: со следующей тренировки — вариант сложнее.
+  final List<LevelUp> levelUps;
 }
 
 class ProgramNotifier extends Notifier<UserProgram> {
@@ -156,9 +249,14 @@ class ProgramNotifier extends Notifier<UserProgram> {
   Future<void> setEquipment(Equipment equipment) =>
       _save(state.copyWith(equipment: equipment, nextDayIndex: 0));
 
-  /// Записать результат тренировки по плану: рабочие веса и следующий день.
-  Future<List<ProgressChange>> applyWorkout(WorkoutSession session) async {
-    if (session.planDayId == null) return const [];
+  /// Записать результат тренировки по плану: рабочие веса, ступени движений
+  /// и следующий день.
+  Future<({List<ProgressChange> changes, List<LevelUp> levelUps})> applyWorkout(
+    WorkoutSession session,
+  ) async {
+    if (session.planDayId == null) {
+      return (changes: <ProgressChange>[], levelUps: <LevelUp>[]);
+    }
     final progress = {...state.progress};
     final changes = <ProgressChange>[];
     for (final entry in session.entries) {
@@ -174,60 +272,161 @@ class ProgramNotifier extends Notifier<UserProgram> {
       progress[plan.exerciseId] = change.after;
       changes.add(change);
     }
-    await _save(state.copyWith(
-      progress: progress,
-      nextDayIndex: state.nextDayIndex + 1,
-      completedWorkouts: state.completedWorkouts + (session.planCompleted ? 1 : 0),
-      // Облегчённая тренировка сделана — дальше обычный план.
-      easeNext: false,
-    ));
-    return changes;
+    final levels = {...state.levels};
+    final levelUps = <LevelUp>[];
+    final hero = ref.read(heroProvider);
+    final start = startLevelOf(hero);
+    for (final change in changes) {
+      final exercise = change.plan.exercise;
+      final pattern = exercise.pattern;
+      final level = ExerciseLadder.levelOf(
+        pattern,
+        levels: levels,
+        progress: progress,
+        start: start,
+      );
+      // Ступень растёт с того варианта, на котором человек сейчас.
+      if (exercise.difficulty < level || level >= ExerciseLadder.maxLevel) {
+        continue;
+      }
+      if (level + 1 >= ExerciseLadder.maxLevel &&
+          state.completedWorkouts < ExerciseLadder.workoutsBeforeTopLevel) {
+        continue;
+      }
+      final harder = ExerciseLadder.harderThan(exercise, state.equipment);
+      if (harder == null) continue;
+      final ok = ExerciseLadder.mastered(
+        exercise,
+        change.after,
+        bodyweightKg: hero?.body.weightKg,
+        female: hero?.body.sex == Sex.female,
+      );
+      if (!ok) continue;
+      levels[pattern] = level + 1;
+      levelUps.add((from: exercise.name, to: harder.name));
+    }
+    await _save(
+      state.copyWith(
+        levels: levels,
+        progress: progress,
+        nextDayIndex: state.nextDayIndex + 1,
+        completedWorkouts:
+            state.completedWorkouts + (session.planCompleted ? 1 : 0),
+        // Облегчённая или усиленная тренировка сделана — дальше обычный план.
+        easeNext: false,
+        boostNext: false,
+      ),
+    );
+    return (changes: changes, levelUps: levelUps);
   }
 
   /// Только для разработки: сразу перейти в фазу «База» или вернуться в «Старт».
-  Future<void> debugTogglePhase() => _save(state.copyWith(
-    completedWorkouts: state.phase == ProgramPhase.start ? ProgramPhase.startWorkouts : 0,
-  ));
+  Future<void> debugTogglePhase() => _save(
+    state.copyWith(
+      completedWorkouts: state.phase == ProgramPhase.start
+          ? ProgramPhase.startWorkouts
+          : 0,
+    ),
+  );
 
   /// Самочувствие после тренировки (TRAINING_SYSTEM.md, раздел 6).
-  Future<WellbeingResponse> recordWellbeing(Feeling feeling, {PainZone? zone}) async {
+  Future<WellbeingResponse> recordWellbeing(
+    Feeling feeling, {
+    PainZone? zone,
+  }) async {
     final now = DateTime.now();
     switch (feeling) {
+      case Feeling.easy:
+        final easy = state.easyInARow + 1;
+        final boost = easy >= Wellbeing.easyInARowToBoost;
+        await _save(
+          state.copyWith(
+            hardInARow: 0,
+            easyInARow: boost ? 0 : easy,
+            boostNext: boost || state.boostNext,
+          ),
+        );
+        return WellbeingResponse(
+          feeling: Feeling.easy,
+          boostNext: boost,
+          plan: boost ? planForHero(state, ref.read(heroProvider)) : null,
+        );
       case Feeling.ok:
-        await _save(state.copyWith(hardInARow: 0));
+        await _save(state.copyWith(hardInARow: 0, easyInARow: 0));
         return const WellbeingResponse(feeling: Feeling.ok);
       case Feeling.hard:
         final hard = state.hardInARow + 1;
         final ease = hard >= Wellbeing.hardInARowToEase;
-        await _save(state.copyWith(hardInARow: ease ? 0 : hard, easeNext: ease || state.easeNext));
-        return WellbeingResponse(feeling: Feeling.hard, easeNext: ease, plan: ease ? planForHero(state, ref.read(heroProvider)) : null);
+        await _save(
+          state.copyWith(
+            hardInARow: ease ? 0 : hard,
+            easyInARow: 0,
+            easeNext: ease || state.easeNext,
+            boostNext: false,
+          ),
+        );
+        return WellbeingResponse(
+          feeling: Feeling.hard,
+          easeNext: ease,
+          plan: ease ? planForHero(state, ref.read(heroProvider)) : null,
+        );
       case Feeling.pain:
         final where = zone ?? PainZone.other;
         final repeated = state.painReports.any(
-          (r) => r.zone == where && now.difference(r.at) < Wellbeing.repeatWindow,
+          (r) =>
+              r.zone == where && now.difference(r.at) < Wellbeing.repeatWindow,
         );
-        await _save(state.copyWith(painReports: [
-          for (final r in state.painReports)
-            if (now.difference(r.at) < Wellbeing.repeatWindow) r,
-          PainReport(where, now),
-        ]));
-        return WellbeingResponse(feeling: Feeling.pain, zone: where, repeatedPain: repeated, plan: planForHero(state, ref.read(heroProvider)));
+        await _save(
+          state.copyWith(
+            painReports: [
+              for (final r in state.painReports)
+                if (now.difference(r.at) < Wellbeing.repeatWindow) r,
+              PainReport(where, now),
+            ],
+          ),
+        );
+        return WellbeingResponse(
+          feeling: Feeling.pain,
+          zone: where,
+          repeatedPain: repeated,
+          plan: planForHero(state, ref.read(heroProvider)),
+        );
     }
+  }
+
+  /// «Не зашло»: месяц ставим вместо него похожее (или возвращаем обратно).
+  Future<void> toggleDislike(String exerciseId) {
+    final disliked = {...state.disliked};
+    disliked.containsKey(exerciseId)
+        ? disliked.remove(exerciseId)
+        : disliked[exerciseId] = DateTime.now();
+    return _save(state.copyWith(disliked: disliked));
   }
 
   Future<void> _save(UserProgram program) async {
     state = program;
-    await ref.read(prefsProvider).setString(_programKey, jsonEncode(program.toJson()));
+    await ref
+        .read(prefsProvider)
+        .setString(_programKey, jsonEncode(program.toJson()));
   }
 }
 
-final programProvider = NotifierProvider<ProgramNotifier, UserProgram>(ProgramNotifier.new);
+final programProvider = NotifierProvider<ProgramNotifier, UserProgram>(
+  ProgramNotifier.new,
+);
 
 /// План следующей тренировки с учётом героя: формат тренировок и отстающая часть.
-AdaptedDay planForHero(UserProgram program, HeroProfile? hero) => program.planFor(
-  now: DateTime.now(),
-  sessionsPerWeek: hero?.trainingDays.length ?? 3,
-  lagging: hero?.lagging.firstOrNull,
+AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
+    program.planFor(
+      now: DateTime.now(),
+      sessionsPerWeek: hero?.trainingDays.length ?? 3,
+      lagging: hero?.lagging.firstOrNull,
+      startLevel: startLevelOf(hero),
+    );
+
+/// Стартовая ступень по анкете: регулярно тренируется — 2, иначе — с самых простых.
+int startLevelOf(HeroProfile? hero) => ExerciseLadder.startLevel(
+  regular: hero?.body.experience == Experience.regular,
 );
 
 final todayPlanProvider = Provider<AdaptedDay>(
@@ -242,4 +441,6 @@ class LastPlanResultNotifier extends Notifier<PlanResult?> {
 }
 
 final lastPlanResultProvider =
-    NotifierProvider<LastPlanResultNotifier, PlanResult?>(LastPlanResultNotifier.new);
+    NotifierProvider<LastPlanResultNotifier, PlanResult?>(
+      LastPlanResultNotifier.new,
+    );

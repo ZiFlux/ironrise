@@ -4,6 +4,7 @@ import '../game/body_part.dart';
 import '../game/muscles.dart';
 import 'avatar_look.dart';
 import 'avatar_painter.dart';
+import 'body_frame.dart';
 
 /// Аватар героя. Пропорции из уровней, внешний вид из образа.
 class AvatarView extends StatelessWidget {
@@ -13,7 +14,13 @@ class AvatarView extends StatelessWidget {
     required this.look,
     this.withLamp = false,
     this.muscles = const {},
+    this.pose = AvatarPose.relaxed,
+    this.poseT = 0,
   });
+
+  /// Поза и доля входа в неё (avatar/posing_avatar.dart анимирует).
+  final AvatarPose pose;
+  final double poseT;
 
   final Map<BodyPart, num> levels;
   final AvatarLook look;
@@ -30,7 +37,13 @@ class AvatarView extends StatelessWidget {
     // (таймер, анимация кнопки, прокрутка соседнего списка).
     final avatar = RepaintBoundary(
       child: CustomPaint(
-        painter: AvatarPainter(levels: levels, look: look, muscles: muscles),
+        painter: AvatarPainter(
+          levels: levels,
+          look: look,
+          muscles: muscles,
+          pose: pose,
+          poseT: poseT,
+        ),
         size: Size.infinite,
       ),
     );

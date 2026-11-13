@@ -32,7 +32,11 @@ const _watchControl = MethodChannel('ironrise/watch_control');
 const _watchSilenceLimit = Duration(seconds: 15);
 
 class SensorDevice {
-  const SensorDevice({required this.id, required this.name, required this.rssi});
+  const SensorDevice({
+    required this.id,
+    required this.name,
+    required this.rssi,
+  });
 
   final String id;
   final String name;
@@ -65,15 +69,14 @@ class HeartRateState {
     int? bpm,
     String? message,
     PulseSource? source,
-  }) =>
-      HeartRateState(
-        status: status ?? this.status,
-        found: found ?? this.found,
-        sensorName: sensorName ?? this.sensorName,
-        bpm: bpm ?? this.bpm,
-        message: message,
-        source: source ?? this.source,
-      );
+  }) => HeartRateState(
+    status: status ?? this.status,
+    found: found ?? this.found,
+    sensorName: sensorName ?? this.sensorName,
+    bpm: bpm ?? this.bpm,
+    message: message,
+    source: source ?? this.source,
+  );
 }
 
 /// Живой пульс по Bluetooth. Хранит отсчёты последних часов для проверки тренировки.
@@ -116,7 +119,8 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
 
   /// Пульс с приложения на часах. Bluetooth-датчик, если подключён, главнее.
   void _onWatchMessage(WatchMessage? message) {
-    final bluetoothActive = state.isConnected && state.source == PulseSource.bluetooth;
+    final bluetoothActive =
+        state.isConnected && state.source == PulseSource.bluetooth;
     if (message == null || bluetoothActive) return;
     if (message is WatchStopped) {
       _watchStopped('Тренировка на часах завершена');
@@ -131,7 +135,10 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
       bpm: pulse.bpm,
     );
     _watchSilence?.cancel();
-    _watchSilence = Timer(_watchSilenceLimit, () => _watchStopped('Часы перестали передавать пульс'));
+    _watchSilence = Timer(
+      _watchSilenceLimit,
+      () => _watchStopped('Часы перестали передавать пульс'),
+    );
   }
 
   void _watchStopped(String message) {
@@ -155,17 +162,25 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
     if (!await _ensurePermissions()) return;
     await _scan?.cancel();
     state = state.copyWith(status: HeartRateStatus.scanning, found: const []);
-    _scan = _ble.scanForDevices(withServices: [_heartRateService], scanMode: ScanMode.lowLatency).listen(
-      _onDiscovered,
-      onError: (_) => _fail('Не удалось начать поиск. Проверьте, что Bluetooth включён'),
-    );
+    _scan = _ble
+        .scanForDevices(
+          withServices: [_heartRateService],
+          scanMode: ScanMode.lowLatency,
+        )
+        .listen(
+          _onDiscovered,
+          onError: (_) => _fail(
+            'Не удалось начать поиск. Проверьте, что Bluetooth включён',
+          ),
+        );
     Future.delayed(const Duration(seconds: 15), stopScan);
   }
 
   Future<void> stopScan() async {
     await _scan?.cancel();
     _scan = null;
-    if (state.status == HeartRateStatus.scanning) state = state.copyWith(status: HeartRateStatus.idle);
+    if (state.status == HeartRateStatus.scanning)
+      state = state.copyWith(status: HeartRateStatus.idle);
   }
 
   Future<void> connect(SensorDevice device) async {
@@ -185,31 +200,47 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
     final others = state.found.where((d) => d.id != device.id);
     final name = device.name.isEmpty ? 'Без названия' : device.name;
     state = state.copyWith(
-      found: [...others, SensorDevice(id: device.id, name: name, rssi: device.rssi)]
-        ..sort((a, b) => b.rssi.compareTo(a.rssi)),
+      found: [
+        ...others,
+        SensorDevice(id: device.id, name: name, rssi: device.rssi),
+      ]..sort((a, b) => b.rssi.compareTo(a.rssi)),
     );
   }
 
   void _connect(SensorDevice device) {
-    state = state.copyWith(status: HeartRateStatus.connecting, sensorName: device.name);
+    state = state.copyWith(
+      status: HeartRateStatus.connecting,
+      sensorName: device.name,
+    );
     _connection?.cancel();
     _connection = _ble
-        .connectToDevice(id: device.id, connectionTimeout: const Duration(seconds: 10))
+        .connectToDevice(
+          id: device.id,
+          connectionTimeout: const Duration(seconds: 10),
+        )
         .listen(
           (update) => _onConnectionChanged(device, update.connectionState),
           onError: (_) => _fail('Не удалось подключиться к «${device.name}»'),
         );
   }
 
-  void _onConnectionChanged(SensorDevice device, DeviceConnectionState connection) {
+  void _onConnectionChanged(
+    SensorDevice device,
+    DeviceConnectionState connection,
+  ) {
     switch (connection) {
       case DeviceConnectionState.connected:
         state = state.copyWith(status: HeartRateStatus.connected);
         _subscribeToPulse(device.id);
       case DeviceConnectionState.disconnected:
         _measurements?.cancel();
-        state = HeartRateState(status: HeartRateStatus.idle, sensorName: device.name, message: 'Датчик отключился');
-      case DeviceConnectionState.connecting || DeviceConnectionState.disconnecting:
+        state = HeartRateState(
+          status: HeartRateStatus.idle,
+          sensorName: device.name,
+          message: 'Датчик отключился',
+        );
+      case DeviceConnectionState.connecting ||
+          DeviceConnectionState.disconnecting:
         break;
     }
   }
@@ -221,7 +252,9 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
       characteristicId: _heartRateMeasurement,
       deviceId: deviceId,
     );
-    _measurements = _ble.subscribeToCharacteristic(characteristic).listen((data) {
+    _measurements = _ble.subscribeToCharacteristic(characteristic).listen((
+      data,
+    ) {
       final bpm = parseHeartRateMeasurement(data);
       if (bpm == null || bpm == 0) return;
       _record(bpm);
@@ -245,7 +278,9 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
 
   void _savePulse(DateTime now) {
     _savedAt = now;
-    final packed = _samples.map((s) => '${s.at.millisecondsSinceEpoch}:${s.bpm}').join(',');
+    final packed = _samples
+        .map((s) => '${s.at.millisecondsSinceEpoch}:${s.bpm}')
+        .join(',');
     ref.read(prefsProvider).setString(_pulseKey, packed);
   }
 
@@ -255,7 +290,9 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
     final now = DateTime.now();
     return [
       for (final item in packed.split(','))
-        if (_unpack(item) case final sample? when now.difference(sample.at) <= _bufferLength) sample,
+        if (_unpack(item) case final sample?
+            when now.difference(sample.at) <= _bufferLength)
+          sample,
     ];
   }
 
@@ -268,13 +305,18 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
   }
 
   Future<bool> _ensurePermissions() async {
-    final results = await [Permission.bluetoothScan, Permission.bluetoothConnect].request();
+    final results = await [
+      Permission.bluetoothScan,
+      Permission.bluetoothConnect,
+    ].request();
     final granted = results.values.every((s) => s.isGranted || s.isLimited);
-    if (!granted) _fail('Нужно разрешение на Bluetooth, чтобы найти датчик пульса');
+    if (!granted)
+      _fail('Нужно разрешение на Bluetooth, чтобы найти датчик пульса');
     return granted;
   }
 
-  void _fail(String message) => state = state.copyWith(status: HeartRateStatus.failed, message: message);
+  void _fail(String message) =>
+      state = state.copyWith(status: HeartRateStatus.failed, message: message);
 
   void _cancelAll() {
     _scan?.cancel();
@@ -310,7 +352,11 @@ WatchMessage? parseWatchMessage(String raw) {
   final steps = int.tryParse(parts[2]);
   final millis = int.tryParse(parts[3]);
   if (bpm == null || steps == null || millis == null || bpm <= 0) return null;
-  return WatchPulse(bpm: bpm, steps: steps, at: DateTime.fromMillisecondsSinceEpoch(millis));
+  return WatchPulse(
+    bpm: bpm,
+    steps: steps,
+    at: DateTime.fromMillisecondsSinceEpoch(millis),
+  );
 }
 
 /// Разбор значения Heart Rate Measurement (0x2A37): первый бит флагов —
@@ -323,4 +369,6 @@ int? parseHeartRateMeasurement(List<int> data) {
   return data[1] | (data[2] << 8);
 }
 
-final heartRateProvider = NotifierProvider<HeartRateNotifier, HeartRateState>(HeartRateNotifier.new);
+final heartRateProvider = NotifierProvider<HeartRateNotifier, HeartRateState>(
+  HeartRateNotifier.new,
+);

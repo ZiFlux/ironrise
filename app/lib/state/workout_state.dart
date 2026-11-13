@@ -7,6 +7,9 @@ import '../game/muscles.dart';
 import '../game/exercise_catalog.dart';
 import '../game/game_config.dart';
 import '../game/program.dart';
+import '../game/set_effort.dart';
+import '../game/streak_rewards.dart';
+import '../game/warmup.dart';
 import '../game/workout.dart';
 import 'account_state.dart';
 import 'consent_state.dart';
@@ -14,6 +17,7 @@ import 'health_state.dart';
 import 'heart_rate_state.dart';
 import 'program_state.dart';
 import 'records_state.dart';
+import 'training_log.dart';
 import 'providers.dart';
 
 const _sessionKey = 'workout_session_v1';
@@ -32,19 +36,37 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     }
   }
 
+  /// Сегодня силовая уже была: вторую не начать (лимит, как на сервере).
+  bool get _doneToday => doneToday(
+    ref.read(trainingLogProvider),
+    WorkoutKind.strength,
+    DateTime.now(),
+  );
+
+  List<String> _warmupFor(List<Exercise> exercises) => [
+    for (final m in Warmup.forExercises(
+      exercises,
+      ref.read(programProvider).equipment,
+    ))
+      m.id,
+  ];
+
   void start() {
-    if (state != null) return;
-    _save(WorkoutSession(startedAt: DateTime.now()));
+    if (state != null || _doneToday) return;
+    _save(
+      WorkoutSession(startedAt: DateTime.now(), warmup: _warmupFor(const [])),
+    );
     ref.read(heartRateProvider.notifier).startWatch();
   }
 
   /// Тренировка по программе: упражнения дня уже добавлены, у каждого — цель.
   void startPlanned(ProgramDay day) {
-    if (state != null) return;
+    if (state != null || _doneToday) return;
     _save(
       WorkoutSession(
         startedAt: DateTime.now(),
         planDayId: day.id,
+        warmup: _warmupFor([for (final e in day.exercises) e.exercise]),
         entries: [
           for (final plan in day.exercises)
             ExerciseEntry(exercise: plan.exercise, plan: plan),
@@ -52,6 +74,15 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
       ),
     );
     ref.read(heartRateProvider.notifier).startWatch();
+  }
+
+  /// Отметить движение разминки сделанным (или снять отметку).
+  void toggleWarmup(String moveId) {
+    final session = state;
+    if (session == null) return;
+    final done = {...session.warmupDone};
+    done.contains(moveId) ? done.remove(moveId) : done.add(moveId);
+    _save(session.copyWith(warmupDone: done));
   }
 
   void setReserve(int entryIndex, bool hadReserve) =>
@@ -71,8 +102,16 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     );
   }
 
-  void logSet(int entryIndex, SetRecord set) =>
-      _updateEntry(entryIndex, (entry) => entry.withSet(set));
+  void logSet(int entryIndex, SetRecord set) => _updateEntry(
+    entryIndex,
+    (entry) => entry.withSet(
+      SetRecord(
+        weight: set.weight,
+        reps: set.reps,
+        at: set.at ?? DateTime.now(),
+      ),
+    ),
+  );
 
   void undoLastSet(int entryIndex) =>
       _updateEntry(entryIndex, (entry) => entry.withoutLastSet());
@@ -117,14 +156,23 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
       restingHeartRate: hero.restingHeartRate,
       unverified: hero.unverifiedValidity,
     );
-    final summary = WorkoutScoring.summarize(
-      session: session,
-      xpBefore: hero.xp,
-      validity: report.value,
-      validityReport: report,
-      finishedAt: finishedAt,
+    final boosters = hero.boosters;
+    // Бустеры за серию: опыт ×1,5 и монеты ×2 — по одному на тренировку.
+    final summary = boostedSummary(
+      WorkoutScoring.summarize(
+        session: session,
+        xpBefore: hero.xp,
+        validity: report.value,
+        validityReport: report,
+        finishedAt: finishedAt,
+      ),
+      hero.xp,
+      xp: boosters.xp > 0,
+      coins: boosters.coins > 0,
+      comeback:
+          hero.lastActiveDay != null && hero.currentStreak(finishedAt) == 0,
     );
-    await ref
+    final streak = await ref
         .read(heroProvider.notifier)
         .applyWorkout(
           summary,
@@ -133,10 +181,43 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
             for (final e in session.entries)
               (exerciseId: e.exercise.id, sets: e.sets.length),
           ], summary.validity),
+          usedBoosters: !boosters.isEmpty,
+          grantStreak: !ref.read(accountProvider).signedIn,
         );
+    ref.read(lastStreakRewardProvider.notifier).show(streak);
     ref.read(lastSummaryProvider.notifier).show(summary);
+    ref
+        .read(lastSetEffortProvider.notifier)
+        .show(
+          SetEffortAnalysis.of(
+            session,
+            pulse,
+            restingHr: hero.restingHeartRate,
+            maxHr: hero.maxHeartRate,
+          ),
+        );
     await _applyProgram(session, summary);
     await ref.read(recordsProvider.notifier).record(session, finishedAt);
+    final hr = pulseSummary(pulse);
+    await ref
+        .read(trainingLogProvider.notifier)
+        .add(
+          LoggedWorkout(
+            at: finishedAt,
+            kind: WorkoutKind.strength,
+            duration: finishedAt.difference(session.startedAt),
+            xp: summary.totalXp,
+            coins: summary.coins,
+            verified: summary.isVerified,
+            exercises: [
+              for (final e in session.entries)
+                if (e.sets.isNotEmpty) (id: e.exercise.id, sets: e.sets),
+            ],
+            gains: {for (final g in summary.gains) g.part: g.xp},
+            avgHr: hr.avg,
+            maxHr: hr.max,
+          ),
+        );
     _save(null);
     // Не ждём сети: итог уже на экране, отправка идёт в фоне.
     ref
@@ -154,7 +235,7 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
       ref.read(lastPlanResultProvider.notifier).show(null);
       return;
     }
-    final changes = await ref
+    final applied = await ref
         .read(programProvider.notifier)
         .applyWorkout(session);
     final bonus = session.planCompleted
@@ -163,7 +244,13 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     if (bonus > 0) await ref.read(heroProvider.notifier).addCoins(bonus);
     ref
         .read(lastPlanResultProvider.notifier)
-        .show(PlanResult(changes: changes, bonusCoins: bonus));
+        .show(
+          PlanResult(
+            changes: applied.changes,
+            bonusCoins: bonus,
+            levelUps: applied.levelUps,
+          ),
+        );
   }
 
   void _updateEntry(int index, ExerciseEntry Function(ExerciseEntry) change) {
@@ -198,4 +285,17 @@ class LastSummaryNotifier extends Notifier<WorkoutSummary?> {
 final lastSummaryProvider =
     NotifierProvider<LastSummaryNotifier, WorkoutSummary?>(
       LastSummaryNotifier.new,
+    );
+
+/// Пульс по подходам последней силовой — для экрана итогов. null — нет данных.
+class LastSetEffortNotifier extends Notifier<SetEffortAnalysis?> {
+  @override
+  SetEffortAnalysis? build() => null;
+
+  void show(SetEffortAnalysis? analysis) => state = analysis;
+}
+
+final lastSetEffortProvider =
+    NotifierProvider<LastSetEffortNotifier, SetEffortAnalysis?>(
+      LastSetEffortNotifier.new,
     );

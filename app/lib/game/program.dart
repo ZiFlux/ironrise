@@ -69,7 +69,13 @@ class StartProgram {
       PlannedExercise(id, sets: 2, repsMin: 10, repsMax: 12, repsInReserve: 3);
 
   /// Планка — в секундах.
-  static const _plank = PlannedExercise('plank', sets: 2, repsMin: 20, repsMax: 30, repsInReserve: 3);
+  static const _plank = PlannedExercise(
+    'plank',
+    sets: 2,
+    repsMin: 20,
+    repsMax: 30,
+    repsInReserve: 3,
+  );
 
   static List<ProgramDay> days(Equipment equipment) => switch (equipment) {
     Equipment.gym => [
@@ -103,13 +109,10 @@ class StartProgram {
   };
 }
 
-/// Нужен тренажёр, штанга или турник: дома с гантелями недоступно.
-const _gymOnly = {
-  'barbell_squat', 'bench_press', 'lat_pulldown', 'leg_press', 'back_extension', 'pull_up', 'dips', 'hanging_leg_raise',
-};
-
+/// Дома с гантелями недоступно то, что требует зала.
 bool isAvailable(String exerciseId, Equipment equipment) =>
-    equipment == Equipment.gym || !_gymOnly.contains(exerciseId);
+    equipment == Equipment.gym ||
+    ExerciseCatalog.byId(exerciseId).gear != ExerciseGear.gym;
 
 /// Чем заменить упражнение зала дома с гантелями, по порядку предпочтения.
 const _homeAlternatives = <String, List<String>>{
@@ -134,7 +137,9 @@ enum ProgramPhase {
   static const startWorkouts = 12;
 
   static ProgramPhase after(int completedPlanWorkouts) =>
-      completedPlanWorkouts < startWorkouts ? ProgramPhase.start : ProgramPhase.base;
+      completedPlanWorkouts < startWorkouts
+      ? ProgramPhase.start
+      : ProgramPhase.base;
 }
 
 /// Фаза «База» (недели 5–12): 3 подхода × 8–12, 2 повтора в запасе,
@@ -145,22 +150,59 @@ class BaseProgram {
   static PlannedExercise _base(String id) =>
       PlannedExercise(id, sets: 3, repsMin: 8, repsMax: 12, repsInReserve: 2);
 
-  static const _plank = PlannedExercise('plank', sets: 3, repsMin: 30, repsMax: 45, repsInReserve: 2);
+  static const _plank = PlannedExercise(
+    'plank',
+    sets: 3,
+    repsMin: 30,
+    repsMax: 45,
+    repsInReserve: 2,
+  );
 
-  static ProgramDay _day(String id, String title, List<String> exerciseIds) => ProgramDay(id, title, [
-    for (final e in exerciseIds) e == 'plank' ? _plank : _base(e),
-  ]);
+  static ProgramDay _day(String id, String title, List<String> exerciseIds) =>
+      ProgramDay(id, title, [
+        for (final e in exerciseIds) e == 'plank' ? _plank : _base(e),
+      ]);
 
   static final _fullBody = [
-    _day('A', 'Тренировка А', ['barbell_squat', 'bench_press', 'lat_pulldown', 'plank']),
-    _day('B', 'Тренировка Б', ['romanian_deadlift', 'db_shoulder_press', 'db_row', 'lunges']),
+    _day('A', 'Тренировка А', [
+      'barbell_squat',
+      'bench_press',
+      'lat_pulldown',
+      'plank',
+    ]),
+    _day('B', 'Тренировка Б', [
+      'romanian_deadlift',
+      'db_shoulder_press',
+      'db_row',
+      'lunges',
+    ]),
   ];
 
   static final _upperLower = [
-    _day('U1', 'Верх 1', ['bench_press', 'lat_pulldown', 'db_shoulder_press', 'db_curl']),
-    _day('L1', 'Низ 1', ['barbell_squat', 'romanian_deadlift', 'lunges', 'plank']),
-    _day('U2', 'Верх 2', ['db_bench_press', 'db_row', 'push_up', 'french_press']),
-    _day('L2', 'Низ 2', ['leg_press', 'back_extension', 'bodyweight_squat', 'hanging_leg_raise']),
+    _day('U1', 'Верх 1', [
+      'bench_press',
+      'lat_pulldown',
+      'db_shoulder_press',
+      'db_curl',
+    ]),
+    _day('L1', 'Низ 1', [
+      'barbell_squat',
+      'romanian_deadlift',
+      'lunges',
+      'plank',
+    ]),
+    _day('U2', 'Верх 2', [
+      'db_bench_press',
+      'db_row',
+      'push_up',
+      'french_press',
+    ]),
+    _day('L2', 'Низ 2', [
+      'leg_press',
+      'back_extension',
+      'bodyweight_squat',
+      'hanging_leg_raise',
+    ]),
   ];
 
   /// День отстающей части: упражнения добираются под отстающую часть тела.
@@ -182,24 +224,35 @@ class BaseProgram {
     final used = <String>{};
     final exercises = <PlannedExercise>[];
     for (final planned in day.exercises) {
-      final options = [planned.exerciseId, ...?_homeAlternatives[planned.exerciseId]];
-      final id = options.where((o) => isAvailable(o, equipment) && !used.contains(o)).firstOrNull;
+      final options = [
+        planned.exerciseId,
+        ...?_homeAlternatives[planned.exerciseId],
+      ];
+      final id = options
+          .where((o) => isAvailable(o, equipment) && !used.contains(o))
+          .firstOrNull;
       if (id == null) continue;
       used.add(id);
-      exercises.add(PlannedExercise(
-        id,
-        sets: planned.sets,
-        repsMin: planned.repsMin,
-        repsMax: planned.repsMax,
-        repsInReserve: planned.repsInReserve,
-      ));
+      exercises.add(
+        PlannedExercise(
+          id,
+          sets: planned.sets,
+          repsMin: planned.repsMin,
+          repsMax: planned.repsMax,
+          repsInReserve: planned.repsInReserve,
+        ),
+      );
     }
     return ProgramDay(day.id, day.title, exercises);
   }
 
   /// Точечное упражнение на отстающую часть: самое нагружающее её, доступное
   /// и ещё не стоящее в этом дне. Кардио качается с часов, его не добавляем.
-  static PlannedExercise? accessoryFor(BodyPart lagging, ProgramDay day, Equipment equipment) {
+  static PlannedExercise? accessoryFor(
+    BodyPart lagging,
+    ProgramDay day,
+    Equipment equipment,
+  ) {
     if (lagging == BodyPart.cardio) return null;
     final inDay = {for (final e in day.exercises) e.exerciseId};
     final exercise = ExerciseCatalog.forPart(lagging)
@@ -218,24 +271,38 @@ class BaseProgram {
 
   /// День с точечными упражнениями: в обычный день одно в конец,
   /// в день отстающей части — три.
-  static ProgramDay withAccessories(ProgramDay day, BodyPart? lagging, Equipment equipment) {
+  static ProgramDay withAccessories(
+    ProgramDay day,
+    BodyPart? lagging,
+    Equipment equipment,
+  ) {
     final isFocusDay = day.id == _focusDay.id;
     var result = day;
     if (lagging != null) {
       for (var i = 0; i < (isFocusDay ? 3 : 1); i++) {
         final extra = accessoryFor(lagging, result, equipment);
         if (extra == null) break;
-        result = ProgramDay(result.id, result.title, [...result.exercises, extra]);
+        result = ProgramDay(result.id, result.title, [
+          ...result.exercises,
+          extra,
+        ]);
       }
     }
     // День отстающей части, когда отставания нет, — обычная тренировка всего тела.
-    return result.exercises.isEmpty ? forEquipment(_fullBody.first, equipment) : result;
+    return result.exercises.isEmpty
+        ? forEquipment(_fullBody.first, equipment)
+        : result;
   }
 }
 
 /// Прогресс в упражнении: рабочий вес (или цель повторов без веса) и недоборы подряд.
 class ExerciseProgress {
-  const ExerciseProgress({this.workingWeight, this.repsBonus = 0, this.misses = 0});
+  const ExerciseProgress({
+    this.workingWeight,
+    this.repsBonus = 0,
+    this.misses = 0,
+    this.increases = 0,
+  });
 
   /// null — вес ещё не подобран (калибровка).
   final double? workingWeight;
@@ -244,18 +311,23 @@ class ExerciseProgress {
   final int repsBonus;
   final int misses;
 
+  /// Сколько раз рабочий вес прибавлялся — для перехода на ступень выше.
+  final int increases;
+
   bool get isCalibrating => workingWeight == null;
 
   Map<String, dynamic> toJson() => {
     'workingWeight': workingWeight,
     'repsBonus': repsBonus,
     'misses': misses,
+    'increases': increases,
   };
 
   factory ExerciseProgress.fromJson(Map<String, dynamic> j) => ExerciseProgress(
     workingWeight: (j['workingWeight'] as num?)?.toDouble(),
     repsBonus: j['repsBonus'] ?? 0,
     misses: j['misses'] ?? 0,
+    increases: j['increases'] ?? 0,
   );
 }
 
@@ -297,51 +369,89 @@ class DoubleProgression {
     final exercise = plan.exercise;
     final target = repsRange(plan, current);
     final planned = sets.take(plan.sets).toList();
-    final allTop = planned.length >= plan.sets && planned.every((s) => s.reps >= target.max);
+    final allTop =
+        planned.length >= plan.sets &&
+        planned.every((s) => s.reps >= target.max);
     final belowMin = planned.any((s) => s.reps < target.min);
 
     if (!exercise.usesWeight) {
       if (allTop && hadReserve) {
         return change(
-          ExerciseProgress(repsBonus: current.repsBonus + bodyweightRepsStep),
+          ExerciseProgress(
+            repsBonus: current.repsBonus + bodyweightRepsStep,
+            increases: current.increases + 1,
+          ),
           ProgressKind.increase,
         );
       }
-      return change(ExerciseProgress(repsBonus: current.repsBonus), ProgressKind.hold);
+      return change(
+        ExerciseProgress(
+          repsBonus: current.repsBonus,
+          increases: current.increases,
+        ),
+        ProgressKind.hold,
+      );
     }
 
     // Первая тренировка: вес, который человек выбрал сам, и есть рабочий.
     if (current.isCalibrating) {
-      return change(ExerciseProgress(workingWeight: _lastWeight(sets)), ProgressKind.calibrated);
+      return change(
+        ExerciseProgress(workingWeight: _lastWeight(sets)),
+        ProgressKind.calibrated,
+      );
     }
     final weight = current.workingWeight!;
     if (allTop && hadReserve) {
       return change(
-        ExerciseProgress(workingWeight: _round(weight + weightStep(exercise, weight))),
+        ExerciseProgress(
+          workingWeight: _round(weight + weightStep(exercise, weight)),
+          increases: current.increases + 1,
+        ),
         ProgressKind.increase,
       );
     }
-    if (!belowMin) return change(ExerciseProgress(workingWeight: weight), ProgressKind.hold);
+    if (!belowMin)
+      return change(
+        ExerciseProgress(workingWeight: weight, increases: current.increases),
+        ProgressKind.hold,
+      );
     final misses = current.misses + 1;
     if (misses >= missesBeforeDeload) {
       return change(
-        ExerciseProgress(workingWeight: _round(weight * deloadFactor)),
+        ExerciseProgress(
+          workingWeight: _round(weight * deloadFactor),
+          increases: current.increases,
+        ),
         ProgressKind.deload,
       );
     }
-    return change(ExerciseProgress(workingWeight: weight, misses: misses), ProgressKind.hold);
+    return change(
+      ExerciseProgress(
+        workingWeight: weight,
+        misses: misses,
+        increases: current.increases,
+      ),
+      ProgressKind.hold,
+    );
   }
 
   /// Ноги и тяги растут быстрее жимов; гантели — по килограмму.
   static double weightStep(Exercise exercise, double weight) {
     if (exercise.id.startsWith('db_')) return 1;
-    final big = exercise.mainPart == BodyPart.legs || exercise.mainPart == BodyPart.back;
+    final big =
+        exercise.mainPart == BodyPart.legs ||
+        exercise.mainPart == BodyPart.back;
     if (!big) return 2.5;
     return weight < 40 ? 2.5 : 5;
   }
 
-  static ({int min, int max}) repsRange(PlannedExercise plan, ExerciseProgress progress) =>
-      (min: plan.repsMin + progress.repsBonus, max: plan.repsMax + progress.repsBonus);
+  static ({int min, int max}) repsRange(
+    PlannedExercise plan,
+    ExerciseProgress progress,
+  ) => (
+    min: plan.repsMin + progress.repsBonus,
+    max: plan.repsMax + progress.repsBonus,
+  );
 
   static double _lastWeight(List<SetRecord> sets) => sets.last.weight;
 

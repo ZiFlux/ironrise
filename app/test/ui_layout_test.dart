@@ -26,6 +26,7 @@ import 'package:ironrise/state/hero.dart';
 import 'package:ironrise/state/providers.dart';
 import 'package:ironrise/state/server_game.dart';
 import 'package:ironrise/state/workout_state.dart';
+import 'package:ironrise/state/training_log.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 /// Логические размеры экранов (dp).
@@ -104,6 +105,8 @@ List<Override> _serverFakes() {
             _fighter('b$i', 'Железный Лёха $i', 5 + i),
         ],
         results: {'b0': true, 'b1': false},
+        nextFightAt: <String, DateTime>{},
+        fights: const {'b0': 1, 'b1': 2},
       ),
     ),
     serverFriendsProvider.overrideWith(
@@ -143,11 +146,13 @@ List<Override> _serverFakes() {
       (ref) async => [
         (
           attacker: 'Очень_Длинный_Ник_01',
+          attackerId: 'f1',
           attackerWon: true,
           at: DateTime.now(),
         ),
         (
           attacker: 'Кирпич',
+          attackerId: null,
           attackerWon: false,
           at: DateTime.now().subtract(const Duration(days: 2)),
         ),
@@ -185,6 +190,31 @@ Future<void> _prepare(ProviderContainer c, String path) async {
       final w = c.read(workoutProvider.notifier)..start();
       for (final e in ExerciseCatalog.all.take(3)) {
         w.addExercise(e);
+      }
+    case '/workout/stats':
+      final log = c.read(trainingLogProvider.notifier);
+      for (var i = 40; i >= 0; i -= 3) {
+        await log.add(
+          LoggedWorkout(
+            at: DateTime.now().subtract(Duration(days: i)),
+            kind: i % 2 == 0 ? WorkoutKind.strength : WorkoutKind.cardio,
+            duration: const Duration(minutes: 52),
+            xp: 400,
+            coins: 80,
+            verified: true,
+            exercises: [
+              for (final e in ExerciseCatalog.all.take(4))
+                (
+                  id: e.id,
+                  sets: [
+                    for (var k = 0; k < 4; k++)
+                      SetRecord(weight: 60.0 + 40 - i, reps: 10),
+                  ],
+                ),
+            ],
+            gains: {for (final p in BodyPart.values) p: 60},
+          ),
+        );
       }
     case '/workout/result':
       final s = c.read(heroProvider)!;
@@ -291,6 +321,12 @@ Future<void> _audit(
           container.read(routerProvider).go(path);
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 600));
+          // Бой — сразу к итогу: панель с разбором и реваншем занимает больше всего места.
+          if (path == '/duels/battle') {
+            await tester.tap(find.text('Пропустить'));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 600));
+          }
 
           // «Без прокрутки» — на обычном и большом телефоне с обычным шрифтом. На маленьком
           // экране и с крупным шрифтом прокрутка — запасной вариант вместо наложения (FitScreen).
@@ -357,6 +393,7 @@ void main() {
         '/workout',
         '/workout/result',
         '/workout/exercises',
+        '/workout/stats',
         '/workout/cardio',
         '/workout/joint',
         '/duels',

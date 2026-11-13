@@ -20,14 +20,20 @@ class NextTimeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('В следующий раз', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500)),
+            const Text(
+              'В следующий раз',
+              style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 8),
             for (final change in result.changes) _ChangeRow(change: change),
             if (result.bonusCoins > 0) ...[
               const SizedBox(height: 8),
               Text(
                 'Тренировка по плану: +${result.bonusCoins} монет',
-                style: TextStyle(fontSize: 13, color: Theme.of(context).colorScheme.primary),
+                style: TextStyle(
+                  fontSize: 13,
+                  color: Theme.of(context).colorScheme.primary,
+                ),
               ),
             ],
           ],
@@ -66,11 +72,22 @@ class _ChangeRow extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(child: Text(change.plan.exercise.name, style: const TextStyle(fontSize: 14))),
+          Expanded(
+            child: Text(
+              change.plan.exercise.name,
+              style: const TextStyle(fontSize: 14),
+            ),
+          ),
           Column(
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
-              Text(_target, style: const TextStyle(fontSize: 14, fontFeatures: [FontFeature.tabularFigures()])),
+              Text(
+                _target,
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
               if (note != null)
                 Text(
                   note,

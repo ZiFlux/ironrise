@@ -14,6 +14,7 @@ import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/every_second.dart';
 import '../widgets/sign_up_card.dart';
+import '../widgets/status_toast.dart';
 
 final _bonusPercent = (GameConfig.jointBonus * 100).round();
 
@@ -260,23 +261,20 @@ class _JointScreenState extends ConsumerState<JointScreen> {
   }
 
   Future<void> _addFriend(String nickname) async {
-    final messenger = ScaffoldMessenger.of(context);
     try {
       final r = await ref.read(apiProvider).post('/v1/friends/requests', {
         'nickname': nickname,
       });
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            r['status'] == 'accepted'
-                ? '$nickname теперь в друзьях'
-                : 'Заявка отправлена: $nickname',
-          ),
-        ),
+      showStatus(
+        r['status'] == 'accepted'
+            ? '$nickname теперь в друзьях'
+            : 'Заявка отправлена: $nickname',
+        kind: StatusKind.success,
       );
     } on ApiException catch (e) {
-      messenger.showSnackBar(
-        SnackBar(content: Text(e.status == 409 ? 'Уже в друзьях' : e.message)),
+      showStatusError(
+        e.status == 409 ? 'Уже в друзьях' : e.message,
+        network: e.isNetwork,
       );
     }
   }

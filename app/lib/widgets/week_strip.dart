@@ -50,21 +50,26 @@ class _DayCell extends StatelessWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final weekday = weekdayShort[day.date.weekday - 1];
     return Semantics(
-      label: '$weekday ${day.date.day}, ${_labels[day.kind]}${day.isToday ? ', сегодня' : ''}',
+      label:
+          '$weekday ${day.date.day}, ${_labels[day.kind]}${day.isToday ? ', сегодня' : ''}',
       excludeSemantics: true,
       child: Column(
         children: [
-          Text(weekday,
-              style: TextStyle(
-                fontSize: 12,
-                color: day.isToday ? AppColors.textPrimary : AppColors.textMuted,
-                fontWeight: day.isToday ? FontWeight.w600 : FontWeight.w400,
-              )),
+          Text(
+            weekday,
+            style: TextStyle(
+              fontSize: 12,
+              color: day.isToday ? AppColors.textPrimary : AppColors.textMuted,
+              fontWeight: day.isToday ? FontWeight.w600 : FontWeight.w400,
+            ),
+          ),
           const SizedBox(height: 6),
           _Mark(kind: day.kind, accent: accent, isToday: day.isToday),
           const SizedBox(height: 4),
-          Text('${day.date.day}',
-              style: const TextStyle(fontSize: 11, color: AppColors.textMuted)),
+          Text(
+            '${day.date.day}',
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
         ],
       ),
     );
@@ -72,7 +77,11 @@ class _DayCell extends StatelessWidget {
 }
 
 class _Mark extends StatelessWidget {
-  const _Mark({required this.kind, required this.accent, required this.isToday});
+  const _Mark({
+    required this.kind,
+    required this.accent,
+    required this.isToday,
+  });
 
   final DayKind kind;
   final Color accent;
@@ -81,13 +90,19 @@ class _Mark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const size = 28.0;
-    final ring = isToday ? Border.all(color: AppColors.textPrimary, width: 1.5) : null;
+    final ring = isToday
+        ? Border.all(color: AppColors.textPrimary, width: 1.5)
+        : null;
     switch (kind) {
       case DayKind.trained:
         return Container(
           width: size,
           height: size,
-          decoration: BoxDecoration(color: accent, shape: BoxShape.circle, border: ring),
+          decoration: BoxDecoration(
+            color: accent,
+            shape: BoxShape.circle,
+            border: ring,
+          ),
           child: const Icon(Icons.check, size: 16, color: AppColors.onAccent),
         );
       case DayKind.missed:
@@ -106,14 +121,19 @@ class _Mark extends StatelessWidget {
           height: size,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: ring ?? Border.all(color: accent.withValues(alpha: 0.6), width: 1.5),
+            border:
+                ring ??
+                Border.all(color: accent.withValues(alpha: 0.6), width: 1.5),
           ),
           child: isToday
               ? Center(
                   child: Container(
                     width: 8,
                     height: 8,
-                    decoration: BoxDecoration(color: accent, shape: BoxShape.circle),
+                    decoration: BoxDecoration(
+                      color: accent,
+                      shape: BoxShape.circle,
+                    ),
                   ),
                 )
               : null,
@@ -132,7 +152,10 @@ class _Mark extends StatelessWidget {
           child: kind == DayKind.none
               ? null
               : const Center(
-                  child: Text('–', style: TextStyle(color: AppColors.textMuted, fontSize: 13)),
+                  child: Text(
+                    '–',
+                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                  ),
                 ),
         );
     }

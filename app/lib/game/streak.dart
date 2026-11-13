@@ -29,8 +29,9 @@ class Streak {
     return restSoFar > maxRestDays ? 0 : streakDays;
   }
 
-  static int _daysBetween(DateTime from, DateTime to) =>
-      DateTime.utc(to.year, to.month, to.day)
-          .difference(DateTime.utc(from.year, from.month, from.day))
-          .inDays;
+  static int _daysBetween(DateTime from, DateTime to) => DateTime.utc(
+    to.year,
+    to.month,
+    to.day,
+  ).difference(DateTime.utc(from.year, from.month, from.day)).inDays;
 }

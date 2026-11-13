@@ -22,9 +22,12 @@ import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/screen_hint.dart';
+import 'account_screen.dart' show syncedWhen;
 import 'devices_screen.dart';
 import '../widgets/format.dart';
 import '../widgets/motion.dart';
+import '../widgets/nickname_dialog.dart';
+import '../widgets/status_toast.dart';
 
 /// Настройки и конфиденциальность: всё, что не про самого игрока.
 /// Вход — шестерёнка в профиле игрока.
@@ -51,9 +54,7 @@ class SettingsScreen extends ConsumerWidget {
                 _NavTile(
                   icon: LucideIcons.cloud,
                   title: 'Аккаунт и синхронизация',
-                  subtitle:
-                      ref.watch(accountProvider).email ??
-                      'Не подключён — данные только на телефоне',
+                  subtitle: _accountLine(ref.watch(accountProvider)),
                   path: '/profile/account',
                 ),
                 const Divider(height: 1),
@@ -82,10 +83,9 @@ class SettingsScreen extends ConsumerWidget {
               onPressed: () async {
                 await ScreenHint.resetAll(ref);
                 if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Подсказки снова появятся на экранах'),
-                    ),
+                  showStatus(
+                    'Подсказки снова появятся на экранах',
+                    kind: StatusKind.success,
                   );
                 }
               },
@@ -140,7 +140,7 @@ class _HeroInfo extends StatelessWidget {
     // Формат и дни меняются на отдельном экране (раз в неделю).
     void schedule() => context.go('/profile/settings/schedule');
     final rows = <(String, String, VoidCallback?)>[
-      ('Ник', hero.nickname, null),
+      ('Ник', hero.nickname, () => showNicknameDialog(context)),
       ('Цель', hero.goal.label, null),
       ('Формат', hero.format.label, schedule),
       (
@@ -414,32 +414,25 @@ class _DebugTools extends ConsumerWidget {
     WidgetRef ref,
     int shift,
   ) async {
-    final messenger = ScaffoldMessenger.of(context);
     if (!ref.read(accountProvider).signedIn) {
-      messenger.showSnackBar(
-        const SnackBar(
-          content: Text(
-            'Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»',
-          ),
-        ),
+      showStatus(
+        'Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»',
       );
       return;
     }
     try {
       await ref.read(apiProvider).post('/v1/dev/league', {'shift': shift});
       ref.invalidate(serverLeagueProvider);
-      messenger.showSnackBar(
-        const SnackBar(content: Text('Готово: откройте вкладку «Рейтинг»')),
+      showStatus(
+        'Готово: откройте вкладку «Рейтинг»',
+        kind: StatusKind.success,
       );
     } on ApiException catch (e) {
-      messenger.showSnackBar(
-        SnackBar(
-          content: Text(
-            e.status == 404
-                ? 'Это доступно только на сервере разработки'
-                : e.message,
-          ),
-        ),
+      showStatusError(
+        e.status == 404
+            ? 'Это доступно только на сервере разработки'
+            : e.message,
+        network: e.isNetwork,
       );
     }
   }
@@ -455,14 +448,9 @@ class _DebugTools extends ConsumerWidget {
       await ref.read(accountProvider.notifier).sync();
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            e.status == 404
-                ? 'На этом сервере выдача монет выключена'
-                : e.message,
-          ),
-        ),
+      showStatusError(
+        e.status == 404 ? 'На этом сервере выдача монет выключена' : e.message,
+        network: e.isNetwork,
       );
     }
   }
@@ -716,4 +704,18 @@ class _LogsToggleState extends State<_LogsToggle> {
       ),
     ),
   );
+}
+
+/// «почта · синхр. в 14:05» или «почта · автосинхр. выключена».
+String _accountLine(AccountState a) {
+  if (!a.signedIn) return 'Не подключён — данные только на телефоне';
+  final synced = a.lastSyncedAt;
+  final sync = a.syncing
+      ? 'синхронизация…'
+      : !a.autoSync
+      ? 'автосинхронизация выключена'
+      : synced == null
+      ? 'ещё не синхронизировано'
+      : 'синхр. ${syncedWhen(synced)}';
+  return '${a.email} · $sync';
 }

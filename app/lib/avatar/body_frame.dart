@@ -39,25 +39,50 @@ Path mirroredPath(List<Offset> rightHalf) => smoothClosedPath([
 
 Path polygonPath(List<Offset> points) => Path()..addPolygon(points, true);
 
-/// Рука как ось от плеча к запястью. Положительная ширина смотрит к центру тела.
+/// Рука как ось плечо → локоть → запястье. Положительная ширина смотрит к центру
+/// тела. Прямая рука — локоть на линии; в позах (AvatarPose) рука сгибается.
 class ArmGeometry {
-  ArmGeometry({required this.start, required this.wrist, required int side})
-    : _axis = (wrist - start) / (wrist - start).distance,
-      _length = (wrist - start).distance,
-      _side = side.toDouble();
+  ArmGeometry({
+    required this.start,
+    required this.wrist,
+    required int side,
+    Offset? elbow,
+  }) : elbow = elbow ?? Offset.lerp(start, wrist, elbowT)!,
+       _side = side.toDouble() {
+    _upper = _unit(this.elbow - start);
+    _fore = _unit(wrist - this.elbow);
+  }
+
+  /// Доля длины руки до локтя (станция локтя в armStations).
+  static const elbowT = 0.52;
+
+  /// Вокруг локтя направление плавно переходит с плеча на предплечье.
+  static const _blend = 0.1;
 
   final Offset start;
+  final Offset elbow;
   final Offset wrist;
-  final Offset _axis;
-  final double _length;
   final double _side;
+  late final Offset _upper;
+  late final Offset _fore;
 
-  Offset get _inward => Offset(-_axis.dy * _side, _axis.dx * _side);
+  static Offset _unit(Offset v) =>
+      v.distance == 0 ? const Offset(0, 1) : v / v.distance;
 
-  Offset at(double t, double width) =>
-      start + _axis * (_length * t) + _inward * width;
+  Offset _dirAt(double t) {
+    final k = ((t - (elbowT - _blend)) / (2 * _blend)).clamp(0.0, 1.0);
+    return _unit(Offset.lerp(_upper, _fore, k)!);
+  }
 
-  Offset get handCenter => wrist + _axis * 9;
+  Offset at(double t, double width) {
+    final p = t <= elbowT
+        ? start + (elbow - start) * (t / elbowT)
+        : elbow + (wrist - elbow) * ((t - elbowT) / (1 - elbowT));
+    final d = _dirAt(t);
+    return p + Offset(-d.dy * _side, d.dx * _side) * width;
+  }
+
+  Offset get handCenter => wrist + _fore * 9;
 
   /// Контур по станциям (t, полуширина): вниз по одной стороне, вверх по другой.
   Path outline(List<(double, double)> stations) => smoothClosedPath([
@@ -66,6 +91,9 @@ class ArmGeometry {
   ]);
 }
 
+/// Позы героя на главном экране (п. 31 бэклога): показывают сильные мышцы.
+enum AvatarPose { relaxed, doubleBiceps, latSpread, handsBehindHead, victory }
+
 /// Все размеры тела, посчитанные из уровней и пола.
 class BodyFrame {
   factory BodyFrame(
@@ -73,6 +101,8 @@ class BodyFrame {
     AvatarSex sex, [
     BodyBuild build = BodyBuild.average,
     MusclePoints muscles = const {},
+    AvatarPose pose = AvatarPose.relaxed,
+    double poseT = 0,
   ]) {
     double g(BodyPart p) => growthOf(levels[p] ?? 1);
     // Мышца растёт вместе со своей частью тела, но пропорционально тренировкам:
@@ -114,6 +144,8 @@ class BodyFrame {
       thighs: mg(Muscle.quads) * 0.7 + mg(Muscle.hamstrings) * 0.3,
       glutes: mg(Muscle.glutes),
       calves: mg(Muscle.calves),
+      pose: pose,
+      poseT: poseT,
     );
   }
 
@@ -134,10 +166,16 @@ class BodyFrame {
     required this.thighs,
     required this.glutes,
     required this.calves,
+    this.pose = AvatarPose.relaxed,
+    this.poseT = 0,
   }) {
     rightArm = _armFor(1);
     leftArm = _armFor(-1);
   }
+
+  /// Поза и насколько в неё вошли (0 — стойка, 1 — поза).
+  final AvatarPose pose;
+  final double poseT;
 
   final bool isFemale;
 
@@ -157,7 +195,11 @@ class BodyFrame {
   late final double neck = _pick(8.5, 6.5) + traps * 2 + fat * 3;
   late final double shoulder =
       _pick(34, 29) + (lats + traps) / 2 * _pick(14, 7) + chest * _pick(4, 2);
-  late final double lat = _pick(28, 24) + lats * _pick(12, 5) + fat * 6;
+  late final double lat =
+      _pick(28, 24) +
+      lats * _pick(12, 5) +
+      fat * 6 +
+      (pose == AvatarPose.latSpread ? poseT * 3 : 0);
   late final double waist =
       _pick(26, 21) -
       cardio * 4 -
@@ -173,7 +215,15 @@ class BodyFrame {
   late final double ankle = _pick(10, 9);
   late final double shin = _lerp(calf, ankle, 0.6);
   late final double waistband = _lerp(waist, hip, 0.7);
-  late final double trapX = _lerp(neck, shoulder, 0.55);
+  late final double trapX = _lerp(neck, shoulder, 0.5);
+
+  /// Стойка: ноги на ширине плеч — каждая половина ниже таза повёрнута
+  /// вокруг своего тазобедренного сустава на этот угол (радианы).
+  late final double stanceAngle = _pick(0.075, 0.045);
+
+  /// Ниже этой линии рисуются ноги в стойке; таз — точка поворота.
+  static const stanceTop = 204.0;
+  late final double hipJointX = hip * 0.45;
 
   late final double deltSize =
       _pick(11, 8.6) + (delts + traps) / 2 * _pick(7, 3);
@@ -194,11 +244,61 @@ class BodyFrame {
   late final double headRy = _pick(20, 19);
   static const headCenter = Offset(_centerX, 30);
 
-  ArmGeometry _armFor(int side) => ArmGeometry(
-    start: Offset(_centerX + side * (shoulder - deltWidth + 1.5), 84),
-    wrist: Offset(_centerX + side * (shoulder + 7 + arms * 4), 206),
-    side: side,
-  );
+  ArmGeometry _armFor(int side) {
+    final start = Offset(_centerX + side * (shoulder - deltWidth + 1.5), 84);
+    final wrist = Offset(
+      _centerX + side * (shoulder + _pick(13, 10) + arms * 4 + fat * 3),
+      204,
+    );
+    // В покое рука не висит палкой вдоль тела: локоть чуть отведён наружу.
+    final relaxedElbow =
+        Offset.lerp(start, wrist, ArmGeometry.elbowT)! +
+        Offset(side * _pick(4, 3), 0);
+    final target = _poseTarget(side);
+    if (target == null || poseT <= 0) {
+      return ArmGeometry(
+        start: start,
+        elbow: relaxedElbow,
+        wrist: wrist,
+        side: side,
+      );
+    }
+    final t = poseT.clamp(0.0, 1.0);
+    return ArmGeometry(
+      start: start,
+      elbow: Offset.lerp(relaxedElbow, target.elbow, t),
+      wrist: Offset.lerp(wrist, target.wrist, t)!,
+      side: side,
+    );
+  }
+
+  /// Куда в позе идут локоть и запястье (холст 200×400). null — стойка.
+  ({Offset elbow, Offset wrist})? _poseTarget(int side) {
+    double x(double dx) => _centerX + side * dx;
+    return switch (pose) {
+      AvatarPose.relaxed => null,
+      // Плечо в сторону на уровне плеч, предплечье вверх: кулаки у висков.
+      AvatarPose.doubleBiceps => (
+        elbow: Offset(x(shoulder + 30 + arms * 4), 96),
+        wrist: Offset(x(shoulder + 22), 44),
+      ),
+      // Кулаки на поясе, локти в стороны: широчайшие раскрываются.
+      AvatarPose.latSpread => (
+        elbow: Offset(x(shoulder + 22 + arms * 3), 138),
+        wrist: Offset(x(waist + 2), 170),
+      ),
+      // Руки за головой: видно пресс и бёдра.
+      AvatarPose.handsBehindHead => (
+        elbow: Offset(x(shoulder + 18), 42),
+        wrist: Offset(x(10), 18),
+      ),
+      // Поза победы (веха героя 5): руки вверх буквой V.
+      AvatarPose.victory => (
+        elbow: Offset(x(shoulder + 14), 46),
+        wrist: Offset(x(shoulder + 24), 6),
+      ),
+    };
+  }
 
   List<(double, double)> get armStations => [
     (0, deltWidth * 0.8),
@@ -216,7 +316,9 @@ class BodyFrame {
     Offset(neck - 0.5, 48),
     Offset(neck, 62),
     Offset(trapX, 70),
-    Offset(shoulder - deltSize * 0.45, 81),
+    Offset(shoulder - deltSize * 0.5, 77),
+    Offset(shoulder - deltSize * 0.08, 86),
+    Offset(shoulder - deltSize * 0.22, 100),
     Offset(lat + 1 + chest * _pick(4, 2), 112),
     Offset(lat, 124),
     Offset(ribs, 150),

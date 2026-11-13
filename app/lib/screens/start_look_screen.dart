@@ -12,6 +12,7 @@ import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/motion.dart';
+import '../widgets/status_toast.dart';
 
 /// «Мой старт»: первые 14 дней игрок бесплатно собирает себя — пол, телосложение,
 /// кожу, причёску и одежду. Потом образ фиксируется как «Старт» на экране прогресса.
@@ -145,10 +146,13 @@ class _StartLookScreenState extends ConsumerState<StartLookScreen> {
       }
       if (!mounted) return;
       setState(() => _draft = null);
-      _toast(lock ? 'Старт зафиксирован — вещи остались у тебя' : 'Сохранено');
+      showStatus(
+        lock ? 'Старт зафиксирован — вещи остались у тебя' : 'Сохранено',
+        kind: StatusKind.success,
+      );
       if (lock) context.pop();
     } on ApiException catch (e) {
-      _toast(e.isNetwork ? 'Нет связи с сервером' : e.message);
+      showStatusError(e.message, network: e.isNetwork);
     } finally {
       if (mounted) setState(() => _busy = false);
     }
@@ -177,10 +181,6 @@ class _StartLookScreenState extends ConsumerState<StartLookScreen> {
         ),
       ) ??
       false;
-
-  void _toast(String text) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
-  );
 
   @override
   Widget build(BuildContext context) {

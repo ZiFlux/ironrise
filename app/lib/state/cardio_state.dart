@@ -3,12 +3,14 @@ import 'dart:convert';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/cardio.dart';
+import '../game/streak_rewards.dart';
 import '../game/workout.dart';
 import 'account_state.dart';
 import 'consent_state.dart';
 import 'health_state.dart';
 import 'heart_rate_state.dart';
 import 'providers.dart';
+import 'training_log.dart';
 import 'workout_state.dart';
 
 const _cardioKey = 'cardio_session_v1';
@@ -27,7 +29,12 @@ class CardioNotifier extends Notifier<CardioSession?> {
   }
 
   void start(CardioActivity activity) {
-    if (state != null) return;
+    final done = doneToday(
+      ref.read(trainingLogProvider),
+      WorkoutKind.cardio,
+      DateTime.now(),
+    );
+    if (state != null || done) return;
     _save(CardioSession(startedAt: DateTime.now(), activity: activity));
     ref.read(heartRateProvider.notifier).startWatch();
   }
@@ -56,7 +63,8 @@ class CardioNotifier extends Notifier<CardioSession?> {
         : await ref
               .read(healthProvider.notifier)
               .heartRateBetween(session.startedAt, finishedAt);
-    final summary = CardioScoring.summarize(
+    final boosters = hero.boosters;
+    final scored = CardioScoring.summarize(
       session: session,
       pulse: pulse,
       xpBefore: hero.xp,
@@ -65,8 +73,42 @@ class CardioNotifier extends Notifier<CardioSession?> {
       maxHeartRate: hero.maxHeartRate,
       unverified: hero.unverifiedValidity,
     );
-    await ref.read(heroProvider.notifier).applyWorkout(summary, finishedAt);
+    // Бустеры и возвращение — как у силовой и на сервере.
+    final summary = boostedSummary(
+      scored,
+      hero.xp,
+      xp: boosters.xp > 0,
+      coins: boosters.coins > 0,
+      comeback:
+          hero.lastActiveDay != null && hero.currentStreak(finishedAt) == 0,
+    );
+    final streak = await ref
+        .read(heroProvider.notifier)
+        .applyWorkout(
+          summary,
+          finishedAt,
+          usedBoosters: !boosters.isEmpty,
+          grantStreak: !ref.read(accountProvider).signedIn,
+        );
+    ref.read(lastStreakRewardProvider.notifier).show(streak);
     ref.read(lastSummaryProvider.notifier).show(summary);
+    final hr = pulseSummary(pulse);
+    await ref
+        .read(trainingLogProvider.notifier)
+        .add(
+          LoggedWorkout(
+            at: finishedAt,
+            kind: WorkoutKind.cardio,
+            duration: finishedAt.difference(session.startedAt),
+            xp: summary.totalXp,
+            coins: summary.coins,
+            verified: summary.isVerified,
+            gains: {for (final g in summary.gains) g.part: g.xp},
+            activity: session.activity.name,
+            avgHr: hr.avg,
+            maxHr: hr.max,
+          ),
+        );
     _save(null);
     // Не ждём сети: итог уже на экране, отправка идёт в фоне.
     ref

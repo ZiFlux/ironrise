@@ -17,7 +17,10 @@ void main() {
     final program = c.read(programProvider.notifier);
     expect((await program.recordWellbeing(Feeling.hard)).easeNext, isFalse);
     expect((await program.recordWellbeing(Feeling.hard)).easeNext, isTrue);
-    expect(c.read(todayPlanProvider).day.exercises.every((e) => e.sets == 1), isTrue);
+    expect(
+      c.read(todayPlanProvider).day.exercises.every((e) => e.sets == 1),
+      isTrue,
+    );
   });
 
   test('«нормально» между ними сбрасывает счёт', () async {
@@ -31,10 +34,16 @@ void main() {
   test('боль в колене меняет план, повтор — совет к врачу', () async {
     final c = await container();
     final program = c.read(programProvider.notifier);
-    final first = await program.recordWellbeing(Feeling.pain, zone: PainZone.knee);
+    final first = await program.recordWellbeing(
+      Feeling.pain,
+      zone: PainZone.knee,
+    );
     expect(first.repeatedPain, isFalse);
     expect(first.plan!.adjustments, isNotEmpty);
-    final second = await program.recordWellbeing(Feeling.pain, zone: PainZone.knee);
+    final second = await program.recordWellbeing(
+      Feeling.pain,
+      zone: PainZone.knee,
+    );
     expect(second.repeatedPain, isTrue);
   });
 }

@@ -35,6 +35,8 @@ DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
   attacker: fighterFromJson(Map<String, dynamic>.from(j['attacker'] as Map)),
   defender: fighterFromJson(Map<String, dynamic>.from(j['defender'] as Map)),
   attackerWon: j['attackerWon'] as bool,
+  coins: (j['coins'] as num?)?.toInt(),
+  repeat: j['repeat'] == true,
   hits: [
     for (final h in j['log'] as List)
       DuelHit(
@@ -51,7 +53,16 @@ DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
   ],
 );
 
-typedef ServerBots = ({List<Fighter> bots, Map<String, bool> results});
+typedef ServerBots = ({
+  List<Fighter> bots,
+  Map<String, bool> results,
+
+  /// Когда снова можно драться с ботом (если перезарядка идёт).
+  Map<String, DateTime> nextFightAt,
+
+  /// Сколько боёв с ботом сегодня.
+  Map<String, int> fights,
+});
 
 final serverBotsProvider = FutureProvider.autoDispose<ServerBots>((ref) async {
   final j = await ref.read(apiProvider).get('/v1/duels/bots');
@@ -61,6 +72,14 @@ final serverBotsProvider = FutureProvider.autoDispose<ServerBots>((ref) async {
         fighterFromJson(Map<String, dynamic>.from(b as Map)),
     ],
     results: Map<String, bool>.from(j['results'] as Map),
+    nextFightAt: {
+      for (final e in (j['nextFightAt'] as Map? ?? const {}).entries)
+        e.key as String: DateTime.parse(e.value as String).toLocal(),
+    },
+    fights: {
+      for (final e in (j['fights'] as Map? ?? const {}).entries)
+        e.key as String: (e.value as num).toInt(),
+    },
   );
 });
 
@@ -156,7 +175,12 @@ final serverFriendsLeagueProvider =
       ];
     });
 
-typedef AttackOnMe = ({String attacker, bool attackerWon, DateTime at});
+typedef AttackOnMe = ({
+  String attacker,
+  String? attackerId,
+  bool attackerWon,
+  DateTime at,
+});
 
 final serverAttacksProvider = FutureProvider.autoDispose<List<AttackOnMe>>((
   ref,
@@ -166,6 +190,7 @@ final serverAttacksProvider = FutureProvider.autoDispose<List<AttackOnMe>>((
     for (final a in list)
       (
         attacker: a['attacker'] as String,
+        attackerId: a['attackerId'] as String?,
         attackerWon: a['attackerWon'] as bool,
         at: DateTime.parse(a['at'] as String).toLocal(),
       ),

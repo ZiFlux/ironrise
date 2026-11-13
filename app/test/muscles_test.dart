@@ -10,7 +10,11 @@ void main() {
       expect(shares.values.fold<double>(0, (a, b) => a + b), closeTo(1, 1e-9));
       // Мышцы принадлежат частям тела, которые упражнение и нагружает.
       for (final m in shares.keys) {
-        expect(e.shares.containsKey(m.part), isTrue, reason: '${e.id}: ${m.name}');
+        expect(
+          e.shares.containsKey(m.part),
+          isTrue,
+          reason: '${e.id}: ${m.name}',
+        );
       }
       expect(exerciseGuides[e.id]!.steps, isNotEmpty);
     }
@@ -25,7 +29,10 @@ void main() {
   test('ровная программа — без перекосов и гротеска', () {
     var p = <Muscle, double>{};
     for (final id in exerciseMuscles.keys) {
-      p = MuscleMath.add(p, MuscleMath.pointsOf([(exerciseId: id, sets: 4)], 1));
+      p = MuscleMath.add(
+        p,
+        MuscleMath.pointsOf([(exerciseId: id, sets: 4)], 1),
+      );
     }
     expect(MuscleMath.grotesque(p), isNull);
     for (final b in MuscleMath.balance(p).values) {

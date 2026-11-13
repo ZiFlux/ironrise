@@ -28,6 +28,10 @@ import 'widgets/consent_prompt.dart';
 import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
+import 'screens/training_stats_screen.dart';
+import 'screens/feed_screen.dart';
+import 'screens/friend_profile_screen.dart';
+import 'widgets/week_recap.dart';
 import 'widgets/screen_hint.dart';
 import 'state/providers.dart';
 import 'widgets/motion.dart';
@@ -47,6 +51,12 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/privacy', builder: (_, _) => const PrivacyScreen()),
+      GoRoute(path: '/feed', builder: (_, _) => const FeedScreen()),
+      GoRoute(
+        path: '/friend/:id',
+        builder: (_, state) =>
+            FriendProfileScreen(userId: state.pathParameters['id']!),
+      ),
       StatefulShellRoute.indexedStack(
         builder: (context, state, shell) => _Shell(shell: shell),
         branches: [
@@ -55,7 +65,10 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/',
                 builder: (_, _) => const ConsentPrompt(
-                  child: ScreenHint(id: 'home', child: HomeScreen()),
+                  child: ScreenHint(
+                    id: 'home',
+                    child: WeekRecapGate(child: HomeScreen()),
+                  ),
                 ),
                 routes: [
                   GoRoute(
@@ -104,6 +117,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'exercises',
                     builder: (_, _) => const ExerciseLibraryScreen(),
+                  ),
+                  GoRoute(
+                    path: 'stats',
+                    builder: (_, _) => const TrainingStatsScreen(),
                   ),
                   GoRoute(
                     path: 'cardio',
@@ -255,7 +272,8 @@ class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
       bottomNavigationBar: NavigationBar(
         selectedIndex: shell.currentIndex,
         onDestinationSelected: (i) =>
-            shell.goBranch(i, initialLocation: i == shell.currentIndex),
+            // Вкладка всегда открывается с главного экрана, а не с последнего вложенного.
+            shell.goBranch(i, initialLocation: true),
         destinations: const [
           NavigationDestination(
             icon: Icon(LucideIcons.personStanding),

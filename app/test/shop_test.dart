@@ -4,16 +4,25 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:ironrise/avatar/avatar_look.dart';
 import 'package:ironrise/game/shop.dart';
 
+/// Образ только из бесплатных вещей.
+const _bare = AvatarLook(
+  sex: AvatarSex.male,
+  hair: HairStyle.short,
+  top: TopKind.none,
+);
+
 void main() {
-  test('стартовый образ целиком из бесплатных вещей', () {
+  test('стартовый образ целиком из вещей редактора: выдаются при фиксации', () {
     for (final sex in AvatarSex.values) {
-      expect(ShopCatalog.unpaid(AvatarLook.starter(sex), const {}), isEmpty);
+      final look = AvatarLook.starter(sex);
+      final unpaid = ShopCatalog.unpaid(look, const {});
+      expect(unpaid.every(ShopCatalog.inCreator), isTrue);
+      expect(ShopCatalog.creatorGrant(look, const {}), unpaid);
     }
   });
 
   test('примерка платной вещи попадает в корзину, купленная — нет', () {
-    final look = ShopCatalog.byId('top_tee')
-        .apply(AvatarLook.starter(AvatarSex.male));
+    final look = ShopCatalog.byId('top_tee').apply(_bare);
     expect(ShopCatalog.unpaid(look, const {}).map((i) => i.id), ['top_tee']);
     expect(ShopCatalog.unpaid(look, const {'top_tee'}), isEmpty);
   });
@@ -51,9 +60,17 @@ void main() {
         .firstMatch(ts)![1]!;
     final tester = RegExp(r"TESTER_ITEMS[^=]*=[^\[]*\[([^\]]*)\]")
         .firstMatch(ts)![1]!;
+    final streak = RegExp(r"STREAK_ITEMS[^=]*=[^\[]*\[([^\]]*)\]").firstMatch(
+      File('../server/src/game/streak-rewards.ts').readAsStringSync(),
+    )![1]!;
     for (final i in ShopCatalog.all) {
       if (i.testerOnly) {
-        expect(tester, contains("'${i.id}'"), reason: i.id);
+        // Эксклюзивы: тестерам — в TESTER_ITEMS, за серию — в STREAK_ITEMS.
+        expect(
+          i.exclusiveLabel != null ? streak : tester,
+          contains("'${i.id}'"),
+          reason: i.id,
+        );
         expect(prices.containsKey(i.id), isFalse, reason: i.id);
       } else {
         expect(prices[i.id], i.price, reason: i.id);
@@ -64,8 +81,7 @@ void main() {
   });
 
   test('эксклюзив тестера в образе требует владения', () {
-    final look = AvatarLook.starter(AvatarSex.male)
-        .copyWith(accessories: {Accessory.betaCap});
+    final look = _bare.copyWith(accessories: {Accessory.betaCap});
     expect(ShopCatalog.unpaid(look, {}).map((i) => i.id), ['acc_beta_cap']);
     expect(ShopCatalog.unpaid(look, {'acc_beta_cap'}), isEmpty);
   });

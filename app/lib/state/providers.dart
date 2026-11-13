@@ -7,10 +7,14 @@ import '../game/calendar.dart';
 import '../game/muscles.dart';
 import '../game/shop.dart';
 import '../game/streak.dart';
+import '../game/streak_rewards.dart';
+import '../game/hero_milestones.dart';
+import '../game/progression.dart';
 import '../game/workout.dart';
 import '../game/schedule.dart';
 import '../game/training_format.dart';
 import 'hero.dart';
+import 'showcase_state.dart';
 
 /// Подменяется в main() уже загруженным экземпляром.
 final prefsProvider = Provider<SharedPreferences>(
@@ -68,28 +72,63 @@ class HeroNotifier extends Notifier<HeroProfile?> {
 
   /// Начислить итог тренировки: опыт, монеты, серия.
   /// muscles — очки мышц силовой тренировки (MuscleMath.pointsOf), у кардио пусто.
-  Future<void> applyWorkout(
+  /// Тренировка: опыт, монеты, серия, бустеры. Возвращает награду за серию, если
+  /// серия выросла. [grantStreak] — выдать её здесь (без аккаунта); с аккаунтом
+  /// её выдаёт сервер, а синхронизация приносит итог.
+  Future<StreakReward?> applyWorkout(
     WorkoutSummary summary,
     DateTime finishedAt, {
     MusclePoints muscles = const {},
+    bool usedBoosters = false,
+    bool grantStreak = true,
   }) async {
     final h = state;
-    if (h == null) return;
+    if (h == null) return null;
+    final after = Streak.afterActivity(
+      currentStreak: h.streakDays,
+      lastActiveDay: h.lastActiveDay,
+      today: finishedAt,
+      maxRestDays: h.maxRestDays,
+    );
+    // Сгоревшая серия начинается заново: награды — с первого дня.
+    final before = h.currentStreak(finishedAt);
+    final reward = streakReward(before, after);
+    var xp = summary.applyTo(h.xp);
+    var coins = h.coins + summary.coins;
+    var owned = h.ownedItems;
+    var boosters = usedBoosters ? h.boosters.afterUse : h.boosters;
+    if (reward != null && grantStreak) {
+      coins += reward.coins;
+      owned = {...owned, ...reward.items};
+      boosters = boosters + reward.boosters;
+      if (reward.xp > 0) {
+        // Опыт за рубеж — самой отстающей части, как на сервере.
+        final weakest = xp.entries
+            .reduce((a, b) => b.value < a.value ? b : a)
+            .key;
+        xp = {...xp, weakest: xp[weakest]! + reward.xp};
+      }
+    }
+    // Вехи героя: средний уровень 5/10/20 — подарок (без аккаунта выдаём здесь).
+    final milestones = heroMilestonesBetween(
+      heroLevel(Progression.levels(h.xp)),
+      heroLevel(Progression.levels(xp)),
+    );
+    ref.read(lastHeroMilestonesProvider.notifier).show(milestones);
+    if (grantStreak) owned = {...owned, for (final m in milestones) m.item};
     await save(
       h.copyWith(
         muscles: MuscleMath.add(h.muscles, muscles),
-        xp: summary.applyTo(h.xp),
-        coins: h.coins + summary.coins,
-        streakDays: Streak.afterActivity(
-          currentStreak: h.streakDays,
-          lastActiveDay: h.lastActiveDay,
-          today: finishedAt,
-          maxRestDays: h.maxRestDays,
-        ),
+        xp: xp,
+        coins: coins,
+        ownedItems: owned,
+        boosters: boosters,
+        streakDays: after,
         lastActiveDay: finishedAt,
         activeDays: {...h.activeDays, dayKey(finishedAt)},
       ),
     );
+    return reward;
   }
 
   Future<void> addCoins(int amount) async {
@@ -125,6 +164,11 @@ class HeroNotifier extends Notifier<HeroProfile?> {
   Future<void> applyServer(Map<String, dynamic> me) async {
     final h = state;
     if (h == null) return;
+    if (me['showcase'] is Map) {
+      await ref
+          .read(showcaseProvider.notifier)
+          .applyServer(Map<String, dynamic>.from(me['showcase'] as Map));
+    }
     AvatarLook? look;
     try {
       look = AvatarLook.fromJson(
@@ -155,11 +199,22 @@ class HeroNotifier extends Notifier<HeroProfile?> {
         lastActiveDay: lastDay,
         activeDays: {...h.activeDays, if (lastDay != null) dayKey(lastDay)},
         coins: (me['coins'] as num).toInt(),
+        boosters: me['boosters'] is Map
+            ? Boosters.fromJson(
+                Map<String, dynamic>.from(me['boosters'] as Map),
+              )
+            : null,
         ownedItems: Set<String>.from(me['ownedItems'] as List? ?? const []),
         premium: PremiumInfo.fromJson(
           (me['premium'] as Map?)?.cast<String, dynamic>(),
         ),
         look: look,
+        // Ник — с сервера: он там уникален, а здесь мог остаться от сброса героя.
+        nickname: me['nickname'] as String?,
+        nextNicknameChangeAt: me['nextNicknameChangeAt'] == null
+            ? null
+            : DateTime.parse(me['nextNicknameChangeAt'] as String).toLocal(),
+        nicknameChangeAllowed: me['nextNicknameChangeAt'] == null,
         // График тоже с сервера: его могли сменить на другом телефоне.
         format: TrainingFormat.values.asNameMap()[me['trainingFormat']],
         trainingDays: (me['scheduleDays'] as List?)?.cast<int>(),
@@ -180,6 +235,13 @@ class HeroNotifier extends Notifier<HeroProfile?> {
             : null,
       ),
     );
+  }
+
+  /// Без аккаунта ник только на телефоне: меняется свободно.
+  Future<void> renameLocally(String nickname) async {
+    final h = state;
+    if (h == null) return;
+    await save(h.copyWith(nickname: nickname));
   }
 
   /// Сменить график без аккаунта: раз в 7 дней, первая смена — сразу.
@@ -225,3 +287,29 @@ class HeroNotifier extends Notifier<HeroProfile?> {
 final heroProvider = NotifierProvider<HeroNotifier, HeroProfile?>(
   HeroNotifier.new,
 );
+
+/// Награда за серию после последней тренировки — для экрана итогов.
+class LastStreakRewardNotifier extends Notifier<StreakReward?> {
+  @override
+  StreakReward? build() => null;
+
+  void show(StreakReward? reward) => state = reward;
+}
+
+final lastStreakRewardProvider =
+    NotifierProvider<LastStreakRewardNotifier, StreakReward?>(
+      LastStreakRewardNotifier.new,
+    );
+
+/// Вехи героя после последней тренировки — для экрана итогов.
+class LastHeroMilestonesNotifier extends Notifier<List<HeroMilestone>> {
+  @override
+  List<HeroMilestone> build() => const [];
+
+  void show(List<HeroMilestone> m) => state = m;
+}
+
+final lastHeroMilestonesProvider =
+    NotifierProvider<LastHeroMilestonesNotifier, List<HeroMilestone>>(
+      LastHeroMilestonesNotifier.new,
+    );

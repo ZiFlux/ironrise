@@ -3,10 +3,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../game/nickname.dart';
 import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../theme.dart';
+import '../widgets/format.dart';
 import '../widgets/sign_up_card.dart';
+import '../widgets/status_toast.dart';
 
 /// Аккаунт: регистрация, вход и состояние синхронизации тренировок.
 class AccountScreen extends ConsumerWidget {
@@ -38,7 +41,8 @@ class _SignedIn extends ConsumerWidget {
         : account.error ??
               (synced == null
                   ? 'Ещё не синхронизировано'
-                  : 'Синхронизировано в ${_time(synced)}');
+                  : 'Синхронизировано ${syncedWhen(synced)}'
+                        '${account.lastReason == null ? '' : ' · ${account.lastReason!.label}'}');
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
@@ -107,7 +111,23 @@ class _SignedIn extends ConsumerWidget {
           'после синхронизации они берутся оттуда',
           style: TextStyle(fontSize: 13, color: AppColors.textMuted),
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: 16),
+        Card(
+          child: SwitchListTile(
+            value: account.autoSync,
+            onChanged: notifier.setAutoSync,
+            title: const Text('Автосинхронизация'),
+            subtitle: Text(
+              account.autoSync
+                  ? 'При входе, каждые ${autoSyncEvery.inMinutes} минут, пока приложение '
+                        'открыто, и при сворачивании'
+                  : 'Выключена: тренировки отправляются при входе, '
+                        'остальное — кнопкой ниже',
+              style: const TextStyle(fontSize: 13),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: account.syncing ? null : notifier.sync,
           icon: const Icon(LucideIcons.refreshCw, size: 18),
@@ -138,16 +158,12 @@ class _SignedIn extends ConsumerWidget {
       if (context.mounted) context.go('/onboarding');
     } on ApiException catch (e) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(e.status == 401 ? 'Неверный пароль' : e.message),
-        ),
+      showStatusError(
+        e.status == 401 ? 'Неверный пароль' : e.message,
+        network: e.isNetwork,
       );
     }
   }
-
-  static String _time(DateTime t) =>
-      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
 }
 
 class _SignInForm extends ConsumerStatefulWidget {
@@ -200,6 +216,10 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
           0 => 'Сервер недоступен. Проверьте сеть',
           401 => 'Неверный e-mail или пароль',
           403 when e.isBanned => 'Аккаунт заблокирован: ${e.banReason}',
+          409 when e.message == 'Email is taken' =>
+            'Этот e-mail уже зарегистрирован',
+          409 || 400 when nicknameServerError(e.message) != null =>
+            '${nicknameServerError(e.message)}. Сменить ник: Профиль → Настройки',
           409 => 'Такой e-mail или ник уже заняты',
           400 => 'Сервер не принял данные: $e',
           _ => e.message,
@@ -429,4 +449,21 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       ],
     );
   }
+}
+
+/// «в 14:05» сегодня, «вчера в 14:05», иначе «12 ноября в 14:05».
+String syncedWhen(DateTime t) {
+  final now = DateTime.now();
+  final hm =
+      '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}';
+  final days = DateTime(
+    now.year,
+    now.month,
+    now.day,
+  ).difference(DateTime(t.year, t.month, t.day)).inDays;
+  return switch (days) {
+    0 => 'в $hm',
+    1 => 'вчера в $hm',
+    _ => '${formatDate(t)} в $hm',
+  };
 }

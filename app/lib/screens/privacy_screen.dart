@@ -13,14 +13,30 @@ class PrivacyScreen extends StatelessWidget {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
         children: [
-          const Text('Политика конфиденциальности', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500)),
+          const Text(
+            'Политика конфиденциальности',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
+          ),
           const SizedBox(height: 4),
-          const Text('Обновлено $privacyPolicyUpdated', style: TextStyle(fontSize: 13, color: AppColors.textMuted)),
+          const Text(
+            'Обновлено $privacyPolicyUpdated',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
           for (final section in privacyPolicy) ...[
             const SizedBox(height: 24),
-            Text(section.title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500)),
+            Text(
+              section.title,
+              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 8),
-            Text(section.body, style: const TextStyle(fontSize: 14, height: 1.5, color: AppColors.textSecondary)),
+            Text(
+              section.body,
+              style: const TextStyle(
+                fontSize: 14,
+                height: 1.5,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
         ],
       ),

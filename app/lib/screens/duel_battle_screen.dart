@@ -13,6 +13,8 @@ import '../game/duel_flavor.dart';
 import '../game/game_config.dart';
 import '../state/duel_state.dart';
 import '../state/providers.dart';
+import '../game/duel_breakdown.dart';
+import '../game/body_part.dart';
 import '../theme.dart';
 
 /// Анимация боя и результат с советом. Исход уже посчитан, экран только проигрывает удары.
@@ -95,6 +97,7 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Expanded(
+                flex: 2,
                 child: Row(
                   children: [
                     Expanded(
@@ -106,6 +109,7 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                         hitKey: last != null && !last.byAttacker
                             ? _shown
                             : null,
+                        hitPart: last != null && !last.byAttacker ? last : null,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -116,40 +120,51 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                         hp: hpOf(attacker: false),
                         isPlayer: false,
                         hitKey: last != null && last.byAttacker ? _shown : null,
+                        hitPart: last != null && last.byAttacker ? last : null,
                       ),
                     ),
                   ],
                 ),
               ),
-              SizedBox(
-                // Событие и удар — две строки; с крупным шрифтом выше.
-                height: MediaQuery.textScalerOf(context).scale(64),
-                child: Center(
-                  child: last == null
-                      ? const Text(
-                          'Бой начинается…',
-                          style: TextStyle(
-                            color: AppColors.textMuted,
-                            fontSize: 15,
-                          ),
-                        )
-                      : _HitLine(hit: last, duel: duel),
+              if (!done) ...[
+                SizedBox(
+                  // Событие и удар — две строки; с крупным шрифтом выше.
+                  height: MediaQuery.textScalerOf(context).scale(64),
+                  child: Center(
+                    child: last == null
+                        ? const Text(
+                            'Бой начинается…',
+                            style: TextStyle(
+                              color: AppColors.textMuted,
+                              fontSize: 15,
+                            ),
+                          )
+                        : _HitLine(hit: last, duel: duel),
+                  ),
                 ),
-              ),
-              AnimatedSwitcher(
-                duration: AppMotion.enter,
-                child: done
-                    ? _ResultPanel(
+                Align(
+                  child: TextButton(
+                    onPressed: () => _skip(duel.hits.length),
+                    child: const Text('Пропустить'),
+                  ),
+                ),
+              ] else
+                // Итог с разбором: бойцы ужимаются, панель при нехватке места прокручивается.
+                Flexible(
+                  flex: 3,
+                  child: TweenAnimationBuilder<double>(
+                    tween: Tween(begin: 0, end: 1),
+                    duration: AppMotion.enter,
+                    builder: (_, t, child) => Opacity(opacity: t, child: child),
+                    child: SingleChildScrollView(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: _ResultPanel(
                         duel: duel,
                         advice: DuelAdvice.forPlayer(duel.attacker),
-                      )
-                    : Align(
-                        child: TextButton(
-                          onPressed: () => _skip(duel.hits.length),
-                          child: const Text('Пропустить'),
-                        ),
                       ),
-              ),
+                    ),
+                  ),
+                ),
             ],
           ),
         ),
@@ -165,7 +180,11 @@ class _FighterPanel extends StatelessWidget {
     required this.hp,
     required this.isPlayer,
     required this.hitKey,
+    this.hitPart,
   });
+
+  /// Удар, который сейчас пришёлся по этому бойцу: где вспыхнуть.
+  final DuelHit? hitPart;
 
   final Fighter fighter;
   final AvatarLook look;
@@ -219,9 +238,17 @@ class _FighterPanel extends StatelessWidget {
         Expanded(
           child: _Shake(
             trigger: hitKey,
-            child: isPlayer
-                ? avatar
-                : Transform.flip(flipX: true, child: avatar),
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                isPlayer ? avatar : Transform.flip(flipX: true, child: avatar),
+                if (hitPart case final hit?
+                    when hit.kind != HitKind.miss &&
+                        hit.kind != HitKind.skip &&
+                        hit.damage > 0)
+                  _HitFlash(key: ValueKey(hitKey), hit: hit),
+              ],
+            ),
           ),
         ),
       ],
@@ -362,7 +389,9 @@ class _ResultPanel extends StatelessWidget {
   Widget build(BuildContext context) {
     final won = duel.attackerWon;
     final accent = Theme.of(context).colorScheme.primary;
-    final coins = won ? GameConfig.duelWinCoins : GameConfig.duelLossCoins;
+    final coins =
+        duel.coins ??
+        (won ? GameConfig.duelWinCoins : GameConfig.duelLossCoins);
     final hpA = (duel.attackerHpLeft / duel.attacker.power * 100).round();
     final hpD = (duel.defenderHpLeft / duel.defender.power * 100).round();
     return Card(
@@ -375,15 +404,18 @@ class _ResultPanel extends StatelessWidget {
           children: [
             Row(
               children: [
-                Text(
-                  won ? 'Победа' : 'Поражение',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w600,
-                    color: won ? accent : AppColors.textPrimary,
+                Expanded(
+                  child: Text(
+                    won ? 'Победа' : 'Поражение',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: won ? accent : AppColors.textPrimary,
+                    ),
                   ),
                 ),
-                const Spacer(),
                 const Icon(
                   LucideIcons.coins,
                   size: 16,
@@ -395,9 +427,12 @@ class _ResultPanel extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              'Осталось здоровья: у тебя $hpA%, у соперника $hpD%',
+              'Осталось здоровья: у тебя $hpA%, у соперника $hpD%'
+              '${duel.repeat ? '. Повторный бой за сутки — половина монет' : ''}',
               style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
+            const SizedBox(height: 10),
+            _Breakdown(breakdown: DuelBreakdown(duel)),
             const SizedBox(height: 12),
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -419,4 +454,194 @@ class _ResultPanel extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Урон по частям тела: ты и соперник, плюс короткое «почему».
+class _Breakdown extends StatelessWidget {
+  const _Breakdown({required this.breakdown});
+
+  final DuelBreakdown breakdown;
+
+  @override
+  Widget build(BuildContext context) {
+    final me = breakdown.me;
+    final them = breakdown.them;
+    final parts = [
+      for (final p in BodyPart.values)
+        if ((me.damageByPart[p] ?? 0) + (them.damageByPart[p] ?? 0) > 0) p,
+    ];
+    final max = [
+      ...me.damageByPart.values,
+      ...them.damageByPart.values,
+    ].fold(1, (m, v) => v > m ? v : m);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final p in parts)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Row(
+              children: [
+                // Ты — полоса растёт к центру слева, соперник — справа.
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: FractionallySizedBox(
+                      widthFactor: (me.damageByPart[p] ?? 0) / max,
+                      child: Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: p.color,
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                SizedBox(
+                  width: 72,
+                  child: Text(
+                    p.label,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: FractionallySizedBox(
+                      widthFactor: (them.damageByPart[p] ?? 0) / max,
+                      child: Container(
+                        height: 6,
+                        decoration: BoxDecoration(
+                          color: p.color.withValues(alpha: 0.45),
+                          borderRadius: BorderRadius.circular(3),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        Padding(
+          padding: const EdgeInsets.only(top: 2, bottom: 6),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'урон: ты ${me.total}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+              Expanded(
+                child: Text(
+                  'соперник ${them.total}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        for (final r in breakdown.reasons)
+          Padding(
+            padding: const EdgeInsets.only(top: 2),
+            child: Text(
+              '· $r',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// Вспышка на части тела, куда пришёлся удар: координаты холста аватара 200×400.
+class _HitFlash extends StatelessWidget {
+  const _HitFlash({super.key, required this.hit});
+
+  final DuelHit hit;
+
+  static List<Offset> spotsOf(BodyPart part) => switch (part) {
+    BodyPart.chest => const [Offset(100, 100)],
+    BodyPart.back => const [Offset(76, 80), Offset(124, 80)],
+    BodyPart.arms => const [Offset(58, 140), Offset(142, 140)],
+    BodyPart.legs => const [Offset(86, 290), Offset(114, 290)],
+    BodyPart.core => const [Offset(100, 165)],
+    BodyPart.cardio => const [Offset(108, 98)],
+  };
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: const Duration(milliseconds: 600),
+    builder: (_, t, _) => CustomPaint(
+      painter: _FlashPainter(
+        spots: spotsOf(hit.part),
+        color: hit.kind == HitKind.crit
+            ? const Color(0xFFFFC94D)
+            : hit.part.color,
+        t: t,
+        crit: hit.kind == HitKind.crit,
+      ),
+    ),
+  );
+}
+
+class _FlashPainter extends CustomPainter {
+  _FlashPainter({
+    required this.spots,
+    required this.color,
+    required this.t,
+    required this.crit,
+  });
+
+  final List<Offset> spots;
+  final Color color;
+  final double t;
+  final bool crit;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // Тот же масштаб, что у AvatarPainter: холст 200×400 по центру.
+    final scale = min(size.width / 200, size.height / 400);
+    final dx = (size.width - 200 * scale) / 2;
+    final dy = (size.height - 400 * scale) / 2;
+    final fade = 1 - t;
+    final radius = (crit ? 30 : 22) * scale * (0.7 + 0.5 * t);
+    for (final s in spots) {
+      final c = Offset(dx + s.dx * scale, dy + s.dy * scale);
+      canvas.drawCircle(
+        c,
+        radius,
+        Paint()
+          ..shader = RadialGradient(
+            colors: [
+              color.withValues(alpha: 0.75 * fade),
+              color.withValues(alpha: 0),
+            ],
+          ).createShader(Rect.fromCircle(center: c, radius: radius)),
+      );
+    }
+  }
+
+  @override
+  bool shouldRepaint(_FlashPainter old) => old.t != t;
 }

@@ -12,8 +12,10 @@ import '../net/api_client.dart';
 import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/item_preview.dart';
 import '../widgets/motion.dart';
 import '../widgets/shop_entry.dart';
+import '../widgets/status_toast.dart';
 
 /// Инвентарь и магазин (экран 11): примерка на аватаре.
 /// Инвентарь — только свои вещи; магазин — всё, что продаётся, с покупкой за монеты.
@@ -48,11 +50,14 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
         ? await _confirmOnServer(cart, look)
         : await ref.read(heroProvider.notifier).buyAndWear(cart, look);
     if (!mounted || ok == null) return;
-    _toast(
-      ok
-          ? (cart.isEmpty ? 'Образ сохранён' : 'Куплено и надето')
-          : 'Не хватает монет',
-    );
+    if (ok) {
+      showStatus(
+        cart.isEmpty ? 'Образ сохранён' : 'Куплено и надето',
+        kind: StatusKind.success,
+      );
+    } else {
+      showStatus('Не хватает монет', kind: StatusKind.error);
+    }
     if (ok) setState(() => _preview = null);
   }
 
@@ -70,21 +75,22 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
       return true;
     } on ApiException catch (e) {
       if (e.status == 409) return false;
-      _toast(e.isNetwork ? 'Нет связи с сервером' : e.message);
+      showStatusError(e.message, network: e.isNetwork);
       return null;
     }
   }
-
-  void _toast(String text) => ScaffoldMessenger.of(context).showSnackBar(
-    SnackBar(content: Text(text), duration: const Duration(seconds: 2)),
-  );
 
   @override
   Widget build(BuildContext context) {
     final hero = ref.watch(heroProvider);
     if (hero == null) return const SizedBox.shrink();
     final look = _preview ?? hero.look;
-    final cart = ShopCatalog.unpaid(look, hero.ownedItems);
+    // Пока открыт редактор стартового образа, его вещи бесплатны (как на сервере).
+    final cart = [
+      for (final i in ShopCatalog.unpaid(look, hero.ownedItems))
+        if (!(hero.startLookOpen(DateTime.now()) && ShopCatalog.inCreator(i)))
+          i,
+    ];
     final total = cart.fold<int>(0, (s, i) => s + i.price);
     final changed = !_same(look, hero.look);
     bool owns(ShopItem i) => i.isFree || hero.ownedItems.contains(i.id);
@@ -186,6 +192,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                           owned: owns(items[i]),
                           locked: items[i].premium && !hero.premium.active,
                           onTap: () => _tap(items[i], look),
+                          base: look,
                         ),
                       ),
                     ),
@@ -215,7 +222,9 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                         (false, _) => 'Это твой образ',
                         (true, true) => 'Сохранить образ',
                         (true, false) when testerLocked =>
-                          'Только для бета-тестеров',
+                          cart.any((i) => i.exclusiveLabel != null)
+                              ? 'Выдаётся за серию'
+                              : 'Только для бета-тестеров',
                         (true, false) when needsPremium =>
                           'Нужен премиум — подробнее',
                         (true, false) when total > hero.coins =>
@@ -257,10 +266,14 @@ class _ItemTile extends StatelessWidget {
     required this.worn,
     required this.owned,
     required this.onTap,
+    required this.base,
     this.locked = false,
   });
 
   final ShopItem item;
+
+  /// Образ, на котором показываем вещь в иконке.
+  final AvatarLook base;
   final bool worn;
   final bool owned;
   final VoidCallback onTap;
@@ -268,18 +281,9 @@ class _ItemTile extends StatelessWidget {
   /// Премиум-вещь, а премиума нет: примерить можно, купить — нет.
   final bool locked;
 
-  static const _slotIcons = {
-    ShopSlot.hair: LucideIcons.scissors,
-    ShopSlot.top: LucideIcons.shirt,
-    ShopSlot.bottom: LucideIcons.layers,
-    ShopSlot.sneakers: LucideIcons.footprints,
-    ShopSlot.accessory: LucideIcons.watch,
-  };
-
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    final swatch = item.swatch;
     return Semantics(
       button: true,
       selected: worn,
@@ -302,21 +306,15 @@ class _ItemTile extends StatelessWidget {
           ),
           child: Column(
             children: [
+              // Иконка — сама вещь на герое, на тёмной подложке.
               Container(
-                width: 36,
-                height: 36,
+                width: 52,
+                height: 52,
                 decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  color: swatch ?? AppColors.raised,
-                  border: Border.all(color: AppColors.hairline),
+                  color: AppColors.raised,
+                  borderRadius: BorderRadius.circular(10),
                 ),
-                child: swatch == null
-                    ? Icon(
-                        _slotIcons[item.slot] ?? LucideIcons.sparkles,
-                        size: 18,
-                        color: AppColors.textSecondary,
-                      )
-                    : null,
+                child: ItemPreview(item: item, base: base, size: 52),
               ),
               const SizedBox(height: 6),
               Text(
@@ -336,9 +334,14 @@ class _ItemTile extends StatelessWidget {
                   ),
                 )
               else if (item.testerOnly)
-                const Text(
-                  'тестерам',
-                  style: TextStyle(fontSize: 11, color: Color(0xFF8B5CF6)),
+                Text(
+                  item.exclusiveLabel ?? 'тестерам',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: item.exclusiveLabel != null
+                        ? const Color(0xFFFF8A3D)
+                        : const Color(0xFF8B5CF6),
+                  ),
                 )
               else
                 Row(

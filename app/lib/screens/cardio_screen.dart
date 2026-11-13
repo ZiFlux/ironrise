@@ -11,6 +11,7 @@ import '../game/game_config.dart';
 import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
+import '../state/training_log.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/format.dart';
@@ -42,6 +43,11 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
   Widget build(BuildContext context) {
     final pulse = ref.watch(heartRateProvider);
     final zone = _zoneFor(ref);
+    final done = doneToday(
+      ref.watch(trainingLogProvider),
+      WorkoutKind.cardio,
+      DateTime.now(),
+    );
     return Scaffold(
       appBar: AppBar(title: const Text('Кардио')),
       body: SafeArea(
@@ -99,9 +105,23 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
                   ),
                 ],
                 const Spacer(),
+                if (done)
+                  const Padding(
+                    padding: EdgeInsets.only(bottom: 8),
+                    child: Text(
+                      'Кардио сегодня уже было: одно в день. Завтра — снова',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ),
                 FilledButton(
-                  onPressed: () =>
-                      ref.read(cardioProvider.notifier).start(_activity),
+                  onPressed: done
+                      ? null
+                      : () =>
+                            ref.read(cardioProvider.notifier).start(_activity),
                   child: const Text('Старт'),
                 ),
               ],

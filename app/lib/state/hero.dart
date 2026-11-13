@@ -7,6 +7,7 @@ import '../game/calendar.dart';
 import '../game/game_config.dart';
 import '../game/progression.dart';
 import '../game/streak.dart';
+import '../game/streak_rewards.dart';
 import '../game/training_format.dart';
 
 enum Goal {
@@ -133,6 +134,7 @@ class HeroProfile {
     required this.streakDays,
     required this.createdAt,
     this.nextScheduleChangeAt,
+    this.nextNicknameChangeAt,
     this.coins = 0,
     this.lastActiveDay,
     this.activeDays = const {},
@@ -141,6 +143,7 @@ class HeroProfile {
     this.startLook,
     this.startLookUntil,
     this.muscles = const {},
+    this.boosters = const Boosters(),
   });
 
   factory HeroProfile.create({
@@ -187,6 +190,9 @@ class HeroProfile {
   /// Когда можно сменить график; null — уже можно (раз в 7 дней, PLAN 4.3).
   final DateTime? nextScheduleChangeAt;
 
+  /// Когда можно бесплатно сменить ник; null — уже можно (game/nickname.dart).
+  final DateTime? nextNicknameChangeAt;
+
   /// Купленная косметика (id из ShopCatalog). Бесплатные вещи сюда не пишутся.
   final Set<String> ownedItems;
 
@@ -200,6 +206,9 @@ class HeroProfile {
 
   /// Очки отдельных мышц (MuscleMath): пропорции аватара и гротескная мышца.
   final MusclePoints muscles;
+
+  /// Бустеры за серию на следующие тренировки (streak_rewards.dart).
+  final Boosters boosters;
 
   /// Открыт ли редактор стартового образа.
   bool startLookOpen(DateTime now) =>
@@ -236,6 +245,9 @@ class HeroProfile {
   );
 
   HeroProfile copyWith({
+    String? nickname,
+    DateTime? nextNicknameChangeAt,
+    bool nicknameChangeAllowed = false,
     Map<BodyPart, int>? xp,
     int? streakDays,
     AvatarLook? look,
@@ -253,8 +265,12 @@ class HeroProfile {
     DateTime? startLookUntil,
     bool startLocked = false,
     MusclePoints? muscles,
+    Boosters? boosters,
   }) => HeroProfile(
-    nickname: nickname,
+    nickname: nickname ?? this.nickname,
+    nextNicknameChangeAt: nicknameChangeAllowed
+        ? null
+        : nextNicknameChangeAt ?? this.nextNicknameChangeAt,
     goal: goal,
     format: format ?? this.format,
     trainingDays: trainingDays ?? this.trainingDays,
@@ -274,6 +290,7 @@ class HeroProfile {
     startLook: startLook ?? this.startLook,
     startLookUntil: startLocked ? null : startLookUntil ?? this.startLookUntil,
     muscles: muscles ?? this.muscles,
+    boosters: boosters ?? this.boosters,
   );
 
   String encode() => jsonEncode({
@@ -290,11 +307,13 @@ class HeroProfile {
     'activeDays': activeDays.toList()..sort(),
     'createdAt': createdAt.toIso8601String(),
     'nextScheduleChangeAt': nextScheduleChangeAt?.toIso8601String(),
+    'nextNicknameChangeAt': nextNicknameChangeAt?.toIso8601String(),
     'ownedItems': ownedItems.toList()..sort(),
     'premium': premium.toJson(),
     'startLook': startLook?.toJson(),
     'startLookUntil': startLookUntil?.toIso8601String(),
     'muscles': MuscleMath.toJson(muscles),
+    'boosters': boosters.toJson(),
   });
 
   factory HeroProfile.decode(String s) {
@@ -315,8 +334,13 @@ class HeroProfile {
       format: TrainingFormat.values.byName(j['format']),
       trainingDays: List<int>.from(j['trainingDays']),
       body: BodyStats.fromJson(j['body']),
+      // Старые сохранения без образа: только бесплатные вещи, редактор старта у них закрыт.
       look: j['look'] == null
-          ? AvatarLook.starter(AvatarSex.male)
+          ? const AvatarLook(
+              sex: AvatarSex.male,
+              hair: HairStyle.short,
+              top: TopKind.none,
+            )
           : AvatarLook.fromJson(j['look']),
       xp: {for (final p in BodyPart.values) p: (xpJson[p.name] as int?) ?? 0},
       streakDays: j['streakDays'] ?? 0,
@@ -333,6 +357,12 @@ class HeroProfile {
       nextScheduleChangeAt: j['nextScheduleChangeAt'] == null
           ? null
           : DateTime.parse(j['nextScheduleChangeAt'] as String),
+      nextNicknameChangeAt: j['nextNicknameChangeAt'] == null
+          ? null
+          : DateTime.parse(j['nextNicknameChangeAt'] as String),
+      boosters: Boosters.fromJson(
+        (j['boosters'] as Map?)?.cast<String, dynamic>(),
+      ),
       muscles: MuscleMath.fromJson(
         (j['muscles'] as Map?)?.cast<String, dynamic>(),
       ),

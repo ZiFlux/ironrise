@@ -18,7 +18,10 @@ void main() {
   test('новый герой: 14 дней на стартовый образ', () {
     final h = _hero();
     expect(h.startLookOpen(DateTime.now()), isTrue);
-    expect(h.startLookOpen(DateTime.now().add(const Duration(days: 15))), isFalse);
+    expect(
+      h.startLookOpen(DateTime.now().add(const Duration(days: 15))),
+      isFalse,
+    );
     expect(h.firstDayLook, same(h.look));
   });
 
@@ -37,7 +40,8 @@ void main() {
 
   test('стартовый образ и телосложение переживают сохранение', () {
     final locked = _hero().copyWith(
-      startLook: AvatarLook.starter(AvatarSex.female).copyWith(build: BodyBuild.heavy),
+      startLook: AvatarLook.starter(AvatarSex.female)
+          .copyWith(build: BodyBuild.heavy),
       startLocked: true,
     );
     final back = HeroProfile.decode(locked.encode());

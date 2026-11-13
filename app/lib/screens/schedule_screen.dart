@@ -10,6 +10,7 @@ import '../state/account_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/schedule_picker.dart';
+import '../widgets/status_toast.dart';
 
 /// Смена формата и дней тренировок — раз в 7 дней (PLAN 4.3).
 class ScheduleScreen extends ConsumerStatefulWidget {
@@ -69,19 +70,15 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
             .changeScheduleLocally(_format, days);
       }
       if (!mounted) return;
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('График обновлён')));
+      showStatus('График обновлён', kind: StatusKind.success);
       context.pop();
     } on ApiException catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(switch (e.status) {
-            0 => 'Нет связи с сервером',
-            409 => 'Сменить график пока нельзя: не чаще раза в неделю',
-            _ => e.message,
-          }),
-        ),
+      showStatusError(
+        e.status == 409
+            ? 'Сменить график пока нельзя: не чаще раза в неделю'
+            : e.message,
+        network: e.isNetwork,
       );
     } finally {
       if (mounted) setState(() => _saving = false);

@@ -47,4 +47,23 @@ String formatThousands(int n) {
 }
 
 /// «Тренировка А · ~32 мин» — подпись кнопки старта по плану.
-String planLabel(ProgramDay day) => '${day.title} · ~${day.estimatedDuration.inMinutes} мин';
+String planLabel(ProgramDay day) =>
+    '${day.title} · ~${day.estimatedDuration.inMinutes} мин';
+
+const _monthsOf = [
+  'января',
+  'февраля',
+  'марта',
+  'апреля',
+  'мая',
+  'июня',
+  'июля',
+  'августа',
+  'сентября',
+  'октября',
+  'ноября',
+  'декабря',
+];
+
+/// «1 декабря».
+String formatDate(DateTime d) => '${d.day} ${_monthsOf[d.month - 1]}';

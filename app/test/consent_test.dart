@@ -19,14 +19,17 @@ void main() {
     expect(c.read(healthConsentProvider).allowsPulse, isFalse);
     await c.read(healthConsentProvider.notifier).set(true);
     final again = await _container({
-      'health_consent_v1':
-          (await SharedPreferences.getInstance()).getString('health_consent_v1')!,
+      'health_consent_v1': (await SharedPreferences.getInstance()).getString(
+        'health_consent_v1',
+      )!,
     });
     expect(again.read(healthConsentProvider).allowsPulse, isTrue);
     expect(again.read(healthConsentProvider).policyVersion, isNotNull);
   });
 
-  testWidgets('вопрос о пульсе — один раз, «Без пульса» запоминается', (t) async {
+  testWidgets('вопрос о пульсе — один раз, «Без пульса» запоминается', (
+    t,
+  ) async {
     final c = await _container({});
     await t.pumpWidget(
       UncontrolledProviderScope(

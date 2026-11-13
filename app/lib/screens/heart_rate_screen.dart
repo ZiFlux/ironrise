@@ -25,20 +25,39 @@ class HeartRateScreen extends ConsumerWidget {
             const _HowToCard(),
           if (pulse.message != null) ...[
             const SizedBox(height: 12),
-            Text(pulse.message!, style: const TextStyle(fontSize: 13, color: AppColors.textSecondary)),
+            Text(
+              pulse.message!,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
           ],
           if (!pulse.isConnected) ...[
             const SizedBox(height: 16),
             FilledButton.icon(
-              onPressed: pulse.status == HeartRateStatus.scanning ? controller.stopScan : controller.startScan,
-              icon: Icon(pulse.status == HeartRateStatus.scanning ? LucideIcons.square : LucideIcons.bluetooth, size: 18),
-              label: Text(pulse.status == HeartRateStatus.scanning ? 'Остановить поиск' : 'Найти датчик'),
+              onPressed: pulse.status == HeartRateStatus.scanning
+                  ? controller.stopScan
+                  : controller.startScan,
+              icon: Icon(
+                pulse.status == HeartRateStatus.scanning
+                    ? LucideIcons.square
+                    : LucideIcons.bluetooth,
+                size: 18,
+              ),
+              label: Text(
+                pulse.status == HeartRateStatus.scanning
+                    ? 'Остановить поиск'
+                    : 'Найти датчик',
+              ),
             ),
             const SizedBox(height: 16),
             for (final device in pulse.found)
               _DeviceRow(
                 device: device,
-                connecting: pulse.status == HeartRateStatus.connecting && pulse.sensorName == device.name,
+                connecting:
+                    pulse.status == HeartRateStatus.connecting &&
+                    pulse.sensorName == device.name,
                 onTap: () => controller.connect(device),
               ),
             if (pulse.status == HeartRateStatus.scanning && pulse.found.isEmpty)
@@ -71,7 +90,10 @@ class _HowToCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text('Как подключить', style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+            const Text(
+              'Как подключить',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
             const SizedBox(height: 12),
             for (final (i, step) in _steps.indexed)
               Padding(
@@ -81,10 +103,19 @@ class _HowToCard extends StatelessWidget {
                   children: [
                     SizedBox(
                       width: 20,
-                      child: Text('${i + 1}', style: const TextStyle(color: AppColors.textMuted)),
+                      child: Text(
+                        '${i + 1}',
+                        style: const TextStyle(color: AppColors.textMuted),
+                      ),
                     ),
                     Expanded(
-                      child: Text(step, style: const TextStyle(fontSize: 14, color: AppColors.textSecondary)),
+                      child: Text(
+                        step,
+                        style: const TextStyle(
+                          fontSize: 14,
+                          color: AppColors.textSecondary,
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -120,18 +151,29 @@ class _ConnectedCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(state.sensorName ?? 'Датчик пульса',
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500)),
+                  Text(
+                    state.sensorName ?? 'Датчик пульса',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
                   const SizedBox(height: 4),
                   Text(
                     fromWatch ? 'Тренировка идёт на часах' : 'Подключён',
-                    style: const TextStyle(fontSize: 13, color: AppColors.textSecondary),
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   if (fromWatch)
                     const Text(
                       'Чтобы отключить, завершите тренировку на часах',
-                      style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
                     )
                   else
                     TextButton(
@@ -145,9 +187,15 @@ class _ConnectedCard extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
-                Text(state.bpm?.toString() ?? '—', style: figureStyle(size: 40, color: accent)),
+                Text(
+                  state.bpm?.toString() ?? '—',
+                  style: figureStyle(size: 40, color: accent),
+                ),
                 const SizedBox(height: 4),
-                const Text('уд/мин', style: TextStyle(fontSize: 12, color: AppColors.textMuted)),
+                const Text(
+                  'уд/мин',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
               ],
             ),
           ],
@@ -158,7 +206,11 @@ class _ConnectedCard extends StatelessWidget {
 }
 
 class _DeviceRow extends StatelessWidget {
-  const _DeviceRow({required this.device, required this.connecting, required this.onTap});
+  const _DeviceRow({
+    required this.device,
+    required this.connecting,
+    required this.onTap,
+  });
 
   final SensorDevice device;
   final bool connecting;
@@ -170,16 +222,33 @@ class _DeviceRow extends StatelessWidget {
       onTap: connecting ? null : onTap,
       child: Container(
         height: 56,
-        decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: AppColors.hairline))),
+        decoration: const BoxDecoration(
+          border: Border(bottom: BorderSide(color: AppColors.hairline)),
+        ),
         child: Row(
           children: [
-            const Icon(LucideIcons.heartPulse, size: 18, color: AppColors.textSecondary),
+            const Icon(
+              LucideIcons.heartPulse,
+              size: 18,
+              color: AppColors.textSecondary,
+            ),
             const SizedBox(width: 12),
-            Expanded(child: Text(device.name, style: const TextStyle(fontSize: 15))),
+            Expanded(
+              child: Text(device.name, style: const TextStyle(fontSize: 15)),
+            ),
             if (connecting)
-              const SizedBox.square(dimension: 16, child: CircularProgressIndicator(strokeWidth: 2))
+              const SizedBox.square(
+                dimension: 16,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              )
             else
-              Text('${device.rssi} дБм', style: const TextStyle(fontSize: 12, color: AppColors.textMuted)),
+              Text(
+                '${device.rssi} дБм',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
           ],
         ),
       ),

@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../router.dart';
 import '../state/server_game.dart';
 import 'api_client.dart';
+import '../widgets/status_toast.dart';
 
 /// Параметры Firebase приходят при сборке: flutter run --dart-define-from-file=firebase.json
 /// (значения — из google-services.json, см. docs/BETA.md). Нет параметров — пуши выключены.
@@ -54,6 +55,7 @@ String _pathFor(RemoteMessage m) => switch (m.data['screen']) {
   'friends' => '/duels/friends',
   'duels' => '/duels',
   'tip' => '/tip',
+  'workout' => '/workout',
   _ => '/',
 };
 
@@ -78,14 +80,11 @@ Future<void> setupPush(Ref ref, ApiClient api) async {
       ref.invalidate(notificationsProvider);
       final title = m.notification?.title;
       if (title != null) {
-        messengerKey.currentState?.showSnackBar(
-          SnackBar(
-            content: Text(title),
-            action: SnackBarAction(
-              label: 'Открыть',
-              onPressed: () => ref.read(routerProvider).go(_pathFor(m)),
-            ),
-          ),
+        showStatus(
+          title,
+          actionLabel: 'Открыть',
+          onAction: () => ref.read(routerProvider).go(_pathFor(m)),
+          duration: const Duration(seconds: 4),
         );
       }
     });

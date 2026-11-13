@@ -6,6 +6,9 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/body_part.dart';
+import '../game/nickname.dart';
+import '../net/api_client.dart';
+import '../state/account_state.dart';
 import '../game/program.dart';
 import '../game/training_format.dart';
 import '../state/hero.dart';
@@ -16,6 +19,7 @@ import '../theme.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/schedule_picker.dart';
 import '../widgets/logo_mark.dart';
+import '../widgets/status_toast.dart';
 
 /// Онбординг: 18+ → герой и цель → формат тренировок → комплекция (необязательно).
 class OnboardingScreen extends ConsumerStatefulWidget {
@@ -60,7 +64,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   bool get _canContinue => switch (_step) {
     0 => _isAdult,
-    1 => _nickname.text.trim().length >= 2 && _goal != null,
+    1 => nicknameProblem(_nickname.text) == null && _goal != null,
     2 => _days.length >= minTrainingDaysPerWeek,
     3 => _healthRisks.isEmpty || _healthAcknowledged,
     _ => true,
@@ -78,7 +82,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       return;
     }
     final hero = HeroProfile.create(
-      nickname: _nickname.text.trim(),
+      nickname: normalizeNickname(_nickname.text),
       goal: _goal!,
       format: _format,
       trainingDays: _days.toList()..sort(),
@@ -93,7 +97,27 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     await ref.read(programProvider.notifier).setEquipment(_equipment);
     await ref.read(healthConsentProvider.notifier).set(_pulseConsent);
     await ref.read(heroProvider.notifier).save(hero);
+    await _renameOnServer(hero.nickname);
     if (mounted) context.go('/');
+  }
+
+  /// Героя создали заново, а аккаунт остался: ник — на сервер (первая смена бесплатна).
+  /// Не вышло — синхронизация вернёт ник аккаунта, говорим почему.
+  Future<void> _renameOnServer(String nickname) async {
+    if (!ref.read(accountProvider).signedIn) return;
+    try {
+      await ref.read(apiProvider).put('/v1/me/nickname', {
+        'nickname': nickname,
+      });
+    } on ApiException catch (e) {
+      if (!mounted) return;
+      showStatusError(
+        'Ник аккаунта не изменён: '
+        '${nicknameServerError(e.message) ?? e.message}',
+        network: e.isNetwork,
+      );
+    }
+    await ref.read(accountProvider.notifier).sync();
   }
 
   void _back() {
@@ -248,7 +272,12 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       TextField(
         controller: _nickname,
         maxLength: 20,
-        decoration: const InputDecoration(labelText: 'Ник'),
+        decoration: InputDecoration(
+          labelText: 'Ник',
+          errorText: _nickname.text.trim().isEmpty
+              ? null
+              : nicknameProblem(_nickname.text),
+        ),
         onChanged: (_) => setState(() {}),
       ),
       const SizedBox(height: 8),

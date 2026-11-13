@@ -83,11 +83,19 @@ class AvatarLook {
   });
 
   /// Базовый образ нового героя: без покупок из магазина.
+  /// Одет сразу (майка, кроссовки): эти вещи бесплатны в редакторе старта
+  /// и выдаются при его фиксации (ShopCatalog.creatorGrant).
   factory AvatarLook.starter(AvatarSex sex) => AvatarLook(
     sex: sex,
     hair: sex == AvatarSex.male ? HairStyle.short : HairStyle.bob,
-    top: sex == AvatarSex.male ? TopKind.none : TopKind.bra,
+    top: TopKind.tank,
+    topColor: starterTopColor,
+    sneakersColor: starterSneakersColor,
   );
+
+  /// Тёмно-синий (tc_navy) и белые (sn_white) из каталога.
+  static const starterTopColor = Color(0xFF1E2A4A);
+  static const starterSneakersColor = Color(0xFFEDEDED);
 
   final AvatarSex sex;
   final SkinTone skin;

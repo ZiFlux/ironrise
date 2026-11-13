@@ -3,11 +3,11 @@ import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/duel.dart';
 
 Fighter fighter(String id, int level, {int streak = 0}) => Fighter(
-      id: id,
-      name: id,
-      levels: {for (final p in BodyPart.values) p: level},
-      streakDays: streak,
-    );
+  id: id,
+  name: id,
+  levels: {for (final p in BodyPart.values) p: level},
+  streakDays: streak,
+);
 
 double winRate(Fighter a, Fighter b, {int n = 4000}) {
   var wins = 0;
@@ -44,7 +44,10 @@ void main() {
     final day = DateTime(2026, 11, 11);
     final bots = DuelBots.forDay(player, day);
     expect(bots.length, 4);
-    expect(bots.map((b) => b.id), DuelBots.forDay(player, day).map((b) => b.id));
+    expect(
+      bots.map((b) => b.id),
+      DuelBots.forDay(player, day).map((b) => b.id),
+    );
     expect(bots.first.power, lessThan(bots.last.power));
   });
 

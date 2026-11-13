@@ -27,7 +27,11 @@ class AvatarView extends StatelessWidget {
 }
 
 class _AvatarPainter extends CustomPainter {
-  _AvatarPainter({required this.levels, required this.lagging, required this.appear});
+  _AvatarPainter({
+    required this.levels,
+    required this.lagging,
+    required this.appear,
+  });
 
   final Map<BodyPart, int> levels;
   final List<BodyPart> lagging;
@@ -66,8 +70,11 @@ class _AvatarPainter extends CustomPainter {
     Paint fill(BodyPart p) {
       final isLag = lagging.contains(p);
       return Paint()
-        ..color = Color.lerp(const Color(0xFF3A3F48), p.color, isLag ? 0.55 : 0.18)!
-            .withValues(alpha: appear);
+        ..color = Color.lerp(
+          const Color(0xFF3A3F48),
+          p.color,
+          isLag ? 0.55 : 0.18,
+        )!.withValues(alpha: appear);
     }
 
     final outline = Paint()
@@ -80,9 +87,10 @@ class _AvatarPainter extends CustomPainter {
       final x = cx + s * (waistHalf * 0.55);
       final r = RRect.fromRectAndRadius(
         Rect.fromCenter(
-            center: Offset(x, (hipY + footY) / 2),
-            width: legW * 2,
-            height: footY - hipY + 4 * u),
+          center: Offset(x, (hipY + footY) / 2),
+          width: legW * 2,
+          height: footY - hipY + 4 * u,
+        ),
         Radius.circular(legW),
       );
       canvas.drawRRect(r, fill(BodyPart.legs));
@@ -103,14 +111,34 @@ class _AvatarPainter extends CustomPainter {
     // Торс (спина задаёт ширину плеч)
     final torso = Path()
       ..moveTo(cx - shoulderHalf, shoulderY + 2 * u)
-      ..quadraticBezierTo(cx - shoulderHalf, shoulderY - 2 * u, cx - 5 * u, shoulderY - 2 * u)
+      ..quadraticBezierTo(
+        cx - shoulderHalf,
+        shoulderY - 2 * u,
+        cx - 5 * u,
+        shoulderY - 2 * u,
+      )
       ..lineTo(cx + 5 * u, shoulderY - 2 * u)
-      ..quadraticBezierTo(cx + shoulderHalf, shoulderY - 2 * u, cx + shoulderHalf, shoulderY + 2 * u)
-      ..quadraticBezierTo(cx + shoulderHalf - 2 * u, waistY - 8 * u, cx + waistHalf, waistY)
+      ..quadraticBezierTo(
+        cx + shoulderHalf,
+        shoulderY - 2 * u,
+        cx + shoulderHalf,
+        shoulderY + 2 * u,
+      )
+      ..quadraticBezierTo(
+        cx + shoulderHalf - 2 * u,
+        waistY - 8 * u,
+        cx + waistHalf,
+        waistY,
+      )
       ..lineTo(cx + waistHalf + 1 * u, hipY)
       ..lineTo(cx - waistHalf - 1 * u, hipY)
       ..lineTo(cx - waistHalf, waistY)
-      ..quadraticBezierTo(cx - shoulderHalf + 2 * u, waistY - 8 * u, cx - shoulderHalf, shoulderY + 2 * u)
+      ..quadraticBezierTo(
+        cx - shoulderHalf + 2 * u,
+        waistY - 8 * u,
+        cx - shoulderHalf,
+        shoulderY + 2 * u,
+      )
       ..close();
     canvas.drawPath(torso, fill(BodyPart.back));
     canvas.drawPath(torso, outline);
@@ -132,27 +160,42 @@ class _AvatarPainter extends CustomPainter {
       for (final s in [-1, 1]) {
         final r = RRect.fromRectAndRadius(
           Rect.fromCenter(
-            center: Offset(cx + s * 2.6 * u, shoulderY + 17 * u + row * 5.2 * u),
+            center: Offset(
+              cx + s * 2.6 * u,
+              shoulderY + 17 * u + row * 5.2 * u,
+            ),
             width: 4.4 * u,
             height: 4.4 * u,
           ),
           Radius.circular(1.4 * u),
         );
         canvas.drawRRect(
-            r, absPaint..color = absPaint.color.withValues(alpha: absAlpha * appear));
+          r,
+          absPaint..color = absPaint.color.withValues(alpha: absAlpha * appear),
+        );
       }
     }
 
     // Голова и шея
-    final skin = Paint()..color = const Color(0xFF4A505A).withValues(alpha: appear);
-    canvas.drawRect(Rect.fromLTRB(cx - 3 * u, neckY - 2 * u, cx + 3 * u, shoulderY), skin);
+    final skin = Paint()
+      ..color = const Color(0xFF4A505A).withValues(alpha: appear);
+    canvas.drawRect(
+      Rect.fromLTRB(cx - 3 * u, neckY - 2 * u, cx + 3 * u, shoulderY),
+      skin,
+    );
     canvas.drawCircle(Offset(cx, top + headR), headR, skin);
 
     // Пульс кардио: свечение вокруг сердца
     final heart = Paint()
-      ..color = BodyPart.cardio.color.withValues(alpha: (0.25 + 0.6 * cardio) * appear)
+      ..color = BodyPart.cardio.color.withValues(
+        alpha: (0.25 + 0.6 * cardio) * appear,
+      )
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 6);
-    canvas.drawCircle(Offset(cx - 3 * u, shoulderY + 8 * u), (1.5 + 2 * cardio) * u, heart);
+    canvas.drawCircle(
+      Offset(cx - 3 * u, shoulderY + 8 * u),
+      (1.5 + 2 * cardio) * u,
+      heart,
+    );
   }
 
   @override

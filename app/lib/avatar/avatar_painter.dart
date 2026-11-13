@@ -15,12 +15,16 @@ class AvatarPainter extends CustomPainter {
     required this.levels,
     required this.look,
     this.muscles = const {},
-  }) : frame = BodyFrame(levels, look.sex, look.build, muscles) {
+    this.pose = AvatarPose.relaxed,
+    this.poseT = 0,
+  }) : frame = BodyFrame(levels, look.sex, look.build, muscles, pose, poseT) {
     layers = AvatarLayers(frame, look);
   }
 
   final Map<BodyPart, num> levels;
   final AvatarLook look;
+  final AvatarPose pose;
+  final double poseT;
 
   /// Очки мышц: пропорции внутри частей тела. Пусто — все мышцы ровные.
   final MusclePoints muscles;
@@ -46,18 +50,73 @@ class AvatarPainter extends CustomPainter {
     _paintFloorShadow(canvas);
     _fillSolid(canvas, layers.hairBack, look.hairColor);
     _paintArms(canvas);
-    _paintTorso(canvas);
-    _paintRelief(canvas);
-    _paintClothes(canvas);
+    _inStance(canvas, () {
+      _paintTorso(canvas);
+      _paintRelief(canvas);
+      _paintClothes(canvas);
+    });
     _paintHead(canvas);
 
     canvas.restore();
   }
 
   void _paintFloorShadow(Canvas canvas) => canvas.drawOval(
-    Rect.fromCenter(center: const Offset(100, 392), width: 108, height: 10),
+    Rect.fromCenter(
+      center: const Offset(100, 392),
+      width: look.isFemale ? 112 : 124,
+      height: 10,
+    ),
     Paint()..color = _floorShadow,
   );
+
+  /// Тело в стойке: выше таза как есть, каждая нога — своя половина холста,
+  /// повёрнутая вокруг тазобедренного сустава. Так ноги встают на ширину плеч
+  /// вместе с одеждой, наколенниками и кроссовками.
+  void _inStance(Canvas canvas, void Function() draw) {
+    const top = BodyFrame.stanceTop;
+    canvas
+      ..save()
+      ..clipRect(const Rect.fromLTRB(-200, -200, 400, top + 0.5));
+    draw();
+    canvas.restore();
+    for (final side in const [1, -1]) {
+      final pivot = Offset(100 + side * frame.hipJointX, top - 4);
+      canvas
+        ..save()
+        ..translate(pivot.dx, pivot.dy)
+        ..rotate(-side * frame.stanceAngle)
+        ..translate(-pivot.dx, -pivot.dy)
+        // Обрезка — в исходных координатах: берём свою половину ниже таза.
+        ..clipRect(
+          side == 1
+              ? const Rect.fromLTRB(100, top, 400, 600)
+              : const Rect.fromLTRB(-200, top, 100, 600),
+        );
+      draw();
+      canvas.restore();
+      // Ступня — туда же, куда ушла нога, но ровно: только сдвиг.
+      final ankle = Offset(100 + side * frame.ankle, 380);
+      final a = ankle - pivot;
+      final angle = -side * frame.stanceAngle;
+      final moved =
+          pivot +
+          Offset(
+            a.dx * cos(angle) - a.dy * sin(angle),
+            a.dx * sin(angle) + a.dy * cos(angle),
+          );
+      final shift = moved - ankle;
+      canvas
+        ..save()
+        ..clipRect(
+          side == 1
+              ? Rect.fromLTRB(100 + shift.dx, top, 400, 600)
+              : Rect.fromLTRB(-200, top, 100 + shift.dx, 600),
+        )
+        ..translate(shift.dx, shift.dy);
+      _paintShoes(canvas);
+      canvas.restore();
+    }
+  }
 
   void _paintArms(Canvas canvas) {
     for (final arm in [frame.rightArm, frame.leftArm]) {
@@ -94,7 +153,8 @@ class AvatarPainter extends CustomPainter {
       (layers.chestLines, 0.12 + 0.45 * min(1.0, frame.chest)),
       (layers.absLines, 0.05 + 0.45 * min(1.0, frame.core)),
       (layers.quadLines, 0.05 + 0.4 * min(1.0, frame.thighs)),
-      (layers.deltLines, 0.1 + 0.45 * min(1.0, frame.delts)),
+      // Дельта — часть плеча, а не отдельный шар: граница едва намечена.
+      (layers.deltLines, 0.04 + 0.2 * min(1.0, frame.delts)),
       (layers.armLines, 0.08 + 0.4 * min(1.0, frame.upperArm)),
     ];
     for (final (path, opacity) in lines) {
@@ -123,6 +183,20 @@ class AvatarPainter extends CustomPainter {
       layers.bottom,
       betaBottom ? _betaDark : look.bottomColor,
     );
+    if (layers.joggerPockets case final pockets?) {
+      canvas.drawPath(
+        pockets,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeCap = StrokeCap.round
+          ..color = Color.lerp(
+            betaBottom ? _betaDark : look.bottomColor,
+            Colors.black,
+            0.5,
+          )!.withValues(alpha: 0.9),
+      );
+    }
     if (betaBottom) {
       canvas.drawPath(
         layers.sideStripes,
@@ -150,20 +224,24 @@ class AvatarPainter extends CustomPainter {
       _fillSolid(canvas, buckle, _steel);
     }
     _fillSolid(canvas, layers.goldChain, _gold);
+  }
+
+  /// Кроссовки рисуются отдельно: в стойке их сдвигают за ногой, не поворачивая,
+  /// чтобы подошва стояла на полу.
+  void _paintShoes(Canvas canvas) {
     final sneakers = look.sneakersColor;
-    if (sneakers != null) {
-      for (final shoe in layers.sneakers) {
-        _fillSolid(canvas, shoe, sneakers);
-      }
-      canvas.drawPath(
-        layers.soles,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeWidth = 2.4
-          ..strokeCap = StrokeCap.round
-          ..color = const Color(0xFFD8D8D2),
-      );
+    if (sneakers == null) return;
+    for (final shoe in layers.sneakers) {
+      _fillSolid(canvas, shoe, sneakers);
     }
+    canvas.drawPath(
+      layers.soles,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.round
+        ..color = const Color(0xFFD8D8D2),
+    );
   }
 
   void _paintHead(Canvas canvas) {
@@ -286,6 +364,8 @@ class AvatarPainter extends CustomPainter {
   // а перерисовка дорогая (контуры тела, градиенты, рельеф).
   bool shouldRepaint(AvatarPainter old) =>
       old.look != look ||
+      old.pose != pose ||
+      old.poseT != poseT ||
       !mapEquals(old.levels, levels) ||
       !mapEquals(old.muscles, muscles);
 }

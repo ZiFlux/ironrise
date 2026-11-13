@@ -15,10 +15,21 @@ import '../state/hero.dart';
 import '../state/joint_state.dart';
 import '../state/providers.dart';
 import '../state/records_state.dart';
+import '../avatar/body_frame.dart';
+import '../avatar/posing_avatar.dart';
+import '../game/avatar_icons.dart';
+import '../game/training_stats.dart';
+import '../state/showcase_state.dart';
+import '../state/training_log.dart';
+import '../widgets/body_part_sheet.dart';
+import '../widgets/level_plate.dart';
+import '../game/hero_milestones.dart';
+import '../widgets/status_toast.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 import '../widgets/shop_entry.dart';
 import 'devices_screen.dart';
+import 'feed_screen.dart' show feedIcon;
 import '../widgets/sign_up_card.dart';
 
 /// Профиль игрока: герой «было → стало», статистика, уровни силы.
@@ -29,80 +40,388 @@ class PlayerScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hero = ref.watch(heroProvider);
     if (hero == null) return const SizedBox.shrink();
-    final records = ref.watch(recordsProvider);
-    final days = DateTime.now().difference(hero.createdAt).inDays + 1;
 
-    return Scaffold(
-      appBar: AppBar(
-        title: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Flexible(
-              child: Text(hero.nickname, overflow: TextOverflow.ellipsis),
-            ),
-            if (hero.premium.active) ...[
-              const SizedBox(width: 8),
-              Tooltip(
-                message: hero.premium.isTester
-                    ? 'Премиум бета-тестера'
-                    : 'Премиум',
-                child: const Icon(
-                  LucideIcons.crown,
-                  size: 18,
-                  color: Color(0xFFD9B25A),
-                ),
+    return DefaultTabController(
+      length: 2,
+      child: Scaffold(
+        appBar: AppBar(
+          title: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Flexible(
+                child: Text('Профиль', overflow: TextOverflow.ellipsis),
               ),
+              if (hero.premium.active) ...[
+                const SizedBox(width: 8),
+                Tooltip(
+                  message: hero.premium.isTester
+                      ? 'Премиум бета-тестера'
+                      : 'Премиум',
+                  child: const Icon(
+                    LucideIcons.crown,
+                    size: 18,
+                    color: Color(0xFFD9B25A),
+                  ),
+                ),
+              ],
             ],
+          ),
+          actions: [
+            IconButton(
+              tooltip: 'Настроить витрину',
+              onPressed: () => showShowcaseEditor(context),
+              icon: const Icon(LucideIcons.palette, size: 20),
+            ),
+            IconButton(
+              tooltip: 'Настройки и конфиденциальность',
+              onPressed: () => context.go('/profile/settings'),
+              icon: const Icon(LucideIcons.settings, size: 20),
+            ),
+            const SizedBox(width: 8),
+          ],
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'Витрина'),
+              Tab(text: 'Меню'),
+            ],
+          ),
+        ),
+        body: TabBarView(
+          children: [
+            _Showcase(hero: hero),
+            _MenuTab(hero: hero),
           ],
         ),
-        actions: [
-          IconButton(
-            tooltip: 'Настройки и конфиденциальность',
-            onPressed: () => context.go('/profile/settings'),
-            icon: const Icon(LucideIcons.settings, size: 20),
-          ),
-          const SizedBox(width: 8),
-        ],
-      ),
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(20, 0, 20, 32),
-        children: [
-          _Growth(hero: hero),
-          if (hero.startLookOpen(DateTime.now())) ...[
-            const SizedBox(height: 8),
-            _StartLookCard(hero: hero),
-            const SizedBox(height: 8),
-          ] else
-            const SizedBox(height: 4),
-          Text(
-            'С IronRise $days ${_daysWord(days)} · сила ${hero.power}',
-            textAlign: TextAlign.center,
-            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
-          ),
-          const SizedBox(height: 20),
-          _Stats(hero: hero, records: records),
-          const SizedBox(height: 16),
-          if (!ref.watch(accountProvider).signedIn) ...[
-            const SignUpCard(),
-            const SizedBox(height: 16),
-          ],
-          const PremiumBanner(),
-          const SizedBox(height: 12),
-          const _Menu(),
-          const SizedBox(height: 24),
-          _StrengthSection(hero: hero, records: records),
-          const SizedBox(height: 24),
-          _MuscleSection(hero: hero),
-        ],
       ),
     );
   }
 
-  static String _daysWord(int n) {
+  static String daysWord(int n) {
     final mod10 = n % 10, mod100 = n % 100;
     if (mod10 == 1 && mod100 != 11) return 'день';
     if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return 'дня';
     return 'дней';
+  }
+}
+
+/// Витрина: аватарка, герой в выбранной позе, значки силы, статистика, мышцы.
+class _Showcase extends ConsumerWidget {
+  const _Showcase({required this.hero});
+
+  final HeroProfile hero;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showcase = ref.watch(showcaseProvider);
+    final records = ref.watch(recordsProvider);
+    final log = ref.watch(trainingLogProvider);
+    final now = DateTime.now();
+    final days = now.difference(hero.createdAt).inDays + 1;
+    final hot = hotParts(log, now, muscles: hero.muscles);
+    final pose = showcase.pose;
+    return ListView(
+      padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+      children: [
+        Row(
+          children: [
+            GestureDetector(
+              onTap: () => showShowcaseEditor(context),
+              child: AvatarBadge(
+                iconId: showcase.icon,
+                background: showcase.background,
+                size: 64,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    hero.nickname,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'сила ${hero.power} · серия ${hero.currentStreak(now)} · '
+                    'с IronRise $days ${PlayerScreen.daysWord(days)}',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          height: 300,
+          child: pose == null
+              ? PosingAvatar(
+                  levels: hero.avatarLevels,
+                  look: hero.look,
+                  muscles: hero.muscles,
+                  focus: recentMuscles(log, now),
+                  withLamp: true,
+                )
+              : AvatarView(
+                  levels: hero.avatarLevels,
+                  look: hero.look,
+                  muscles: hero.muscles,
+                  withLamp: true,
+                  pose: pose,
+                  poseT: 1,
+                ),
+        ),
+        const SizedBox(height: 12),
+        // Значки силы: огонёк у того, что качается чаще всего.
+        for (final row in [
+          BodyPart.values.take(3),
+          BodyPart.values.skip(3),
+        ]) ...[
+          Row(
+            children: [
+              for (final (i, part) in row.indexed) ...[
+                if (i > 0) const SizedBox(width: 8),
+                Expanded(
+                  child: LevelPlate(
+                    part: part,
+                    xp: hero.xp[part]!,
+                    lagging: hero.lagging.contains(part),
+                    hot: hot.contains(part),
+                    onTap: () => showBodyPartSheet(context, part),
+                  ),
+                ),
+              ],
+            ],
+          ),
+          const SizedBox(height: 8),
+        ],
+        const SizedBox(height: 20),
+        _Stats(hero: hero, records: records),
+        const SizedBox(height: 24),
+        _StrengthSection(hero: hero, records: records),
+        const SizedBox(height: 24),
+        _MuscleSection(
+          hero: hero,
+          hot: hotMuscles(log, now, muscles: hero.muscles),
+        ),
+      ],
+    );
+  }
+}
+
+/// Меню: «было → стало», аккаунт, премиум и все разделы, что раньше были в профиле.
+class _MenuTab extends ConsumerWidget {
+  const _MenuTab({required this.hero});
+
+  final HeroProfile hero;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => ListView(
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 32),
+    children: [
+      _Growth(hero: hero),
+      if (hero.startLookOpen(DateTime.now())) ...[
+        const SizedBox(height: 8),
+        _StartLookCard(hero: hero),
+      ],
+      const SizedBox(height: 16),
+      if (!ref.watch(accountProvider).signedIn) ...[
+        const SignUpCard(),
+        const SizedBox(height: 16),
+      ],
+      const PremiumBanner(),
+      const SizedBox(height: 12),
+      const _Menu(),
+    ],
+  );
+}
+
+/// Настроить витрину: аватарка, фон и поза героя.
+Future<void> showShowcaseEditor(BuildContext context) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        minChildSize: 0.3,
+        maxChildSize: 0.92,
+        // Тянется вниз за полоску и за содержимое, когда список вверху.
+        builder: (_, scroll) => _ShowcaseEditor(scroll: scroll),
+      ),
+    );
+
+class _ShowcaseEditor extends ConsumerWidget {
+  const _ShowcaseEditor({required this.scroll});
+
+  final ScrollController scroll;
+
+  static const _poses = <(AvatarPose?, String)>[
+    (null, 'Сам меняет'),
+    (AvatarPose.relaxed, 'Стойка'),
+    (AvatarPose.doubleBiceps, 'Двойной бицепс'),
+    (AvatarPose.latSpread, 'Широчайшие'),
+    (AvatarPose.handsBehindHead, 'Руки за головой'),
+    (AvatarPose.victory, 'Победа'),
+  ];
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final showcase = ref.watch(showcaseProvider);
+    final notifier = ref.read(showcaseProvider.notifier);
+    final hero = ref.watch(heroProvider);
+    final level = hero == null ? 0 : heroLevel(hero.levels);
+    final workouts = ref.watch(recordsProvider).workouts;
+    bool open(AvatarIcon icon) => icon.unlockedFor(
+      heroLevel: level,
+      streak: hero?.currentStreak(DateTime.now()) ?? 0,
+      workouts: workouts,
+    );
+    return SafeArea(
+      child: ListView(
+        controller: scroll,
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+        children: [
+          Row(
+            children: [
+              const Expanded(
+                child: Text(
+                  'Витрина',
+                  style: TextStyle(fontSize: 19, fontWeight: FontWeight.w500),
+                ),
+              ),
+              IconButton(
+                tooltip: 'Закрыть',
+                onPressed: () => Navigator.pop(context),
+                icon: const Icon(LucideIcons.x, size: 20),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Аватарка',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            runSpacing: 10,
+            children: [
+              for (final icon in avatarIcons)
+                Tooltip(
+                  message: icon.label,
+                  child: GestureDetector(
+                    onTap: () => !open(icon)
+                        ? showStatus(
+                            'Откроется за достижение: ${icon.unlockText}',
+                          )
+                        : notifier.save(showcase.copyWith(icon: icon.id)),
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: showcase.icon == icon.id
+                              ? Theme.of(context).colorScheme.primary
+                              : Colors.transparent,
+                          width: 2,
+                        ),
+                      ),
+                      child: Opacity(
+                        opacity: open(icon) ? 1 : 0.35,
+                        child: AvatarBadge(
+                          iconId: icon.id,
+                          background: showcase.background,
+                          size: 48,
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Фон',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 10,
+            children: [
+              for (final (i, color) in avatarBackgrounds.indexed)
+                GestureDetector(
+                  onTap: () => notifier.save(showcase.copyWith(background: i)),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: color,
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: showcase.background == i
+                            ? Theme.of(context).colorScheme.primary
+                            : AppColors.hairline,
+                        width: 2,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            'Поза героя на витрине',
+            style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 8),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              for (final (pose, label) in _poses)
+                ChoiceChip(
+                  label: Text(
+                    pose == AvatarPose.victory && level < victoryPoseLevel
+                        ? '$label · ур. $victoryPoseLevel'
+                        : label,
+                  ),
+                  selected: showcase.pose == pose,
+                  showCheckmark: false,
+                  onSelected:
+                      pose == AvatarPose.victory && level < victoryPoseLevel
+                      ? null
+                      : (_) => notifier.save(
+                          showcase.copyWith(pose: pose, autoPose: pose == null),
+                        ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Витрину видят друзья. «Сам меняет» — герой встаёт в позы своих '
+            'сильных мышц. Выбор сохраняется сразу',
+            style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+          ),
+          const SizedBox(height: 16),
+          FilledButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Готово'),
+          ),
+        ],
+      ),
+    );
   }
 }
 
@@ -271,6 +590,14 @@ class _Menu extends ConsumerWidget {
         '/profile/friends',
       ),
       (
+        feedIcon,
+        'Лента друзей',
+        account.signedIn
+            ? 'Уровни, серии и возвращения друзей'
+            : 'Нужен аккаунт',
+        '/feed',
+      ),
+      (
         LucideIcons.handshake,
         'Тренировка вместе',
         joint?.bonusActive ?? false
@@ -306,7 +633,9 @@ class _Menu extends ConsumerWidget {
           for (final (i, (icon, title, subtitle, path)) in items.indexed) ...[
             if (i > 0) const Divider(height: 1, indent: 56),
             ListTile(
-              onTap: () => context.go(path),
+              // Лента — поверх вкладок, с возвратом назад.
+              onTap: () =>
+                  path == '/feed' ? context.push(path) : context.go(path),
               leading: Icon(icon, size: 20),
               title: Text(title),
               subtitle: Text(
@@ -526,9 +855,12 @@ class _LiftRow extends StatelessWidget {
 
 /// Мышцы: какие впереди, какие отстают, и шуточная гротескная мышца.
 class _MuscleSection extends StatelessWidget {
-  const _MuscleSection({required this.hero});
+  const _MuscleSection({required this.hero, this.hot = const {}});
 
   final HeroProfile hero;
+
+  /// Что качается чаще всего за две недели — помечаем огоньком.
+  final Set<Muscle> hot;
 
   @override
   Widget build(BuildContext context) {
@@ -588,6 +920,7 @@ class _MuscleSection extends StatelessWidget {
                         muscle: m,
                         balance: balance[m]!,
                         grotesque: m == grotesque,
+                        hot: hot.contains(m),
                       ),
                 ],
               ),
@@ -610,11 +943,13 @@ class _MuscleRow extends StatelessWidget {
     required this.muscle,
     required this.balance,
     required this.grotesque,
+    this.hot = false,
   });
 
   final Muscle muscle;
   final double balance;
   final bool grotesque;
+  final bool hot;
 
   @override
   Widget build(BuildContext context) {
@@ -631,7 +966,25 @@ class _MuscleRow extends StatelessWidget {
         children: [
           SizedBox(
             width: 112,
-            child: Text(muscle.label, style: const TextStyle(fontSize: 14)),
+            child: Row(
+              children: [
+                Flexible(
+                  child: Text(
+                    muscle.label,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ),
+                if (hot) ...[
+                  const SizedBox(width: 4),
+                  const Icon(
+                    LucideIcons.flame,
+                    size: 14,
+                    color: Color(0xFFFF8A3D),
+                  ),
+                ],
+              ],
+            ),
           ),
           Expanded(
             child: ClipRRect(

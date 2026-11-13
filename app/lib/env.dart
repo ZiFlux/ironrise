@@ -10,7 +10,10 @@ library;
 enum AppEnv { dev, beta }
 
 const _isRelease = bool.fromEnvironment('dart.vm.product');
-const _envName = String.fromEnvironment('ENV', defaultValue: _isRelease ? 'beta' : 'dev');
+const _envName = String.fromEnvironment(
+  'ENV',
+  defaultValue: _isRelease ? 'beta' : 'dev',
+);
 
 const appEnv = _envName == 'beta' ? AppEnv.beta : AppEnv.dev;
 

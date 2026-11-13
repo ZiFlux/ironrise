@@ -23,6 +23,9 @@ class Recommendation {
     if (lagging.isEmpty) return null;
     final part = lagging.first;
     final options = ExerciseCatalog.forPart(part);
-    return Recommendation(part: part, exercise: options.isEmpty ? null : options.first);
+    return Recommendation(
+      part: part,
+      exercise: options.isEmpty ? null : options.first,
+    );
   }
 }

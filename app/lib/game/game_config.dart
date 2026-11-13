@@ -25,7 +25,7 @@ class GameConfig {
   static const double unverifiedValidity = 0.5;
 
   /// Подходов на одно упражнение сверх этого не засчитываются (антифрод).
-  static const int maxSetsPerExercise = 8;
+  static const int maxSetsPerExercise = 4;
 
   /// Монет за единицу опыта.
   static const double coinsPerXp = 0.2;
@@ -45,6 +45,10 @@ class GameConfig {
 
   /// Монеты за правильный ответ на вопрос «Совета дня», раз в день.
   static const int tipCoins = 10;
+
+  /// Советы дня: монеты за каждый верный ответ и бонус за все верные (как на сервере).
+  static const int tipCoinsPerAnswer = 4;
+  static const int tipQuizBonus = 10;
 
   // ---- Антифрод (ТЗ 4.4). Пороги калибруются на реальных данных беты. ----
 
@@ -82,6 +86,12 @@ class GameConfig {
 
   /// Монеты за дуэль с ботом.
   static const int duelWinCoins = 15;
+
+  /// С тем же ботом — снова через столько часов (как на сервере).
+  static const duelCooldown = Duration(hours: 5);
+
+  /// Повторный бой с ботом за те же сутки — такая доля монет.
+  static const double duelRepeatCoinFactor = 0.5;
   static const int duelLossCoins = 3;
 
   // ---- Кардио (PLAN 4.1). 30 минут бега ≈ одна силовая тренировка. ----

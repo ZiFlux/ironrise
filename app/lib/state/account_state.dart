@@ -19,6 +19,23 @@ import 'server_game.dart';
 
 const _outboxKey = 'outbox_v1';
 const _emailKey = 'account_email';
+const _autoSyncKey = 'auto_sync_v1';
+const _lastSyncKey = 'last_sync_v1';
+
+/// Пока приложение открыто, синхронизация повторяется с этим шагом.
+const autoSyncEvery = Duration(minutes: 10);
+
+/// Почему была синхронизация — для строки статуса в настройках.
+enum SyncReason {
+  launch('при входе'),
+  timer('по расписанию'),
+  background('при сворачивании'),
+  manual('вручную');
+
+  const SyncReason(this.label);
+  final String label;
+}
+
 const _maxOutbox = 300;
 
 /// Тренировка, ожидающая отправки на сервер. clientId делает отправку идемпотентной.
@@ -43,7 +60,15 @@ class AccountState {
     this.error,
     this.rejected = 0,
     this.awaitingWatchPulse = false,
+    this.autoSync = true,
+    this.lastReason,
   });
+
+  /// Автосинхронизация: при входе, каждые 10 минут и при сворачивании.
+  final bool autoSync;
+
+  /// Почему была последняя синхронизация.
+  final SyncReason? lastReason;
 
   /// null — аккаунта нет, приложение работает офлайн.
   final String? email;
@@ -70,7 +95,11 @@ class AccountState {
     bool clearError = false,
     int? rejected,
     bool? awaitingWatchPulse,
+    bool? autoSync,
+    SyncReason? lastReason,
   }) => AccountState(
+    autoSync: autoSync ?? this.autoSync,
+    lastReason: lastReason ?? this.lastReason,
     email: clearEmail ? null : email ?? this.email,
     pending: pending ?? this.pending,
     syncing: syncing ?? this.syncing,
@@ -149,6 +178,7 @@ String deviceTimeZone() {
 class AccountNotifier extends Notifier<AccountState> {
   ApiClient get _api => ref.read(apiProvider);
   Timer? _pulseRetry;
+  Timer? _autoTimer;
 
   /// Как часто перепроверять Health Connect, пока тренировка ждёт пульс.
   static const _pulseRetryEvery = Duration(minutes: 1);
@@ -156,21 +186,74 @@ class AccountNotifier extends Notifier<AccountState> {
   @override
   AccountState build() {
     final prefs = ref.read(prefsProvider);
+    final last = _readLastSync(prefs.getString(_lastSyncKey));
     final s = AccountState(
       email: prefs.getString(_emailKey),
       pending: _readOutbox().length,
+      autoSync: prefs.getBool(_autoSyncKey) ?? true,
+      lastSyncedAt: last?.at,
+      lastReason: last?.reason,
     );
-    if (s.signedIn && s.pending > 0) Future.microtask(sync);
-    // Вернулись в приложение — отправить отложенное (например, ждавшее пульс с часов).
+    // Автосинхронизация: сразу при входе, каждые 10 минут, пока приложение открыто,
+    // и последний раз при сворачивании — до следующего открытия.
+    // Выключена — как раньше: отправляем только накопившуюся очередь.
+    if (s.signedIn && (s.autoSync || s.pending > 0)) {
+      Future.microtask(() => sync(reason: SyncReason.launch));
+    }
+    if (s.signedIn && s.autoSync) _startAutoTimer();
     final lifecycle = AppLifecycleListener(
       onResume: () {
-        if (state.signedIn && state.pending > 0) sync();
+        if (!state.signedIn) return;
+        if (state.autoSync) {
+          sync(reason: SyncReason.launch);
+          _startAutoTimer();
+        } else if (state.pending > 0) {
+          sync(reason: SyncReason.launch);
+        }
+      },
+      onHide: () {
+        _autoTimer?.cancel();
+        if (state.signedIn && state.autoSync) {
+          sync(reason: SyncReason.background);
+        }
       },
     );
     ref.onDispose(lifecycle.dispose);
     ref.onDispose(() => _pulseRetry?.cancel());
+    ref.onDispose(() => _autoTimer?.cancel());
     if (s.signedIn) Future.microtask(() => setupPush(ref, _api));
     return s;
+  }
+
+  void _startAutoTimer() {
+    _autoTimer?.cancel();
+    _autoTimer = Timer.periodic(autoSyncEvery, (_) {
+      if (state.signedIn && state.autoSync) sync(reason: SyncReason.timer);
+    });
+  }
+
+  Future<void> setAutoSync(bool on) async {
+    await ref.read(prefsProvider).setBool(_autoSyncKey, on);
+    state = state.copyWith(autoSync: on);
+    if (on && state.signedIn) {
+      _startAutoTimer();
+      sync(reason: SyncReason.manual);
+    } else {
+      _autoTimer?.cancel();
+    }
+  }
+
+  static ({DateTime at, SyncReason reason})? _readLastSync(String? raw) {
+    if (raw == null) return null;
+    try {
+      final j = jsonDecode(raw) as Map<String, dynamic>;
+      return (
+        at: DateTime.parse(j['at']),
+        reason: SyncReason.values.asNameMap()[j['reason']] ?? SyncReason.manual,
+      );
+    } catch (_) {
+      return null;
+    }
   }
 
   List<OutboxJob> _readOutbox() {
@@ -282,12 +365,14 @@ class AccountNotifier extends Notifier<AccountState> {
     await _api.tokens.save(tokens);
     await ref.read(prefsProvider).setString(_emailKey, email.toLowerCase());
     state = state.copyWith(email: email.toLowerCase(), clearError: true);
+    if (state.autoSync) _startAutoTimer();
     await ref.read(healthConsentProvider.notifier).pushToServer();
     await sync();
     await setupPush(ref, _api);
   }
 
   Future<void> logout() async {
+    _autoTimer?.cancel();
     await unregisterPush(_api);
     final refresh = await _api.tokens.readRefresh();
     if (refresh != null) {
@@ -329,7 +414,8 @@ class AccountNotifier extends Notifier<AccountState> {
     Map<String, dynamic> body,
   ) async {
     // Без согласия на данные о здоровье пульс не отправляем, даже записанный.
-    if (!ref.read(healthConsentProvider).allowsPulse) return {...body, 'pulse': []};
+    if (!ref.read(healthConsentProvider).allowsPulse)
+      return {...body, 'pulse': []};
     final health = ref.read(healthProvider);
     if ((body['pulse'] as List).isNotEmpty || !health.connected) return body;
     final from = DateTime.parse(body['startedAt'] as String);
@@ -344,7 +430,7 @@ class AccountNotifier extends Notifier<AccountState> {
 
   /// Отправить очередь по порядку, затем взять состояние героя с сервера.
   /// Нет сети — очередь ждёт; данные отклонены — тренировка снимается с очереди.
-  Future<void> sync() async {
+  Future<void> sync({SyncReason reason = SyncReason.manual}) async {
     if (!state.signedIn || state.syncing) return;
     state = state.copyWith(syncing: true, clearError: true);
     var rejected = 0;
@@ -374,10 +460,18 @@ class AccountNotifier extends Notifier<AccountState> {
       ref.invalidate(serverBotsProvider);
       ref.invalidate(serverLeagueProvider);
       ref.invalidate(notificationsProvider);
+      final at = DateTime.now();
       state = state.copyWith(
-        lastSyncedAt: DateTime.now(),
+        lastSyncedAt: at,
+        lastReason: reason,
         rejected: state.rejected + rejected,
       );
+      await ref
+          .read(prefsProvider)
+          .setString(
+            _lastSyncKey,
+            jsonEncode({'at': at.toIso8601String(), 'reason': reason.name}),
+          );
       _schedulePulseRetry(waitingForPulse);
     } on ApiException catch (e) {
       if (e.status == 401 || e.isBanned) {

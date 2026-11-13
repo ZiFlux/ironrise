@@ -9,6 +9,7 @@ import '../state/account_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/motion.dart';
+import '../widgets/status_toast.dart';
 
 /// Меню уведомлений: заявки, нападения, напоминания о серии.
 class NotificationsScreen extends ConsumerWidget {
@@ -122,6 +123,7 @@ class _Tile extends StatelessWidget {
     'streak_risk': LucideIcons.flame,
     'daily_tip': LucideIcons.lightbulb,
     'duels_refreshed': LucideIcons.swords,
+    'training_reminder': LucideIcons.alarmClock,
   };
 
   @override
@@ -226,6 +228,11 @@ class _NotificationSettingsState
     ('streak_risk', 'Серия под угрозой', 'Если сегодня последний день отдыха'),
     ('daily_tip', 'Совет дня', 'Утром: новый совет и монеты за ответ'),
     ('duels_refreshed', 'Новые соперники', 'Днём: в дуэлях обновились боты'),
+    (
+      'training_reminder',
+      'Время тренировки',
+      'За час до привычного времени, в день по графику',
+    ),
   ];
 
   @override
@@ -254,8 +261,9 @@ class _NotificationSettingsState
     } on ApiException {
       if (!mounted) return;
       setState(() => _settings = previous);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Не сохранилось: нет связи с сервером')),
+      showStatus(
+        'Не сохранилось: нет связи с сервером',
+        kind: StatusKind.offline,
       );
     }
   }

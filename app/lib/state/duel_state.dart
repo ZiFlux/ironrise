@@ -23,10 +23,29 @@ class DuelDay {
     required this.day,
     required this.results,
     required this.winsByDay,
+    this.lastFightAt = const {},
+    this.fights = const {},
   });
 
   final String day;
+
+  /// Исход последнего боя с каждым ботом сегодня.
   final Map<String, bool> results;
+
+  /// Когда был последний бой с ботом — для перезарядки.
+  final Map<String, DateTime> lastFightAt;
+
+  /// Сколько боёв с ботом сегодня.
+  final Map<String, int> fights;
+
+  /// Когда снова можно драться; null — уже можно.
+  DateTime? nextFightAt(String botId, DateTime now) {
+    final last = lastFightAt[botId];
+    if (last == null) return null;
+    final next = last.add(GameConfig.duelCooldown);
+    return next.isAfter(now) ? next : null;
+  }
+
   final Map<String, int> winsByDay;
 
   /// Победы за неделю, в которую входит [today].
@@ -64,7 +83,22 @@ class DuelNotifier extends Notifier<DuelDay> {
         final results = j['day'] == today
             ? Map<String, bool>.from(j['results'])
             : const <String, bool>{};
-        return DuelDay(day: today, results: results, winsByDay: wins);
+        final same = j['day'] == today;
+        return DuelDay(
+          day: today,
+          results: results,
+          winsByDay: wins,
+          lastFightAt: same
+              ? {
+                  for (final e
+                      in (j['lastFightAt'] as Map? ?? const {}).entries)
+                    e.key as String: DateTime.parse(e.value as String),
+                }
+              : const {},
+          fights: same
+              ? Map<String, int>.from(j['fights'] ?? const {})
+              : const {},
+        );
       } catch (_) {}
     }
     return DuelDay(day: today, results: const {}, winsByDay: const {});
@@ -104,16 +138,28 @@ class DuelNotifier extends Notifier<DuelDay> {
   }
 
   /// Провести бой и сразу начислить награду, чтобы выход из анимации ничего не менял.
+  /// Бой с ботом без аккаунта: с тем же ботом — снова через 5 часов,
+  /// повторный за сутки — половина монет (как на сервере).
   Future<DuelResult?> fight(Fighter bot) async {
     final hero = ref.read(heroProvider);
-    if (hero == null || today.containsKey(bot.id)) return null;
-
+    if (hero == null) return null;
     final now = DateTime.now();
-    final result = DuelSimulator.fight(
+    final sameDay = state.day == dayKey(now);
+    if (sameDay && state.nextFightAt(bot.id, now) != null) return null;
+    final repeat = sameDay && (state.fights[bot.id] ?? 0) > 0;
+
+    final simulated = DuelSimulator.fight(
       playerFighter(hero),
       bot,
       now.microsecondsSinceEpoch,
     );
+    final base = simulated.attackerWon
+        ? GameConfig.duelWinCoins
+        : GameConfig.duelLossCoins;
+    final coins = repeat
+        ? (base * GameConfig.duelRepeatCoinFactor).round()
+        : base;
+    final result = simulated.withCoins(coins, repeat: repeat);
     final day = dayKey(now);
     final oldest = dayKey(
       DateTime(now.year, now.month, now.day - _historyDays),
@@ -128,20 +174,28 @@ class DuelNotifier extends Notifier<DuelDay> {
       day: day,
       results: {...today, bot.id: result.attackerWon},
       winsByDay: wins,
+      lastFightAt: {if (sameDay) ...state.lastFightAt, bot.id: now},
+      fights: {
+        if (sameDay) ...state.fights,
+        bot.id: (sameDay ? state.fights[bot.id] ?? 0 : 0) + 1,
+      },
     );
     await ref
         .read(prefsProvider)
         .setString(
           _duelsKey,
-          jsonEncode({'day': day, 'results': state.results, 'winsByDay': wins}),
+          jsonEncode({
+            'day': day,
+            'results': state.results,
+            'winsByDay': wins,
+            'lastFightAt': {
+              for (final e in state.lastFightAt.entries)
+                e.key: e.value.toIso8601String(),
+            },
+            'fights': state.fights,
+          }),
         );
-    await ref
-        .read(heroProvider.notifier)
-        .addCoins(
-          result.attackerWon
-              ? GameConfig.duelWinCoins
-              : GameConfig.duelLossCoins,
-        );
+    if (coins > 0) await ref.read(heroProvider.notifier).addCoins(coins);
     ref.read(currentDuelProvider.notifier).show(result);
     return result;
   }

@@ -33,6 +33,7 @@ class ShopItem {
     this.takeOff,
     this.premium = false,
     this.testerOnly = false,
+    this.exclusiveLabel,
   });
 
   final String id;
@@ -57,6 +58,9 @@ class ShopItem {
 
   /// Эксклюзив бета-тестеров: не продаётся, выдаётся аккаунту.
   final bool testerOnly;
+
+  /// Подпись эксклюзива вместо «тестерам», например «серия 7 дн.».
+  final String? exclusiveLabel;
 
   bool get isFree => price == 0 && !testerOnly;
 
@@ -83,6 +87,7 @@ ShopItem _color(
   int price, {
   bool premium = false,
   bool testerOnly = false,
+  String? exclusiveLabel,
 }) => ShopItem(
   id: id,
   name: name,
@@ -90,18 +95,27 @@ ShopItem _color(
   price: price,
   premium: premium,
   testerOnly: testerOnly,
+  exclusiveLabel: exclusiveLabel,
   swatch: c,
+  // Вещи тестера всегда своего цвета: выбор цвета меняет их на обычные того же кроя.
   apply: (l) => switch (slot) {
     ShopSlot.hairColor => l.copyWith(hairColor: c),
-    ShopSlot.topColor => l.copyWith(topColor: c),
-    ShopSlot.bottomColor => l.copyWith(bottomColor: c),
+    ShopSlot.topColor => l.copyWith(
+      topColor: c,
+      top: l.top == TopKind.betaTee ? TopKind.tee : null,
+    ),
+    ShopSlot.bottomColor => l.copyWith(
+      bottomColor: c,
+      bottom: l.bottom == BottomKind.betaJoggers ? BottomKind.joggers : null,
+    ),
     ShopSlot.sneakers => l.copyWith(sneakersColor: c),
     _ => l,
   },
   isWorn: (l) => switch (slot) {
     ShopSlot.hairColor => l.hairColor == c,
-    ShopSlot.topColor => l.topColor == c,
-    ShopSlot.bottomColor => l.bottomColor == c,
+    ShopSlot.topColor => l.top != TopKind.betaTee && l.topColor == c,
+    ShopSlot.bottomColor =>
+      l.bottom != BottomKind.betaJoggers && l.bottomColor == c,
     ShopSlot.sneakers => l.sneakersColor == c,
     _ => false,
   },
@@ -339,6 +353,43 @@ class ShopCatalog {
       const Color(0xFF8B5CF7),
       0,
       testerOnly: true,
+    ),
+    // Вещи за серию (streak_rewards.dart): не продаются, выдаются на рубежах.
+    _color(
+      'sn_streak',
+      'Пламя',
+      ShopSlot.sneakers,
+      const Color(0xFFFF5A20),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'серия 7 дн.',
+    ),
+    _color(
+      'tc_streak',
+      'Пламя',
+      ShopSlot.topColor,
+      const Color(0xFFFF5A1F),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'серия 21 дн.',
+    ),
+    _color(
+      'bc_streak',
+      'Угли',
+      ShopSlot.bottomColor,
+      const Color(0xFF3A1A12),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'серия 30 дн.',
+    ),
+    _color(
+      'hc_streak',
+      'Огненные',
+      ShopSlot.hairColor,
+      const Color(0xFFFF6A00),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'серия 60 дн.',
     ),
     // Аксессуары
     _accessory('acc_headband', 'Повязка', Accessory.headband, 50),

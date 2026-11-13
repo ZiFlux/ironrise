@@ -26,7 +26,10 @@ class StrengthStandards {
 
   /// Расчётный максимум / вес тела.
   static const _byBodyweight = {
-    'barbell_squat': _Thresholds([0.75, 1.25, 1.75, 2.25], [0.5, 0.85, 1.25, 1.6]),
+    'barbell_squat': _Thresholds(
+      [0.75, 1.25, 1.75, 2.25],
+      [0.5, 0.85, 1.25, 1.6],
+    ),
     'bench_press': _Thresholds([0.5, 0.85, 1.25, 1.6], [0.3, 0.5, 0.75, 1.0]),
     'lat_pulldown': _Thresholds([0.5, 0.8, 1.1, 1.4], [0.35, 0.55, 0.8, 1.0]),
   };
@@ -38,18 +41,30 @@ class StrengthStandards {
   };
 
   /// Упражнения, по которым есть норматив.
-  static Iterable<String> get exercises => [..._byBodyweight.keys, ..._byReps.keys];
+  static Iterable<String> get exercises => [
+    ..._byBodyweight.keys,
+    ..._byReps.keys,
+  ];
 
   static bool usesReps(String exerciseId) => _byReps.containsKey(exerciseId);
 
   /// Уровень по расчётному максимуму и весу тела; null — норматива нет или не хватает данных.
-  static StrengthLevel? byOneRepMax(String exerciseId, double oneRepMax, double? bodyweightKg, {required bool female}) {
+  static StrengthLevel? byOneRepMax(
+    String exerciseId,
+    double oneRepMax,
+    double? bodyweightKg, {
+    required bool female,
+  }) {
     final t = _byBodyweight[exerciseId];
     if (t == null || bodyweightKg == null || bodyweightKg <= 0) return null;
     return _level(oneRepMax / bodyweightKg, female ? t.female : t.male);
   }
 
-  static StrengthLevel? byReps(String exerciseId, int reps, {required bool female}) {
+  static StrengthLevel? byReps(
+    String exerciseId,
+    int reps, {
+    required bool female,
+  }) {
     final t = _byReps[exerciseId];
     if (t == null) return null;
     return _level(reps.toDouble(), female ? t.female : t.male);
@@ -66,7 +81,8 @@ class StrengthStandards {
   /// Общий уровень — средний по упражнениям, где он известен.
   static StrengthLevel? overall(Iterable<StrengthLevel> levels) {
     if (levels.isEmpty) return null;
-    final mean = levels.map((l) => l.index).reduce((a, b) => a + b) / levels.length;
+    final mean =
+        levels.map((l) => l.index).reduce((a, b) => a + b) / levels.length;
     return StrengthLevel.values[mean.floor()];
   }
 }

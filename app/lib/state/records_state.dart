@@ -17,9 +17,14 @@ class BestLift {
   final DateTime at;
 
   /// Расчётный максимум; null — подход вне 1–12 повторов или без веса.
-  double? get oneRepMax => estimatedOneRepMax(SetRecord(weight: weight, reps: reps));
+  double? get oneRepMax =>
+      estimatedOneRepMax(SetRecord(weight: weight, reps: reps));
 
-  Map<String, dynamic> toJson() => {'weight': weight, 'reps': reps, 'at': at.toIso8601String()};
+  Map<String, dynamic> toJson() => {
+    'weight': weight,
+    'reps': reps,
+    'at': at.toIso8601String(),
+  };
 
   factory BestLift.fromJson(Map<String, dynamic> j) => BestLift(
     weight: (j['weight'] as num).toDouble(),
@@ -30,7 +35,11 @@ class BestLift {
 
 /// Статистика игрока за всё время, хранится на телефоне.
 class TrainingRecords {
-  const TrainingRecords({this.workouts = 0, this.sets = 0, this.best = const {}});
+  const TrainingRecords({
+    this.workouts = 0,
+    this.sets = 0,
+    this.best = const {},
+  });
 
   final int workouts;
   final int sets;
@@ -71,7 +80,11 @@ class RecordsNotifier extends Notifier<TrainingRecords> {
       for (final set in entry.sets) {
         final current = best[entry.exercise.id];
         if (current == null || _isBetter(set, current)) {
-          best[entry.exercise.id] = BestLift(weight: set.weight, reps: set.reps, at: finishedAt);
+          best[entry.exercise.id] = BestLift(
+            weight: set.weight,
+            reps: set.reps,
+            at: finishedAt,
+          );
         }
       }
     }
@@ -80,7 +93,9 @@ class RecordsNotifier extends Notifier<TrainingRecords> {
       sets: state.sets + session.totalSets,
       best: best,
     );
-    await ref.read(prefsProvider).setString(_recordsKey, jsonEncode(state.toJson()));
+    await ref
+        .read(prefsProvider)
+        .setString(_recordsKey, jsonEncode(state.toJson()));
   }
 
   /// С весом — по расчётному максимуму, без веса — по повторам.
@@ -92,4 +107,6 @@ class RecordsNotifier extends Notifier<TrainingRecords> {
   }
 }
 
-final recordsProvider = NotifierProvider<RecordsNotifier, TrainingRecords>(RecordsNotifier.new);
+final recordsProvider = NotifierProvider<RecordsNotifier, TrainingRecords>(
+  RecordsNotifier.new,
+);

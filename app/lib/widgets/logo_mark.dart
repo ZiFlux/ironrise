@@ -20,7 +20,10 @@ class LogoMark extends StatelessWidget {
         child: CustomPaint(
           painter: _PlatePainter(accent: accent, hub: AppColors.background),
           child: Center(
-            child: Text('IR', style: figureStyle(size: size * 0.195, color: accent)),
+            child: Text(
+              'IR',
+              style: figureStyle(size: size * 0.195, color: accent),
+            ),
           ),
         ),
       ),
@@ -49,7 +52,11 @@ class _PlatePainter extends CustomPainter {
         ..rotate(i * 2 * pi / 3);
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromCenter(center: Offset(0, -22.75 * unit), width: 8 * unit, height: 4.5 * unit),
+          Rect.fromCenter(
+            center: Offset(0, -22.75 * unit),
+            width: 8 * unit,
+            height: 4.5 * unit,
+          ),
           Radius.circular(2.25 * unit),
         ),
         slotPaint,
@@ -59,5 +66,6 @@ class _PlatePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_PlatePainter old) => old.accent != accent || old.hub != hub;
+  bool shouldRepaint(_PlatePainter old) =>
+      old.accent != accent || old.hub != hub;
 }

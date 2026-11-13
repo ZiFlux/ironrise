@@ -13,12 +13,17 @@ import '../game/progression.dart';
 import '../game/workout.dart';
 import '../state/account_state.dart';
 import '../state/joint_state.dart';
+import '../game/exercise_ladder.dart';
 import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
+import '../state/training_log.dart';
+import '../widgets/streak_sheet.dart';
+import '../game/shop.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 import '../widgets/next_time_card.dart';
+import '../widgets/set_effort_card.dart';
 import '../widgets/sign_up_card.dart';
 import '../widgets/wellbeing_card.dart';
 
@@ -81,6 +86,32 @@ class WorkoutResultScreen extends ConsumerWidget {
           const SizedBox(height: 4),
           for (final gain in summary.gains)
             _GainRow(gain: gain, maxXp: summary.gains.first.xp),
+          for (final m in ref.watch(lastHeroMilestonesProvider)) ...[
+            const SizedBox(height: 16),
+            Card(
+              child: ListTile(
+                leading: const Text('🏆', style: TextStyle(fontSize: 28)),
+                title: Text('Уровень героя ${m.level}!'),
+                subtitle: Text(
+                  'Подарок: ${ShopCatalog.byId(m.item).name.toLowerCase()}, '
+                  'открыта ${m.perk}',
+                ),
+              ),
+            ),
+          ],
+          if (ref.watch(lastStreakRewardProvider) case final streak?) ...[
+            const SizedBox(height: 16),
+            StreakRewardCard(reward: streak),
+          ],
+          if (ref.watch(lastSetEffortProvider) case final effort?
+              when summary.cardio == null) ...[
+            const SizedBox(height: 16),
+            SetEffortCard(analysis: effort),
+          ],
+          if (planResult != null && planResult.levelUps.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            _LevelUpCard(levelUps: planResult.levelUps),
+          ],
           if (planResult != null && planResult.changes.isNotEmpty) ...[
             const SizedBox(height: 16),
             NextTimeCard(result: planResult),
@@ -88,7 +119,14 @@ class WorkoutResultScreen extends ConsumerWidget {
           // Только после силовой: у кардио своё восстановление.
           if (summary.cardio == null) ...[
             const SizedBox(height: 16),
-            const WellbeingCard(),
+            WellbeingCard(
+              exerciseIds: [
+                for (final e
+                    in ref.watch(trainingLogProvider).firstOrNull?.exercises ??
+                        const <LoggedExercise>[])
+                  e.id,
+              ],
+            ),
           ],
           if (!ref.watch(accountProvider).signedIn) ...[
             const SizedBox(height: 16),
@@ -479,6 +517,54 @@ class _GrowingAvatarState extends State<_GrowingAvatar>
               ),
             ),
         ],
+      ),
+    );
+  }
+}
+
+/// Освоил упражнение — со следующей тренировки вариант сложнее.
+class _LevelUpCard extends StatelessWidget {
+  const _LevelUpCard({required this.levelUps});
+
+  final List<LevelUp> levelUps;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(LucideIcons.trendingUp, size: 20, color: accent),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Новая ступень',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Результат хороший для твоей комплекции — дальше вариант сложнее',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 8),
+            for (final l in levelUps)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  '${l.from} → ${l.to}',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }

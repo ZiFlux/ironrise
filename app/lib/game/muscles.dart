@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'body_part.dart';
+import 'exercise_data.dart';
 
 /// Отдельные мышцы аватара. Опыт копится по частям тела (ТЗ 4.1), а очки мышц
 /// показывают, как он распределён внутри части: кто качает одно и то же,
@@ -28,69 +29,8 @@ enum Muscle {
 
 typedef MusclePoints = Map<Muscle, double>;
 
-/// Целевые мышцы упражнений, доли в сумме 1.
-const exerciseMuscles = <String, Map<Muscle, double>>{
-  'push_up': {
-    Muscle.pecs: 0.55,
-    Muscle.triceps: 0.2,
-    Muscle.delts: 0.15,
-    Muscle.abs: 0.1,
-  },
-  'bench_press': {Muscle.pecs: 0.6, Muscle.triceps: 0.25, Muscle.delts: 0.15},
-  'db_bench_press': {Muscle.pecs: 0.6, Muscle.triceps: 0.2, Muscle.delts: 0.2},
-  'dips': {Muscle.triceps: 0.45, Muscle.pecs: 0.4, Muscle.delts: 0.15},
-  'lat_pulldown': {Muscle.lats: 0.6, Muscle.biceps: 0.25, Muscle.traps: 0.15},
-  'db_row': {
-    Muscle.lats: 0.5,
-    Muscle.traps: 0.2,
-    Muscle.biceps: 0.2,
-    Muscle.forearms: 0.1,
-  },
-  'pull_up': {
-    Muscle.lats: 0.55,
-    Muscle.biceps: 0.25,
-    Muscle.traps: 0.1,
-    Muscle.forearms: 0.1,
-  },
-  'back_extension': {
-    Muscle.lowerBack: 0.6,
-    Muscle.glutes: 0.25,
-    Muscle.hamstrings: 0.15,
-  },
-  'bodyweight_squat': {Muscle.quads: 0.6, Muscle.glutes: 0.3, Muscle.abs: 0.1},
-  'barbell_squat': {
-    Muscle.quads: 0.55,
-    Muscle.glutes: 0.25,
-    Muscle.lowerBack: 0.1,
-    Muscle.abs: 0.1,
-  },
-  'lunges': {
-    Muscle.quads: 0.45,
-    Muscle.glutes: 0.35,
-    Muscle.hamstrings: 0.1,
-    Muscle.calves: 0.1,
-  },
-  'leg_press': {Muscle.quads: 0.65, Muscle.glutes: 0.25, Muscle.calves: 0.1},
-  'romanian_deadlift': {
-    Muscle.hamstrings: 0.45,
-    Muscle.glutes: 0.3,
-    Muscle.lowerBack: 0.25,
-  },
-  'db_shoulder_press': {
-    Muscle.delts: 0.65,
-    Muscle.triceps: 0.25,
-    Muscle.traps: 0.1,
-  },
-  'db_curl': {Muscle.biceps: 0.8, Muscle.forearms: 0.2},
-  'french_press': {Muscle.triceps: 1},
-  'plank': {Muscle.abs: 0.7, Muscle.obliques: 0.3},
-  'crunches': {Muscle.abs: 0.85, Muscle.obliques: 0.15},
-  'hanging_leg_raise': {
-    Muscle.abs: 0.65,
-    Muscle.obliques: 0.2,
-    Muscle.forearms: 0.15,
-  },
-};
+/// Целевые мышцы упражнений, доли в сумме 1 (shared/exercises.json).
+const exerciseMuscles = generatedMuscles;
 
 class MuscleMath {
   const MuscleMath._();

@@ -1,9 +1,12 @@
+import 'exercise_catalog.dart';
+import 'game_config.dart';
 import 'program.dart';
 
 /// Самочувствие после тренировки и облегчение плана (TRAINING_SYSTEM.md, раздел 6).
 /// Приложение не ставит диагнозов: оно бережёт зону и советует обратиться к врачу.
 
 enum Feeling {
+  easy('Легко'),
   ok('Нормально'),
   hard('Тяжело'),
   pain('Что-то болит');
@@ -24,23 +27,39 @@ enum PainZone {
 }
 
 /// Что изменилось в плане и почему — показывается человеку.
+/// Почему упражнение заменено: бережём больное место или оно не понравилось.
+enum AdjustReason { pain, dislike }
+
 class PlanAdjustment {
-  const PlanAdjustment({required this.exerciseId, this.replacementId});
+  const PlanAdjustment({
+    required this.exerciseId,
+    this.replacementId,
+    this.reason = AdjustReason.pain,
+  });
 
   final String exerciseId;
 
   /// null — упражнение убрано на время.
   final String? replacementId;
+  final AdjustReason reason;
 }
 
 class AdaptedDay {
-  const AdaptedDay(this.day, {this.eased = false, this.adjustments = const []});
+  const AdaptedDay(
+    this.day, {
+    this.eased = false,
+    this.boosted = false,
+    this.adjustments = const [],
+  });
 
   final ProgramDay day;
   final bool eased;
+
+  /// «Легко» два раза подряд — на подход больше (в пределах лимита).
+  final bool boosted;
   final List<PlanAdjustment> adjustments;
 
-  bool get changed => eased || adjustments.isNotEmpty;
+  bool get changed => eased || boosted || adjustments.isNotEmpty;
 }
 
 class Wellbeing {
@@ -55,49 +74,81 @@ class Wellbeing {
   /// Повтор боли в той же зоне за это время — настойчивый совет к врачу.
   static const repeatWindow = Duration(days: 14);
 
-  /// Упражнения, которые нагружают зону.
-  static const _loads = <PainZone, Set<String>>{
-    PainZone.shoulder: {'bench_press', 'db_bench_press', 'db_shoulder_press', 'push_up', 'dips', 'lat_pulldown', 'pull_up'},
-    PainZone.elbowWrist: {'db_curl', 'french_press', 'dips', 'push_up', 'bench_press'},
-    PainZone.lowerBack: {'romanian_deadlift', 'barbell_squat', 'back_extension', 'db_row'},
-    PainZone.knee: {'barbell_squat', 'bodyweight_squat', 'lunges', 'leg_press'},
-    PainZone.other: {},
+  /// «Легко» столько раз подряд — следующую тренировку усиливаем.
+  static const easyInARowToBoost = 2;
+
+  /// Сколько дней не ставим упражнение, которое «не зашло».
+  static const dislikeDays = 30;
+
+  /// Упражнения, которые нагружают зону (shared/exercises.json, поле joints).
+  static Set<String> loadedBy(PainZone zone) => {
+    for (final e in ExerciseCatalog.all)
+      if (e.joints.contains(zone.name)) e.id,
   };
 
-  /// Щадящие замены по порядку предпочтения: та же мышечная группа, меньше
-  /// нагрузки на больное место. Берём первую, которая не нагружает больную зону;
-  /// подходящей нет — упражнение на время убираем.
-  static const _substitutes = <String, List<String>>{
-    'barbell_squat': ['leg_press', 'romanian_deadlift'],
-    'bodyweight_squat': ['back_extension'],
-    'lunges': ['back_extension', 'romanian_deadlift'],
-    'romanian_deadlift': ['leg_press'],
-    'db_row': ['lat_pulldown'],
-    'lat_pulldown': ['db_row'],
-    'bench_press': ['db_bench_press'],
-  };
+  /// Щадящая замена: та же главная часть тела и единица, не нагружает больные
+  /// зоны, не из «не зашло», доступна и ещё не в дне. Сначала то же движение,
+  /// потом сложность ближе к min(исходная, 2), потом тот же тип нагрузки.
+  static String? substituteFor(
+    Exercise original, {
+    required Set<String> excluded,
+    required Set<String> inDay,
+    required Equipment equipment,
+  }) {
+    final target = original.difficulty < 2 ? original.difficulty : 2;
+    final options = ExerciseCatalog.all
+        .where(
+          (e) =>
+              e.id != original.id &&
+              e.mainPart == original.mainPart &&
+              e.unit == original.unit &&
+              !excluded.contains(e.id) &&
+              !inDay.contains(e.id) &&
+              isAvailable(e.id, equipment),
+        )
+        .toList();
+    int rank(Exercise e) =>
+        (e.pattern == original.pattern ? 0 : 1000) +
+        (e.difficulty - target).abs() * 100 +
+        (e.usesWeight == original.usesWeight ? 0 : 10);
+    options.sort((x, y) => rank(x).compareTo(rank(y)));
+    return options.firstOrNull?.id;
+  }
 
-  static Set<String> loadedBy(PainZone zone) => _loads[zone] ?? const {};
-
-  /// План дня с учётом облегчения и больных зон.
+  /// План дня с учётом облегчения, усиления, больных зон и нелюбимых упражнений.
   static AdaptedDay adapt(
     ProgramDay day, {
     required bool ease,
     required Set<PainZone> avoid,
+    bool boost = false,
+    Set<String> disliked = const {},
     Equipment equipment = Equipment.gym,
   }) {
-    final avoided = {for (final zone in avoid) ...loadedBy(zone)};
+    final painful = {for (final zone in avoid) ...loadedBy(zone)};
+    final excluded = {...painful, ...disliked};
+    final inDay = {for (final e in day.exercises) e.exerciseId};
     final adjustments = <PlanAdjustment>[];
     final exercises = <PlannedExercise>[];
     for (final planned in day.exercises) {
       var exercise = planned;
-      if (avoided.contains(planned.exerciseId)) {
-        final substitute = (_substitutes[planned.exerciseId] ?? const <String>[])
-            .where((id) => !avoided.contains(id) && !day.exercises.any((e) => e.exerciseId == id))
-            .where((id) => isAvailable(id, equipment))
-            .firstOrNull;
-        adjustments.add(PlanAdjustment(exerciseId: planned.exerciseId, replacementId: substitute));
+      if (excluded.contains(planned.exerciseId)) {
+        final substitute = substituteFor(
+          planned.exercise,
+          excluded: excluded,
+          inDay: inDay,
+          equipment: equipment,
+        );
+        adjustments.add(
+          PlanAdjustment(
+            exerciseId: planned.exerciseId,
+            replacementId: substitute,
+            reason: painful.contains(planned.exerciseId)
+                ? AdjustReason.pain
+                : AdjustReason.dislike,
+          ),
+        );
         if (substitute == null) continue;
+        inDay.add(substitute);
         exercise = PlannedExercise(
           substitute,
           sets: planned.sets,
@@ -106,10 +157,29 @@ class Wellbeing {
           repsInReserve: planned.repsInReserve,
         );
       }
-      exercises.add(ease ? _eased(exercise) : exercise);
+      exercises.add(
+        ease
+            ? _eased(exercise)
+            : boost
+            ? _boosted(exercise)
+            : exercise,
+      );
     }
-    return AdaptedDay(ProgramDay(day.id, day.title, exercises), eased: ease, adjustments: adjustments);
+    return AdaptedDay(
+      ProgramDay(day.id, day.title, exercises),
+      eased: ease,
+      boosted: boost && !ease,
+      adjustments: adjustments,
+    );
   }
+
+  static PlannedExercise _boosted(PlannedExercise e) => PlannedExercise(
+    e.exerciseId,
+    sets: e.sets < GameConfig.maxSetsPerExercise ? e.sets + 1 : e.sets,
+    repsMin: e.repsMin,
+    repsMax: e.repsMax,
+    repsInReserve: e.repsInReserve,
+  );
 
   static PlannedExercise _eased(PlannedExercise e) => PlannedExercise(
     e.exerciseId,
