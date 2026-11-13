@@ -1,5 +1,6 @@
 import { DevController, devToolsEnabled } from './dev/dev.controller';
-import { Controller, Get, Module } from '@nestjs/common';
+import { Controller, Get, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
+import { RateLimitMiddleware } from './common/rate-limit.middleware';
 import { JwtModule } from '@nestjs/jwt';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard } from './auth/auth.guard';
@@ -48,4 +49,9 @@ const jwtSecret = () => {
   ],
   providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService, PushService, JointService, LogRetention],
 })
-export class AppModule {}
+export class AppModule implements NestModule {
+  /** Ограничение частоты: перебор паролей и заваливание запросами (common/rate-limit.ts). */
+  configure(consumer: MiddlewareConsumer) {
+    consumer.apply(RateLimitMiddleware).forRoutes('*path');
+  }
+}

@@ -676,3 +676,15 @@ describe('сводка пульса', () => {
     expect(summarizePulse([])).toBeNull();
   });
 });
+
+import { RateLimiter } from '../src/common/rate-limit';
+
+describe('ограничение частоты', () => {
+  it('в окне — не больше лимита, после окна снова можно', () => {
+    const r = new RateLimiter(3, 60_000);
+    expect([1, 2, 3, 4].map(() => r.allow('ip', 1000))).toEqual([true, true, true, false]);
+    expect(r.allow('other', 1000)).toBe(true);
+    expect(r.retryAfterSec('ip', 1000)).toBe(60);
+    expect(r.allow('ip', 61_001)).toBe(true);
+  });
+});
