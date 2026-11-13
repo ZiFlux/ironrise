@@ -3,6 +3,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../theme.dart';
+import 'guide.dart';
 
 /// Заглушка для разделов, которые работают только с аккаунтом (рейтинг, дуэли):
 /// объясняет, зачем аккаунт, и ведёт на регистрацию или вход.
@@ -48,10 +49,13 @@ class SignInGate extends StatelessWidget {
                   ),
                 ),
                 const SizedBox(height: 24),
-                FilledButton.icon(
-                  icon: const Icon(LucideIcons.userPlus),
-                  label: const Text('Зарегистрироваться'),
-                  onPressed: () => context.push('/profile/account'),
+                GuideTarget(
+                  id: 'gate.register',
+                  child: FilledButton.icon(
+                    icon: const Icon(LucideIcons.userPlus),
+                    label: const Text('Зарегистрироваться'),
+                    onPressed: () => context.push('/profile/account'),
+                  ),
                 ),
                 const SizedBox(height: 8),
                 OutlinedButton.icon(

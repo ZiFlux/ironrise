@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 import '../game/anti_fraud.dart';
+import 'achievements.dart';
 import 'providers.dart';
 
 /// Стандартный Bluetooth-профиль пульса: его транслируют нагрудные датчики
@@ -128,6 +129,8 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
         state.isConnected && state.source == PulseSource.bluetooth;
     if (message is WatchVersion) {
       ref.read(watchVersionProvider.notifier).set(message.version);
+      // Часы ответили — подключены: награда за первое подключение.
+      ref.read(achievementsProvider.notifier).claim(Achievement.watch);
       return;
     }
     if (message == null || bluetoothActive) return;

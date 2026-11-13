@@ -35,10 +35,22 @@ export const TESTER_ITEMS: readonly string[] = [
 /** Одежда создателя проекта: не продаётся, выдаётся через админку (give). */
 export const AUTHOR_ITEMS: readonly string[] = ['top_creator_tee', 'acc_crown'];
 
+/**
+ * Вещи за достижения в приложении: гайд по интерфейсу пройден — кроссовки
+ * «Первый шаг», часы подключены впервые — аксессуар «Смарт-часы».
+ */
+export const ACHIEVEMENT_ITEMS = { guide: 'sn_first_step', watch: 'acc_smartwatch' } as const;
+export type Achievement = keyof typeof ACHIEVEMENT_ITEMS;
+
 /** Костюмы: продаются, но бесплатно в редакторе стартового образа их не надеть. */
 export const COSTUME_ITEMS: ReadonlySet<string> = new Set(['hair_clown', 'top_clown']);
 
 /** Вещи, которых нет в продаже: носить можно только выданные (тестерам, за серию, создателю). */
-export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([...TESTER_ITEMS, ...STREAK_ITEMS, ...AUTHOR_ITEMS]);
+export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([
+  ...TESTER_ITEMS,
+  ...STREAK_ITEMS,
+  ...AUTHOR_ITEMS,
+  ...Object.values(ACHIEVEMENT_ITEMS),
+]);
 
 export const priceOf = (itemId: string): number | undefined => SHOP_PRICES[itemId];

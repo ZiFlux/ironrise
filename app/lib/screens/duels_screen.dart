@@ -16,6 +16,7 @@ import '../widgets/sign_in_gate.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/motion.dart';
 import '../widgets/status_toast.dart';
+import '../widgets/guide.dart';
 
 /// Дуэли (экран 9). С аккаунтом — боты дня и друзья через сервер,
 /// без аккаунта — локальные боты.
@@ -60,13 +61,16 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     final incoming = friends.value?.incoming.length ?? 0;
     return _Page(
       actions: [
-        IconButton(
-          tooltip: 'Друзья',
-          onPressed: () => context.go('/duels/friends'),
-          icon: Badge(
-            isLabelVisible: incoming > 0,
-            label: Text('$incoming'),
-            child: const Icon(LucideIcons.userPlus, size: 20),
+        GuideTarget(
+          id: 'duels.friends',
+          child: IconButton(
+            tooltip: 'Друзья',
+            onPressed: () => context.go('/duels/friends'),
+            icon: Badge(
+              isLabelVisible: incoming > 0,
+              label: Text('$incoming'),
+              child: const Icon(LucideIcons.userPlus, size: 20),
+            ),
           ),
         ),
         const SizedBox(width: 8),
@@ -145,7 +149,10 @@ class _Page extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             if (header != null) ...[header!, const SizedBox(height: 8)],
-            Expanded(child: body),
+            GuideTarget(
+              id: 'duels.list',
+              child: Expanded(child: body),
+            ),
           ],
         ),
       ),

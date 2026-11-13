@@ -28,6 +28,7 @@ import '../widgets/week_strip.dart';
 import '../widgets/weigh_in.dart';
 import '../widgets/motion.dart';
 import '../widgets/shop_entry.dart';
+import '../widgets/guide.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -57,28 +58,42 @@ class HomeScreen extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                FadeSlideIn(child: _Header(hero: hero)),
+                FadeSlideIn(
+                  child: GuideTarget(
+                    id: 'home.header',
+                    child: _Header(hero: hero),
+                  ),
+                ),
                 FlexibleMin(
                   minHeight: 130,
-                  child: Semantics(
-                    button: true,
-                    label: 'Открыть гардероб',
-                    child: GestureDetector(
-                      onTap: () => context.go('/wardrobe'),
-                      child: PosingAvatar(
-                        levels: hero.avatarLevels,
-                        look: hero.look,
-                        muscles: hero.muscles,
-                        focus: recentMuscles(
-                          ref.watch(trainingLogProvider),
-                          DateTime.now(),
+                  child: GuideTarget(
+                    id: 'home.avatar',
+                    child: Semantics(
+                      button: true,
+                      label: 'Открыть гардероб',
+                      child: GestureDetector(
+                        onTap: () => context.go('/wardrobe'),
+                        child: PosingAvatar(
+                          levels: hero.avatarLevels,
+                          look: hero.look,
+                          muscles: hero.muscles,
+                          focus: recentMuscles(
+                            ref.watch(trainingLogProvider),
+                            DateTime.now(),
+                          ),
+                          withLamp: true,
                         ),
-                        withLamp: true,
                       ),
                     ),
                   ),
                 ),
-                FadeSlideIn(index: 1, child: WeekStrip(hero: hero)),
+                FadeSlideIn(
+                  index: 1,
+                  child: GuideTarget(
+                    id: 'home.week',
+                    child: WeekStrip(hero: hero),
+                  ),
+                ),
                 const _ActivityLine(),
                 const _TipLine(),
                 const _WeighInLine(),
@@ -103,28 +118,31 @@ class HomeScreen extends ConsumerWidget {
                 const SizedBox(height: 12),
                 FadeSlideIn(
                   index: 4,
-                  child: Pressable(
-                    child: switch ((strengthDone, cardioDone)) {
-                      (false, _) => FilledButton.icon(
-                        onPressed: () {
-                          ref
-                              .read(workoutProvider.notifier)
-                              .startPlanned(today);
-                          context.go('/workout');
-                        },
-                        icon: const Icon(LucideIcons.dumbbell, size: 18),
-                        label: Text(planLabel(today)),
-                      ),
-                      (true, false) => OutlinedButton.icon(
-                        onPressed: () => context.go('/workout/cardio'),
-                        icon: const Icon(LucideIcons.heartPulse, size: 18),
-                        label: const Text('Силовая сделана · кардио'),
-                      ),
-                      (true, true) => const FilledButton(
-                        onPressed: null,
-                        child: Text('На сегодня всё — отдыхай'),
-                      ),
-                    },
+                  child: GuideTarget(
+                    id: 'home.plan',
+                    child: Pressable(
+                      child: switch ((strengthDone, cardioDone)) {
+                        (false, _) => FilledButton.icon(
+                          onPressed: () {
+                            ref
+                                .read(workoutProvider.notifier)
+                                .startPlanned(today);
+                            context.go('/workout');
+                          },
+                          icon: const Icon(LucideIcons.dumbbell, size: 18),
+                          label: Text(planLabel(today)),
+                        ),
+                        (true, false) => OutlinedButton.icon(
+                          onPressed: () => context.go('/workout/cardio'),
+                          icon: const Icon(LucideIcons.heartPulse, size: 18),
+                          label: const Text('Силовая сделана · кардио'),
+                        ),
+                        (true, true) => const FilledButton(
+                          onPressed: null,
+                          child: Text('На сегодня всё — отдыхай'),
+                        ),
+                      },
+                    ),
                   ),
                 ),
                 if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),

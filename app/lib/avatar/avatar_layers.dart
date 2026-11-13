@@ -231,6 +231,28 @@ class AvatarLayers {
 
   bool _has(Accessory a) => look.accessories.contains(a);
 
+  /// Смарт-часы на левом запястье: ремешок и корпус-экран поверх него.
+  (Path, Path)? get smartwatch {
+    if (!_has(Accessory.smartwatch)) return null;
+    final arm = _f.leftArm;
+    final w = _f.wristWidth;
+    final strap = polygonPath([
+      arm.at(0.8, w + 1.2),
+      arm.at(0.88, w + 1.1),
+      arm.at(0.88, -w - 1.1),
+      arm.at(0.8, -w - 1.2),
+    ]);
+    final center = arm.at(0.84, 0);
+    final face = Path()
+      ..addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromCenter(center: center, width: w * 2 + 2.6, height: 7),
+          const Radius.circular(2.4),
+        ),
+      );
+    return (strap, face);
+  }
+
   /// Атлетический пояс на талии и пряжка.
   (Path, Path)? get belt {
     if (!_has(Accessory.belt)) return null;

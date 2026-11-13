@@ -125,6 +125,18 @@ class AvatarPainter extends CustomPainter {
     for (final band in layers.wristbands) {
       _fillSolid(canvas, band, look.accessoryColor);
     }
+    if (layers.smartwatch case (final strap, final face)) {
+      _fillSolid(canvas, strap, const Color(0xFF1C1C1F));
+      _fillSolid(canvas, face, const Color(0xFF0B0B0D));
+      // Экран светится акцентом — как пульс на часах.
+      canvas.drawPath(
+        face,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1
+          ..color = look.accessoryColor,
+      );
+    }
     final handPaint = Paint()..color = look.skin.hand;
     for (final arm in [frame.rightArm, frame.leftArm]) {
       canvas.drawOval(

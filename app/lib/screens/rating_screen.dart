@@ -11,6 +11,7 @@ import '../theme.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/sign_in_gate.dart';
 import '../widgets/motion.dart';
+import '../widgets/guide.dart';
 
 /// Рейтинг (экран 10): недельная лига. Пока с ботами, друзья и вуз — с сервером.
 class RatingScreen extends ConsumerWidget {
@@ -94,60 +95,63 @@ class _LeagueView extends StatelessWidget {
                   _LastWeekBanner(result: week),
                   const SizedBox(height: 8),
                 ],
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 12,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            if (tier != null) ...[
-                              Icon(
-                                LucideIcons.medal,
-                                size: 18,
-                                color: tier!.color,
-                              ),
-                              const SizedBox(width: 8),
-                            ],
-                            Expanded(
-                              child: Text(
-                                tier?.title ?? title,
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w500,
+                GuideTarget(
+                  id: 'rating.league',
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              if (tier != null) ...[
+                                Icon(
+                                  LucideIcons.medal,
+                                  size: 18,
+                                  color: tier!.color,
+                                ),
+                                const SizedBox(width: 8),
+                              ],
+                              Expanded(
+                                child: Text(
+                                  tier?.title ?? title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            Text(
-                              daysLeft == 0
-                                  ? 'последний день'
-                                  : 'ещё $daysLeft дн.',
-                              style: const TextStyle(
-                                fontSize: 13,
-                                color: AppColors.textMuted,
+                              const SizedBox(width: 8),
+                              Text(
+                                daysLeft == 0
+                                    ? 'последний день'
+                                    : 'ещё $daysLeft дн.',
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  color: AppColors.textMuted,
+                                ),
                               ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          'Тренировка +${GameConfig.leagueWorkoutPoints} · '
-                          'победа в дуэли +${GameConfig.leagueWinPoints}'
-                          '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
-                          '${tier == null ? '' : '\nПервые $promoteTop — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
+                            ],
                           ),
-                        ),
-                      ],
+                          const SizedBox(height: 4),
+                          Text(
+                            'Тренировка +${GameConfig.leagueWorkoutPoints} · '
+                            'победа в дуэли +${GameConfig.leagueWinPoints}'
+                            '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
+                            '${tier == null ? '' : '\nПервые $promoteTop — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

@@ -36,11 +36,12 @@ const BOTTOM_COLOR: Record<number, string> = {
 const SNEAKERS: Record<number, string> = {
   0xffededed: 'sn_white', 0xff2a2a2e: 'sn_black', 0xffc6ff3d: 'sn_lime', 0xffe5484d: 'sn_red',
   0xff3d7bff: 'sn_blue', 0xffd9b25b: 'sn_gold', 0xff8b5cf7: 'sn_beta', 0xffff5a20: 'sn_streak',
+  0xff5ce1a5: 'sn_first_step',
 };
 const ACCESSORY: Record<string, string> = {
   headband: 'acc_headband', wristbands: 'acc_wristbands', belt: 'acc_belt', kneeSleeves: 'acc_knee_sleeves',
   cap: 'acc_cap', glasses: 'acc_glasses', headphones: 'acc_headphones', goldChain: 'acc_gold_chain',
-  betaCap: 'acc_beta_cap', clownNose: 'acc_clown_nose', crown: 'acc_crown',
+  betaCap: 'acc_beta_cap', clownNose: 'acc_clown_nose', crown: 'acc_crown', smartwatch: 'acc_smartwatch',
 };
 const SKIN: Record<string, string> = {
   iron: 'skin_iron', light: 'skin_light', tan: 'skin_tan', brown: 'skin_brown', dark: 'skin_dark',

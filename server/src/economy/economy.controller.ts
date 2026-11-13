@@ -15,6 +15,13 @@ export class EconomyController {
     return this.economy.tipReward(userId, body);
   }
 
+  /** Вещь за достижение: guide — гайд пройден, watch — часы подключены. */
+  @Post('rewards/:kind')
+  @HttpCode(200)
+  achievement(@UserId() userId: string, @Param('kind', new ZodPipe(z.enum(['guide', 'watch']))) kind: 'guide' | 'watch') {
+    return this.economy.achievement(userId, kind);
+  }
+
   @Post('shop/buy')
   @HttpCode(200)
   buy(@UserId() userId: string, @Body(new ZodPipe(BuySchema)) body: z.infer<typeof BuySchema>) {

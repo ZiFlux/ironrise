@@ -263,6 +263,13 @@ class HeroNotifier extends Notifier<HeroProfile?> {
     );
   }
 
+  /// Выдать вещи без аккаунта (награды за достижения): на телефоне.
+  Future<void> grantItems(Iterable<String> ids) async {
+    final h = state;
+    if (h == null) return;
+    await save(h.copyWith(ownedItems: {...h.ownedItems, ...ids}));
+  }
+
   Future<void> setBody(BodyStats body) async {
     final h = state;
     if (h == null) return;

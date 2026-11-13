@@ -9,7 +9,7 @@ import { simulateDuel } from '../game/duel';
 import { unpaidItems } from '../game/looks';
 import { MIN_TRAINING_DAYS, nextScheduleChangeAt } from '../game/schedule';
 import { premiumStatus } from '../game/premium';
-import { PREMIUM_ITEMS, priceOf } from '../game/shop';
+import { PREMIUM_ITEMS, priceOf, ACHIEVEMENT_ITEMS, Achievement } from '../game/shop';
 import { CREATOR_ITEMS, creatorOpen } from '../game/start-look';
 import {
   NICKNAME_CHANGE_COINS,
@@ -453,6 +453,13 @@ export class EconomyService {
       });
     }
     return { tier, last };
+  }
+
+  /** Вещь за достижение в приложении (гайд, первые часы): один раз, повтор — без ошибки. */
+  async achievement(userId: string, kind: Achievement) {
+    const itemId = ACHIEVEMENT_ITEMS[kind];
+    const { count } = await this.db.inventoryItem.createMany({ data: [{ userId, itemId }], skipDuplicates: true });
+    return { itemId, granted: count > 0 };
   }
 
   /** Награда за «Совет дня»: раз в календарный день пользователя. */

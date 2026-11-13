@@ -29,6 +29,7 @@ import '../widgets/every_second.dart';
 import '../widgets/exercise_picker.dart';
 import '../widgets/format.dart';
 import '../widgets/warmup_card.dart';
+import '../widgets/guide.dart';
 
 class WorkoutScreen extends ConsumerWidget {
   const WorkoutScreen({super.key});
@@ -132,10 +133,13 @@ class _StartView extends ConsumerWidget {
       appBar: AppBar(
         title: const Text('Тренировка'),
         actions: [
-          IconButton(
-            tooltip: 'Статистика',
-            onPressed: () => context.go('/workout/stats'),
-            icon: const Icon(LucideIcons.chartColumn, size: 20),
+          GuideTarget(
+            id: 'workout.stats',
+            child: IconButton(
+              tooltip: 'Статистика',
+              onPressed: () => context.go('/workout/stats'),
+              icon: const Icon(LucideIcons.chartColumn, size: 20),
+            ),
           ),
           IconButton(
             tooltip: 'База знаний',
@@ -153,28 +157,56 @@ class _StartView extends ConsumerWidget {
             // План дня — сверху и целиком: что делать и сколько, нажатие — техника.
             // Карточка берёт высоту по содержимому, кнопки остаются внизу.
             Expanded(
-              child: strengthDone
-                  ? _DoneToday(log: log, next: today)
-                  : Align(
-                      alignment: Alignment.topCenter,
-                      child: Card(
-                        clipBehavior: Clip.antiAlias,
-                        child: ListView(
-                          shrinkWrap: true,
-                          padding: const EdgeInsets.symmetric(vertical: 8),
-                          children: [
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                              child: Text(
-                                'Сегодня · ${today.title}',
-                                style: const TextStyle(
-                                  fontSize: 17,
-                                  fontWeight: FontWeight.w500,
+              child: GuideTarget(
+                id: 'workout.plan',
+                child: strengthDone
+                    ? _DoneToday(log: log, next: today)
+                    : Align(
+                        alignment: Alignment.topCenter,
+                        child: Card(
+                          clipBehavior: Clip.antiAlias,
+                          child: ListView(
+                            shrinkWrap: true,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            children: [
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  8,
+                                  16,
+                                  4,
+                                ),
+                                child: Text(
+                                  'Сегодня · ${today.title}',
+                                  style: const TextStyle(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w500,
+                                  ),
                                 ),
                               ),
-                            ),
-                            // Ритм опытных: вид тренировки можно поменять на сегодня.
-                            if (rhythm)
+                              // Ритм опытных: вид тренировки можно поменять на сегодня.
+                              if (rhythm)
+                                Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    8,
+                                  ),
+                                  child: Wrap(
+                                    spacing: 8,
+                                    children: [
+                                      for (final v in WorkoutVariant.values)
+                                        ChoiceChip(
+                                          label: Text(v.label),
+                                          selected: adapted.variant == v,
+                                          onSelected: (_) => ref
+                                              .read(programProvider.notifier)
+                                              .overrideVariant(v),
+                                        ),
+                                    ],
+                                  ),
+                                ),
                               Padding(
                                 padding: const EdgeInsets.fromLTRB(
                                   16,
@@ -182,88 +214,81 @@ class _StartView extends ConsumerWidget {
                                   16,
                                   8,
                                 ),
-                                child: Wrap(
-                                  spacing: 8,
-                                  children: [
-                                    for (final v in WorkoutVariant.values)
-                                      ChoiceChip(
-                                        label: Text(v.label),
-                                        selected: adapted.variant == v,
-                                        onSelected: (_) => ref
-                                            .read(programProvider.notifier)
-                                            .overrideVariant(v),
-                                      ),
-                                  ],
+                                child: Text(
+                                  [
+                                    _phaseLine(
+                                      program,
+                                      ref.watch(heroProvider),
+                                    ),
+                                    warmupSummary(
+                                      Warmup.forExercises([
+                                        for (final e in today.exercises)
+                                          e.exercise,
+                                      ], program.equipment),
+                                    ),
+                                    ...notes,
+                                  ].join('\n'),
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
                               ),
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                              child: Text(
-                                [
-                                  _phaseLine(program, ref.watch(heroProvider)),
-                                  warmupSummary(
-                                    Warmup.forExercises([
-                                      for (final e in today.exercises)
-                                        e.exercise,
-                                    ], program.equipment),
-                                  ),
-                                  ...notes,
-                                ].join('\n'),
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textMuted,
-                                ),
-                              ),
-                            ),
-                            for (final e in today.exercises)
-                              InkWell(
-                                onTap: () =>
-                                    showExerciseDetails(context, e.exercise),
-                                child: Container(
-                                  constraints: const BoxConstraints(
-                                    minHeight: 48,
-                                  ),
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                  ),
-                                  decoration: const BoxDecoration(
-                                    border: Border(
-                                      top: BorderSide(
-                                        color: AppColors.hairline,
+                              for (final e in today.exercises)
+                                InkWell(
+                                  onTap: () =>
+                                      showExerciseDetails(context, e.exercise),
+                                  child: Container(
+                                    constraints: const BoxConstraints(
+                                      minHeight: 48,
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                    ),
+                                    decoration: const BoxDecoration(
+                                      border: Border(
+                                        top: BorderSide(
+                                          color: AppColors.hairline,
+                                        ),
                                       ),
                                     ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Expanded(
-                                        child: Text(
-                                          e.exercise.name,
-                                          style: const TextStyle(fontSize: 15),
+                                    child: Row(
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            e.exercise.name,
+                                            style: const TextStyle(
+                                              fontSize: 15,
+                                            ),
+                                          ),
                                         ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        _setsLine(e),
-                                        style: figureStyle(
-                                          size: 13,
-                                          color: AppColors.textSecondary,
+                                        const SizedBox(width: 12),
+                                        Text(
+                                          _setsLine(e),
+                                          style: figureStyle(
+                                            size: 13,
+                                            color: AppColors.textSecondary,
+                                          ),
                                         ),
-                                      ),
-                                    ],
+                                      ],
+                                    ),
                                   ),
                                 ),
-                              ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
-                    ),
+              ),
             ),
             const SizedBox(height: 16),
             if (!strengthDone) ...[
-              FilledButton(
-                onPressed: () =>
-                    ref.read(workoutProvider.notifier).startPlanned(today),
-                child: Text(planLabel(today)),
+              GuideTarget(
+                id: 'workout.start',
+                child: FilledButton(
+                  onPressed: () =>
+                      ref.read(workoutProvider.notifier).startPlanned(today),
+                  child: Text(planLabel(today)),
+                ),
               ),
               const SizedBox(height: 8),
               TextButton(

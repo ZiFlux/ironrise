@@ -427,6 +427,16 @@ class ShopCatalog {
       testerOnly: true,
       exclusiveLabel: 'серия 60 дн.',
     ),
+    // За достижения в приложении (server/src/game/shop.ts, ACHIEVEMENT_ITEMS).
+    _color(
+      'sn_first_step',
+      'Первый шаг',
+      ShopSlot.sneakers,
+      const Color(0xFF5CE1A5),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'за гайд',
+    ),
     // Аксессуары
     _accessory('acc_headband', 'Повязка', Accessory.headband, 50),
     _accessory('acc_wristbands', 'Напульсники', Accessory.wristbands, 50),
@@ -450,6 +460,20 @@ class ShopCatalog {
       testerOnly: true,
     ),
     _accessory('acc_clown_nose', 'Красный нос', Accessory.clownNose, 60),
+    ShopItem(
+      id: 'acc_smartwatch',
+      name: 'Смарт-часы',
+      slot: ShopSlot.accessory,
+      price: 0,
+      testerOnly: true,
+      exclusiveLabel: 'за часы',
+      apply: (l) =>
+          l.copyWith(accessories: {...l.accessories, Accessory.smartwatch}),
+      isWorn: (l) => l.accessories.contains(Accessory.smartwatch),
+      takeOff: (l) => l.copyWith(
+        accessories: {...l.accessories}..remove(Accessory.smartwatch),
+      ),
+    ),
     ShopItem(
       id: 'acc_crown',
       name: 'Корона создателя',

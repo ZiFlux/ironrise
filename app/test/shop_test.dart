@@ -63,6 +63,8 @@ void main() {
     final streak = RegExp(r"STREAK_ITEMS[^=]*=[^\[]*\[([^\]]*)\]").firstMatch(
       File('../server/src/game/streak-rewards.ts').readAsStringSync(),
     )![1]!;
+    final achievements = RegExp(r"ACHIEVEMENT_ITEMS = \{([^}]*)\}")
+        .firstMatch(ts)![1]!;
     final author = RegExp(r"AUTHOR_ITEMS[^=]*=[^\[]*\[([^\]]*)\]")
         .firstMatch(ts)![1]!;
     for (final i in ShopCatalog.all) {
@@ -71,6 +73,8 @@ void main() {
         expect(
           i.streakDays != null
               ? streak
+              : i.exclusiveLabel != null && i.exclusiveLabel!.startsWith('за ')
+              ? achievements
               : i.exclusiveLabel != null
               ? author
               : tester,

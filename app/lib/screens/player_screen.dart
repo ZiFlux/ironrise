@@ -31,6 +31,7 @@ import '../widgets/shop_entry.dart';
 import 'devices_screen.dart';
 import 'feed_screen.dart' show feedIcon;
 import '../widgets/sign_up_card.dart';
+import '../widgets/guide.dart';
 
 /// Профиль игрока: герой «было → стало», статистика, уровни силы.
 class PlayerScreen extends ConsumerWidget {
@@ -67,15 +68,21 @@ class PlayerScreen extends ConsumerWidget {
             ],
           ),
           actions: [
-            IconButton(
-              tooltip: 'Настроить витрину',
-              onPressed: () => showShowcaseEditor(context),
-              icon: const Icon(LucideIcons.palette, size: 20),
+            GuideTarget(
+              id: 'profile.showcase',
+              child: IconButton(
+                tooltip: 'Настроить витрину',
+                onPressed: () => showShowcaseEditor(context),
+                icon: const Icon(LucideIcons.palette, size: 20),
+              ),
             ),
-            IconButton(
-              tooltip: 'Настройки и конфиденциальность',
-              onPressed: () => context.go('/profile/settings'),
-              icon: const Icon(LucideIcons.settings, size: 20),
+            GuideTarget(
+              id: 'profile.settings',
+              child: IconButton(
+                tooltip: 'Настройки и конфиденциальность',
+                onPressed: () => context.go('/profile/settings'),
+                icon: const Icon(LucideIcons.settings, size: 20),
+              ),
             ),
             const SizedBox(width: 8),
           ],

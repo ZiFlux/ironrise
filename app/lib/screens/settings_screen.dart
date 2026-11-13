@@ -23,6 +23,7 @@ import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/consent_prompt.dart';
+import '../widgets/guide.dart';
 import '../widgets/screen_hint.dart';
 import 'account_screen.dart' show syncedWhen;
 import 'devices_screen.dart';
@@ -114,6 +115,7 @@ class SettingsScreen extends ConsumerWidget {
             child: TextButton.icon(
               onPressed: () async {
                 await ScreenHint.resetAll(ref);
+                await TabGuide.resetAll(ref);
                 if (context.mounted) {
                   showStatus(
                     'Подсказки снова появятся на экранах',

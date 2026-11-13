@@ -32,6 +32,7 @@ import 'screens/training_stats_screen.dart';
 import 'screens/feed_screen.dart';
 import 'screens/friend_profile_screen.dart';
 import 'widgets/week_recap.dart';
+import 'widgets/guide.dart';
 import 'widgets/screen_hint.dart';
 import 'state/providers.dart';
 import 'widgets/motion.dart';
@@ -65,8 +66,8 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/',
                 builder: (_, _) => const ConsentPrompt(
-                  child: ScreenHint(
-                    id: 'home',
+                  child: TabGuide(
+                    tab: 'home',
                     child: WeekRecapGate(child: HomeScreen()),
                   ),
                 ),
@@ -108,7 +109,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/workout',
                 builder: (_, _) =>
-                    const ScreenHint(id: 'workout', child: WorkoutScreen()),
+                    const TabGuide(tab: 'workout', child: WorkoutScreen()),
                 routes: [
                   GoRoute(
                     path: 'result',
@@ -139,7 +140,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/duels',
                 builder: (_, _) =>
-                    const ScreenHint(id: 'duels', child: DuelsScreen()),
+                    const TabGuide(tab: 'duels', child: DuelsScreen()),
                 routes: [
                   GoRoute(
                     path: 'battle',
@@ -158,7 +159,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/rating',
                 builder: (_, _) =>
-                    const ScreenHint(id: 'rating', child: RatingScreen()),
+                    const TabGuide(tab: 'rating', child: RatingScreen()),
               ),
             ],
           ),
@@ -167,7 +168,7 @@ final routerProvider = Provider<GoRouter>((ref) {
               GoRoute(
                 path: '/profile',
                 builder: (_, _) =>
-                    const ScreenHint(id: 'profile', child: PlayerScreen()),
+                    const TabGuide(tab: 'profile', child: PlayerScreen()),
                 routes: [
                   GoRoute(
                     path: 'settings',
