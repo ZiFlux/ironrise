@@ -245,6 +245,31 @@ class _HeartZones extends ConsumerWidget {
     await ref.read(heroProvider.notifier).setBody(apply(value));
   }
 
+  Future<void> _pickExperience(
+    BuildContext context,
+    WidgetRef ref,
+    BodyStats body,
+  ) async {
+    final picked = await showDialog<Experience>(
+      context: context,
+      builder: (context) => SimpleDialog(
+        backgroundColor: AppColors.surface,
+        title: const Text('Опыт тренировок'),
+        children: [
+          for (final e in Experience.values)
+            SimpleDialogOption(
+              onPressed: () => Navigator.pop(context, e),
+              child: Text(e.label),
+            ),
+        ],
+      ),
+    );
+    if (picked == null) return;
+    await ref
+        .read(heroProvider.notifier)
+        .setBody(body.copyWith(experience: picked));
+  }
+
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final body = hero.body;
@@ -314,6 +339,40 @@ class _HeartZones extends ConsumerWidget {
               min: 35,
               max: 110,
               apply: (v) => body.copyWith(restingHeartRate: v),
+            ),
+          ),
+          // Опыт и самопроверка задают уровень: сколько упражнений и насколько сложных.
+          row(
+            'Опыт тренировок',
+            body.experience?.label ?? 'не указан',
+            () => _pickExperience(context, ref, body),
+          ),
+          row(
+            'Отжиманий за подход',
+            body.pushUps == null ? 'не указано' : '${body.pushUps}',
+            () => _edit(
+              context,
+              ref,
+              title: 'Отжиманий за подход',
+              hint: 'сколько раз подряд',
+              current: body.pushUps,
+              min: 0,
+              max: 150,
+              apply: (v) => body.copyWith(pushUps: v),
+            ),
+          ),
+          row(
+            'Подтягиваний за подход',
+            body.pullUps == null ? 'не указано' : '${body.pullUps}',
+            () => _edit(
+              context,
+              ref,
+              title: 'Подтягиваний за подход',
+              hint: 'сколько раз подряд',
+              current: body.pullUps,
+              min: 0,
+              max: 60,
+              apply: (v) => body.copyWith(pullUps: v),
             ),
           ),
           Padding(

@@ -53,20 +53,29 @@ String _setsLine(PlannedExercise e) {
   return '${e.sets} × $reps$unit';
 }
 
-String _phaseLine(UserProgram program) => switch (program.phase) {
-  ProgramPhase.start =>
-    'Фаза «Старт» · ${program.completedWorkouts} из ${ProgramPhase.startWorkouts} тренировок',
-  ProgramPhase.base => 'Фаза «База»: 3 подхода и упражнение на отстающую часть',
-};
+String _phaseLine(UserProgram program, HeroProfile? hero) {
+  final level = trainingLevelOf(hero, program);
+  return switch (program.phaseFor(level)) {
+    ProgramPhase.start =>
+      'Фаза «Старт» · ${program.completedWorkouts} из ${ProgramPhase.startWorkouts} тренировок: техника, 2 подхода',
+    ProgramPhase.base =>
+      'Уровень «${level.label}»: ${level.exercises} упражнений, '
+          '~${level.weeklySets} подходов на мышцу в неделю',
+  };
+}
 
 /// Сплит: какой день недели что тренировать — «Пн спина и бицепс · Ср грудь…».
 String? _splitLine(UserProgram program, HeroProfile? hero) {
   if (hero?.format != TrainingFormat.split ||
-      program.phase != ProgramPhase.base) {
+      program.phaseFor(trainingLevelOf(hero, program)) != ProgramPhase.base) {
     return null;
   }
   final layout = weekLayout(
-    days: program.days(hero!.trainingDays.length, split: true),
+    days: program.days(
+      hero!.trainingDays.length,
+      split: true,
+      level: trainingLevelOf(hero, program),
+    ),
     nextIndex: program.nextDayIndex,
     trainingDays: hero.trainingDays,
     today: DateTime.now(),
@@ -156,7 +165,7 @@ class _StartView extends ConsumerWidget {
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                               child: Text(
                                 [
-                                  _phaseLine(program),
+                                  _phaseLine(program, ref.watch(heroProvider)),
                                   warmupSummary(
                                     Warmup.forExercises([
                                       for (final e in today.exercises)

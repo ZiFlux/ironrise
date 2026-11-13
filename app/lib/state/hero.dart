@@ -31,7 +31,8 @@ enum Sex {
 enum Experience {
   none('Никогда не тренировался'),
   some('Пробовал, бросал'),
-  regular('Тренируюсь регулярно');
+  regular('Тренируюсь регулярно, до 2 лет'),
+  advanced('Тренируюсь больше 2 лет');
 
   const Experience(this.label);
   final String label;
@@ -46,7 +47,14 @@ class BodyStats {
     this.experience,
     this.age,
     this.restingHeartRate,
+    this.pushUps,
+    this.pullUps,
   });
+
+  /// Самопроверка в анкете: сколько раз отжимается и подтягивается за подход.
+  /// Уточняет уровень подготовки (session_builder.dart).
+  final int? pushUps;
+  final int? pullUps;
 
   final Sex? sex;
   final int? heightCm;
@@ -57,13 +65,21 @@ class BodyStats {
   final int? age;
   final int? restingHeartRate;
 
-  BodyStats copyWith({int? age, int? restingHeartRate}) => BodyStats(
+  BodyStats copyWith({
+    int? age,
+    int? restingHeartRate,
+    Experience? experience,
+    int? pushUps,
+    int? pullUps,
+  }) => BodyStats(
     sex: sex,
     heightCm: heightCm,
     weightKg: weightKg,
-    experience: experience,
+    experience: experience ?? this.experience,
     age: age ?? this.age,
     restingHeartRate: restingHeartRate ?? this.restingHeartRate,
+    pushUps: pushUps ?? this.pushUps,
+    pullUps: pullUps ?? this.pullUps,
   );
 
   Map<String, dynamic> toJson() => {
@@ -73,6 +89,8 @@ class BodyStats {
     'experience': experience?.name,
     'age': age,
     'restingHeartRate': restingHeartRate,
+    'pushUps': pushUps,
+    'pullUps': pullUps,
   };
 
   factory BodyStats.fromJson(Map<String, dynamic> j) => BodyStats(
@@ -84,6 +102,8 @@ class BodyStats {
         : Experience.values.byName(j['experience']),
     age: j['age'],
     restingHeartRate: j['restingHeartRate'],
+    pushUps: j['pushUps'],
+    pullUps: j['pullUps'],
   );
 }
 

@@ -1,11 +1,13 @@
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/days.dart';
+
 import 'package:ironrise/game/exercise_catalog.dart';
 import 'package:ironrise/game/program.dart';
 import 'package:ironrise/game/wellbeing.dart';
 
 void main() {
-  final gymA = StartProgram.days(Equipment.gym)
-      .first; // присед, жим, тяга блока, планка
+  final gymA = gymDayA; // присед, жим, тяга блока, планка
   List<String> ids(AdaptedDay d) => [
     for (final e in d.day.exercises) e.exerciseId,
   ];
@@ -49,7 +51,7 @@ void main() {
   test('замены — только из справочника и не повторяют упражнения дня', () {
     for (final zone in PainZone.values) {
       for (final equipment in Equipment.values) {
-        for (final day in StartProgram.days(equipment)) {
+        for (final day in startDays(equipment)) {
           final d = Wellbeing.adapt(
             day,
             ease: false,
@@ -70,8 +72,7 @@ void main() {
   });
 
   test('дома с гантелями замены — без тренажёров', () {
-    final homeA = StartProgram.days(Equipment.dumbbells)
-        .first; // приседания, отжимания, тяга гантели, планка
+    final homeA = homeDayA; // приседания, отжимания, тяга гантели, планка
     final d = Wellbeing.adapt(
       homeA,
       ease: false,

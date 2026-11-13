@@ -2,6 +2,7 @@ import { BadRequestException, ConflictException, Injectable } from '@nestjs/comm
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
+import { summarizePulse } from '../game/pulse-summary';
 import { CardioSummary, scoreCardio } from '../game/cardio';
 import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../game/streak';
 import { StreakReward, readBoosters, streakReward, withCoinBoost, withXpBoost } from '../game/streak-rewards';
@@ -203,7 +204,8 @@ export class WorkoutsService {
           day,
           validity: summary.validity,
           payload: { ...payload, summary } as unknown as Prisma.InputJsonValue,
-          pulse: pulse.map((s) => ({ at: s.at.toISOString(), bpm: s.bpm })),
+          // Храним сводку, а не сырой ряд: сырой нужен только для расчёта выше.
+          pulse: (summarizePulse(pulse) ?? { n: 0 }) as unknown as Prisma.InputJsonValue,
         },
       });
 

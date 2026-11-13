@@ -1,7 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/exercise_catalog.dart';
 import 'package:ironrise/game/program.dart';
+import 'package:ironrise/game/session_builder.dart';
 import 'package:ironrise/game/workout.dart';
 
 const squat = PlannedExercise(
@@ -123,28 +123,6 @@ void main() {
     });
   });
 
-  group('программа «Старт»', () {
-    test('два дня по 4 упражнения в зале и дома', () {
-      for (final equipment in Equipment.values) {
-        final days = StartProgram.days(equipment);
-        expect(days.map((d) => d.id), ['A', 'B']);
-        expect(days.every((d) => d.exercises.length == 4), isTrue);
-        // Все упражнения есть в справочнике.
-        for (final e in days.expand((d) => d.exercises)) {
-          expect(() => e.exercise, returnsNormally);
-        }
-      }
-    });
-
-    test('тренировка около 30–40 минут', () {
-      final minutes = StartProgram.days(Equipment.gym)
-          .first
-          .estimatedDuration
-          .inMinutes;
-      expect(minutes, inInclusiveRange(30, 40));
-    });
-  });
-
   test('расчётный максимум по Эпли', () {
     expect(
       estimatedOneRepMax(const SetRecord(weight: 60, reps: 10)),
@@ -155,7 +133,13 @@ void main() {
   });
 
   group('тренировка по плану', () {
-    final day = StartProgram.days(Equipment.gym).first;
+    final day = SessionBuilder.days(
+      level: TrainingLevel.novice,
+      sessionsPerWeek: 3,
+      equipment: Equipment.gym,
+      stepOf: (_) => 1,
+      start: true,
+    ).first;
     WorkoutSession planned(int setsEach) => WorkoutSession(
       startedAt: DateTime(2026, 11, 12, 19),
       planDayId: day.id,
@@ -203,98 +187,8 @@ void main() {
     });
   });
 
-  group('фаза «База»', () {
-    test('переход после 12 тренировок по плану', () {
-      expect(ProgramPhase.after(11), ProgramPhase.start);
-      expect(ProgramPhase.after(12), ProgramPhase.base);
-    });
-
-    test('дни по формату: 3 — фулбоди, 4 — верх/низ, 5 — плюс день отстающей части', () {
-      expect(BaseProgram.days(Equipment.gym, 3).map((d) => d.id), ['A', 'B']);
-      expect(BaseProgram.days(Equipment.gym, 4).map((d) => d.id), [
-        'U1',
-        'L1',
-        'U2',
-        'L2',
-      ]);
-      expect(BaseProgram.days(Equipment.gym, 5).map((d) => d.id), [
-        'U1',
-        'L1',
-        'U2',
-        'L2',
-        'F',
-      ]);
-    });
-
-    test('3 подхода × 8–12, 2 в запасе', () {
-      final squat = BaseProgram.days(Equipment.gym, 3).first.exercises.first;
-      expect(
-        (squat.sets, squat.repsMin, squat.repsMax, squat.repsInReserve),
-        (3, 8, 12, 2),
-      );
-    });
-
-    test('точечное упражнение на отстающую часть в конце, без повторов', () {
-      final day = BaseProgram.days(Equipment.gym, 3).first;
-      final withLegs = BaseProgram.withAccessories(
-        day,
-        BodyPart.legs,
-        Equipment.gym,
-      );
-      expect(withLegs.exercises.length, day.exercises.length + 1);
-      final extra = withLegs.exercises.last;
-      expect(extra.exercise.shares.containsKey(BodyPart.legs), isTrue);
-      expect(
-        withLegs.exercises
-            .where((e) => e.exerciseId == extra.exerciseId)
-            .length,
-        1,
-      );
-    });
-
-    test(
-      'день отстающей части — три упражнения на неё, без отставания — всё тело',
-      () {
-        final focus = BaseProgram.days(Equipment.gym, 5).last;
-        expect(
-          BaseProgram.withAccessories(
-            focus,
-            BodyPart.back,
-            Equipment.gym,
-          ).exercises.length,
-          3,
-        );
-        expect(
-          BaseProgram.withAccessories(focus, null, Equipment.gym).exercises,
-          isNotEmpty,
-        );
-      },
-    );
-
-    test('кардио не добавляется точечным упражнением', () {
-      final day = BaseProgram.days(Equipment.gym, 3).first;
-      expect(
-        BaseProgram.withAccessories(
-          day,
-          BodyPart.cardio,
-          Equipment.gym,
-        ).exercises.length,
-        day.exercises.length,
-      );
-    });
-
-    test('дома с гантелями — только доступные упражнения и без повторов', () {
-      for (final sessions in [3, 4, 5]) {
-        for (final day in BaseProgram.days(Equipment.dumbbells, sessions)) {
-          final ids = [for (final e in day.exercises) e.exerciseId];
-          expect(
-            ids.every((id) => isAvailable(id, Equipment.dumbbells)),
-            isTrue,
-            reason: '${day.id}: $ids',
-          );
-          expect(ids.toSet().length, ids.length, reason: '${day.id}: $ids');
-        }
-      }
-    });
+  test('фаза «Старт» — 12 тренировок по плану', () {
+    expect(ProgramPhase.after(11), ProgramPhase.start);
+    expect(ProgramPhase.after(12), ProgramPhase.base);
   });
 }

@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/body_part.dart';
 import '../game/exercise_ladder.dart';
 import '../game/program.dart';
+import '../game/session_builder.dart';
 import '../game/training_format.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
@@ -68,16 +69,29 @@ class UserProgram {
 
   ProgramPhase get phase => ProgramPhase.after(completedWorkouts);
 
-  /// Дни текущей фазы. «Старт» — всегда 3 тренировки в неделю, «База» — по формату.
-  List<ProgramDay> days(int sessionsPerWeek, {bool split = false}) =>
-      switch (phase) {
-        ProgramPhase.start => StartProgram.days(equipment),
-        ProgramPhase.base => BaseProgram.days(
-          equipment,
-          sessionsPerWeek,
-          split: split,
-        ),
-      };
+  /// Фаза для уровня: «Старт» (освоить технику) — только новичкам.
+  ProgramPhase phaseFor(TrainingLevel level) =>
+      level == TrainingLevel.novice ? phase : ProgramPhase.base;
+
+  /// Дни программы: 6–8 упражнений под уровень, подходы — под недельную норму
+  /// мышц (session_builder.dart). «Старт» новичка — всё тело, 2 подхода.
+  List<ProgramDay> days(
+    int sessionsPerWeek, {
+    bool split = false,
+    TrainingLevel level = TrainingLevel.novice,
+    BodyPart? lagging,
+  }) {
+    final start = phaseFor(level) == ProgramPhase.start;
+    return SessionBuilder.days(
+      level: level,
+      sessionsPerWeek: start ? 3 : sessionsPerWeek,
+      equipment: equipment,
+      stepOf: (pattern) => levelOf(pattern, start: level.startStep),
+      split: split && !start,
+      start: start,
+      lagging: start ? null : lagging,
+    );
+  }
 
   /// Зоны, которые сейчас бережём после «болит».
   Set<PainZone> avoidedZones(DateTime now) => {
@@ -91,17 +105,16 @@ class UserProgram {
     required DateTime now,
     required int sessionsPerWeek,
     BodyPart? lagging,
-    int startLevel = 1,
+    TrainingLevel level = TrainingLevel.novice,
     bool split = false,
   }) {
-    final all = days(sessionsPerWeek, split: split);
-    var day = ExerciseLadder.adapt(
-      all[nextDayIndex % all.length],
-      (pattern) => levelOf(pattern, start: startLevel),
-      equipment,
+    final all = days(
+      sessionsPerWeek,
+      split: split,
+      level: level,
+      lagging: lagging,
     );
-    if (phase == ProgramPhase.base)
-      day = BaseProgram.withAccessories(day, lagging, equipment);
+    final day = all[nextDayIndex % all.length];
     return Wellbeing.adapt(
       day,
       ease: easeNext,
@@ -428,14 +441,29 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       now: DateTime.now(),
       sessionsPerWeek: hero?.trainingDays.length ?? 3,
       lagging: hero?.lagging.firstOrNull,
-      startLevel: startLevelOf(hero),
+      level: trainingLevelOf(hero, program),
       split: hero?.format == TrainingFormat.split,
     );
 
-/// Стартовая ступень по анкете: регулярно тренируется — 2, иначе — с самых простых.
-int startLevelOf(HeroProfile? hero) => ExerciseLadder.startLevel(
-  regular: hero?.body.experience == Experience.regular,
+/// Уровень по анкете героя.
+TrainingLevel declaredLevelOf(HeroProfile? hero) => declaredLevel(
+  experience: hero?.body.experience?.index ?? 0,
+  pushUps: hero?.body.pushUps,
+  pullUps: hero?.body.pullUps,
 );
+
+/// Уровень подготовки: по анкете или по делу — что выше.
+TrainingLevel trainingLevelOf(HeroProfile? hero, UserProgram program) {
+  final declared = declaredLevelOf(hero);
+  final proven = provenLevel(
+    completedWorkouts: program.completedWorkouts,
+    stepOf: (p) => program.levelOf(p, start: declared.startStep),
+  );
+  return proven.index > declared.index ? proven : declared;
+}
+
+/// Стартовая ступень лесенки — по уровню из анкеты.
+int startLevelOf(HeroProfile? hero) => declaredLevelOf(hero).startStep;
 
 final todayPlanProvider = Provider<AdaptedDay>(
   (ref) => planForHero(ref.watch(programProvider), ref.watch(heroProvider)),

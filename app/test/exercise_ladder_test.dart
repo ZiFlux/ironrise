@@ -4,35 +4,6 @@ import 'package:ironrise/game/exercise_ladder.dart';
 import 'package:ironrise/game/program.dart';
 
 void main() {
-  final startA = StartProgram.days(Equipment.gym).first;
-
-  test('новичку в зале — самые простые варианты движений', () {
-    final day = ExerciseLadder.adapt(startA, (_) => 1, Equipment.gym);
-    final ids = [for (final e in day.exercises) e.exerciseId];
-    expect(ids, isNot(contains('barbell_squat')));
-    expect(ids, isNot(contains('bench_press')));
-    for (final e in day.exercises) {
-      expect(e.exercise.difficulty, 1, reason: e.exerciseId);
-    }
-    expect(ids.toSet().length, ids.length, reason: 'без повторов в дне');
-  });
-
-  test('дома без зала — только доступное', () {
-    final day = ExerciseLadder.adapt(
-      StartProgram.days(Equipment.dumbbells).first,
-      (_) => 1,
-      Equipment.dumbbells,
-    );
-    for (final e in day.exercises) {
-      expect(isAvailable(e.exerciseId, Equipment.dumbbells), isTrue);
-    }
-  });
-
-  test('опытному — шаблон как есть, но не выше потолка', () {
-    final day = ExerciseLadder.adapt(startA, (_) => 3, Equipment.gym);
-    expect(day.exercises.first.exerciseId, 'barbell_squat');
-  });
-
   test('прежний пользователь со штангой не откатывается к простому', () {
     final level = ExerciseLadder.levelOf(
       'squat',

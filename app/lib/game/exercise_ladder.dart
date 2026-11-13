@@ -40,9 +40,6 @@ class ExerciseLadder {
   /// Женщинам те же ступени — при меньшей доле веса тела.
   static const femaleFactor = 0.7;
 
-  /// Уровень на старте: без опыта — 1, тренируется регулярно — 2.
-  static int startLevel({required bool regular}) => regular ? 2 : 1;
-
   /// Уровень в движении: сохранённый или стартовый, но не ниже упражнения,
   /// которое человек уже делает (у прежних пользователей план не упрощается).
   static int levelOf(
@@ -59,66 +56,6 @@ class ExerciseLadder {
       }
     }
     return level.clamp(1, maxLevel);
-  }
-
-  /// Вариант упражнения шаблона под уровень. Только та же единица (повторы или
-  /// секунды), доступное с этим инвентарём и ещё не стоящее в этом дне.
-  static Exercise variantFor(
-    Exercise template,
-    int level,
-    Equipment equipment,
-    Set<String> used,
-  ) {
-    final target = level.clamp(1, template.difficulty + 1);
-    final options = ExerciseCatalog.all
-        .where(
-          (e) =>
-              e.pattern == template.pattern &&
-              e.unit == template.unit &&
-              isAvailable(e.id, equipment) &&
-              (e.id == template.id || !used.contains(e.id)),
-        )
-        .toList();
-    if (options.isEmpty) return template;
-    int rank(Exercise e) =>
-        // Ближе к уровню; при равенстве — сам шаблон, потом попроще.
-        (e.difficulty - target).abs() * 100 +
-        (e.id == template.id ? 0 : 10) +
-        e.difficulty;
-    options.sort((a, b) => rank(a).compareTo(rank(b)));
-    return options.first;
-  }
-
-  /// День под уровни человека: каждое упражнение — вариант своей ступени.
-  static ProgramDay adapt(
-    ProgramDay day,
-    int Function(String pattern) levelOf,
-    Equipment equipment,
-  ) {
-    final used = <String>{};
-    final out = <PlannedExercise>[];
-    for (final planned in day.exercises) {
-      final template = planned.exercise;
-      final variant = variantFor(
-        template,
-        levelOf(template.pattern),
-        equipment,
-        used,
-      );
-      used.add(variant.id);
-      out.add(
-        variant.id == template.id
-            ? planned
-            : PlannedExercise(
-                variant.id,
-                sets: planned.sets,
-                repsMin: planned.repsMin,
-                repsMax: planned.repsMax,
-                repsInReserve: planned.repsInReserve,
-              ),
-      );
-    }
-    return ProgramDay(day.id, day.title, out);
   }
 
   /// Освоил ли вариант: результат хороший для своей комплекции.

@@ -4,10 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/body_part.dart';
 import '../game/calendar.dart';
 import '../game/exercise_catalog.dart';
+import '../game/training_analysis.dart';
 import '../game/training_stats.dart';
+import '../state/program_state.dart';
 import '../state/records_state.dart';
 import '../state/training_log.dart';
 import '../state/providers.dart';
+import '../widgets/training_analysis_view.dart';
 import '../widgets/week_recap.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
@@ -57,6 +60,18 @@ class TrainingStatsScreen extends ConsumerWidget {
                       child: WeekRecapView(recap: recap, compact: true),
                     ),
                   ],
+                if (ref.watch(heroProvider) case final hero?) ...[
+                  const SizedBox(height: 20),
+                  const _Title('Анализ и прогноз'),
+                  TrainingAnalysisView(
+                    analysis: TrainingAnalysis(
+                      log,
+                      level: trainingLevelOf(hero, ref.watch(programProvider)),
+                      now: now,
+                    ),
+                    plannedPerWeek: hero.trainingDays.length,
+                  ),
+                ],
                 const SizedBox(height: 20),
                 const _Title('Активность за 12 недель'),
                 _ActivityGrid(days: stats.activeDays, now: now, accent: accent),

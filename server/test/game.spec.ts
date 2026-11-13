@@ -661,3 +661,18 @@ describe('живая лига', () => {
     }
   });
 });
+
+import { summarizePulse } from '../src/game/pulse-summary';
+
+describe('сводка пульса', () => {
+  it('средний, мин, макс и по минутам', () => {
+    const t0 = new Date('2026-11-13T10:00:00Z').getTime();
+    const pulse = [
+      { at: new Date(t0), bpm: 100 },
+      { at: new Date(t0 + 30_000), bpm: 120 },
+      { at: new Date(t0 + 130_000), bpm: 150 },
+    ];
+    expect(summarizePulse(pulse)).toEqual({ n: 3, avg: 123, min: 100, max: 150, perMinute: [110, 0, 150] });
+    expect(summarizePulse([])).toBeNull();
+  });
+});

@@ -46,6 +46,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   Sex? _sex;
   final _height = TextEditingController();
   final _weight = TextEditingController();
+  final _pushUps = TextEditingController();
+  final _pullUps = TextEditingController();
   Experience? _experience;
   Equipment _equipment = Equipment.gym;
 
@@ -59,6 +61,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     _nickname.dispose();
     _height.dispose();
     _weight.dispose();
+    _pushUps.dispose();
+    _pullUps.dispose();
     super.dispose();
   }
 
@@ -91,6 +95,8 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         heightCm: int.tryParse(_height.text),
         weightKg: double.tryParse(_weight.text.replaceAll(',', '.')),
         experience: _experience,
+        pushUps: int.tryParse(_pushUps.text),
+        pullUps: int.tryParse(_pullUps.text),
       ),
       avatarSex: _avatarSex,
     );
@@ -411,6 +417,34 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           title: e.label,
           onTap: () => setState(() => _experience = e),
         ),
+      // Самопроверка уточняет уровень: сколько упражнений и насколько сложных.
+      if (_experience != null && _experience != Experience.none) ...[
+        const SizedBox(height: 12),
+        const Text(
+          'Сколько раз сделаешь за подход? Можно пропустить',
+          style: TextStyle(fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            Expanded(
+              child: TextField(
+                controller: _pushUps,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Отжиманий'),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: _pullUps,
+                keyboardType: TextInputType.number,
+                decoration: const InputDecoration(labelText: 'Подтягиваний'),
+              ),
+            ),
+          ],
+        ),
+      ],
     ],
   );
 }

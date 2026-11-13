@@ -1,4 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
+
+import 'support/days.dart';
+
 import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/exercise_catalog.dart';
 import 'package:ironrise/game/game_config.dart';
@@ -7,7 +10,7 @@ import 'package:ironrise/game/warmup.dart';
 import 'package:ironrise/game/wellbeing.dart';
 
 void main() {
-  final gymA = StartProgram.days(Equipment.gym).first;
+  final gymA = gymDayA;
 
   test('«легко» дважды — на подход больше, но не больше лимита', () {
     final d = Wellbeing.adapt(gymA, ease: false, avoid: const {}, boost: true);

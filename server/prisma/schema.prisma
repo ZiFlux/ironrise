@@ -154,7 +154,7 @@ model Workout {
   status     WorkoutStatus @default(accepted)
   /// Подходы (силовая) или вид активности (кардио) — как прислал клиент.
   payload    Json
-  /// Пульс: [{at, bpm}]. Пока целиком, позже — сжатая сводка.
+  /// Сводка пульса (src/game/pulse-summary.ts): avg, min, max, по минутам. Старые записи — [{at, bpm}].
   pulse      Json
   createdAt  DateTime      @default(now())
 
