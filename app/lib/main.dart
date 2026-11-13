@@ -12,6 +12,7 @@ import 'state/account_state.dart';
 import 'state/providers.dart';
 import 'state/settings.dart';
 import 'theme.dart';
+import 'state/summary_publisher.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -35,6 +36,8 @@ class IronRiseApp extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final accent = ref.watch(accentProvider);
     AppLog.startUploading(() => ref.read(apiProvider));
+    // Виджет на телефоне и плитка на часах — свежая сводка при каждом изменении.
+    ref.watch(summaryPublisherProvider);
     return MaterialApp.router(
       title: 'IronRise',
       debugShowCheckedModeBanner: false,

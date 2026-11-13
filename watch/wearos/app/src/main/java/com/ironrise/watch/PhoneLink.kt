@@ -63,6 +63,9 @@ class PhoneLink(context: Context) {
         /** Телефон спрашивает версию, часы отвечают на [PATH_VERSION]. */
         const val PATH_HELLO = "/ironrise/hello"
         const val PATH_VERSION = "/ironrise/version"
+
+        /** Сводка от телефона для плитки (DataItem). */
+        const val PATH_SUMMARY = "/ironrise/summary"
         private const val NODES_TTL_MS = 30_000L
         private const val TAG = "IronRisePhoneLink"
     }

@@ -3,6 +3,7 @@ package com.ironrise.ironrise
 import android.content.ContentValues
 import android.provider.CalendarContract
 import com.google.android.gms.wearable.MessageClient
+import com.google.android.gms.wearable.PutDataMapRequest
 import java.util.TimeZone
 import com.google.android.gms.wearable.Wearable
 import io.flutter.embedding.android.FlutterFragmentActivity
@@ -29,6 +30,16 @@ class MainActivity : FlutterFragmentActivity() {
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SUMMARY_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "publish") return@setMethodCallHandler result.notImplemented()
+                publishSummary(
+                    streak = call.argument<Number>("streak")?.toInt() ?: 0,
+                    today = call.argument<String>("today") ?: "",
+                    level = call.argument<String>("level") ?: "",
+                )
+                result.success(true)
+            }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CALENDAR_CHANNEL)
             .setMethodCallHandler { call, result ->
                 if (call.method != "add") return@setMethodCallHandler result.notImplemented()
@@ -43,6 +54,25 @@ class MainActivity : FlutterFragmentActivity() {
                     }.getOrDefault(false),
                 )
             }
+    }
+
+    /**
+     * Сводка для виджета и плитки на часах: серия, что сегодня, уровень героя.
+     * Виджет читает её из SharedPreferences, часы получают через Data Layer.
+     */
+    private fun publishSummary(streak: Int, today: String, level: String) {
+        getSharedPreferences(SummaryWidget.PREFS, MODE_PRIVATE).edit()
+            .putInt("streak", streak)
+            .putString("today", today)
+            .putString("level", level)
+            .apply()
+        SummaryWidget.refresh(applicationContext)
+        val request = PutDataMapRequest.create(PATH_SUMMARY).apply {
+            dataMap.putInt("streak", streak)
+            dataMap.putString("today", today)
+            dataMap.putString("level", level)
+        }.asPutDataRequest().setUrgent()
+        Wearable.getDataClient(applicationContext).putDataItem(request)
     }
 
     /**
@@ -122,5 +152,7 @@ class MainActivity : FlutterFragmentActivity() {
         const val PATH_HELLO = "/ironrise/hello"
         const val PATH_VERSION = "/ironrise/version"
         const val CALENDAR_CHANNEL = "ironrise/calendar"
+        const val SUMMARY_CHANNEL = "ironrise/summary"
+        const val PATH_SUMMARY = "/ironrise/summary"
     }
 }

@@ -7,6 +7,10 @@ import android.app.PendingIntent
 import android.content.Intent
 import android.util.Log
 import androidx.core.app.NotificationCompat
+import androidx.wear.tiles.TileService
+import com.google.android.gms.wearable.DataEvent
+import com.google.android.gms.wearable.DataEventBuffer
+import com.google.android.gms.wearable.DataMapItem
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
 import kotlinx.coroutines.runBlocking
@@ -16,6 +20,19 @@ import kotlinx.coroutines.runBlocking
  * Система будит этот сервис сама, приложение на часах открывать не нужно.
  */
 class PhoneCommandService : WearableListenerService() {
+
+    /** Сводка от телефона для плитки: сохранить и попросить плитку обновиться. */
+    override fun onDataChanged(events: DataEventBuffer) {
+        for (event in events) {
+            if (event.type != DataEvent.TYPE_CHANGED || event.dataItem.uri.path != PhoneLink.PATH_SUMMARY) continue
+            val map = DataMapItem.fromDataItem(event.dataItem).dataMap
+            Summary.save(
+                this,
+                Summary(map.getInt("streak"), map.getString("today") ?: "", map.getString("level") ?: ""),
+            )
+            TileService.getUpdater(this).requestUpdate(SummaryTileService::class.java)
+        }
+    }
 
     override fun onMessageReceived(event: MessageEvent) {
         when (event.path) {

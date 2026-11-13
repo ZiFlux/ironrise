@@ -47,11 +47,26 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
                 <data
                     android:host="*"
                     android:pathPrefix="/ironrise/"
                     android:scheme="wear" />
             </intent-filter>
+        </service>
+
+        <!-- Плитка: серия, что сегодня и уровень героя. -->
+        <service
+            android:name=".SummaryTileService"
+            android:exported="true"
+            android:label="IronRise"
+            android:permission="com.google.android.wearable.permission.BIND_TILE_PROVIDER">
+            <intent-filter>
+                <action android:name="androidx.wear.tiles.action.BIND_TILE_PROVIDER" />
+            </intent-filter>
+            <meta-data
+                android:name="androidx.wear.tiles.PREVIEW"
+                android:resource="@mipmap/ic_launcher" />
         </service>
 
         <service
