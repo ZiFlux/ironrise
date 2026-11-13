@@ -24,6 +24,7 @@ import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
 import { SEASON_POINTS } from '../game/season';
 import { addSeasonPoints, seasonState } from '../season/season';
+import { auraSnapshot, auraState, equipAura, trainAura } from '../season/aura-service';
 
 export const BuySchema = z.object({
   itemIds: z.array(z.string().min(1).max(64)).max(20),
@@ -320,7 +321,13 @@ export class EconomyService {
       }
       const repeat = earlier.length > 0;
 
-      const attacker = { id: userId, name: hero.nickname, levels: hero.levels, streakDays: hero.streakDays };
+      const attacker = {
+        id: userId,
+        name: hero.nickname,
+        levels: hero.levels,
+        streakDays: hero.streakDays,
+        aura: await auraSnapshot(tx, userId),
+      };
       const seed = Math.floor(Math.random() * 2 ** 31);
       const result = simulateDuel(attacker, bot, seed);
       const base = result.attackerWon ? C.duelWinCoins : C.duelLossCoins;
@@ -459,6 +466,18 @@ export class EconomyService {
       });
     }
     return { tier, last };
+  }
+
+  auras(userId: string) {
+    return auraState(this.db, userId);
+  }
+
+  trainAura(userId: string, kind: string) {
+    return trainAura(this.db, userId, kind);
+  }
+
+  equipAura(userId: string, kind: string | null) {
+    return equipAura(this.db, userId, kind);
   }
 
   /** Сезон: прогресс и дорожки наград (заодно выдаёт то, что причитается). */

@@ -116,6 +116,11 @@ model Profile {
   seasonPoints     Int       @default(0)
   seasonFree       Int       @default(0)
   seasonPremium    Int       @default(0)
+  /// Ауры (src/game/aura.ts): тренировок каждой, выбранная, неделя и сколько тренировок в ней.
+  auras            Json      @default("{}")
+  auraEquipped     String?
+  auraWeek         String?
+  auraSessions     Int       @default(0)
   /// Понедельник недели, до которой лига уже подведена (YYYY-MM-DD).
   leagueWeek       String?
   /// Итог последней подведённой недели: место и куда сдвинулась лига.

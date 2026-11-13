@@ -5,6 +5,7 @@ import '../game/body_part.dart';
 import '../game/duel.dart';
 import '../game/league.dart';
 import 'account_state.dart';
+import '../game/aura.dart';
 
 /// Данные игры с сервера — когда игрок вошёл в аккаунт. Без аккаунта
 /// экраны работают на локальной логике, как раньше.
@@ -49,6 +50,15 @@ DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
         heal: ((h['event'] as Map?)?['heal'] as num?)?.toInt() ?? 0,
         selfHpAfter: ((h['event'] as Map?)?['selfHpAfter'] as num?)?.toInt(),
         boosted: h['boosted'] == true,
+        auras: [
+          for (final m in (h['auras'] as List? ?? const []))
+            if (AuraKind.values.asNameMap()[m['kind']] case final kind?)
+              AuraMark(
+                attacker: m['owner'] == 'attacker',
+                kind: kind,
+                start: m['start'] == true,
+              ),
+        ],
       ),
   ],
 );

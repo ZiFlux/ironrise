@@ -715,3 +715,39 @@ describe('сезоны', () => {
     expect(SEASON_ITEMS).toHaveLength(8);
   });
 });
+
+import { auraLevel, auraSessionsToNext } from '../src/game/aura';
+
+describe('ауры', () => {
+  it('уровни по числу тренировок: 1, 3, 6, 10, 15', () => {
+    expect([0, 1, 2, 3, 6, 10, 15, 99].map(auraLevel)).toEqual([0, 1, 1, 2, 3, 4, 5, 5]);
+    expect(auraSessionsToNext(4)).toBe(2);
+    expect(auraSessionsToNext(15)).toBeNull();
+  });
+
+  const levels = { chest: 8, back: 8, arms: 8, legs: 8, core: 8, cardio: 8 };
+  const a = { id: 'a', name: 'A', levels, streakDays: 0 };
+  const d = { id: 'd', name: 'D', levels, streakDays: 0 };
+
+  it('аура срабатывает один раз за бой и помечает удары', () => {
+    for (const kind of ['fury', 'guard', 'haste', 'focus'] as const) {
+      const r = simulateDuel({ ...a, aura: { kind, level: 3 } }, d, 42);
+      const starts = r.log.flatMap((h) => h.auras ?? []).filter((m) => m.owner === 'attacker' && m.start);
+      expect(starts).toHaveLength(1);
+      expect(starts[0].kind).toBe(kind);
+    }
+  });
+
+  it('без ауры бой прежний: меток нет', () => {
+    expect(simulateDuel(a, d, 42).log.some((h) => h.auras)).toBe(false);
+  });
+
+  it('фокус — крит без промаха, скорость — лишний удар', () => {
+    const focus = simulateDuel({ ...a, aura: { kind: 'focus', level: 5 } }, d, 7);
+    const f = focus.log.find((h) => h.auras?.some((m) => m.kind === 'focus'))!;
+    expect(f.kind).toBe('crit');
+    const plain = simulateDuel(a, d, 7).log.filter((h) => h.byAttacker).length;
+    const haste = simulateDuel({ ...a, aura: { kind: 'haste', level: 1 } }, d, 7).log.filter((h) => h.byAttacker).length;
+    expect(haste).toBe(plain + 1);
+  });
+});

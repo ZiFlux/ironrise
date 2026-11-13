@@ -16,6 +16,8 @@ import '../state/providers.dart';
 import '../game/duel_breakdown.dart';
 import '../game/body_part.dart';
 import '../theme.dart';
+import '../game/aura.dart';
+import '../widgets/aura_flame.dart';
 
 /// Анимация боя и результат с советом. Исход уже посчитан, экран только проигрывает удары.
 class DuelBattleScreen extends ConsumerStatefulWidget {
@@ -50,6 +52,16 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
   void dispose() {
     _timer?.cancel();
     super.dispose();
+  }
+
+  /// Аура бойца на этом ударе: какая и вспышка ли (разовая или только началась).
+  ({AuraKind kind, bool burst})? _auraOf(
+    DuelHit? hit, {
+    required bool attacker,
+  }) {
+    final mark = hit?.auras.where((m) => m.attacker == attacker).firstOrNull;
+    if (mark == null) return null;
+    return (kind: mark.kind, burst: mark.kind.burst);
   }
 
   void _skip(int total) {
@@ -110,6 +122,8 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                             ? _shown
                             : null,
                         hitPart: last != null && !last.byAttacker ? last : null,
+                        aura: _auraOf(last, attacker: true),
+                        auraKey: _shown,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -121,6 +135,8 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                         isPlayer: false,
                         hitKey: last != null && last.byAttacker ? _shown : null,
                         hitPart: last != null && last.byAttacker ? last : null,
+                        aura: _auraOf(last, attacker: false),
+                        auraKey: _shown,
                       ),
                     ),
                   ],
@@ -181,7 +197,13 @@ class _FighterPanel extends StatelessWidget {
     required this.isPlayer,
     required this.hitKey,
     this.hitPart,
+    this.aura,
+    this.auraKey,
   });
+
+  /// Аура, горящая на текущем ударе, и ключ удара (новая вспышка — заново).
+  final ({AuraKind kind, bool burst})? aura;
+  final int? auraKey;
 
   /// Удар, который сейчас пришёлся по этому бойцу: где вспыхнуть.
   final DuelHit? hitPart;
@@ -241,6 +263,13 @@ class _FighterPanel extends StatelessWidget {
             child: Stack(
               fit: StackFit.expand,
               children: [
+                if (aura case final a?)
+                  AuraFlame(
+                    // Длительная аура горит без перезапуска, вспышка — на каждом ударе.
+                    key: ValueKey(a.burst ? 'burst$auraKey' : 'aura${a.kind}'),
+                    kind: a.kind,
+                    burst: a.burst,
+                  ),
                 isPlayer ? avatar : Transform.flip(flipX: true, child: avatar),
                 if (hitPart case final hit?
                     when hit.kind != HitKind.miss &&

@@ -15,6 +15,24 @@ export class EconomyController {
     return this.economy.tipReward(userId, body);
   }
 
+  @Get('auras')
+  auras(@UserId() userId: string) {
+    return this.economy.auras(userId);
+  }
+
+  /** Тренировка ауры: не больше двух в неделю. */
+  @Post('auras/:kind/train')
+  @HttpCode(200)
+  trainAura(@UserId() userId: string, @Param('kind') kind: string) {
+    return this.economy.trainAura(userId, kind);
+  }
+
+  /** Выбрать ауру для дуэлей; kind = none — снять. */
+  @Put('auras/equip/:kind')
+  equipAura(@UserId() userId: string, @Param('kind') kind: string) {
+    return this.economy.equipAura(userId, kind === 'none' ? null : kind);
+  }
+
   @Get('season')
   season(@UserId() userId: string) {
     return this.economy.season(userId);

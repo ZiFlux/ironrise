@@ -61,6 +61,11 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     final incoming = friends.value?.incoming.length ?? 0;
     return _Page(
       actions: [
+        IconButton(
+          tooltip: 'Ауры',
+          onPressed: () => context.go('/duels/auras'),
+          icon: const Icon(LucideIcons.flame, size: 20),
+        ),
         GuideTarget(
           id: 'duels.friends',
           child: IconButton(

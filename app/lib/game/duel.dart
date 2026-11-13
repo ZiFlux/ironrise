@@ -5,6 +5,7 @@ import 'body_part.dart';
 import 'duel_flavor.dart';
 import 'game_config.dart';
 import 'progression.dart';
+import 'aura.dart';
 
 /// Участник дуэли: игрок или бот.
 class Fighter {
@@ -46,7 +47,11 @@ class DuelHit {
     this.heal = 0,
     this.selfHpAfter,
     this.boosted = false,
+    this.auras = const [],
   });
+
+  /// Ауры на этом ударе (сервер): для пламени на экране боя.
+  final List<AuraMark> auras;
 
   /// true — бьёт игрок (атакующий), false — соперник.
   final bool byAttacker;

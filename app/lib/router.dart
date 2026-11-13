@@ -29,10 +29,12 @@ import 'screens/wardrobe_screen.dart';
 import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
 import 'screens/training_stats_screen.dart';
+import 'screens/aura_screen.dart';
 import 'screens/feed_screen.dart';
 import 'screens/season_screen.dart';
 import 'screens/friend_profile_screen.dart';
 import 'widgets/week_recap.dart';
+import 'game/aura.dart';
 import 'widgets/guide.dart';
 import 'widgets/screen_hint.dart';
 import 'state/providers.dart';
@@ -151,6 +153,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                   GoRoute(
                     path: 'friends',
                     builder: (_, _) => const FriendsScreen(),
+                  ),
+                  GoRoute(
+                    path: 'auras',
+                    builder: (_, _) => const AuraScreen(),
+                    routes: [
+                      GoRoute(
+                        path: ':kind',
+                        builder: (_, state) => AuraTrainingScreen(
+                          kind: AuraKind.values.byName(
+                            state.pathParameters['kind']!,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),

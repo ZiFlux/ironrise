@@ -25,6 +25,7 @@ import 'package:ironrise/state/duel_state.dart';
 import 'package:ironrise/state/hero.dart';
 import 'package:ironrise/state/providers.dart';
 import 'package:ironrise/state/season_state.dart';
+import 'package:ironrise/state/aura_state.dart';
 import 'package:ironrise/state/server_game.dart';
 import 'package:ironrise/state/workout_state.dart';
 import 'package:ironrise/state/training_log.dart';
@@ -137,6 +138,7 @@ List<Override> _serverFakes() {
         lastWeek: (rank: 2, outcome: 'promoted', tierBefore: 0, tierAfter: 1),
       ),
     ),
+    auraProvider.overrideWith(_Auras.new),
     seasonProvider.overrideWith(
       (ref) async => SeasonInfo.fromJson({
         'number': 1,
@@ -426,6 +428,7 @@ void main() {
         '/workout/exercises',
         '/workout/stats',
         '/season',
+        '/duels/auras',
         '/workout/cardio',
         '/workout/joint',
         '/duels',
@@ -454,6 +457,8 @@ void main() {
         '/duels/friends',
         '/rating',
         '/season',
+        '/duels/auras',
+        '/duels/auras/fury',
         '/notifications',
         '/profile',
         '/profile/account',
@@ -507,5 +512,21 @@ void main() {
     expect(find.text(_longNick), findsWidgets);
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.pump(const Duration(seconds: 2));
+  });
+}
+
+/// Ауры для экрана: одна открыта и выбрана, лимит недели почти исчерпан.
+class _Auras extends AuraNotifier {
+  @override
+  Future<AuraInfo> build() async => AuraInfo.fromJson({
+    'equipped': 'fury',
+    'sessionsThisWeek': 1,
+    'perWeek': 2,
+    'auras': [
+      {'kind': 'fury', 'sessions': 4, 'level': 2, 'toNext': 2},
+      {'kind': 'guard', 'sessions': 0, 'level': 0, 'toNext': 1},
+      {'kind': 'haste', 'sessions': 15, 'level': 5, 'toNext': null},
+      {'kind': 'focus', 'sessions': 1, 'level': 1, 'toNext': 2},
+    ],
   });
 }

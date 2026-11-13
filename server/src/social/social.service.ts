@@ -11,6 +11,7 @@ import { HeroService, HeroState } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
 import { PushService } from '../push/push.service';
 import { mondayOfDay, pairStreak } from '../game/social-progress';
+import { auraSnapshot } from '../season/aura-service';
 
 /** Боёв с друзьями в день (ТЗ 4.5: «не больше N атак в день»). */
 export const FRIEND_DUELS_PER_DAY = 5;
@@ -177,8 +178,8 @@ export class SocialService {
       const today = await tx.duel.count({ where: { attackerId: userId, opponentKind: 'user', day } });
       if (today >= FRIEND_DUELS_PER_DAY) throw new ConflictException('Daily friend duel limit reached');
 
-      const attacker = snapshotOf(userId, await this.hero.state(userId, tx));
-      const defender = snapshotOf(friendId, await this.hero.state(friendId, tx));
+      const attacker = { ...snapshotOf(userId, await this.hero.state(userId, tx)), aura: await auraSnapshot(tx, userId) };
+      const defender = { ...snapshotOf(friendId, await this.hero.state(friendId, tx)), aura: await auraSnapshot(tx, friendId) };
       const seed = Math.floor(Math.random() * 2 ** 31);
       const result = simulateDuel(attacker as FighterSnapshot, defender as FighterSnapshot, seed);
       const coins = result.attackerWon ? C.duelWinCoins : C.duelLossCoins;
