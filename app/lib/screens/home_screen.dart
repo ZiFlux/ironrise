@@ -40,6 +40,10 @@ class HomeScreen extends ConsumerWidget {
     final isTrainingDay = hero.trainingDays.contains(
       DateTime.now().weekday - 1,
     );
+    // В день — одна силовая и одно кардио: после силовой план не предлагаем.
+    final log = ref.watch(trainingLogProvider);
+    final strengthDone = doneToday(log, WorkoutKind.strength, DateTime.now());
+    final cardioDone = doneToday(log, WorkoutKind.cardio, DateTime.now());
 
     return Scaffold(
       body: SafeArea(
@@ -76,7 +80,7 @@ class HomeScreen extends ConsumerWidget {
                 const _ActivityLine(),
                 const _TipLine(),
                 const SizedBox(height: 8),
-                if (recommendation != null) ...[
+                if (recommendation != null && !strengthDone) ...[
                   FadeSlideIn(
                     index: 2,
                     child: _LaggingCard(
@@ -97,14 +101,27 @@ class HomeScreen extends ConsumerWidget {
                 FadeSlideIn(
                   index: 4,
                   child: Pressable(
-                    child: FilledButton.icon(
-                      onPressed: () {
-                        ref.read(workoutProvider.notifier).startPlanned(today);
-                        context.go('/workout');
-                      },
-                      icon: const Icon(LucideIcons.dumbbell, size: 18),
-                      label: Text(planLabel(today)),
-                    ),
+                    child: switch ((strengthDone, cardioDone)) {
+                      (false, _) => FilledButton.icon(
+                        onPressed: () {
+                          ref
+                              .read(workoutProvider.notifier)
+                              .startPlanned(today);
+                          context.go('/workout');
+                        },
+                        icon: const Icon(LucideIcons.dumbbell, size: 18),
+                        label: Text(planLabel(today)),
+                      ),
+                      (true, false) => OutlinedButton.icon(
+                        onPressed: () => context.go('/workout/cardio'),
+                        icon: const Icon(LucideIcons.heartPulse, size: 18),
+                        label: const Text('Силовая сделана · кардио'),
+                      ),
+                      (true, true) => const FilledButton(
+                        onPressed: null,
+                        child: Text('На сегодня всё — отдыхай'),
+                      ),
+                    },
                   ),
                 ),
                 if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
