@@ -2,15 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../game/calendar.dart';
 import '../game/game_config.dart';
 import '../game/league.dart';
 import '../state/account_state.dart';
-import '../state/duel_state.dart';
 import '../state/server_game.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
+import '../widgets/sign_in_gate.dart';
 import '../widgets/motion.dart';
 
 /// Рейтинг (экран 10): недельная лига. Пока с ботами, друзья и вуз — с сервером.
@@ -21,30 +20,13 @@ class RatingScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final hero = ref.watch(heroProvider);
     if (hero == null) return const SizedBox.shrink();
-    final now = DateTime.now();
-
     if (ref.watch(accountProvider).signedIn) return const _ServerRating();
-
-    final duels = ref.watch(duelProvider);
-    final monday = mondayOf(now);
-    final trainedDays = [
-      for (var i = 0; i < 7; i++)
-        DateTime(monday.year, monday.month, monday.day + i),
-    ].where((d) => hero.activeDays.contains(dayKey(d))).length;
-    final wins = duels.winsInWeek(now);
-    final table = WeeklyLeague.standings(
-      today: now,
-      playerName: hero.nickname,
-      playerPoints: WeeklyLeague.playerPoints(
-        trainedDays: trainedDays,
-        duelWins: wins,
-      ),
-    );
-    return _LeagueView(
-      table: table,
-      trainedDays: trainedDays,
-      wins: wins,
-      footer: 'Бронзовая, серебряная и золотая лиги — после входа в аккаунт',
+    return const SignInGate(
+      title: 'Рейтинг',
+      icon: LucideIcons.trophy,
+      text:
+          'Лиги с живыми игроками: бронза, серебро и золото, повышение и '
+          'понижение каждую неделю. Прогресс хранится на сервере — нужен аккаунт.',
     );
   }
 }

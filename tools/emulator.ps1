@@ -35,6 +35,12 @@ Step 'Бета (IronRise) — последняя сборка из папки у
 $beta = Get-ChildItem $Outbox -Filter 'IronRise-beta-*.apk' -ErrorAction SilentlyContinue | Sort-Object LastWriteTime -Descending | Select-Object -First 1
 if ($beta) {
   $out = & $Adb -s $serial install -r $beta.FullName 2>&1 | Out-String
+  if ($out -match 'UPDATE_INCOMPATIBLE|SIGNATURES') {
+    # На эмуляторе стоит бета с другой подписью — данные там тестовые, ставим начисто.
+    Write-Host 'Бета на эмуляторе с другой подписью — переустанавливаю' -ForegroundColor Yellow
+    & $Adb -s $serial uninstall com.ironrise.ironrise | Out-Null
+    $out = & $Adb -s $serial install $beta.FullName 2>&1 | Out-String
+  }
   if ($out -match 'Success') { Ok "Бета: $($beta.Name)" } else { Write-Host $out -ForegroundColor Yellow }
 } else {
   Write-Host 'Сборки беты нет — запустите «Собрать бету (APK)»' -ForegroundColor Yellow
@@ -53,7 +59,9 @@ while ($true) {
   Write-Host '  Б — открыть бету'
   Write-Host '  Р — DEV с горячей перезагрузкой (flutter run; r — перезагрузить, q — выйти)'
   Write-Host '  В — выход (эмулятор продолжит работать)'
-  switch ((Read-Host 'Выбор').Trim().ToLower()) {
+  $choice = Read-Host 'Выбор'
+  if ($null -eq $choice) { exit 0 }  # ввод закрыт (запуск не из окна)
+  switch ($choice.Trim().ToLower()) {
     { $_ -in 'д', 'd' } { & $Adb -s $serial shell monkey -p com.ironrise.ironrise.dev -c android.intent.category.LAUNCHER 1 | Out-Null }
     { $_ -in 'б', 'b' } { & $Adb -s $serial shell monkey -p com.ironrise.ironrise -c android.intent.category.LAUNCHER 1 | Out-Null }
     { $_ -in 'р', 'r' } { & $Adb -s $serial reverse tcp:3000 tcp:3000 | Out-Null; flutter run -d $serial }

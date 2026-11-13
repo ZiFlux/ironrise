@@ -185,7 +185,9 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'account',
-                    builder: (_, _) => const AccountScreen(),
+                    builder: (_, state) => AccountScreen(
+                      login: state.uri.queryParameters['login'] == '1',
+                    ),
                   ),
                   GoRoute(
                     path: 'devices',

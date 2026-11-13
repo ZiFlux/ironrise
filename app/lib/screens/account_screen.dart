@@ -13,7 +13,10 @@ import '../widgets/status_toast.dart';
 
 /// Аккаунт: регистрация, вход и состояние синхронизации тренировок.
 class AccountScreen extends ConsumerWidget {
-  const AccountScreen({super.key});
+  const AccountScreen({super.key, this.login = false});
+
+  /// Открыть сразу на «Войти», а не на «Регистрации».
+  final bool login;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -22,7 +25,7 @@ class AccountScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Аккаунт')),
       body: account.signedIn
           ? _SignedIn(account: account)
-          : _SignInForm(account: account),
+          : _SignInForm(account: account, login: login),
     );
   }
 }
@@ -167,7 +170,9 @@ class _SignedIn extends ConsumerWidget {
 }
 
 class _SignInForm extends ConsumerStatefulWidget {
-  const _SignInForm({required this.account});
+  const _SignInForm({required this.account, this.login = false});
+
+  final bool login;
 
   final AccountState account;
 
@@ -178,7 +183,7 @@ class _SignInForm extends ConsumerStatefulWidget {
 class _SignInFormState extends ConsumerState<_SignInForm> {
   final _email = TextEditingController();
   final _password = TextEditingController();
-  bool _register = true;
+  late bool _register = !widget.login;
   bool _busy = false;
   String? _error;
 

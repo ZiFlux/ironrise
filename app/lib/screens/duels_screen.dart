@@ -12,6 +12,7 @@ import '../state/duel_state.dart';
 import '../state/providers.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/sign_in_gate.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/motion.dart';
 import '../widgets/status_toast.dart';
@@ -46,23 +47,12 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     final duels = ref.read(duelProvider.notifier);
 
     if (!ref.watch(accountProvider).signedIn) {
-      final day = ref.watch(duelProvider);
-      final now = DateTime.now();
-      final bots = DuelBots.forDay(me, now);
-      return _Page(
-        body: _FighterList(
-          me: me,
-          fighters: bots,
-          results: duels.today,
-          repeatable: true,
-          nextFightAt: {
-            for (final b in bots)
-              if (day.nextFightAt(b.id, now) case final at?) b.id: at,
-          },
-          counter: _botsCounter(day.fights.values),
-          footer: _botsFooter,
-          onFight: (bot) => _open(() => duels.fight(bot)),
-        ),
+      return const SignInGate(
+        title: 'Дуэли',
+        icon: LucideIcons.swords,
+        text:
+            'Бои с ботами и друзьями, монеты за победы и очки в лигу. '
+            'Результаты считает сервер — нужен аккаунт.',
       );
     }
 
