@@ -121,61 +121,63 @@ DuelEventDef pickDuelEvent(Random rng) {
   return duelEvents.last;
 }
 
-const _maleNames = [
-  'Стас',
-  'Валера',
-  'Богдан',
-  'Гена',
-  'Толян',
-  'Вован',
-  'Артур',
-  'Лёха',
-  'Дэн',
-  'Серёга',
-  'Михалыч',
-  'Жорик',
+/// Игровые ники ботов латиницей (п. 46 бэклога). Совпадает с server/src/game/duel-flavor.ts.
+const botHandlesMale = <String>[
+  'xX_IronWolf_Xx',
+  'BenchGod',
+  'PumpKing99',
+  'Gym_Rat_007',
+  'NoDaysOff',
+  'BeastMode_ON',
+  'Lift4Life',
+  'DeadliftDan',
+  'ProteinShake',
+  'Swole_Patrol',
+  'Max_Rep',
+  'IronMike_RU',
+  'Rack_Attack',
+  'Dumbb3ll',
+  'Vova_Pump',
+  'Big_Biceps',
+  'Squat_Lord',
+  'Kettle_Bear',
+  'Grind_Time',
+  'Spotter_42',
 ];
-const _femaleNames = [
-  'Кристина',
-  'Алёна',
-  'Света',
-  'Даша',
-  'Вика',
-  'Яна',
-  'Марина',
-  'Оля',
-  'Карина',
-  'Лиза',
+const botHandlesFemale = <String>[
+  'SquatQueen',
+  'Glute_Goddess',
+  'Fit_Lisa',
+  'Iron_Mary',
+  'PlankPrincess',
+  'Cardio_Kat',
+  'Lunge_Lady',
+  'Strong_Ann',
+  'Booty_Builder',
+  'Pilates_Pro',
+  'Yoga_Rage',
+  'Kettle_Kira',
+  'Run_Yana',
+  'Power_Vika',
+  'Muscle_Masha',
+  'Fit_Freak_x',
+  'Lift_Lena',
+  'Stretch_Sveta',
+  'Hip_Thrust_Hero',
+  'Sweaty_Sonya',
 ];
 
-/// Шаблоны прозвищ: (мужской, женский) — прилагательные согласуются с родом.
-final _nicknames = <(String Function(String), String Function(String))>[
-  ((n) => 'Протеиновый $n', (n) => 'Протеиновая $n'),
-  ((n) => 'Железный $n', (n) => 'Железная $n'),
-  ((n) => 'Креатиновый $n', (n) => 'Креатиновая $n'),
-  ((n) => 'Сухой $n', (n) => 'Сухая $n'),
-  ((n) => '$n с турника', (n) => '$n с турника'),
-  ((n) => '$n без дня ног', (n) => '$n без дня ног'),
-  ((n) => '$n на массе', (n) => '$n на сушке'),
-  ((n) => 'Качок $n', (n) => 'Фитоняшка $n'),
-  ((n) => 'Тренер $n', (n) => 'Тренер $n'),
-  ((n) => '$n из качалки', (n) => '$n из качалки'),
-  ((n) => '$n Двести-на-жим', (n) => '$n Сто-на-присед'),
-  ((n) => 'Бицепс-$n', (n) => 'Пресс-$n'),
-];
-
-/// Разные имена ботов; [female] задаёт род для каждого.
+/// Разные ники ботов; занятый — с номером, как в играх (BenchGod_27).
 List<String> botNames(List<bool> female, Random rng) {
   final used = <String>{};
   return [
     for (final f in female)
       () {
+        final pool = f ? botHandlesFemale : botHandlesMale;
         for (var attempt = 0; ; attempt++) {
-          final pool = f ? _femaleNames : _maleNames;
           final base = pool[rng.nextInt(pool.length)];
-          final (m, w) = _nicknames[rng.nextInt(_nicknames.length)];
-          final name = (f ? w : m)(base);
-          if (used.add(name) || attempt > 20) return name;
+          final name = attempt < 10 ? base : '${base}_${10 + rng.nextInt(90)}';
+          if (used.add(name)) return name;
         }
       }(),
   ];

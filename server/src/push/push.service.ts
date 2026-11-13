@@ -203,13 +203,16 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
         take: 10,
         select: { startedAt: true },
       });
-      const habit = habitHour(recent.map((w) => localHour(w.startedAt, p.timezone)));
-      if (habit === null || localHour(now, p.timezone) !== habit - 1) continue;
+      // Привычки ещё нет (меньше 3 тренировок) — напоминаем вечером, к 19:00.
+      const habit = habitHour(recent.map((w) => localHour(w.startedAt, p.timezone))) ?? DEFAULT_TRAINING_HOUR;
+      if (localHour(now, p.timezone) !== habit - 1) continue;
       await this.db.profile.update({ where: { userId: p.userId }, data: { trainingReminderDay: today } });
       this.notify(p.userId, {
         type: 'training_reminder',
         title: 'Через час — твоё время тренировки',
-        body: `Ты обычно начинаешь около ${habit}:00. План на сегодня уже ждёт`,
+        body: recent.length >= 3
+          ? `Ты обычно начинаешь около ${habit}:00. План на сегодня уже ждёт`
+          : 'Сегодня тренировка по графику — план уже ждёт',
         screen: 'workout',
       });
     }
@@ -277,6 +280,9 @@ export const dailyMessages = {
     screen: 'duels',
   }),
 };
+
+/** Час тренировки по умолчанию, пока привычка не сложилась. */
+const DEFAULT_TRAINING_HOUR = 19;
 
 const localHour = (at: Date, timeZone: string): number =>
   Number(new Intl.DateTimeFormat('en-GB', { timeZone, hour: '2-digit', hourCycle: 'h23' }).format(at));

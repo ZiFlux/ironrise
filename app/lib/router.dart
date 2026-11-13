@@ -213,6 +213,9 @@ final routerProvider = Provider<GoRouter>((ref) {
   );
 });
 
+/// Вкладок в нижней панели: Герой, Тренировка, Дуэли, Рейтинг, Профиль.
+const _tabCount = 5;
+
 class _Shell extends StatefulWidget {
   const _Shell({required this.shell});
 
@@ -262,11 +265,23 @@ class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
     final shell = widget.shell;
     // Новый заход на вкладку — блоки на ней появятся заново (FadeSlideIn).
     return Scaffold(
-      body: FadeTransition(
-        opacity: _fade,
-        child: ScaleTransition(
-          scale: _scale,
-          child: TabVisit(visit: _visit, child: shell),
+      // Свайп вбок — соседняя вкладка. Горизонтальные списки внутри экранов
+      // перехватывают жест сами, поэтому мешать не будут.
+      body: GestureDetector(
+        behavior: HitTestBehavior.translucent,
+        onHorizontalDragEnd: (d) {
+          final v = d.primaryVelocity ?? 0;
+          if (v.abs() < 350) return;
+          final next = shell.currentIndex + (v < 0 ? 1 : -1);
+          if (next < 0 || next >= _tabCount) return;
+          shell.goBranch(next, initialLocation: true);
+        },
+        child: FadeTransition(
+          opacity: _fade,
+          child: ScaleTransition(
+            scale: _scale,
+            child: TabVisit(visit: _visit, child: shell),
+          ),
         ),
       ),
       bottomNavigationBar: NavigationBar(

@@ -2,7 +2,7 @@ import { stepsXp } from '../game/steps';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { localDay } from '../common/day';
-import { Bot, botsForDay, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, mondayOf, weeklyLeague } from '../game/bots';
+import { Bot, botsForDay, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, mondayOf } from '../game/bots';
 import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, PROMOTE_TOP, settleWeek, WeekSettlement } from '../game/league';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
@@ -359,6 +359,34 @@ export class EconomyService {
     return { trainedDays, wins, points: trainedDays * LEAGUE_WORKOUT_POINTS + wins * LEAGUE_WIN_POINTS };
   }
 
+  /** Очки за неделю всех живых игроков лиги [tier], кроме [exceptId]: активные за 4 недели. */
+  private async tierPlayers(tier: number, monday: string, today: string, exceptId: string) {
+    const since = addWeeks(monday, -4);
+    const profiles = await this.db.profile.findMany({
+      where: { leagueTier: tier, lastActiveDay: { gte: since }, userId: { not: exceptId }, user: { bannedAt: null } },
+      select: { userId: true, nickname: true },
+      take: 30,
+    });
+    if (profiles.length === 0) return [];
+    const ids = profiles.map((p) => p.userId);
+    const days = await this.db.workout.groupBy({
+      by: ['userId', 'day'],
+      where: { userId: { in: ids }, day: { gte: monday, lte: today } },
+    });
+    const wins = await this.db.duel.groupBy({
+      by: ['attackerId'],
+      where: { attackerId: { in: ids }, attackerWon: true, day: { gte: monday, lte: today } },
+      _count: { _all: true },
+    });
+    return profiles.map((p) => ({
+      id: p.userId,
+      name: p.nickname,
+      points:
+        days.filter((d) => d.userId === p.userId).length * LEAGUE_WORKOUT_POINTS +
+        (wins.find((w) => w.attackerId === p.userId)?._count._all ?? 0) * LEAGUE_WIN_POINTS,
+    }));
+  }
+
   /** Недельная лига по настоящим тренировочным дням и победам, с уровнем лиги. */
   async league(userId: string) {
     const day = await this.today(userId);
@@ -374,7 +402,12 @@ export class EconomyService {
       promoteTop: PROMOTE_TOP,
       demoteBottom: DEMOTE_BOTTOM,
       lastWeek: last,
-      entries: weeklyLeague({ today: day, playerName: hero.nickname, playerPoints: points, tier }),
+      entries: liveLeague({
+        today: day,
+        me: { id: userId, name: hero.nickname, points },
+        players: await this.tierPlayers(tier, mondayOf(day), day, userId),
+        tier,
+      }),
     };
   }
 
@@ -397,7 +430,12 @@ export class EconomyService {
     for (let n = 0; week < currentMonday && n < MAX_WEEKS_TO_SETTLE; n++) {
       const sunday = sundayOf(week);
       const stats = await this.weeklyStats(userId, week, sunday);
-      const table = weeklyLeague({ today: sunday, playerName: nickname, playerPoints: stats.points, tier });
+      const table = liveLeague({
+        today: sunday,
+        me: { id: userId, name: nickname, points: stats.points },
+        players: await this.tierPlayers(tier, week, sunday, userId),
+        tier,
+      });
       const rank = table.findIndex((e) => e.isPlayer) + 1;
       last = settleWeek({ week, tier, rank, size: table.length, trainedDays: stats.trainedDays });
       tier = last.tierAfter;

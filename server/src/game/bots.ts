@@ -56,7 +56,40 @@ export interface LeagueEntry {
   name: string;
   points: number;
   isPlayer: boolean;
+  /** Бот лиги (у живых игроков нет). */
+  isBot?: boolean;
 }
+
+/** Ботов в живой лиге: двое, чтобы таблица не пустовала. */
+export const LIVE_LEAGUE_BOTS = 2;
+
+/**
+ * Живая лига (п. 46 бэклога): игроки своей лиги с их очками за неделю и два бота,
+ * которые растут вместе с игроками — их очки от медианы живых (×0,7…1,3).
+ */
+export const liveLeague = (args: {
+  today: string;
+  me: { id: string; name: string; points: number };
+  players: { id: string; name: string; points: number }[];
+  tier: number;
+}): LeagueEntry[] => {
+  const live = [args.me, ...args.players.filter((p) => p.id !== args.me.id)];
+  const sorted = [...live.map((p) => p.points)].sort((a, b) => a - b);
+  const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
+  const weekSeed = daySeed(mondayOf(args.today)) + args.tier * 7;
+  const nameRnd = seededRandom(weekSeed);
+  const names = botNames(Array.from({ length: LIVE_LEAGUE_BOTS }, () => nameRnd() < 0.5), nameRnd);
+  const daysPassed = daysBetween(mondayOf(args.today), args.today) + 1;
+  const entries: LeagueEntry[] = live.map((p) => ({ name: p.name, points: p.points, isPlayer: p.id === args.me.id }));
+  for (let b = 0; b < LIVE_LEAGUE_BOTS; b++) {
+    const rnd = seededRandom(weekSeed * 31 + b);
+    const factor = 0.7 + rnd() * 0.6;
+    // В начале недели у всех мало — боту хотя бы день активности, чтобы не стоял на нуле.
+    const floor = Math.min(daysPassed, 2) * LEAGUE_WORKOUT_POINTS * 0.5;
+    entries.push({ name: names[b], points: Math.round(Math.max(floor, median * factor)), isPlayer: false, isBot: true });
+  }
+  return entries.sort((a, b) => b.points - a.points || Number(b.isPlayer) - Number(a.isPlayer));
+};
 
 export const LEAGUE_WORKOUT_POINTS = 10;
 export const LEAGUE_WIN_POINTS = 3;

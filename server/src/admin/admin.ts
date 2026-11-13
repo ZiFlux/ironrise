@@ -11,7 +11,9 @@ import { PrismaPg } from '@prisma/adapter-pg';
 import { BODY_PARTS, BodyPart } from '../game/body-part';
 import { premiumStatus } from '../game/premium';
 import { levelFromXp } from '../game/progression';
-import { SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
+import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
+import { EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
+import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 const HELP = `Команды (ник или e-mail игрока — <кто>):
@@ -26,8 +28,11 @@ const HELP = `Команды (ник или e-mail игрока — <кто>):
   tester <кто> [off]             — статус бета-тестера (с вещами тестера)
   ban <кто> <причина>            — заблокировать: вход закрыт, сессии сброшены
   unban <кто>                    — снять блокировку
+  boosters <кто> <опыт> <монеты> — выставить бустеры серии (штук)
+  nick <кто> <новый ник>         — переименовать (без кулдауна, старый ник не бронируется)
+  duels-reset <кто>              — сбросить сегодняшние бои с ботами (перезарядку)
   history [N]                    — журнал действий администратора
-  items                          — все id вещей`;
+  items                          — все id вещей по группам`;
 
 type Db = PrismaClient;
 
@@ -72,6 +77,7 @@ async function card(db: Db, who: string): Promise<string> {
     `  блокировка: ${u.bannedAt ? `${u.bannedAt.toISOString().slice(0, 16)} — ${u.banReason ?? ''}` : 'нет'}`,
     `  опыт: ${xp.join(', ')}`,
     `  вещи: ${items.map((i) => i.itemId).join(', ') || '—'}`,
+    `  бустеры: опыт ${readBoosters(p.boosters).xp}, монеты ${readBoosters(p.boosters).coins}; веха героя ${p.heroMilestone}`,
   ].join('\n');
 }
 
@@ -103,7 +109,7 @@ async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
     case 'give':
     case 'take': {
       const u = await findUser(db, who);
-      const known = new Set([...Object.keys(SHOP_PRICES), ...TESTER_ITEMS]);
+      const known = new Set([...Object.keys(SHOP_PRICES), ...EXCLUSIVE_ITEMS]);
       const bad = rest.filter((id) => !known.has(id));
       if (!rest.length || bad.length) throw new Error(`Неизвестные вещи: ${bad.join(', ') || '(не указаны)'} — список: items`);
       if (cmd === 'give') {
@@ -183,6 +189,36 @@ async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
       return card(db, who);
     }
 
+    case 'boosters': {
+      const u = await findUser(db, who);
+      const boosters = { xp: Math.max(0, int(rest[0], 'Бустеры опыта')), coins: Math.max(0, int(rest[1], 'Бустеры монет')) };
+      await db.profile.update({ where: { userId: u.id }, data: { boosters } });
+      await log(db, 'boosters', u.id, boosters);
+      return card(db, who);
+    }
+
+    case 'nick': {
+      const u = await findUser(db, who);
+      const parsed = NicknameSchema.safeParse(rest.join(' '));
+      if (!parsed.success) throw new Error('Ник: 3–20 знаков, буквы, цифры, «_» и пробелы');
+      const nickname = parsed.data;
+      if (isReservedNickname(nickname)) throw new Error('Этот ник запрещён (выдаёт себя за проект)');
+      const key = nicknameKey(nickname);
+      const taken = await db.profile.findUnique({ where: { nicknameKey: key }, select: { userId: true } });
+      if (taken && taken.userId !== u.id) throw new Error('Ник занят другим игроком');
+      await db.profile.update({ where: { userId: u.id }, data: { nickname, nicknameKey: key } });
+      await log(db, 'nick', u.id, { from: u.profile.nickname, to: nickname });
+      return card(db, nickname);
+    }
+
+    case 'duels-reset': {
+      const u = await findUser(db, who);
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: u.profile.timezone }).format(new Date());
+      const { count } = await db.duel.deleteMany({ where: { attackerId: u.id, opponentKind: 'bot', day: today } });
+      await log(db, 'duels-reset', u.id, { removed: count });
+      return `Снято боёв с ботами за сегодня: ${count}. Монеты за них остаются у игрока.\n` + (await card(db, who));
+    }
+
     case 'history': {
       const rows = await db.adminAction.findMany({ orderBy: { at: 'desc' }, take: who ? int(who, 'N') : 30 });
       const names = new Map(
@@ -195,8 +231,24 @@ async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
         .join('\n') || 'Журнал пуст';
     }
 
-    case 'items':
-      return [...Object.keys(SHOP_PRICES).filter((id) => SHOP_PRICES[id] > 0), ...TESTER_ITEMS].join(' ');
+    case 'items': {
+      const groups: [string, (id: string) => boolean][] = [
+        ['Причёски', (id) => id.startsWith('hair_')],
+        ['Цвет волос', (id) => id.startsWith('hc_')],
+        ['Верх', (id) => id.startsWith('top_')],
+        ['Цвет верха', (id) => id.startsWith('tc_')],
+        ['Низ', (id) => id.startsWith('bottom_')],
+        ['Цвет низа', (id) => id.startsWith('bc_')],
+        ['Обувь', (id) => id.startsWith('sn_')],
+        ['Аксессуары', (id) => id.startsWith('acc_')],
+      ];
+      const forSale = Object.keys(SHOP_PRICES).filter((id) => SHOP_PRICES[id] > 0);
+      return [
+        ...groups.map(([name, test]) => `${name}: ${forSale.filter(test).map((id) => `${id} (${SHOP_PRICES[id]})`).join(', ')}`),
+        `Тестерам: ${TESTER_ITEMS.join(', ')}`,
+        `За серию: ${STREAK_ITEMS.join(', ')}`,
+      ].join('\n');
+    }
 
     default:
       return HELP;

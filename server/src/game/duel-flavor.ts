@@ -43,37 +43,20 @@ export const pickDuelEvent = (rnd: () => number): DuelEventDef => {
   return DUEL_EVENTS[DUEL_EVENTS.length - 1];
 };
 
-const MALE_NAMES = [
-  'Стас', 'Валера', 'Богдан', 'Гена', 'Толян', 'Вован', 'Артур', 'Лёха', 'Дэн', 'Серёга', 'Михалыч', 'Жорик',
-];
-const FEMALE_NAMES = ['Кристина', 'Алёна', 'Света', 'Даша', 'Вика', 'Яна', 'Марина', 'Оля', 'Карина', 'Лиза'];
+/** Игровые ники ботов латиницей (п. 46 бэклога). Совпадает с app/lib/game/duel_flavor.dart. */
+export const BOT_HANDLES_M: readonly string[] = ['xX_IronWolf_Xx', 'BenchGod', 'PumpKing99', 'Gym_Rat_007', 'NoDaysOff', 'BeastMode_ON', 'Lift4Life', 'DeadliftDan', 'ProteinShake', 'Swole_Patrol', 'Max_Rep', 'IronMike_RU', 'Rack_Attack', 'Dumbb3ll', 'Vova_Pump', 'Big_Biceps', 'Squat_Lord', 'Kettle_Bear', 'Grind_Time', 'Spotter_42'];
+export const BOT_HANDLES_F: readonly string[] = ['SquatQueen', 'Glute_Goddess', 'Fit_Lisa', 'Iron_Mary', 'PlankPrincess', 'Cardio_Kat', 'Lunge_Lady', 'Strong_Ann', 'Booty_Builder', 'Pilates_Pro', 'Yoga_Rage', 'Kettle_Kira', 'Run_Yana', 'Power_Vika', 'Muscle_Masha', 'Fit_Freak_x', 'Lift_Lena', 'Stretch_Sveta', 'Hip_Thrust_Hero', 'Sweaty_Sonya'];
 
-/** Шаблоны прозвищ: [мужской, женский] — прилагательные согласуются с родом. */
-const NICKNAMES: readonly [(n: string) => string, (n: string) => string][] = [
-  [(n) => `Протеиновый ${n}`, (n) => `Протеиновая ${n}`],
-  [(n) => `Железный ${n}`, (n) => `Железная ${n}`],
-  [(n) => `Креатиновый ${n}`, (n) => `Креатиновая ${n}`],
-  [(n) => `Сухой ${n}`, (n) => `Сухая ${n}`],
-  [(n) => `${n} с турника`, (n) => `${n} с турника`],
-  [(n) => `${n} без дня ног`, (n) => `${n} без дня ног`],
-  [(n) => `${n} на массе`, (n) => `${n} на сушке`],
-  [(n) => `Качок ${n}`, (n) => `Фитоняшка ${n}`],
-  [(n) => `Тренер ${n}`, (n) => `Тренер ${n}`],
-  [(n) => `${n} из качалки`, (n) => `${n} из качалки`],
-  [(n) => `${n} Двести-на-жим`, (n) => `${n} Сто-на-присед`],
-  [(n) => `Бицепс-${n}`, (n) => `Пресс-${n}`],
-];
-
-/** [count] разных имён ботов; [isFemale] задаёт род для каждого. */
+/** [count] разных ников ботов; [isFemale] задаёт, из какого набора. */
 export const botNames = (isFemale: boolean[], rnd: () => number): string[] => {
   const used = new Set<string>();
   return isFemale.map((female) => {
+    const pool = female ? BOT_HANDLES_F : BOT_HANDLES_M;
     for (let attempt = 0; ; attempt++) {
-      const pool = female ? FEMALE_NAMES : MALE_NAMES;
       const base = pool[Math.floor(rnd() * pool.length)];
-      const [m, f] = NICKNAMES[Math.floor(rnd() * NICKNAMES.length)];
-      const name = (female ? f : m)(base);
-      if (!used.has(name) || attempt > 20) {
+      // Занят — как в играх: с номером (BenchGod_27).
+      const name = attempt < 10 ? base : `${base}_${10 + Math.floor(rnd() * 90)}`;
+      if (!used.has(name)) {
         used.add(name);
         return name;
       }

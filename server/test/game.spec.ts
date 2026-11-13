@@ -636,3 +636,28 @@ describe('вехи героя и напарники', () => {
     expect(mondayOfDay('2026-11-13')).toBe('2026-11-09');
   });
 });
+
+import { LIVE_LEAGUE_BOTS, liveLeague } from '../src/game/bots';
+
+describe('живая лига', () => {
+  it('живые игроки и два бота от медианы, игрок отмечен', () => {
+    const table = liveLeague({
+      today: '2026-11-13',
+      me: { id: 'me', name: 'Я', points: 30 },
+      players: [
+        { id: 'a', name: 'Аня', points: 50 },
+        { id: 'b', name: 'Боря', points: 10 },
+        { id: 'me', name: 'Я', points: 30 },
+      ],
+      tier: 0,
+    });
+    expect(table.length).toBe(3 + LIVE_LEAGUE_BOTS);
+    expect(table.filter((e) => e.isPlayer)).toHaveLength(1);
+    const bots = table.filter((e) => e.isBot);
+    for (const b of bots) {
+      expect(b.points).toBeGreaterThanOrEqual(21);
+      expect(b.points).toBeLessThanOrEqual(39);
+      expect(b.name).toMatch(/^[A-Za-z0-9_]+$/);
+    }
+  });
+});
