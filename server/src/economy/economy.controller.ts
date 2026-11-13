@@ -15,6 +15,11 @@ export class EconomyController {
     return this.economy.tipReward(userId, body);
   }
 
+  @Get('season')
+  season(@UserId() userId: string) {
+    return this.economy.season(userId);
+  }
+
   /** Вещь за достижение: guide — гайд пройден, watch — часы подключены. */
   @Post('rewards/:kind')
   @HttpCode(200)

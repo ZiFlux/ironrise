@@ -589,6 +589,14 @@ class _Menu extends ConsumerWidget {
         '/profile/devices',
       ),
       (
+        LucideIcons.sparkles,
+        'Сезон и батлпас',
+        account.signedIn
+            ? 'Очки за тренировки и дуэли — награды по уровням'
+            : 'Нужен аккаунт',
+        '/season',
+      ),
+      (
         LucideIcons.users,
         'Друзья',
         account.signedIn

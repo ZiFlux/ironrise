@@ -41,8 +41,9 @@ class ShopItem {
   final bool costume;
 
   /// Вещь за серию: сколько дней (на плитке — огонёк и число).
-  int? get streakDays =>
-      int.tryParse(RegExp(r'(\d+)').firstMatch(exclusiveLabel ?? '')?[1] ?? '');
+  int? get streakDays => (exclusiveLabel ?? '').startsWith('серия')
+      ? int.tryParse(RegExp(r'(\d+)').firstMatch(exclusiveLabel!)?[1] ?? '')
+      : null;
 
   final String id;
   final String name;
@@ -436,6 +437,61 @@ class ShopCatalog {
       0,
       testerOnly: true,
       exclusiveLabel: 'за гайд',
+    ),
+    // Сезон 1 «Пробуждение» (server/src/game/season.ts): бесплатная и премиум-дорожки.
+    _color(
+      'sn_s1',
+      'Бирюза',
+      ShopSlot.sneakers,
+      const Color(0xFF2EC4B6),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+    ),
+    _color(
+      'tc_s1',
+      'Бирюза',
+      ShopSlot.topColor,
+      const Color(0xFF2EC4B6),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+    ),
+    _color(
+      'bc_s1',
+      'Глубина',
+      ShopSlot.bottomColor,
+      const Color(0xFF14403D),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+    ),
+    _color(
+      'hc_s1',
+      'Мята',
+      ShopSlot.hairColor,
+      const Color(0xFF7FDBDA),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+    ),
+    _color(
+      'sn_s1p',
+      'Солнце',
+      ShopSlot.sneakers,
+      const Color(0xFFFFD166),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
+    ),
+    _color(
+      'tc_s1p',
+      'Лагуна',
+      ShopSlot.topColor,
+      const Color(0xFF0B6E6E),
+      0,
+      testerOnly: true,
+      exclusiveLabel: 'сезон 1',
     ),
     // Аксессуары
     _accessory('acc_headband', 'Повязка', Accessory.headband, 50),

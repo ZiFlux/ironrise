@@ -688,3 +688,30 @@ describe('ограничение частоты', () => {
     expect(r.allow('ip', 61_001)).toBe(true);
   });
 });
+
+import { SEASON_ITEMS, seasonAt, seasonLevel, seasonRewardsBetween } from '../src/game/season';
+
+describe('сезоны', () => {
+  it('8 недель, сезон 1 начался 2 ноября 2026', () => {
+    const s = seasonAt(new Date('2026-11-13T12:00:00Z'));
+    expect(s.number).toBe(1);
+    expect(s.endsAt.toISOString().slice(0, 10)).toBe('2026-12-28');
+    expect(seasonAt(new Date('2026-12-28T00:00:00Z')).number).toBe(2);
+  });
+
+  it('уровни по 150 очков, до 30', () => {
+    expect(seasonLevel(149)).toBe(0);
+    expect(seasonLevel(150)).toBe(1);
+    expect(seasonLevel(99999)).toBe(30);
+  });
+
+  it('награды уровней: монеты каждый уровень, вещи на 5/15/25 и премиум на 10/20/30', () => {
+    const free = seasonRewardsBetween(1, 'free', 0, 30);
+    expect(free.items).toEqual(['sn_s1', 'tc_s1', 'bc_s1']);
+    expect(free.coins).toBe(30 * 15 + 200);
+    const paid = seasonRewardsBetween(1, 'premium', 0, 30);
+    expect(paid.items).toEqual(['hc_s1', 'sn_s1p', 'tc_s1p']);
+    expect(seasonRewardsBetween(1, 'free', 4, 5).items).toEqual(['sn_s1']);
+    expect(SEASON_ITEMS).toHaveLength(6);
+  });
+});

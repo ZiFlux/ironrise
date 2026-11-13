@@ -24,6 +24,7 @@ import 'package:ironrise/state/joint_state.dart';
 import 'package:ironrise/state/duel_state.dart';
 import 'package:ironrise/state/hero.dart';
 import 'package:ironrise/state/providers.dart';
+import 'package:ironrise/state/season_state.dart';
 import 'package:ironrise/state/server_game.dart';
 import 'package:ironrise/state/workout_state.dart';
 import 'package:ironrise/state/training_log.dart';
@@ -135,6 +136,36 @@ List<Override> _serverFakes() {
         demoteBottom: 2,
         lastWeek: (rank: 2, outcome: 'promoted', tierBefore: 0, tierAfter: 1),
       ),
+    ),
+    seasonProvider.overrideWith(
+      (ref) async => SeasonInfo.fromJson({
+        'number': 1,
+        'name': 'Пробуждение',
+        'endsAt': '2026-12-28T00:00:00Z',
+        'points': 1234,
+        'level': 8,
+        'levelPoints': 150,
+        'maxLevel': 30,
+        'premium': false,
+        'freeGranted': 8,
+        'premiumGranted': 0,
+        'tracks': [
+          for (var l = 1; l <= 30; l++)
+            {
+              'level': l,
+              'free': {
+                'coins': l == 30 ? 215 : 15,
+                'items': [if (l == 5) 'sn_s1', if (l == 15) 'tc_s1'],
+                'boosters': {'xp': l == 20 ? 1 : 0, 'coins': l == 10 ? 1 : 0},
+              },
+              'premium': {
+                'coins': 10,
+                'items': [if (l == 10) 'hc_s1'],
+                'boosters': {'xp': 0, 'coins': 0},
+              },
+            },
+        ],
+      }),
     ),
     serverFriendsLeagueProvider.overrideWith(
       (ref) async => [
@@ -394,6 +425,7 @@ void main() {
         '/workout/result',
         '/workout/exercises',
         '/workout/stats',
+        '/season',
         '/workout/cardio',
         '/workout/joint',
         '/duels',
@@ -421,6 +453,7 @@ void main() {
         '/duels',
         '/duels/friends',
         '/rating',
+        '/season',
         '/notifications',
         '/profile',
         '/profile/account',

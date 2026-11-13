@@ -111,6 +111,11 @@ model Profile {
   notificationSettings Json @default("{}")
   /// Лига: 0 — бронзовая, 1 — серебряная, 2 — золотая (src/game/league.ts).
   leagueTier       Int       @default(0)
+  /// Сезон (src/game/season.ts): номер, очки и до какого уровня выданы награды дорожек.
+  seasonNumber     Int       @default(0)
+  seasonPoints     Int       @default(0)
+  seasonFree       Int       @default(0)
+  seasonPremium    Int       @default(0)
   /// Понедельник недели, до которой лига уже подведена (YYYY-MM-DD).
   leagueWeek       String?
   /// Итог последней подведённой недели: место и куда сдвинулась лига.

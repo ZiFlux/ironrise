@@ -1,3 +1,4 @@
+import { SEASON_ITEMS } from './season';
 import { STREAK_ITEMS } from './streak-rewards';
 /**
  * Цены косметики. Совпадают с app/lib/game/shop.dart; клиент показывает цены,
@@ -51,6 +52,7 @@ export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([
   ...STREAK_ITEMS,
   ...AUTHOR_ITEMS,
   ...Object.values(ACHIEVEMENT_ITEMS),
+  ...SEASON_ITEMS,
 ]);
 
 export const priceOf = (itemId: string): number | undefined => SHOP_PRICES[itemId];

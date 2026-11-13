@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -80,7 +81,17 @@ class _LeagueView extends StatelessWidget {
     final daysLeft = 7 - now.weekday;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Рейтинг')),
+      appBar: AppBar(
+        title: const Text('Рейтинг'),
+        actions: [
+          IconButton(
+            tooltip: 'Сезон и батлпас',
+            onPressed: () => context.push('/season'),
+            icon: const Icon(LucideIcons.sparkles, size: 20),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: SafeArea(
         top: false,
         child: _fitOrList(
@@ -323,7 +334,17 @@ class _ServerRatingState extends ConsumerState<_ServerRating> {
       onSelectionChanged: (s) => setState(() => _friends = s.first),
     );
     Widget status(Widget child) => Scaffold(
-      appBar: AppBar(title: const Text('Рейтинг')),
+      appBar: AppBar(
+        title: const Text('Рейтинг'),
+        actions: [
+          IconButton(
+            tooltip: 'Сезон и батлпас',
+            onPressed: () => context.push('/season'),
+            icon: const Icon(LucideIcons.sparkles, size: 20),
+          ),
+          const SizedBox(width: 8),
+        ],
+      ),
       body: Padding(
         padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
         child: Column(

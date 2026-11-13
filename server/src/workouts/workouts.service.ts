@@ -17,6 +17,8 @@ import { premiumStatus, unverifiedValidityFor, withPremiumCoins } from '../game/
 import { HeroService, HeroState } from '../hero/hero.service';
 import { JointService } from '../joint/joint.service';
 import { PrismaService } from '../prisma.service';
+import { SEASON_POINTS } from '../game/season';
+import { addSeasonPoints } from '../season/season';
 
 const MAX_DURATION_MS = 6 * 3600_000;
 const CLOCK_SKEW_MS = 5 * 60_000;
@@ -311,6 +313,12 @@ export class WorkoutsService {
       if (usedBoosters.xp || usedBoosters.coins || streak) {
         await tx.profile.update({ where: { userId }, data: { boosters: boosters as unknown as Prisma.InputJsonValue } });
       }
+      // Очки сезона — последними: награды уровней добавляют бустеры к уже записанным.
+      const seasonPoints =
+        type === 'strength'
+          ? SEASON_POINTS.strength(summary.validity, planCompleted)
+          : SEASON_POINTS.cardio(summary.validity);
+      const season = await addSeasonPoints(tx, userId, seasonPoints, finishedAt);
 
       return {
         workoutId: workout.id,
@@ -319,6 +327,7 @@ export class WorkoutsService {
         boostersUsed: usedBoosters,
         comeback,
         heroMilestones: due,
+        season: { points: seasonPoints, level: season.level, granted: season.granted },
         hero: await this.hero.state(userId, tx),
         duplicate: false,
       };

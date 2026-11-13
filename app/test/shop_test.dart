@@ -63,6 +63,11 @@ void main() {
     final streak = RegExp(r"STREAK_ITEMS[^=]*=[^\[]*\[([^\]]*)\]").firstMatch(
       File('../server/src/game/streak-rewards.ts').readAsStringSync(),
     )![1]!;
+    final seasonTs = File('../server/src/game/season.ts').readAsStringSync();
+    final season = seasonTs.substring(
+      seasonTs.indexOf('SEASON_ITEM_TABLE'),
+      seasonTs.indexOf('SEASON_ITEMS'),
+    );
     final achievements = RegExp(r"ACHIEVEMENT_ITEMS = \{([^}]*)\}")
         .firstMatch(ts)![1]!;
     final author = RegExp(r"AUTHOR_ITEMS[^=]*=[^\[]*\[([^\]]*)\]")
@@ -73,6 +78,8 @@ void main() {
         expect(
           i.streakDays != null
               ? streak
+              : i.exclusiveLabel?.startsWith('сезон') ?? false
+              ? season
               : i.exclusiveLabel != null && i.exclusiveLabel!.startsWith('за ')
               ? achievements
               : i.exclusiveLabel != null

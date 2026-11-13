@@ -15,7 +15,7 @@ const HAIR: Record<string, string> = {
 const HAIR_COLOR: Record<number, string> = {
   0xff26262a: 'hc_black', 0xff5a3a24: 'hc_brown', 0xffd9b66e: 'hc_blond',
   0xffb4532a: 'hc_red', 0xffe6e2d8: 'hc_platinum', 0xffe86aa6: 'hc_pink', 0xff4a7bd9: 'hc_blue',
-  0xffff6a00: 'hc_streak',
+  0xffff6a00: 'hc_streak', 0xff7fdbda: 'hc_s1',
 };
 const TOP: Record<string, string> = {
   none: 'top_none', bra: 'top_bra', tank: 'top_tank', tee: 'top_tee', betaTee: 'top_beta_tee',
@@ -24,19 +24,19 @@ const TOP: Record<string, string> = {
 const TOP_COLOR: Record<number, string> = {
   0xff1f1f22: 'tc_graphite', 0xffe8e8e8: 'tc_white', 0xffc6ff3d: 'tc_lime',
   0xffff7a3d: 'tc_ember', 0xff3ddcff: 'tc_ice', 0xff1e2a4a: 'tc_navy', 0xffd23c3c: 'tc_red',
-  0xffd9b25a: 'tc_gold', 0xff8b5cf6: 'tc_beta', 0xffff5a1f: 'tc_streak',
+  0xffd9b25a: 'tc_gold', 0xff8b5cf6: 'tc_beta', 0xffff5a1f: 'tc_streak', 0xff2ec4b6: 'tc_s1', 0xff0b6e6e: 'tc_s1p',
 };
 const BOTTOM: Record<string, string> = {
   shorts: 'bottom_shorts', joggers: 'bottom_joggers', leggings: 'bottom_leggings', betaJoggers: 'bottom_beta_joggers',
 };
 const BOTTOM_COLOR: Record<number, string> = {
   0xff1f1f22: 'bc_graphite', 0xff1e2a4a: 'bc_navy', 0xff4a5230: 'bc_olive', 0xff8a8a90: 'bc_grey',
-  0xff0e0e10: 'bc_black', 0xff3a1a12: 'bc_streak',
+  0xff0e0e10: 'bc_black', 0xff3a1a12: 'bc_streak', 0xff14403d: 'bc_s1',
 };
 const SNEAKERS: Record<number, string> = {
   0xffededed: 'sn_white', 0xff2a2a2e: 'sn_black', 0xffc6ff3d: 'sn_lime', 0xffe5484d: 'sn_red',
   0xff3d7bff: 'sn_blue', 0xffd9b25b: 'sn_gold', 0xff8b5cf7: 'sn_beta', 0xffff5a20: 'sn_streak',
-  0xff5ce1a5: 'sn_first_step',
+  0xff5ce1a5: 'sn_first_step', 0xff2ec4b6: 'sn_s1', 0xffffd166: 'sn_s1p',
 };
 const ACCESSORY: Record<string, string> = {
   headband: 'acc_headband', wristbands: 'acc_wristbands', belt: 'acc_belt', kneeSleeves: 'acc_knee_sleeves',

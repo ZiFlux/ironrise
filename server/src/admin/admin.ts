@@ -15,6 +15,7 @@ import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nicknam
 import { ACHIEVEMENT_ITEMS, AUTHOR_ITEMS, EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
 import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
+import { SEASON_ITEMS } from '../game/season';
 
 const HELP = `Команды (ник или e-mail игрока — <кто>):
   find <кто>                     — карточка игрока
@@ -249,6 +250,7 @@ async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
         `За серию: ${STREAK_ITEMS.join(', ')}`,
         `Создателю: ${AUTHOR_ITEMS.join(', ')}`,
         `За достижения: ${Object.values(ACHIEVEMENT_ITEMS).join(', ')}`,
+        `Сезонные: ${SEASON_ITEMS.join(', ')}`,
       ].join('\n');
     }
 

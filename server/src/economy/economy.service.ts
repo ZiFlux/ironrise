@@ -22,6 +22,8 @@ import {
 import { Prisma } from '../generated/prisma/client';
 import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
+import { SEASON_POINTS } from '../game/season';
+import { addSeasonPoints, seasonState } from '../season/season';
 
 export const BuySchema = z.object({
   itemIds: z.array(z.string().min(1).max(64)).max(20),
@@ -340,6 +342,10 @@ export class EconomyService {
         },
       });
       if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
+      // Повторный бой за сутки очков сезона не даёт — иначе их фармят у одного бота.
+      if (!repeat) {
+        await addSeasonPoints(tx, userId, result.attackerWon ? SEASON_POINTS.duelWin : SEASON_POINTS.duelLoss);
+      }
       return { duelId: duel.id, attacker, defender: bot, ...result, coins, repeat, hero: await this.hero.state(userId, tx) };
     });
   }
@@ -455,6 +461,11 @@ export class EconomyService {
     return { tier, last };
   }
 
+  /** Сезон: прогресс и дорожки наград (заодно выдаёт то, что причитается). */
+  season(userId: string) {
+    return seasonState(this.db, userId);
+  }
+
   /** Вещь за достижение в приложении (гайд, первые часы): один раз, повтор — без ошибки. */
   async achievement(userId: string, kind: Achievement) {
     const itemId = ACHIEVEMENT_ITEMS[kind];
@@ -472,6 +483,7 @@ export class EconomyService {
       const coins = tipQuizCoins(quiz.correct, quiz.total);
       if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'tip' } });
       await tx.profile.update({ where: { userId }, data: { tipRewardDay: day } });
+      await addSeasonPoints(tx, userId, SEASON_POINTS.tip);
       return { coins };
     });
   }

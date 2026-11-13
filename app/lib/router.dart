@@ -30,6 +30,7 @@ import 'screens/workout_result_screen.dart';
 import 'screens/workout_screen.dart';
 import 'screens/training_stats_screen.dart';
 import 'screens/feed_screen.dart';
+import 'screens/season_screen.dart';
 import 'screens/friend_profile_screen.dart';
 import 'widgets/week_recap.dart';
 import 'widgets/guide.dart';
@@ -53,6 +54,7 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/privacy', builder: (_, _) => const PrivacyScreen()),
       GoRoute(path: '/feed', builder: (_, _) => const FeedScreen()),
+      GoRoute(path: '/season', builder: (_, _) => const SeasonScreen()),
       GoRoute(
         path: '/friend/:id',
         builder: (_, state) =>
