@@ -1,5 +1,17 @@
-# HTTPS для API: сертификат Let's Encrypt выпускается и продлевается сам.
+# HTTPS для API и сайта: сертификаты Let's Encrypt выпускаются и продлеваются сами.
 {$DOMAIN} {
 	encode gzip
 	reverse_proxy api:3000
+}
+
+# Сайт приложения (папка site в репозитории) — статика, нагрузки почти нет.
+{$SITE_DOMAIN:ironrise.ru} {
+	encode gzip
+	root * /srv/site
+	file_server
+	header /img/* Cache-Control "public, max-age=604800"
+}
+
+www.{$SITE_DOMAIN:ironrise.ru} {
+	redir https://{$SITE_DOMAIN:ironrise.ru}{uri} permanent
 }

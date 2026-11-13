@@ -51,6 +51,7 @@ services:
       DOMAIN: ${DOMAIN:?set DOMAIN in .env.prod}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./site:/srv/site:ro
       - caddy_data:/data
     logging: *logs
 

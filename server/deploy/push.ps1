@@ -28,6 +28,9 @@ Write-Host '== Копирование на сервер'
 Invoke-Step 'папки на сервере' { ssh $Server 'mkdir -p /opt/ironrise/deploy /opt/ironrise/secrets' }
 Invoke-Step 'копирование образа' { scp compose.prod.yml Caddyfile .env.prod.example api.tar.gz "${Server}:/opt/ironrise/" }
 Invoke-Step 'копирование скриптов' { scp deploy/setup-server.sh deploy/backup.sh "${Server}:/opt/ironrise/deploy/" }
+# Сайт (../site): заменяем целиком, чтобы удалённые файлы не оставались.
+Invoke-Step 'копирование сайта' { ssh $Server 'rm -rf /opt/ironrise/site && mkdir -p /opt/ironrise/site' }
+Invoke-Step 'scp сайта' { scp -r ../site/. "${Server}:/opt/ironrise/site/" }
 Remove-Item api.tar.gz
 $firebase = Test-Path secrets/firebase.json
 if ($firebase) { Invoke-Step 'scp firebase' { scp secrets/firebase.json "${Server}:/opt/ironrise/secrets/firebase.json" } }
@@ -42,5 +45,6 @@ $createEnv = "cd /opt/ironrise && test -f .env.prod || { " +
 Invoke-Step 'создание .env.prod' { ssh $Server $createEnv }
 
 Write-Host '== Загрузка образа и запуск'
-Invoke-Step 'загрузка образа и запуск' { ssh $Server "cd /opt/ironrise && tar -xzOf api.tar.gz | docker load && rm api.tar.gz && $compose up -d && docker image prune -f" }
+# Caddy перечитывает Caddyfile (новые адреса сайта) без перезапуска.
+Invoke-Step 'загрузка образа и запуск' { ssh $Server "cd /opt/ironrise && tar -xzOf api.tar.gz | docker load && rm api.tar.gz && $compose up -d && ($compose exec -T caddy caddy reload --config /etc/caddy/Caddyfile || true) && docker image prune -f" }
 Write-Host "== Готово: https://$Domain"
