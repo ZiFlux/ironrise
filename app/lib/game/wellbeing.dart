@@ -1,6 +1,7 @@
 import 'exercise_catalog.dart';
 import 'game_config.dart';
 import 'program.dart';
+import 'workout_variant.dart';
 
 /// Самочувствие после тренировки и облегчение плана (TRAINING_SYSTEM.md, раздел 6).
 /// Приложение не ставит диагнозов: оно бережёт зону и советует обратиться к врачу.
@@ -50,10 +51,22 @@ class AdaptedDay {
     this.eased = false,
     this.boosted = false,
     this.adjustments = const [],
+    this.variant = WorkoutVariant.regular,
   });
 
   final ProgramDay day;
   final bool eased;
+
+  /// Вид тренировки по ритму (или выбранный на сегодня).
+  final WorkoutVariant variant;
+
+  AdaptedDay withVariant(WorkoutVariant v) => AdaptedDay(
+    day,
+    eased: eased,
+    boosted: boosted,
+    adjustments: adjustments,
+    variant: v,
+  );
 
   /// «Легко» два раза подряд — на подход больше (в пределах лимита).
   final bool boosted;
@@ -149,13 +162,7 @@ class Wellbeing {
         );
         if (substitute == null) continue;
         inDay.add(substitute);
-        exercise = PlannedExercise(
-          substitute,
-          sets: planned.sets,
-          repsMin: planned.repsMin,
-          repsMax: planned.repsMax,
-          repsInReserve: planned.repsInReserve,
-        );
+        exercise = planned.copyWith(exerciseId: substitute);
       }
       exercises.add(
         ease
@@ -173,19 +180,10 @@ class Wellbeing {
     );
   }
 
-  static PlannedExercise _boosted(PlannedExercise e) => PlannedExercise(
-    e.exerciseId,
+  static PlannedExercise _boosted(PlannedExercise e) => e.copyWith(
     sets: e.sets < GameConfig.maxSetsPerExercise ? e.sets + 1 : e.sets,
-    repsMin: e.repsMin,
-    repsMax: e.repsMax,
-    repsInReserve: e.repsInReserve,
   );
 
-  static PlannedExercise _eased(PlannedExercise e) => PlannedExercise(
-    e.exerciseId,
-    sets: e.sets > 1 ? e.sets - 1 : 1,
-    repsMin: e.repsMin,
-    repsMax: e.repsMax,
-    repsInReserve: e.repsInReserve,
-  );
+  static PlannedExercise _eased(PlannedExercise e) =>
+      e.copyWith(sets: e.sets > 1 ? e.sets - 1 : 1);
 }

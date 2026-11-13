@@ -21,6 +21,7 @@ class PlannedExercise {
     required this.repsMin,
     required this.repsMax,
     required this.repsInReserve,
+    this.weightFactor = 1,
   });
 
   final String exerciseId;
@@ -28,6 +29,33 @@ class PlannedExercise {
   final int repsMin;
   final int repsMax;
   final int repsInReserve;
+
+  /// Вес от рабочего: силовая ×1,15, разгрузочная ×0,7 (workout_variant.dart).
+  /// Такие тренировки рабочий вес не меняют.
+  final double weightFactor;
+
+  PlannedExercise copyWith({
+    String? exerciseId,
+    int? sets,
+    int? repsMin,
+    int? repsMax,
+    int? repsInReserve,
+    double? weightFactor,
+  }) => PlannedExercise(
+    exerciseId ?? this.exerciseId,
+    sets: sets ?? this.sets,
+    repsMin: repsMin ?? this.repsMin,
+    repsMax: repsMax ?? this.repsMax,
+    repsInReserve: repsInReserve ?? this.repsInReserve,
+    weightFactor: weightFactor ?? this.weightFactor,
+  );
+
+  /// Предлагаемый вес: рабочий × множитель вида тренировки, до 0,5 кг.
+  double suggestedWeight(ExerciseProgress progress) {
+    final base = progress.workingWeight ?? exercise.defaultWeight;
+    if (progress.workingWeight == null || weightFactor == 1) return base;
+    return (base * weightFactor * 2).round() / 2;
+  }
 
   Exercise get exercise => ExerciseCatalog.byId(exerciseId);
 
@@ -37,6 +65,7 @@ class PlannedExercise {
     'repsMin': repsMin,
     'repsMax': repsMax,
     'repsInReserve': repsInReserve,
+    if (weightFactor != 1) 'weightFactor': weightFactor,
   };
 
   factory PlannedExercise.fromJson(Map<String, dynamic> j) => PlannedExercise(
@@ -45,6 +74,7 @@ class PlannedExercise {
     repsMin: j['repsMin'],
     repsMax: j['repsMax'],
     repsInReserve: j['repsInReserve'],
+    weightFactor: (j['weightFactor'] as num?)?.toDouble() ?? 1,
   );
 }
 
@@ -154,6 +184,19 @@ class DoubleProgression {
 
     if (sets.isEmpty) return change(current, ProgressKind.hold);
     final exercise = plan.exercise;
+    // Силовая и разгрузочная рабочий вес не двигают; первый подбор веса —
+    // пересчитываем к обычному.
+    if (plan.weightFactor != 1) {
+      if (exercise.usesWeight && current.isCalibrating) {
+        return change(
+          ExerciseProgress(
+            workingWeight: _round(_lastWeight(sets) / plan.weightFactor),
+          ),
+          ProgressKind.calibrated,
+        );
+      }
+      return change(current, ProgressKind.hold);
+    }
     final target = repsRange(plan, current);
     final planned = sets.take(plan.sets).toList();
     final allTop =

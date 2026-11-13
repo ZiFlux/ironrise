@@ -14,6 +14,7 @@ import '../game/set_effort.dart';
 import '../game/warmup.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
+import '../game/workout_variant.dart';
 import '../state/hero.dart';
 import '../game/training_format.dart';
 import '../state/cardio_state.dart';
@@ -100,7 +101,18 @@ class _StartView extends ConsumerWidget {
     final now = DateTime.now();
     final strengthDone = doneToday(log, WorkoutKind.strength, now);
     final cardioDone = doneToday(log, WorkoutKind.cardio, now);
+    final level = trainingLevelOf(ref.watch(heroProvider), program);
+    final rhythm = Periodization.available(level, trial: program.rhythmTrial);
+    final sessions = ref.watch(heroProvider)?.trainingDays.length ?? 3;
+    final untilDeload = Periodization.untilDeload(
+      level: level,
+      completedWorkouts: program.completedWorkouts,
+      sessionsPerWeek: sessions,
+    );
     final notes = [
+      if (rhythm) '${adapted.variant.label}: ${adapted.variant.description}',
+      if (rhythm && untilDeload > 0)
+        'До разгрузочной недели — $untilDeload трен.',
       ?_splitLine(program, ref.watch(heroProvider)),
       if (adapted.eased) 'План облегчён: на подход меньше',
       if (adapted.boosted) 'План усилен: на подход больше',
@@ -161,6 +173,29 @@ class _StartView extends ConsumerWidget {
                                 ),
                               ),
                             ),
+                            // Ритм опытных: вид тренировки можно поменять на сегодня.
+                            if (rhythm)
+                              Padding(
+                                padding: const EdgeInsets.fromLTRB(
+                                  16,
+                                  0,
+                                  16,
+                                  8,
+                                ),
+                                child: Wrap(
+                                  spacing: 8,
+                                  children: [
+                                    for (final v in WorkoutVariant.values)
+                                      ChoiceChip(
+                                        label: Text(v.label),
+                                        selected: adapted.variant == v,
+                                        onSelected: (_) => ref
+                                            .read(programProvider.notifier)
+                                            .overrideVariant(v),
+                                      ),
+                                  ],
+                                ),
+                              ),
                             Padding(
                               padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
                               child: Text(
@@ -827,7 +862,7 @@ extension on _ExerciseCard {
     final plan = entry.plan;
     if (plan == null) return null;
     return SetRecord(
-      weight: progress.workingWeight ?? entry.exercise.defaultWeight,
+      weight: plan.suggestedWeight(progress),
       reps: DoubleProgression.repsRange(plan, progress).max,
     );
   }

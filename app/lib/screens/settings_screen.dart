@@ -10,6 +10,7 @@ import '../net/api_client.dart';
 import '../net/app_log.dart';
 import '../game/cardio.dart';
 import '../game/program.dart';
+import '../game/session_builder.dart';
 import '../game/training_format.dart';
 import '../state/account_state.dart';
 import '../state/hero.dart';
@@ -70,6 +71,21 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 24),
           const _SectionLabel('Где тренируешься'),
           const _EquipmentPicker(),
+          // Средним — попробовать ритм опытных: силовые и разгрузочные.
+          if (trainingLevelOf(hero, ref.watch(programProvider)) ==
+              TrainingLevel.intermediate) ...[
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: const Text('Ритм опытных'),
+              subtitle: const Text(
+                'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя',
+              ),
+              value: ref.watch(programProvider).rhythmTrial,
+              onChanged: (on) =>
+                  ref.read(programProvider.notifier).setRhythmTrial(on),
+            ),
+          ],
           const SizedBox(height: 24),
           const _SectionLabel('Пульсовые зоны'),
           _HeartZones(hero: hero),

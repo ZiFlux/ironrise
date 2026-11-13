@@ -6,6 +6,7 @@ import '../game/body_part.dart';
 import '../game/exercise_ladder.dart';
 import '../game/program.dart';
 import '../game/session_builder.dart';
+import '../game/workout_variant.dart';
 import '../game/training_format.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
@@ -29,7 +30,18 @@ class UserProgram {
     this.easyInARow = 0,
     this.boostNext = false,
     this.disliked = const {},
+    this.rhythmTrial = false,
+    this.variantOverride,
+    this.overrideAt = -1,
   });
+
+  /// Средний уровень попробовал ритм опытных: силовые и разгрузочные.
+  final bool rhythmTrial;
+
+  /// Вид, выбранный на ближайшую тренировку вместо ритма; действует, пока
+  /// [completedWorkouts] == [overrideAt].
+  final WorkoutVariant? variantOverride;
+  final int overrideAt;
 
   final Equipment equipment;
   final int nextDayIndex;
@@ -114,7 +126,20 @@ class UserProgram {
       level: level,
       lagging: lagging,
     );
-    final day = all[nextDayIndex % all.length];
+    final planned = Periodization.planned(
+      level: level,
+      trial: rhythmTrial,
+      completedWorkouts: completedWorkouts,
+      sessionsPerWeek: sessionsPerWeek,
+    );
+    final variant = overrideAt == completedWorkouts
+        ? variantOverride ?? planned
+        : planned;
+    final day = Periodization.apply(
+      all[nextDayIndex % all.length],
+      variant,
+      level,
+    );
     return Wellbeing.adapt(
       day,
       ease: easeNext,
@@ -122,7 +147,7 @@ class UserProgram {
       avoid: avoidedZones(now),
       disliked: dislikedNow(now),
       equipment: equipment,
-    );
+    ).withVariant(variant);
   }
 
   ExerciseProgress progressOf(String exerciseId) =>
@@ -140,7 +165,13 @@ class UserProgram {
     int? easyInARow,
     bool? boostNext,
     Map<String, DateTime>? disliked,
+    bool? rhythmTrial,
+    WorkoutVariant? variantOverride,
+    int? overrideAt,
   }) => UserProgram(
+    rhythmTrial: rhythmTrial ?? this.rhythmTrial,
+    variantOverride: variantOverride ?? this.variantOverride,
+    overrideAt: overrideAt ?? this.overrideAt,
     levels: levels ?? this.levels,
     easyInARow: easyInARow ?? this.easyInARow,
     boostNext: boostNext ?? this.boostNext,
@@ -168,6 +199,9 @@ class UserProgram {
     'disliked': {
       for (final e in disliked.entries) e.key: e.value.toIso8601String(),
     },
+    'rhythmTrial': rhythmTrial,
+    'variantOverride': variantOverride?.name,
+    'overrideAt': overrideAt,
   };
 
   factory UserProgram.fromJson(Map<String, dynamic> j) => UserProgram(
@@ -194,6 +228,12 @@ class UserProgram {
       for (final e in (j['disliked'] as Map? ?? const {}).entries)
         e.key as String: DateTime.parse(e.value as String),
     },
+    rhythmTrial: j['rhythmTrial'] ?? false,
+    variantOverride: switch (j['variantOverride']) {
+      final String name => WorkoutVariant.values.asNameMap()[name],
+      _ => null,
+    },
+    overrideAt: j['overrideAt'] ?? -1,
   );
 }
 
@@ -339,6 +379,15 @@ class ProgramNotifier extends Notifier<UserProgram> {
     );
     return (changes: changes, levelUps: levelUps);
   }
+
+  /// Средний уровень: попробовать ритм опытных (силовые и разгрузочные).
+  Future<void> setRhythmTrial(bool on) =>
+      _save(state.copyWith(rhythmTrial: on));
+
+  /// Вид ближайшей тренировки вместо ритма — только на неё.
+  Future<void> overrideVariant(WorkoutVariant v) => _save(
+    state.copyWith(variantOverride: v, overrideAt: state.completedWorkouts),
+  );
 
   /// Только для разработки: сразу перейти в фазу «База» или вернуться в «Старт».
   Future<void> debugTogglePhase() => _save(
