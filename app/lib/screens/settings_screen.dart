@@ -13,6 +13,7 @@ import '../game/program.dart';
 import '../game/session_builder.dart';
 import '../game/training_format.dart';
 import '../state/account_state.dart';
+import '../state/calendar_export.dart';
 import '../state/hero.dart';
 import '../state/local_data.dart';
 import '../state/program_state.dart';
@@ -86,6 +87,21 @@ class SettingsScreen extends ConsumerWidget {
                   ref.read(programProvider.notifier).setRhythmTrial(on),
             ),
           ],
+          // Тренировки в календарь телефона — он синхронизируется на часы.
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Тренировки в календарь'),
+            subtitle: const Text(
+              'Событие с временем начала и конца — видно и на часах',
+            ),
+            value: ref.watch(calendarExportProvider),
+            onChanged: (on) async {
+              final ok = await ref
+                  .read(calendarExportProvider.notifier)
+                  .setEnabled(on);
+              if (!ok) showStatusError('Нужен доступ к календарю');
+            },
+          ),
           const SizedBox(height: 24),
           const _SectionLabel('Пульсовые зоны'),
           _HeartZones(hero: hero),

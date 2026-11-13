@@ -38,6 +38,10 @@
             </intent-filter>
         </activity>
 
+        <activity
+            android:name=".JournalActivity"
+            android:exported="false" />
+
         <service
             android:name=".PhoneCommandService"
             android:exported="true">

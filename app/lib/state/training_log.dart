@@ -6,6 +6,7 @@ import '../game/anti_fraud.dart';
 import '../game/body_part.dart';
 import '../game/calendar.dart';
 import '../game/workout.dart';
+import 'calendar_export.dart';
 import 'providers.dart';
 
 const _logKey = 'training_log_v1';
@@ -134,6 +135,7 @@ class TrainingLogNotifier extends Notifier<List<LoggedWorkout>> {
     await ref
         .read(prefsProvider)
         .setString(_logKey, jsonEncode([for (final w in state) w.toJson()]));
+    await ref.read(calendarExportProvider.notifier).export(workout);
   }
 }
 

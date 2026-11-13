@@ -2,11 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 
 import '../state/health_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+
+/// Версия приложения на телефоне («1.1.0»).
+final appVersionProvider = FutureProvider<String>(
+  (ref) async => (await PackageInfo.fromPlatform()).version,
+);
 
 /// Одна строка о подключённых устройствах — для меню профиля и настроек.
 String devicesSummary(WidgetRef ref) {
@@ -33,6 +39,12 @@ class DevicesScreen extends ConsumerWidget {
     final watchLive = pulse.isConnected && pulse.source == PulseSource.watch;
     final bleLive = pulse.isConnected && pulse.source == PulseSource.bluetooth;
     final anyConnected = health.connected || pulse.isConnected;
+    final watchVersion = ref.watch(watchVersionProvider);
+    final appVersion = ref.watch(appVersionProvider).value;
+    final outdated =
+        watchVersion != null &&
+        appVersion != null &&
+        watchVersion != appVersion;
 
     return Scaffold(
       appBar: AppBar(title: const Text('Часы и телефон')),
@@ -47,10 +59,15 @@ class DevicesScreen extends ConsumerWidget {
             status: watchLive
                 ? 'Передаёт пульс: ${pulse.bpm ?? '—'} уд/мин'
                 : 'Wear OS: Galaxy Watch и другие',
-            ok: watchLive,
-            text:
-                'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, '
-                'часы сами начнут передавать пульс — ничего нажимать не нужно.',
+            ok: watchLive && !outdated,
+            text: [
+              'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, '
+                  'часы сами начнут передавать пульс — ничего нажимать не нужно.',
+              if (watchVersion != null) 'На часах версия $watchVersion.',
+              // Одна версия на телефоне и часах (п. 48): иначе что-то может не работать.
+              if (outdated)
+                'На телефоне $appVersion — обновите приложение на часах до той же версии.',
+            ].join(' '),
           ),
           const SizedBox(height: 12),
           _DeviceCard(

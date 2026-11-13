@@ -7,6 +7,13 @@ val releaseKey = Properties().apply {
     if (releaseKeyFile.exists()) releaseKeyFile.inputStream().use { load(it) }
 }
 
+// Одна версия на телефоне и часах (п. 48): берём её из app/pubspec.yaml.
+// «1.1.0+3» → versionName 1.1.0, у часов versionCode 1 000 000 + 3.
+val pubspecVersion = rootProject.file("../../app/pubspec.yaml").readLines()
+    .first { it.startsWith("version:") }.substringAfter(":").trim()
+val appVersionName = pubspecVersion.substringBefore("+")
+val appBuildNumber = pubspecVersion.substringAfter("+", "1").toInt()
+
 plugins {
     id("com.android.application")
 }
@@ -25,8 +32,8 @@ android {
         targetSdk = 36
         // Google Play требует, чтобы коды версий часов и телефона не совпадали:
         // у часов они начинаются с 1 000 000.
-        versionCode = 1_000_002
-        versionName = "1.0.0"
+        versionCode = 1_000_000 + appBuildNumber
+        versionName = appVersionName
     }
 
     signingConfigs {
@@ -38,6 +45,11 @@ android {
                 storePassword = releaseKey.getProperty("storePassword")
             }
         }
+    }
+
+    // BuildConfig.VERSION_NAME — ответ телефону, какая версия на часах.
+    buildFeatures {
+        buildConfig = true
     }
 
     compileOptions {

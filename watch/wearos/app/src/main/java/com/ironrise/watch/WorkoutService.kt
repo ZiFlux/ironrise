@@ -61,6 +61,13 @@ class WorkoutService : LifecycleService(), SensorEventListener {
 
     private fun stop() {
         releaseSensors()
+        val state = WorkoutStore.state.value
+        state.startedAtMillis?.let { start ->
+            WorkoutJournal.add(
+                this,
+                JournalEntry(start, System.currentTimeMillis(), state.avgBpm, state.maxBpm, state.steps),
+            )
+        }
         WorkoutStore.stopped()
         lifecycleScope.launch {
             phone.sendStopped()

@@ -9,6 +9,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
+import kotlinx.coroutines.runBlocking
 
 /**
  * Команды от телефона: тренировка на телефоне началась или закончилась.
@@ -20,6 +21,7 @@ class PhoneCommandService : WearableListenerService() {
         when (event.path) {
             PhoneLink.PATH_START -> startWorkout()
             PhoneLink.PATH_STOP -> if (WorkoutStore.state.value.active) WorkoutService.stop(this)
+            PhoneLink.PATH_HELLO -> runBlocking { PhoneLink(this@PhoneCommandService).sendVersion(event.sourceNodeId, BuildConfig.VERSION_NAME) }
         }
     }
 

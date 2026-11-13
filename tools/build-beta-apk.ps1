@@ -21,6 +21,22 @@ Copy-Item $apk $copy
 Get-ChildItem $Outbox -Filter 'IronRise-beta-*.apk' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 5 | Remove-Item
 Ok "Готово: $copy`n  Этот файл можно отправить тестерам (например, в Telegram)."
 
+# Часы — той же версии (п. 48): версия берётся из pubspec.yaml при сборке.
+Step "Сборка APK для часов, версия $version"
+$Watch = Join-Path $Repo 'watch\wearos'
+Push-Location $Watch
+& .\gradlew.bat assembleRelease -q
+$watchOk = $LASTEXITCODE -eq 0
+Pop-Location
+if ($watchOk) {
+  $watchCopy = Join-Path $Outbox ("IronRise-watch-$version-" + (Get-Date -Format 'yyyy-MM-dd_HHmm') + '.apk')
+  Copy-Item (Join-Path $Watch 'app/build/outputs/apk/release/app-release.apk') $watchCopy
+  Get-ChildItem $Outbox -Filter 'IronRise-watch-*.apk' | Sort-Object LastWriteTime -Descending | Select-Object -Skip 5 | Remove-Item
+  Ok "Часы: $watchCopy`n  Ставится на часы ярлыком «Установить на устройства (Wi-Fi)»."
+} else {
+  Write-Host 'Сборка для часов не удалась — телефонная бета готова, часы можно собрать позже' -ForegroundColor Yellow
+}
+
 & $Adb devices | Out-Null
 $connected = (& $Adb devices) -match "^$Phone\s+device"
 if ($connected -and (Ask 'Телефон подключён. Установить сборку на него?')) {

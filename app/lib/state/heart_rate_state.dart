@@ -99,6 +99,8 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
         (event) => _onWatchMessage(parseWatchMessage(event as String)),
         onError: (_) {},
       );
+      // Какая версия на часах — чтобы предупредить, если отстаёт от телефона.
+      Future.microtask(askWatchVersion);
     }
     return const HeartRateState();
   }
@@ -107,6 +109,9 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
   Future<void> startWatch() => _sendToWatch('start');
 
   Future<void> stopWatch() => _sendToWatch('stop');
+
+  /// Спросить у часов версию приложения (ответ — WatchVersion).
+  Future<void> askWatchVersion() => _sendToWatch('hello');
 
   Future<void> _sendToWatch(String command) async {
     if (!Platform.isAndroid) return;
@@ -121,6 +126,10 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
   void _onWatchMessage(WatchMessage? message) {
     final bluetoothActive =
         state.isConnected && state.source == PulseSource.bluetooth;
+    if (message is WatchVersion) {
+      ref.read(watchVersionProvider.notifier).set(message.version);
+      return;
+    }
     if (message == null || bluetoothActive) return;
     if (message is WatchStopped) {
       _watchStopped('Тренировка на часах завершена');
@@ -343,9 +352,17 @@ class WatchStopped extends WatchMessage {
   const WatchStopped();
 }
 
-/// Сообщение от часов: «pulse;пульс;шаги;время_мс» или «stopped».
+/// Версия приложения на часах — ответ на «hello».
+class WatchVersion extends WatchMessage {
+  const WatchVersion(this.version);
+
+  final String version;
+}
+
+/// Сообщение от часов: «pulse;пульс;шаги;время_мс», «stopped» или «version;1.1.0».
 WatchMessage? parseWatchMessage(String raw) {
   if (raw == 'stopped') return const WatchStopped();
+  if (raw.startsWith('version;')) return WatchVersion(raw.substring(8));
   final parts = raw.split(';');
   if (parts.length != 4 || parts[0] != 'pulse') return null;
   final bpm = int.tryParse(parts[1]);
@@ -368,6 +385,18 @@ int? parseHeartRateMeasurement(List<int> data) {
   if (data.length < 3) return null;
   return data[1] | (data[2] << 8);
 }
+
+/// Версия IronRise на часах; null — часы не ответили.
+class WatchVersionNotifier extends Notifier<String?> {
+  @override
+  String? build() => null;
+
+  void set(String version) => state = version;
+}
+
+final watchVersionProvider = NotifierProvider<WatchVersionNotifier, String?>(
+  WatchVersionNotifier.new,
+);
 
 final heartRateProvider = NotifierProvider<HeartRateNotifier, HeartRateState>(
   HeartRateNotifier.new,

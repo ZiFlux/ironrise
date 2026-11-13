@@ -1,6 +1,9 @@
 package com.ironrise.ironrise
 
+import android.content.ContentValues
+import android.provider.CalendarContract
 import com.google.android.gms.wearable.MessageClient
+import java.util.TimeZone
 import com.google.android.gms.wearable.Wearable
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
@@ -21,9 +24,58 @@ class MainActivity : FlutterFragmentActivity() {
                 when (call.method) {
                     "start" -> sendToWatch(PATH_START, result)
                     "stop" -> sendToWatch(PATH_STOP, result)
+                    // Спросить версию приложения на часах: ответ придёт в WatchStream.
+                    "hello" -> sendToWatch(PATH_HELLO, result)
                     else -> result.notImplemented()
                 }
             }
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CALENDAR_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                if (call.method != "add") return@setMethodCallHandler result.notImplemented()
+                result.success(
+                    runCatching {
+                        addToCalendar(
+                            title = call.argument<String>("title") ?: "IronRise",
+                            description = call.argument<String>("description") ?: "",
+                            start = call.argument<Number>("start")!!.toLong(),
+                            end = call.argument<Number>("end")!!.toLong(),
+                        )
+                    }.getOrDefault(false),
+                )
+            }
+    }
+
+    /**
+     * Тренировка — событием в основной календарь телефона (п. 44 бэклога).
+     * Календарь Google/Samsung сам синхронизируется на часы. Разрешение на календарь
+     * запрашивает Dart-сторона; без него — false.
+     */
+    private fun addToCalendar(title: String, description: String, start: Long, end: Long): Boolean {
+        val projection = arrayOf(
+            CalendarContract.Calendars._ID,
+            CalendarContract.Calendars.IS_PRIMARY,
+            CalendarContract.Calendars.CALENDAR_ACCESS_LEVEL,
+            CalendarContract.Calendars.VISIBLE,
+        )
+        var calendarId: Long? = null
+        contentResolver.query(CalendarContract.Calendars.CONTENT_URI, projection, null, null, null)?.use { c ->
+            while (c.moveToNext()) {
+                val writable = c.getInt(2) >= CalendarContract.Calendars.CAL_ACCESS_CONTRIBUTOR && c.getInt(3) == 1
+                if (!writable) continue
+                if (calendarId == null || c.getInt(1) == 1) calendarId = c.getLong(0)
+                if (c.getInt(1) == 1) break
+            }
+        }
+        val id = calendarId ?: return false
+        val values = ContentValues().apply {
+            put(CalendarContract.Events.CALENDAR_ID, id)
+            put(CalendarContract.Events.TITLE, title)
+            put(CalendarContract.Events.DESCRIPTION, description)
+            put(CalendarContract.Events.DTSTART, start)
+            put(CalendarContract.Events.DTEND, end)
+            put(CalendarContract.Events.EVENT_TIMEZONE, TimeZone.getDefault().id)
+        }
+        return contentResolver.insert(CalendarContract.Events.CONTENT_URI, values) != null
     }
 
     /** Команда приложению на часах. Отвечает true, если хоть одни часы на связи. */
@@ -47,6 +99,7 @@ class MainActivity : FlutterFragmentActivity() {
                 when (message.path) {
                     PATH_PULSE -> events.success("pulse;" + String(message.data))
                     PATH_STOPPED -> events.success("stopped")
+                    PATH_VERSION -> events.success("version;" + String(message.data))
                 }
             }
             watchListener = listener
@@ -66,5 +119,8 @@ class MainActivity : FlutterFragmentActivity() {
         const val WATCH_CONTROL_CHANNEL = "ironrise/watch_control"
         const val PATH_START = "/ironrise/start"
         const val PATH_STOP = "/ironrise/stop"
+        const val PATH_HELLO = "/ironrise/hello"
+        const val PATH_VERSION = "/ironrise/version"
+        const val CALENDAR_CHANNEL = "ironrise/calendar"
     }
 }

@@ -21,6 +21,15 @@ class PhoneLink(context: Context) {
 
     suspend fun sendStopped() = send(PATH_STOPPED, "")
 
+    /** Ответ телефону: версия приложения на часах (п. 48 — одна версия). */
+    suspend fun sendVersion(nodeId: String, version: String) {
+        try {
+            messages.sendMessage(nodeId, PATH_VERSION, version.toByteArray()).await()
+        } catch (e: Exception) {
+            Log.w(TAG, "Не удалось отправить версию", e)
+        }
+    }
+
     private suspend fun send(path: String, body: String) {
         try {
             for (id in connectedPhones()) {
@@ -50,6 +59,10 @@ class PhoneLink(context: Context) {
         /** Команды от телефона (PhoneCommandService). */
         const val PATH_START = "/ironrise/start"
         const val PATH_STOP = "/ironrise/stop"
+
+        /** Телефон спрашивает версию, часы отвечают на [PATH_VERSION]. */
+        const val PATH_HELLO = "/ironrise/hello"
+        const val PATH_VERSION = "/ironrise/version"
         private const val NODES_TTL_MS = 30_000L
         private const val TAG = "IronRisePhoneLink"
     }

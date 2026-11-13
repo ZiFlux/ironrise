@@ -1,12 +1,14 @@
 package com.ironrise.watch
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.graphics.Typeface
 import android.os.Build
 import android.os.Bundle
 import android.os.SystemClock
+import android.text.format.DateUtils
 import android.view.Gravity
 import android.view.ViewGroup.LayoutParams.MATCH_PARENT
 import android.view.ViewGroup.LayoutParams.WRAP_CONTENT
@@ -23,9 +25,14 @@ import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-/** Один экран: пульс крупно, время, шаги и кнопка «Начать / Завершить». */
+/**
+ * Экран тренировки на часах: время, пульс крупно с цветом зоны, средний и
+ * максимальный пульс, шаги, «Начать / Завершить» и журнал тренировок.
+ */
 class MainActivity : ComponentActivity() {
+    private lateinit var timeText: TextView
     private lateinit var bpmText: TextView
+    private lateinit var zoneText: TextView
     private lateinit var detailsText: TextView
     private lateinit var actionButton: Button
 
@@ -65,64 +72,118 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun render(state: WorkoutState) {
+        val zone = Zone.of(state.bpm)
         bpmText.text = state.bpm?.toString() ?: "—"
+        bpmText.setTextColor(if (state.active) zone.color else MUTED)
+        zoneText.text = if (state.active && state.bpm != null) "уд/мин · ${zone.label}" else "уд/мин"
         actionButton.text = if (state.active) "Завершить" else "Начать"
+        actionButton.backgroundTintList = android.content.res.ColorStateList.valueOf(if (state.active) STOP else ACCENT)
         if (state.active) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        renderTime(state)
         detailsText.text = when {
             state.error != null && !state.active -> state.error
-            state.active -> details(state)
-            else -> "Пульс пойдёт на телефон"
+            state.active -> listOfNotNull(
+                state.avgBpm?.let { "ср $it" },
+                state.maxBpm?.let { "макс $it" },
+                "${state.steps} шаг.",
+            ).joinToString(" · ")
+            else -> lastWorkoutLine()
         }
+    }
+
+    private fun renderTime(state: WorkoutState) {
+        val start = state.startedAtMillis
+        timeText.text = if (state.active && start != null) {
+            val seconds = (System.currentTimeMillis() - start) / 1000
+            if (seconds >= 3600) "%d:%02d:%02d".format(seconds / 3600, seconds / 60 % 60, seconds % 60)
+            else "%d:%02d".format(seconds / 60, seconds % 60)
+        } else {
+            "IronRise"
+        }
+        timeText.setTextColor(if (state.active) PRIMARY else SECONDARY)
+    }
+
+    /** Без тренировки — когда была последняя. */
+    private fun lastWorkoutLine(): String {
+        val last = WorkoutJournal.all(this).firstOrNull() ?: return "Пульс пойдёт на телефон"
+        val ago = DateUtils.getRelativeTimeSpanString(
+            last.startedAtMillis, System.currentTimeMillis(), DateUtils.MINUTE_IN_MILLIS,
+        )
+        val minutes = (last.endedAtMillis - last.startedAtMillis) / 60_000
+        return "Последняя: $ago, $minutes мин"
     }
 
     private suspend fun tickClock() {
         while (true) {
-            val state = WorkoutStore.state.value
-            if (state.active) detailsText.text = details(state)
+            renderTime(WorkoutStore.state.value)
             delay(1_000 - SystemClock.uptimeMillis() % 1_000)
         }
     }
 
-    private fun details(state: WorkoutState): String {
-        val seconds = ((System.currentTimeMillis() - (state.startedAtMillis ?: System.currentTimeMillis())) / 1000)
-        return "%d:%02d · %d шагов".format(seconds / 60, seconds % 60, state.steps)
-    }
-
     private fun buildLayout(): LinearLayout {
-        bpmText = TextView(this).apply {
-            textSize = 48f
+        timeText = TextView(this).apply {
+            textSize = 20f
             typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
-            setTextColor(ACCENT)
             gravity = Gravity.CENTER
         }
-        val unit = TextView(this).apply {
-            text = "уд/мин"
+        bpmText = TextView(this).apply {
+            textSize = 46f
+            typeface = Typeface.create("sans-serif-medium", Typeface.BOLD)
+            gravity = Gravity.CENTER
+        }
+        zoneText = TextView(this).apply {
             textSize = 12f
             setTextColor(MUTED)
             gravity = Gravity.CENTER
         }
         detailsText = TextView(this).apply {
-            textSize = 14f
+            textSize = 13f
             setTextColor(SECONDARY)
             gravity = Gravity.CENTER
-            setPadding(0, 8, 0, 12)
+            setPadding(0, 6, 0, 10)
         }
         actionButton = Button(this).apply {
             setTextColor(ON_ACCENT)
-            backgroundTintList = android.content.res.ColorStateList.valueOf(ACCENT)
             isAllCaps = false
             textSize = 15f
+        }
+        val journal = TextView(this).apply {
+            text = "Журнал"
+            textSize = 13f
+            setTextColor(ACCENT)
+            gravity = Gravity.CENTER
+            setPadding(16, 10, 16, 4)
+            setOnClickListener { startActivity(Intent(this@MainActivity, JournalActivity::class.java)) }
         }
         return LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
             setBackgroundColor(BACKGROUND)
-            setPadding(24, 24, 24, 24)
+            // Круглый экран: поля по краям, чтобы текст не обрезался.
+            setPadding(28, 28, 28, 20)
+            addView(timeText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             addView(bpmText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
-            addView(unit, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
+            addView(zoneText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             addView(detailsText, LinearLayout.LayoutParams(MATCH_PARENT, WRAP_CONTENT))
             addView(actionButton, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+            addView(journal, LinearLayout.LayoutParams(WRAP_CONTENT, WRAP_CONTENT))
+        }
+    }
+
+    /**
+     * Зона пульса по проценту от максимума. Возраста на часах нет — берём
+     * максимум 190 (≈ 30 лет); точные зоны считает телефон.
+     */
+    private enum class Zone(val label: String, val color: Int, val upTo: Int) {
+        Rest("покой", Color.parseColor("#85858B"), 114),
+        Z2("зона 2", Color.parseColor("#3DDCFF"), 133),
+        Z3("зона 3", Color.parseColor("#C6FF3D"), 152),
+        Z4("зона 4", Color.parseColor("#FF8A1F"), 171),
+        Z5("зона 5", Color.parseColor("#E5484D"), Int.MAX_VALUE);
+
+        companion object {
+            fun of(bpm: Int?): Zone = if (bpm == null) Rest else entries.first { bpm < it.upTo }
         }
     }
 
@@ -130,7 +191,9 @@ class MainActivity : ComponentActivity() {
         const val EXTRA_AUTOSTART = "autostart"
         private val BACKGROUND = Color.parseColor("#0F0F10")
         private val ACCENT = Color.parseColor("#C6FF3D")
+        private val STOP = Color.parseColor("#FF7A3D")
         private val ON_ACCENT = Color.parseColor("#111111")
+        private val PRIMARY = Color.parseColor("#EDEDED")
         private val SECONDARY = Color.parseColor("#A1A1A6")
         private val MUTED = Color.parseColor("#85858B")
     }
