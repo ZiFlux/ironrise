@@ -216,11 +216,22 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
       ],
   ];
 
+  /// Сервер засчитывает тренировку ауры от 6 минут; берём с запасом.
+  static const _minDuration = Duration(seconds: 370);
+
   Timer? _timer;
   DateTime? _startedAt;
+  DateTime? _finishedAt;
   int _index = -1;
-  int _left = 0;
+
+  /// Конец текущего шага по часам: таймер не отстаёт, если экран гас.
+  DateTime _stepEnd = DateTime.now();
+
+  /// «Заминка»: шаги пропущены и до 6 минут не хватает — ждём и отправляем.
+  DateTime? _holdUntil;
   bool _saving = false;
+  String? _error;
+  bool _canRetry = false;
 
   @override
   void dispose() {
@@ -228,64 +239,104 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
     super.dispose();
   }
 
+  int _secondsUntil(DateTime t) {
+    final ms = t.difference(DateTime.now()).inMilliseconds;
+    return ms <= 0 ? 0 : (ms + 999) ~/ 1000;
+  }
+
   void _start() {
-    _startedAt = DateTime.now();
+    final now = DateTime.now();
+    _startedAt = now;
     // Часы начинают передавать пульс — он подтверждает тренировку ауры.
     ref.read(heartRateProvider.notifier).startWatch();
     setState(() {
       _index = 0;
-      _left = _steps[0].seconds;
+      _stepEnd = now.add(Duration(seconds: _steps[0].seconds));
     });
-    _timer = Timer.periodic(const Duration(seconds: 1), (_) => _tick());
+    _timer = Timer.periodic(const Duration(milliseconds: 500), (_) => _tick());
   }
 
   void _tick() {
-    if (_left > 1) {
-      setState(() => _left--);
+    if (!mounted || _saving || _error != null) return;
+    final now = DateTime.now();
+    final hold = _holdUntil;
+    if (hold != null) {
+      if (!now.isBefore(hold)) {
+        _holdUntil = null;
+        _complete();
+      } else {
+        setState(() {});
+      }
       return;
     }
-    if (_index + 1 < _steps.length) {
-      setState(() {
-        _index++;
-        _left = _steps[_index].seconds;
-      });
+    // Догоняем все шаги, которые закончились, пока приложение было в фоне.
+    while (!now.isBefore(_stepEnd) && _index + 1 < _steps.length) {
+      _index++;
+      _stepEnd = _stepEnd.add(Duration(seconds: _steps[_index].seconds));
+    }
+    if (!now.isBefore(_stepEnd)) {
+      _complete();
     } else {
-      _timer?.cancel();
-      _finish();
+      setState(() {});
     }
   }
 
-  void _skip() => setState(() => _left = 1);
+  void _skip() {
+    _stepEnd = DateTime.now();
+    _tick();
+  }
 
-  Future<void> _finish() async {
-    setState(() => _saving = true);
-    final end = DateTime.now();
+  void _complete() {
+    final start = _startedAt ?? DateTime.now();
+    final enough = start.add(_minDuration);
+    if (DateTime.now().isBefore(enough)) {
+      setState(() => _holdUntil = enough);
+      return;
+    }
+    _timer?.cancel();
+    _finishedAt = DateTime.now();
+    _submit();
+  }
+
+  Future<void> _submit() async {
+    final end = _finishedAt ?? DateTime.now();
+    final start = _startedAt ?? end;
+    setState(() {
+      _saving = true;
+      _error = null;
+    });
     final hr = ref.read(heartRateProvider.notifier);
-    final pulse = hr.samplesBetween(_startedAt ?? end, end);
-    await hr.stopWatch();
+    final pulse = hr.samplesBetween(start, end);
     try {
+      await hr.stopWatch();
       await ref
           .read(auraProvider.notifier)
-          .train(
-            widget.kind,
-            startedAt: _startedAt ?? end,
-            finishedAt: end,
-            pulse: pulse,
-          );
+          .train(widget.kind, startedAt: start, finishedAt: end, pulse: pulse);
       showStatus(
         'Аура «${widget.kind.label}» прокачана',
         kind: StatusKind.success,
       );
       if (mounted) context.pop();
     } on ApiException catch (e) {
-      showStatusError(switch (e.status) {
-        422 when e.message.contains('6-40') =>
-          'Тренировка короче 6 минут — не засчитана',
-        422 => 'Нет пульса с часов — тренировка ауры не засчитана',
-        409 => 'Тренировка ауры уже была — следующая завтра',
-        _ => 'Нет связи с сервером — попробуйте ещё раз',
-      }, network: e.isNetwork);
-      if (mounted) setState(() => _saving = false);
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _canRetry = e.isNetwork || e.status >= 500;
+        _error = switch (e.status) {
+          422 when e.message.contains('6-40') =>
+            'Тренировка короче 6 минут — не засчитана',
+          422 => 'Нет пульса с часов — тренировка ауры не засчитана',
+          409 => 'Тренировка ауры уже была — следующая завтра',
+          _ => 'Нет связи с сервером — попробуйте ещё раз',
+        };
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _saving = false;
+        _canRetry = true;
+        _error = 'Не удалось сохранить тренировку — попробуйте ещё раз';
+      });
     }
   }
 
@@ -314,7 +365,9 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                     // Пока идёт работа — аура горит.
                     if (hero != null)
                       AuraHero(
-                        kind: started && !step!.rest ? kind : null,
+                        kind: started && _holdUntil == null && !step!.rest
+                            ? kind
+                            : null,
                         child: AvatarView(
                           levels: hero.avatarLevels,
                           look: hero.look,
@@ -361,6 +414,45 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                 ),
                 const SizedBox(height: 16),
                 FilledButton(onPressed: _start, child: const Text('Начать')),
+              ] else if (_error != null) ...[
+                Text(
+                  _error!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 12),
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  children: [
+                    if (_canRetry)
+                      FilledButton(
+                        onPressed: _submit,
+                        child: const Text('Повторить'),
+                      ),
+                    OutlinedButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Выйти'),
+                    ),
+                  ],
+                ),
+              ] else if (_holdUntil != null) ...[
+                const Text(
+                  'Заминка',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  '${_secondsUntil(_holdUntil!)}',
+                  textAlign: TextAlign.center,
+                  style: figureStyle(size: 56),
+                ),
+                const Text(
+                  'Аура засчитывается от 6 минут. Походите и восстановите '
+                  'дыхание — тренировка отправится сама',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppColors.textMuted),
+                ),
               ] else ...[
                 Text(
                   step!.title,
@@ -372,7 +464,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                   ),
                 ),
                 Text(
-                  '$_left',
+                  '${_secondsUntil(_stepEnd)}',
                   textAlign: TextAlign.center,
                   style: figureStyle(size: 56),
                 ),
