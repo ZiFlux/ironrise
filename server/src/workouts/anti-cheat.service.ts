@@ -11,6 +11,7 @@ import {
 import { PulseSummary } from '../game/pulse-summary';
 import { PrismaService } from '../prisma.service';
 import { PushService } from '../push/push.service';
+import { sendMail, smtpConfig } from '../common/mailer';
 
 type Entries = { exerciseId: string; sets: { weight: number; reps: number }[] }[];
 
@@ -78,6 +79,7 @@ export class AntiCheatService {
       }
     }
     await this.alertAdmin(userId, findings.map((f) => f.kind), block);
+    await this.mailAdmin(userId, workoutId, findings, block);
   }
 
   /** Пуш админу — аккаунту с e-mail из ADMIN_NOTIFY_EMAIL (если задан). */
@@ -95,6 +97,33 @@ export class AntiCheatService {
       body: `${kinds.map((k) => KIND_TEXT[k] ?? k).join(', ')}. Разобраться — веб-админка → «Подозрительные».`,
       screen: 'home',
     });
+  }
+
+  /** Лог античита на почту админу (ADMIN_NOTIFY_EMAIL) — если настроен SMTP. */
+  private async mailAdmin(
+    userId: string,
+    workoutId: string,
+    findings: { kind: string; severe: boolean; details: Record<string, unknown> }[],
+    blocked: boolean,
+  ) {
+    const to = process.env.ADMIN_NOTIFY_EMAIL?.trim();
+    const cfg = smtpConfig();
+    if (!to || !cfg) return;
+    const player = await this.db.profile.findUnique({ where: { userId }, select: { nickname: true } });
+    const nick = player?.nickname ?? userId;
+    const text = [
+      `Игрок: ${nick}`,
+      `Тренировка: ${workoutId}`,
+      `Время: ${new Date().toISOString()}`,
+      blocked ? 'Аккаунт ВРЕМЕННО ЗАБЛОКИРОВАН до решения админа.' : 'Блокировки нет — подозрение записано.',
+      '',
+      'Что нашёл античит:',
+      ...findings.map((f) => `• ${KIND_TEXT[f.kind] ?? f.kind}${f.severe ? ' (серьёзно)' : ''}: ${JSON.stringify(f.details)}`),
+      '',
+      'Разобраться: https://api.ironrise.ru/admin → «Подозрительные» или найти игрока →',
+      '«Не жулик — разблокировать» / «Подтвердить блокировку».',
+    ].join('\n');
+    await sendMail(cfg, to, `Античит IronRise: ${nick}${blocked ? ' — заблокирован' : ''}`, text);
   }
 
   /** Проверка без падений: ошибка античита не должна мешать тренировке. */

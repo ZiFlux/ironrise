@@ -919,3 +919,26 @@ describe('античит после тренировки (п. 113)', () => {
     expect(findCheats({ entries: [], best, pulse }).map((x) => x.kind)).toEqual(['flat_pulse']);
   });
 });
+
+import { buildMessage, smtpConfig, smtpReplyCode } from '../src/common/mailer';
+
+describe('письма админу: SMTP без библиотек (п. 113)', () => {
+  it('без настроек — не шлём', () => {
+    expect(smtpConfig({})).toBeNull();
+    expect(smtpConfig({ SMTP_HOST: 'smtp.yandex.ru', SMTP_USER: 'a@b.ru', SMTP_PASS: 'x' })).toEqual({
+      host: 'smtp.yandex.ru', port: 465, user: 'a@b.ru', pass: 'x', from: 'a@b.ru',
+    });
+  });
+  it('код ответа — только когда ответ закончен', () => {
+    expect(smtpReplyCode('250-smtp.yandex.ru\r\n250-AUTH LOGIN\r\n')).toBeNull();
+    expect(smtpReplyCode('250-smtp.yandex.ru\r\n250 OK\r\n')).toBe(250);
+    expect(smtpReplyCode('334 VXNlcm5hbWU6\r\n')).toBe(334);
+  });
+  it('письмо в UTF-8: тема и тело в base64', () => {
+    const m = buildMessage('a@b.ru', 'c@d.ru', 'Античит', 'Привет', new Date('2026-11-16T00:00:00Z'));
+    expect(m).toContain('Subject: =?UTF-8?B?');
+    expect(m).toContain('Content-Transfer-Encoding: base64');
+    const body = m.split('\r\n\r\n')[1].replace(/\r\n/g, '');
+    expect(Buffer.from(body, 'base64').toString('utf-8')).toBe('Привет');
+  });
+});

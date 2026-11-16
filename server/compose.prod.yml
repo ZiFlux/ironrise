@@ -37,6 +37,12 @@ services:
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       # Кому слать пуш античита (e-mail аккаунта админа в приложении); пусто — не слать.
       ADMIN_NOTIFY_EMAIL: ${ADMIN_NOTIFY_EMAIL:-}
+      # Почта для логов античита (src/common/mailer.ts): SMTP поверх TLS, порт 465.
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-465}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
       # Потолок кучи Node: под нагрузкой API занимает ~180 МБ, на VPS с 0,6–1 ГБ
       # памяти не даём ему разрастаться и вытеснять базу в подкачку.
       NODE_OPTIONS: --max-old-space-size=256
