@@ -23,6 +23,7 @@ class _Steps extends HealthNotifier {
 }
 
 // Баг 16.11: плашка «Пора взвеситься» закрывала строку шагов и расстояния.
+// С 16.11 напоминания — квадратами сбоку от героя (не сжимают аватар).
 void main() {
   for (final (size, scale) in [
     (const Size(360, 640), 1.0),
@@ -71,7 +72,8 @@ void main() {
         await t.pump();
         await t.pump(const Duration(seconds: 2));
         final steps = find.textContaining('шагов');
-        final weigh = find.textContaining('Пора взвеситься');
+        // Взвешивание — квадрат «Вес» сбоку от героя, а не строка под ним.
+        final weigh = find.text('Вес');
         expect(steps, findsOneWidget);
         expect(weigh, findsOneWidget);
         final a = t.getRect(steps);
@@ -79,11 +81,11 @@ void main() {
         expect(
           a.overlaps(b),
           isFalse,
-          reason: 'шаги $a и плашка $b накладываются',
+          reason: 'шаги $a и кнопка $b накладываются',
         );
         // Ничего из блока активности не налезает на шаги.
         for (final other in [
-          find.textContaining('Совет'),
+          find.text('Советы'),
           find.byType(FilledButton),
         ]) {
           for (final e in other.evaluate()) {

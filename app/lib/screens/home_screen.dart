@@ -71,22 +71,31 @@ class HomeScreen extends ConsumerWidget {
                   minHeight: 130,
                   child: GuideTarget(
                     id: 'home.avatar',
-                    child: Semantics(
-                      button: true,
-                      label: 'Открыть гардероб',
-                      child: GestureDetector(
-                        onTap: () => context.push('/wardrobe'),
-                        child: PosingAvatar(
-                          levels: hero.avatarLevels,
-                          look: hero.look,
-                          muscles: hero.muscles,
-                          focus: recentMuscles(
-                            ref.watch(trainingLogProvider),
-                            DateTime.now(),
+                    // Напоминания — квадратами сбоку, а не строками под героем:
+                    // аватар не сжимается от каждого нового напоминания.
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Semantics(
+                            button: true,
+                            label: 'Открыть гардероб',
+                            child: GestureDetector(
+                              onTap: () => context.push('/wardrobe'),
+                              child: PosingAvatar(
+                                levels: hero.avatarLevels,
+                                look: hero.look,
+                                muscles: hero.muscles,
+                                focus: recentMuscles(
+                                  ref.watch(trainingLogProvider),
+                                  DateTime.now(),
+                                ),
+                                withLamp: true,
+                              ),
+                            ),
                           ),
-                          withLamp: true,
                         ),
-                      ),
+                        const Positioned(top: 8, right: 0, child: _SideRail()),
+                      ],
                     ),
                   ),
                 ),
@@ -101,9 +110,6 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 const _ActivityLine(),
-                const _TipLine(),
-                const _EntryTestLine(),
-                const _WeighInLine(),
                 const SizedBox(height: 8),
                 // В день отдыха по графику силовую не предлагаем — только кардио.
                 if (recommendation != null &&
@@ -601,14 +607,13 @@ class _ActivityLine extends ConsumerWidget {
   }
 }
 
-/// «Совет дня» одной строкой: открывает совет, показывает, получена ли награда.
-/// Входная тренировка (п. 116): пока не пройдена — настойчиво (после «позже» — через
-/// день), через 4 недели — «пора сравнить».
-class _EntryTestLine extends ConsumerWidget {
-  const _EntryTestLine();
+/// Колонка квадратных кнопок сбоку от героя: советы дня, взвешивание, входная
+/// тренировка. Точка — есть что сделать; подпись под квадратом — что это.
+class _SideRail extends ConsumerWidget {
+  const _SideRail();
 
-  /// Строка видна: первая не пройдена или пора повторить (и не отложено на сегодня).
-  static ({bool first, bool retest}) due(WidgetRef ref) {
+  /// Входная тренировка: первая не пройдена или пора повторить (и не отложено на сегодня).
+  static ({bool first, bool retest}) entryDue(WidgetRef ref) {
     ref.watch(entryTestProvider);
     final tests = ref.read(entryTestProvider.notifier);
     final now = DateTime.now();
@@ -621,217 +626,148 @@ class _EntryTestLine extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final (:first, :retest) = due(ref);
-    if (!first && !retest) return const SizedBox.shrink();
-    final accent = Theme.of(context).colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: BorderSide(color: accent.withValues(alpha: 0.5)),
-        ),
-        child: InkWell(
-          onTap: () => context.push('/entry-test'),
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 40,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Icon(LucideIcons.clipboardCheck, size: 18, color: accent),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      first
-                          ? 'Входная тренировка · 12 мин · +50 монет'
-                          : 'Месяц прошёл — сравним, как ты вырос',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(
-                    LucideIcons.chevronRight,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// «Пора взвеситься» — раз в 3 дня, пока вес не записан.
-class _WeighInLine extends ConsumerWidget {
-  const _WeighInLine();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    // Одно напоминание за раз: главная без прокрутки, входная тренировка важнее.
-    final entry = _EntryTestLine.due(ref);
-    if (entry.first ||
-        entry.retest ||
-        !weighInDue(
-          ref.watch(bodyLogProvider),
-          DateTime.now(),
-          // При цели «похудеть» — раз в 2 дня (п. 117).
-          every: weighInEveryFor(
-            ref.watch(heroProvider)?.goal,
-            ref.watch(heroProvider)?.extraGoals ?? const [],
-          ),
-        )) {
-      return const SizedBox.shrink();
-    }
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: AppColors.hairline),
-        ),
-        child: InkWell(
-          onTap: () => showWeighIn(context, ref),
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 40,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  Icon(
-                    LucideIcons.scale,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Пора взвеситься — и анализ тела на часах',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                  ),
-                  const Icon(
-                    LucideIcons.chevronRight,
-                    size: 16,
-                    color: AppColors.textMuted,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _TipLine extends ConsumerWidget {
-  const _TipLine();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
     final daily = ref.watch(tipsProvider);
-    if (daily == null) return const SizedBox.shrink();
-    final accent = Theme.of(context).colorScheme.primary;
-    final fresh = !daily.done;
-    return Padding(
-      padding: const EdgeInsets.only(top: 8),
-      child: Material(
-        color: AppColors.surface,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-          side: const BorderSide(color: AppColors.hairline),
+    final entry = entryDue(ref);
+    final hero = ref.watch(heroProvider);
+    final weighDue = weighInDue(
+      ref.watch(bodyLogProvider),
+      DateTime.now(),
+      // При цели «похудеть» — раз в 2 дня (п. 117).
+      every: weighInEveryFor(hero?.goal, hero?.extraGoals ?? const []),
+    );
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (entry.first || entry.retest)
+          _RailButton(
+            icon: LucideIcons.clipboardCheck,
+            label: 'Тест',
+            hint: entry.first
+                ? 'Входная тренировка · 12 мин · +50 монет'
+                : 'Месяц прошёл — сравним, как ты вырос',
+            dot: true,
+            strong: true,
+            onTap: () => context.push('/entry-test'),
+          ),
+        if (daily != null)
+          _RailButton(
+            icon: LucideIcons.lightbulb,
+            label: 'Советы',
+            hint: daily.done
+                ? 'Советы дня: верно ${daily.correctCount} из ${daily.tips.length}'
+                : 'Советы дня: ${daily.answeredCount} из ${daily.tips.length}, до +${daily.maxCoins} монет',
+            dot: !daily.done,
+            onTap: () => context.push('/tip'),
+          ),
+        _RailButton(
+          icon: LucideIcons.scale,
+          label: 'Вес',
+          hint: weighDue
+              ? 'Пора взвеситься — и анализ тела на часах'
+              : 'Записать вес и состав тела',
+          dot: weighDue,
+          onTap: () => showWeighIn(context, ref),
         ),
-        child: InkWell(
-          onTap: () => context.push('/tip'),
-          borderRadius: BorderRadius.circular(10),
-          child: SizedBox(
-            height: 40,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              child: Row(
-                children: [
-                  // Непрочитанный совет — лампочка горит и с точкой, как значок
-                  // нового сообщения; после ответа строка гаснет.
-                  Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      Icon(
-                        LucideIcons.lightbulb,
-                        size: 16,
-                        color: fresh ? accent : AppColors.textMuted,
-                      ),
-                      if (fresh)
-                        Positioned(
-                          right: -3,
-                          top: -3,
-                          child: Container(
-                            width: 7,
-                            height: 7,
-                            decoration: BoxDecoration(
-                              color: accent,
-                              shape: BoxShape.circle,
-                              border: Border.all(
-                                color: AppColors.surface,
-                                width: 1.5,
+      ],
+    );
+  }
+}
+
+class _RailButton extends StatelessWidget {
+  const _RailButton({
+    required this.icon,
+    required this.label,
+    required this.hint,
+    required this.onTap,
+    this.dot = false,
+    this.strong = false,
+  });
+
+  final IconData icon;
+  final String label;
+
+  /// Для экранного диктора и долгого нажатия — полная подпись.
+  final String hint;
+  final VoidCallback onTap;
+
+  /// Есть что сделать — точка в углу и яркая иконка.
+  final bool dot;
+
+  /// Важное (входная тренировка) — рамка цветом акцента.
+  final bool strong;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Tooltip(
+        message: hint,
+        child: Semantics(
+          button: true,
+          label: hint,
+          excludeSemantics: true,
+          child: Pressable(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Material(
+                  color: AppColors.surface,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: BorderSide(
+                      color: strong
+                          ? accent.withValues(alpha: 0.6)
+                          : AppColors.hairline,
+                    ),
+                  ),
+                  child: InkWell(
+                    onTap: onTap,
+                    borderRadius: BorderRadius.circular(12),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Stack(
+                        clipBehavior: Clip.none,
+                        children: [
+                          Center(
+                            child: Icon(
+                              icon,
+                              size: 20,
+                              color: dot ? accent : AppColors.textSecondary,
+                            ),
+                          ),
+                          if (dot)
+                            Positioned(
+                              right: 6,
+                              top: 6,
+                              child: Container(
+                                width: 8,
+                                height: 8,
+                                decoration: BoxDecoration(
+                                  color: accent,
+                                  shape: BoxShape.circle,
+                                  border: Border.all(
+                                    color: AppColors.surface,
+                                    width: 1.5,
+                                  ),
+                                ),
                               ),
                             ),
-                          ),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text.rich(
-                      TextSpan(
-                        children: [
-                          TextSpan(
-                            text: 'Советы дня: ',
-                            style: TextStyle(
-                              fontWeight: fresh
-                                  ? FontWeight.w500
-                                  : FontWeight.w400,
-                            ),
-                          ),
-                          TextSpan(
-                            text: fresh
-                                ? '${daily.answeredCount} из ${daily.tips.length} · '
-                                      '${daily.tips.firstWhere((t) => !daily.answered(t)).title}'
-                                : 'верно ${daily.correctCount} из ${daily.tips.length}',
-                          ),
                         ],
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: fresh
-                            ? AppColors.textPrimary
-                            : AppColors.textSecondary,
-                      ),
                     ),
                   ),
-                  if (daily.done)
-                    const Icon(
-                      LucideIcons.check,
-                      size: 16,
-                      color: AppColors.textMuted,
-                    )
-                  else
-                    Text(
-                      'до +${daily.maxCoins}',
-                      style: TextStyle(fontSize: 13, color: accent),
-                    ),
-                ],
-              ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  label,
+                  style: const TextStyle(
+                    fontSize: 10,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
             ),
           ),
         ),
