@@ -71,7 +71,7 @@ export const adminPageHtml = String.raw`<!doctype html>
         <button class="primary" id="find">Найти</button>
         <button id="recent">Последние</button>
         <button id="history">Журнал</button>
-        <button id="suspects">Подозрительные</button>
+        <button id="suspects">Античит</button>
         <button id="statsBtn">Статистика</button>
         <button id="logout">Выйти</button>
       </div>
@@ -79,6 +79,32 @@ export const adminPageHtml = String.raw`<!doctype html>
     <div id="msg" class="msg"></div>
 
     <div id="statsBox" class="hidden"></div>
+
+    <div id="susBox" class="hidden">
+      <h2>Античит</h2>
+      <div class="row">
+        <select id="susStatus">
+          <option value="open">Не разобранные</option>
+          <option value="resolved">Разобранные</option>
+          <option value="all">Все</option>
+        </select>
+        <select id="susKind">
+          <option value="">Любые</option>
+          <option value="impossible_set">Невозможный подход</option>
+          <option value="strength_jump">Резкий скачок силы</option>
+          <option value="flat_pulse">Ровный пульс</option>
+        </select>
+        <select id="susDays">
+          <option value="7">7 дней</option>
+          <option value="30" selected>30 дней</option>
+          <option value="90">90 дней</option>
+          <option value="365">год</option>
+        </select>
+        <button id="susReload">Показать</button>
+      </div>
+      <p class="legend">Нажми на строку — откроется игрок: там «Не жулик» или «Подтвердить блокировку» с заметкой.</p>
+      <div class="card"><table id="susTable"></table></div>
+    </div>
 
     <div id="listBox" class="hidden"><h2 id="listTitle"></h2><div class="card"><pre id="list"></pre></div></div>
 
@@ -164,6 +190,7 @@ export const adminPageHtml = String.raw`<!doctype html>
     api('run', { args: args }).then(function (r) {
       $('listTitle').textContent = title;
       $('list').textContent = r.output;
+      $('susBox').classList.add('hidden');
       $('listBox').classList.remove('hidden');
     }).catch(function (e) { show(e.message, true); });
   }
@@ -175,6 +202,7 @@ export const adminPageHtml = String.raw`<!doctype html>
     api('player?who=' + encodeURIComponent(who)).then(function (p) {
       player = p;
       selected.clear();
+      $('susBox').classList.add('hidden');
       $('listBox').classList.add('hidden');
       render();
       renderActions();
@@ -297,6 +325,7 @@ export const adminPageHtml = String.raw`<!doctype html>
       }).catch(function (e) { show(e.message, true); });
       $('listBox').classList.add('hidden');
       $('player').classList.add('hidden');
+      $('susBox').classList.add('hidden');
       box.classList.remove('hidden');
     }).catch(function (e) { show(e.message, true); });
   }
@@ -416,6 +445,50 @@ export const adminPageHtml = String.raw`<!doctype html>
     });
   }
 
+  var KIND = { impossible_set: 'Невозможный подход', strength_jump: 'Резкий скачок силы', flat_pulse: 'Ровный пульс' };
+  var VERDICT = { clear: 'не жулик', confirm: 'подтверждено' };
+
+  function suspicions() {
+    show('');
+    var q = 'suspicions?status=' + $('susStatus').value + '&kind=' + $('susKind').value + '&days=' + $('susDays').value;
+    api(q).then(function (rows) {
+      var t = $('susTable');
+      t.textContent = '';
+      var head = document.createElement('tr');
+      ['Когда', 'Игрок', 'Что', 'Тренировка', 'Подробности', 'Блок', 'Решение'].forEach(function (h) { head.appendChild(cell('th', h)); });
+      t.appendChild(head);
+      if (!rows.length) {
+        var tr0 = document.createElement('tr');
+        var td0 = cell('td', 'Ничего не найдено');
+        td0.colSpan = 7;
+        tr0.appendChild(td0);
+        t.appendChild(tr0);
+      }
+      rows.forEach(function (r) {
+        var tr = document.createElement('tr');
+        tr.style.cursor = 'pointer';
+        tr.onclick = function () { $('susBox').classList.add('hidden'); find(r.nickname); };
+        var verdict = r.resolvedAt
+          ? (VERDICT[r.resolution] || 'разобрано') + ' ' + String(r.resolvedAt).slice(0, 10) + (r.note ? ' — ' + r.note : '')
+          : 'ждёт';
+        [
+          String(r.at).slice(0, 16).replace('T', ' '),
+          r.nickname,
+          (KIND[r.kind] || r.kind) + (r.severe ? ' !' : ''),
+          r.workoutDay ? r.workoutDay + (r.workoutType === 'cardio' ? ' кардио' : ' силовая') : '—',
+          JSON.stringify(r.details),
+          r.bannedNow ? 'да' : (r.blocked ? 'снят' : '—'),
+          verdict,
+        ].forEach(function (v) { tr.appendChild(cell('td', v)); });
+        t.appendChild(tr);
+      });
+      $('listBox').classList.add('hidden');
+      $('player').classList.add('hidden');
+      $('statsBox').classList.add('hidden');
+      $('susBox').classList.remove('hidden');
+    }).catch(function (e) { show(e.message, true); });
+  }
+
   function change(cmd) {
     var owned = new Set(player.owned);
     var ids = Array.from(selected).filter(function (id) { return cmd === 'give' ? !owned.has(id) : owned.has(id); });
@@ -435,10 +508,15 @@ export const adminPageHtml = String.raw`<!doctype html>
   $('recent').onclick = function () { listOut('Последние зарегистрированные', ['list', '30']); };
   $('history').onclick = function () { listOut('Журнал действий', ['history', '30']); };
   $('statsBtn').onclick = stats;
-  $('suspects').onclick = function () { listOut('Подозрения античита — не разобранные', ['suspects']); };
+  $('suspects').onclick = suspicions;
+  $('susReload').onclick = suspicions;
   function verdict(cmd, text) {
     if (!player || !confirm(text + ' — ' + player.nickname + '?')) return;
-    api('run', { args: [cmd, player.nickname] }).then(function () {
+    // Заметка попадёт в журнал античита («почему так решил»); при подтверждении — и в причину блокировки.
+    var note = (prompt('Заметка к решению (можно пусто)') || '').trim();
+    var args = [cmd, player.nickname];
+    if (note) args.push(note);
+    api('run', { args: args }).then(function () {
       show(cmd === 'clear' ? 'Подозрения закрыты, блокировка снята' : 'Блокировка подтверждена');
       find(player.nickname);
     }).catch(function (e) { show(e.message, true); });

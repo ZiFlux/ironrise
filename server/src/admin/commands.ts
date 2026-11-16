@@ -372,7 +372,11 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
     case 'confirm': {
       const u = await findUser(db, who);
       const now = new Date();
-      const { count } = await db.suspicion.updateMany({ where: { userId: u.id, resolvedAt: null }, data: { resolvedAt: now } });
+      const note = rest.join(' ').trim() || null;
+      const { count } = await db.suspicion.updateMany({
+        where: { userId: u.id, resolvedAt: null },
+        data: { resolvedAt: now, resolution: cmd, resolvedNote: note },
+      });
       if (cmd === 'clear') {
         await db.user.update({ where: { id: u.id }, data: { bannedAt: null, banReason: null } });
       } else {
@@ -405,6 +409,48 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
   }
 }
 
+
+/**
+ * Журнал античита (п. 134): подозрения с фильтрами — открытые, разобранные, все;
+ * по виду; за N дней. С ником, днём тренировки и решением админа.
+ */
+export async function suspicionLog(
+  db: Db,
+  q: { status?: string; kind?: string; days?: number },
+  now = new Date(),
+) {
+  const days = Math.min(Math.max(q.days ?? 30, 1), 365);
+  const rows = await db.suspicion.findMany({
+    where: {
+      createdAt: { gte: new Date(now.getTime() - days * 86_400_000) },
+      ...(q.status === 'open' ? { resolvedAt: null } : q.status === 'resolved' ? { resolvedAt: { not: null } } : {}),
+      ...(q.kind ? { kind: q.kind } : {}),
+    },
+    orderBy: { createdAt: 'desc' },
+    take: 300,
+    include: { user: { select: { bannedAt: true, profile: { select: { nickname: true } } } } },
+  });
+  const workoutIds = rows.flatMap((r) => (r.workoutId ? [r.workoutId] : []));
+  const days_ = new Map(
+    (await db.workout.findMany({ where: { id: { in: workoutIds } }, select: { id: true, day: true, type: true } })).map(
+      (w) => [w.id, w],
+    ),
+  );
+  return rows.map((r) => ({
+    at: r.createdAt,
+    nickname: r.user.profile?.nickname ?? '—',
+    kind: r.kind,
+    severe: r.severe,
+    blocked: r.blocked,
+    bannedNow: r.user.bannedAt !== null,
+    details: r.details,
+    workoutDay: r.workoutId ? (days_.get(r.workoutId)?.day ?? null) : null,
+    workoutType: r.workoutId ? (days_.get(r.workoutId)?.type ?? null) : null,
+    resolvedAt: r.resolvedAt,
+    resolution: r.resolution,
+    note: r.resolvedNote,
+  }));
+}
 
 /** Все вещи, которые можно выдать, по группам (цена — у продающихся). */
 export function itemGroups(): { name: string; items: { id: string; price: number | null }[] }[] {

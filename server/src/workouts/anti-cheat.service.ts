@@ -106,6 +106,8 @@ export class AntiCheatService {
     findings: { kind: string; severe: boolean; details: Record<string, unknown> }[],
     blocked: boolean,
   ) {
+    // Письма выключены: журнал — в админке (п. 134). Вернуть — ANTICHEAT_EMAIL=on.
+    if (process.env.ANTICHEAT_EMAIL !== 'on') return;
     const to = process.env.ADMIN_NOTIFY_EMAIL?.trim();
     const cfg = smtpConfig();
     if (!to || !cfg) return;

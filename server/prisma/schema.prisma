@@ -454,7 +454,11 @@ model Suspicion {
   createdAt  DateTime  @default(now())
   /// Админ разобрался (снял блокировку или подтвердил).
   resolvedAt DateTime?
+  /// clear — не жулик, confirm — подтверждено (п. 134).
+  resolution   String?
+  resolvedNote String?
 
   @@index([userId, createdAt])
   @@index([resolvedAt])
+  @@index([createdAt])
 }

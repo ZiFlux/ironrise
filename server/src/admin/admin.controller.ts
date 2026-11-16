@@ -16,7 +16,7 @@ import { ZodPipe } from '../common/zod';
 import { PrismaService } from '../prisma.service';
 import { adminPageHtml } from './admin-page';
 import { adminToken, tokenMatches } from './admin-token';
-import { adminPulseNorms, adminStats, itemGroups, playerInfo, playerWorkouts, run } from './commands';
+import { adminPulseNorms, adminStats, itemGroups, playerInfo, playerWorkouts, run, suspicionLog } from './commands';
 
 const RunSchema = z.object({ args: z.array(z.string().max(200)).min(1).max(40) });
 
@@ -67,6 +67,24 @@ export class AdminController {
   norms(@Headers('x-admin-token') token?: string) {
     this.check(token);
     return adminPulseNorms(this.db);
+  }
+
+  /** Журнал античита (п. 134). */
+  @Get('api/suspicions')
+  suspicions(
+    @Headers('x-admin-token') token?: string,
+    @Query('status') status = 'all',
+    @Query('kind') kind = '',
+    @Query('days') days = '30',
+  ) {
+    this.check(token);
+    const allowed = ['open', 'resolved', 'all'];
+    const kinds = ['', 'impossible_set', 'strength_jump', 'flat_pulse'];
+    return suspicionLog(this.db, {
+      status: allowed.includes(status) ? status : 'all',
+      kind: kinds.includes(kind) ? kind : '',
+      days: Number.parseInt(days, 10) || 30,
+    });
   }
 
   /** Последние тренировки игрока. */
