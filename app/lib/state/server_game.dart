@@ -118,11 +118,7 @@ final serverLeagueTierProvider = FutureProvider.autoDispose
       final j = await ref.read(apiProvider).get('/v1/league/tier/$tier');
       return [
         for (final e in j['entries'] as List)
-          LeagueEntry(
-            name: e['name'] as String,
-            points: (e['points'] as num).toInt(),
-            isPlayer: e['isPlayer'] == true,
-          ),
+          LeagueEntry.fromJson(e as Map<String, dynamic>),
       ];
     });
 
@@ -133,11 +129,7 @@ final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
   return (
     entries: [
       for (final e in j['entries'] as List)
-        LeagueEntry(
-          name: e['name'] as String,
-          points: (e['points'] as num).toInt(),
-          isPlayer: e['isPlayer'] == true,
-        ),
+        LeagueEntry.fromJson(e as Map<String, dynamic>),
     ],
     trainedDays: (j['trainedDays'] as num).toInt(),
     wins: (j['wins'] as num).toInt(),
@@ -193,11 +185,7 @@ final serverFriendsLeagueProvider =
       final j = await ref.read(apiProvider).get('/v1/league/friends');
       return [
         for (final e in j['entries'] as List)
-          LeagueEntry(
-            name: e['name'] as String,
-            points: (e['points'] as num).toInt(),
-            isPlayer: e['isPlayer'] == true,
-          ),
+          LeagueEntry.fromJson(e as Map<String, dynamic>),
       ];
     });
 

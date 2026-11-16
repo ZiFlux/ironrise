@@ -399,6 +399,8 @@ export class SocialService {
         name: p.nickname,
         points: (await this.economy.weeklyStats(p.userId, monday, day)).points,
         isPlayer: p.userId === userId,
+        // Только друзья: их профиль и так открыт (users/:id/profile) — по нажатию на строку.
+        friendId: p.userId === userId ? undefined : p.userId,
       })),
     );
     return { day, entries: entries.sort((a, b) => b.points - a.points || Number(b.isPlayer) - Number(a.isPlayer)) };

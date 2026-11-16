@@ -18,6 +18,8 @@ import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../state/training_log.dart';
+import '../widgets/info_bubble.dart';
+import '../widgets/body_part_sheet.dart';
 import '../widgets/streak_sheet.dart';
 import '../game/shop.dart';
 import '../theme.dart';
@@ -261,61 +263,76 @@ class _ValidityCard extends ConsumerWidget {
       ',',
     );
     return Card(
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Icon(
-              verified
-                  ? LucideIcons.shieldCheck
-                  : waiting
-                  ? LucideIcons.hourglass
-                  : LucideIcons.watch,
-              size: 18,
-              color: AppColors.textSecondary,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    verified
-                        ? 'Пульс подтверждён часами'
-                        : waiting
-                        ? 'Ждём пульс с часов'
-                        : report == null
-                        ? 'Без часов: опыт ×$multiplier'
-                        : 'Опыт ×${_decimal(summary.validity)}',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w500,
+      clipBehavior: Clip.antiAlias,
+      child: Tappable(
+        radius: 12,
+        onTap: (c) => showInfoBubble(
+          c,
+          title: 'Как пульс подтверждает тренировку',
+          text:
+              'Пульс должен подниматься на подходах и спадать на отдыхе, а записан — '
+              'хотя бы на ${(GameConfig.minPulseCoverage * 100).round()}% тренировки. '
+              'Тогда опыт полный и тренировка идёт в рейтинг. Без пульса опыт ×$multiplier: '
+              'так честнее для всех в лиге.',
+          actionLabel: 'Подключить часы',
+          onAction: () => context.push('/profile/devices'),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(
+                verified
+                    ? LucideIcons.shieldCheck
+                    : waiting
+                    ? LucideIcons.hourglass
+                    : LucideIcons.watch,
+                size: 18,
+                color: AppColors.textSecondary,
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      verified
+                          ? 'Пульс подтверждён часами'
+                          : waiting
+                          ? 'Ждём пульс с часов'
+                          : report == null
+                          ? 'Без часов: опыт ×$multiplier'
+                          : 'Опыт ×${_decimal(summary.validity)}',
+                      style: const TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w500,
+                      ),
                     ),
-                  ),
-                  if (!verified)
-                    for (final reason
-                        in waiting || report == null
-                            ? [
-                                waiting
-                                    ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
-                                    : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
-                              ]
-                            : report.issues.map((i) => _explain(i, report)))
-                      Padding(
-                        padding: const EdgeInsets.only(top: 4),
-                        child: Text(
-                          reason,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            color: AppColors.textSecondary,
+                    if (!verified)
+                      for (final reason
+                          in waiting || report == null
+                              ? [
+                                  waiting
+                                      ? 'Часы передают пульс с задержкой. Когда он придёт, опыт пересчитается сам'
+                                      : 'С часами опыт будет полным, а тренировки пойдут в рейтинговые дуэли',
+                                ]
+                              : report.issues.map((i) => _explain(i, report)))
+                        Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Text(
+                            reason,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textSecondary,
+                            ),
                           ),
                         ),
-                      ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -359,6 +376,14 @@ class _GainRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final highlight = gain.leveledUp || gain.wasLagging;
+    return Tappable(
+      radius: 0,
+      onTap: (_) => showBodyPartSheet(context, gain.part),
+      child: _row(context, highlight),
+    );
+  }
+
+  Widget _row(BuildContext context, bool highlight) {
     return Container(
       // Подпись про уровень может перенестись — строка растёт, а не обрезается.
       constraints: const BoxConstraints(minHeight: 52),

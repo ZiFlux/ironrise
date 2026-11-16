@@ -13,6 +13,9 @@ import '../widgets/fit_screen.dart';
 import '../widgets/sign_in_gate.dart';
 import '../widgets/motion.dart';
 import '../widgets/guide.dart';
+import '../widgets/info_bubble.dart';
+import '../widgets/status_toast.dart';
+import '../net/api_client.dart';
 
 /// Рейтинг (экран 10): недельная лига. Пока с ботами, друзья и вуз — с сервером.
 class RatingScreen extends ConsumerWidget {
@@ -260,6 +263,57 @@ class _LeagueView extends StatelessWidget {
 
 enum _Zone { none, up, down }
 
+/// Нажатие на строку лиги (п. 127): друг — профиль, ты — твой профиль, бот и
+/// незнакомый игрок — облако с очками (незнакомого можно позвать в друзья).
+void _openEntry(BuildContext anchor, int place, LeagueEntry e, _Zone zone) {
+  if (e.friendId case final id?) {
+    anchor.push('/friend/$id');
+    return;
+  }
+  final zoneLine = switch (zone) {
+    _Zone.up => '\nСейчас в зоне повышения.',
+    _Zone.down => '\nСейчас в зоне вылета.',
+    _Zone.none => '',
+  };
+  final points =
+      '${e.points} очков: тренировка +${GameConfig.leagueWorkoutPoints}, '
+      'победа в дуэли +${GameConfig.leagueWinPoints}.$zoneLine';
+  if (e.isPlayer) {
+    showInfoBubble(
+      anchor,
+      title: '$place место — это ты',
+      text: points,
+      actionLabel: 'Мой профиль',
+      onAction: () => anchor.go('/profile'),
+    );
+  } else if (e.isBot) {
+    showInfoBubble(
+      anchor,
+      title: '${e.name} · бот лиги',
+      text:
+          'Боты держат лигу живой, пока игроков мало: их очки подстраиваются '
+          'под активность лиги. $points',
+    );
+  } else {
+    showInfoBubble(
+      anchor,
+      title: '$place место · ${e.name}',
+      text: '$points\nПрофиль видно друзьям.',
+      actionLabel: 'Добавить в друзья',
+      onAction: () async {
+        try {
+          await ProviderScope.containerOf(anchor, listen: false)
+              .read(apiProvider)
+              .post('/v1/friends/requests', {'nickname': e.name});
+          showStatus('Заявка отправлена', kind: StatusKind.success);
+        } on ApiException catch (err) {
+          showStatusError(err.message, network: err.isNetwork);
+        }
+      },
+    );
+  }
+}
+
 class _Row extends StatelessWidget {
   const _Row({
     required this.place,
@@ -279,6 +333,15 @@ class _Row extends StatelessWidget {
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
     final me = entry.isPlayer;
+    return Tappable(
+      radius: 0,
+      semantics: '$place место, ${entry.name}, ${entry.points} очков',
+      onTap: (c) => _openEntry(c, place, entry, zone),
+      child: _content(accent, me),
+    );
+  }
+
+  Widget _content(Color accent, bool me) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
@@ -450,6 +513,21 @@ class _LastWeekBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tier = LeagueTier.of(result.tierAfter);
+    return Tappable(
+      radius: 12,
+      onTap: (c) => showInfoBubble(
+        c,
+        title: 'Итог прошлой недели',
+        text:
+            '${result.rank} место в лиге «${LeagueTier.of(result.tierBefore).title}». '
+            'Теперь: «${tier.title}». Новая неделя началась с нуля — очки копятся '
+            'с понедельника до воскресенья.',
+      ),
+      child: _banner(tier),
+    );
+  }
+
+  Widget _banner(LeagueTier tier) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
       decoration: BoxDecoration(

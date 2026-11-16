@@ -11,11 +11,27 @@ class LeagueEntry {
     required this.name,
     required this.points,
     this.isPlayer = false,
+    this.isBot = false,
+    this.friendId,
   });
 
   final String name;
   final int points;
   final bool isPlayer;
+
+  /// Бот лиги: по нажатию — облако «бот», а не профиль (п. 127).
+  final bool isBot;
+
+  /// Друг: по нажатию — его профиль. Чужих id сервер не отдаёт.
+  final String? friendId;
+
+  factory LeagueEntry.fromJson(Map<String, dynamic> e) => LeagueEntry(
+    name: e['name'] as String,
+    points: (e['points'] as num).toInt(),
+    isPlayer: e['isPlayer'] == true,
+    isBot: e['isBot'] == true,
+    friendId: e['friendId'] as String?,
+  );
 }
 
 /// Недельная лига (экран 10), пока без сервера: игрок и боты.
@@ -48,6 +64,7 @@ class WeeklyLeague {
         LeagueEntry(
           name: names[i],
           points: _botPoints(weekSeed, i, daysPassed),
+          isBot: true,
         ),
     ];
     // При равенстве очков игрок выше: он их заработал по-настоящему.
