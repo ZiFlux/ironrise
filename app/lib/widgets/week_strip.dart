@@ -3,13 +3,19 @@ import 'package:flutter/material.dart';
 import '../game/calendar.dart';
 import '../game/training_format.dart';
 import '../state/hero.dart';
+import '../state/training_log.dart';
 import '../theme.dart';
+import 'format.dart';
+import 'info_bubble.dart';
 
 /// Календарь недели на главной: тренировка / отдых / пропуск (экран 4).
 class WeekStrip extends StatelessWidget {
-  const WeekStrip({super.key, required this.hero});
+  const WeekStrip({super.key, required this.hero, this.log = const []});
 
   final HeroProfile hero;
+
+  /// Журнал — для облака по нажатию на прошедший день (п. 127).
+  final List<LoggedWorkout> log;
 
   @override
   Widget build(BuildContext context) {
@@ -24,11 +30,66 @@ class WeekStrip extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
         child: Row(
-          children: [for (final d in days) Expanded(child: _DayCell(day: d))],
+          children: [
+            for (final d in days)
+              Expanded(
+                child: Tappable(
+                  semantics: null,
+                  onTap: (c) => showInfoBubble(
+                    c,
+                    title: dayTitle(d.date),
+                    text: dayBubbleText(d, log, hero.maxRestDays),
+                  ),
+                  child: _DayCell(day: d),
+                ),
+              ),
+          ],
         ),
       ),
     );
   }
+}
+
+const _weekdaysFull = [
+  'Понедельник',
+  'Вторник',
+  'Среда',
+  'Четверг',
+  'Пятница',
+  'Суббота',
+  'Воскресенье',
+];
+
+/// «Среда, 18» — заголовок облака дня.
+String dayTitle(DateTime d) => '${_weekdaysFull[d.weekday - 1]}, ${d.day}';
+
+/// Что было или будет в этот день — текст облака.
+String dayBubbleText(CalendarDay day, List<LoggedWorkout> log, int maxRest) {
+  final same = [
+    for (final w in log)
+      if (w.at.year == day.date.year &&
+          w.at.month == day.date.month &&
+          w.at.day == day.date.day)
+        w,
+  ];
+  if (same.isNotEmpty) {
+    return [
+      for (final w in same)
+        '${w.kind == WorkoutKind.strength ? 'Силовая' : 'Кардио'} '
+            '${formatMinutes(w.duration)}, +${w.xp} опыта',
+    ].join('\n');
+  }
+  return switch (day.kind) {
+    DayKind.trained => 'Тренировка засчитана',
+    DayKind.rest => 'Отдых — серия не сгорела',
+    DayKind.missed =>
+      'Пропуск: отдыхать без потери серии можно до $maxRest дн. подряд',
+    DayKind.upcomingTraining =>
+      day.isToday ? 'Сегодня по графику тренировка' : 'По графику тренировка',
+    DayKind.upcomingRest =>
+      day.isToday ? 'Сегодня по графику отдых' : 'По графику отдых',
+    DayKind.none => 'Тебя тогда ещё не было в IronRise',
+  };
 }
 
 class _DayCell extends StatelessWidget {

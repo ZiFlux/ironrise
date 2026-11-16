@@ -28,6 +28,7 @@ import '../widgets/week_strip.dart';
 import '../widgets/weigh_in.dart';
 import '../state/entry_test_state.dart';
 import '../game/goal_path.dart';
+import '../widgets/info_bubble.dart';
 import '../widgets/motion.dart';
 import '../widgets/shop_entry.dart';
 import '../widgets/guide.dart';
@@ -93,7 +94,10 @@ class HomeScreen extends ConsumerWidget {
                   index: 1,
                   child: GuideTarget(
                     id: 'home.week',
-                    child: WeekStrip(hero: hero),
+                    child: WeekStrip(
+                      hero: hero,
+                      log: ref.watch(trainingLogProvider),
+                    ),
                   ),
                 ),
                 const _ActivityLine(),
@@ -166,14 +170,27 @@ class HomeScreen extends ConsumerWidget {
                   ),
                 ),
                 if (isRecoveryDay)
-                  const Padding(
-                    padding: EdgeInsets.only(top: 6),
-                    child: Text(
-                      'После загрузки — лёгкий день: растяжка и кардио, серия продлится',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(
-                        color: AppColors.textMuted,
-                        fontSize: 13,
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Tappable(
+                      onTap: (c) => showInfoBubble(
+                        c,
+                        title: 'День восстановления',
+                        text:
+                            'После дня загрузки мышцам нужен лёгкий день: растяжка, '
+                            'суставная гимнастика и спокойное кардио — к следующей '
+                            'силовой ты сильнее. Необязательно: серия не сгорит и без него.',
+                        actionLabel: 'Изменить график',
+                        onAction: () =>
+                            context.push('/profile/settings/schedule'),
+                      ),
+                      child: const Text(
+                        'После загрузки — лёгкий день: растяжка и кардио, серия продлится',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: AppColors.textMuted,
+                          fontSize: 13,
+                        ),
                       ),
                     ),
                   )
@@ -256,7 +273,7 @@ class _Header extends ConsumerWidget {
           children: [
             Flexible(
               child: _StatChip(
-                onTap: () => showStreakSheet(context),
+                onTap: (_) => showStreakSheet(context),
                 icon: LucideIcons.flame,
                 iconColor: AppColors.textSecondary,
                 value: AnimatedNumber(
@@ -274,6 +291,16 @@ class _Header extends ConsumerWidget {
               child: _StatChip(
                 icon: LucideIcons.zap,
                 iconColor: accent,
+                onTap: (c) => showInfoBubble(
+                  c,
+                  title: 'Сила ${hero.power}',
+                  text:
+                      'Растёт только от тренировок: 10 за каждый уровень частей тела '
+                      'и 2 за день серии (до 30). Ровное развитие даёт +5%, сильный '
+                      'перекос — −10%. Сила решает в дуэлях и лиге.',
+                  actionLabel: 'Уровни частей тела',
+                  onAction: () => context.go('/profile'),
+                ),
                 value: AnimatedNumber(
                   value: hero.power,
                   style: figureStyle(size: 15, color: accent),
@@ -294,7 +321,7 @@ class _Header extends ConsumerWidget {
                   ),
                 ),
                 semantics: 'Монеты ${hero.coins}, открыть магазин',
-                onTap: () => context.push('/shop'),
+                onTap: (_) => context.push('/shop'),
               ),
             ),
           ],
@@ -317,39 +344,40 @@ class _StatChip extends StatelessWidget {
   final Color iconColor;
   final Widget value;
   final String semantics;
-  final VoidCallback? onTap;
+
+  /// Получает контекст плашки — для облака рядом с ней (п. 127).
+  final void Function(BuildContext context)? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final chip = Semantics(
-      label: semantics,
-      button: onTap != null,
-      excludeSemantics: true,
-      child: GestureDetector(
-        onTap: onTap,
-        child: Container(
-          height: 36,
-          padding: const EdgeInsets.symmetric(horizontal: 12),
-          decoration: BoxDecoration(
-            color: AppColors.surface,
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: AppColors.hairline),
+    final chip = Container(
+      height: 36,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: iconColor),
+          const SizedBox(width: 6),
+          // Большие числа и крупный шрифт — уменьшаем, а не вылезаем за плашку.
+          Flexible(
+            child: FittedBox(fit: BoxFit.scaleDown, child: value),
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, size: 16, color: iconColor),
-              const SizedBox(width: 6),
-              // Большие числа и крупный шрифт — уменьшаем, а не вылезаем за плашку.
-              Flexible(
-                child: FittedBox(fit: BoxFit.scaleDown, child: value),
-              ),
-            ],
-          ),
-        ),
+        ],
       ),
     );
-    return onTap == null ? chip : Pressable(child: chip);
+    final tap = onTap;
+    return tap == null
+        ? Semantics(label: semantics, excludeSemantics: true, child: chip)
+        : Tappable(
+            semantics: semantics,
+            onTap: tap,
+            child: ExcludeSemantics(child: chip),
+          );
   }
 }
 
@@ -473,10 +501,22 @@ class _RestDayNote extends StatelessWidget {
   Widget build(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: Text(
-        'По графику отдых. Серия не сгорит ещё $maxRestDays дн.',
-        textAlign: TextAlign.center,
-        style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+      child: Tappable(
+        onTap: (c) => showInfoBubble(
+          c,
+          title: 'День отдыха',
+          text:
+              'Мышцы растут, пока ты отдыхаешь. Подряд без тренировки можно '
+              '$maxRestDays дн. — серия не сгорит. Лёгкое кардио в отдых '
+              'тоже качает героя, но необязательно.',
+          actionLabel: 'Изменить график',
+          onAction: () => context.push('/profile/settings/schedule'),
+        ),
+        child: Text(
+          'По графику отдых. Серия не сгорит ещё $maxRestDays дн.',
+          textAlign: TextAlign.center,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
       ),
     );
   }
@@ -524,27 +564,38 @@ class _ActivityLine extends ConsumerWidget {
         .replaceAll('.', ',');
     return Padding(
       padding: const EdgeInsets.only(top: 6),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            LucideIcons.footprints,
-            size: 14,
-            color: AppColors.textMuted,
-          ),
-          const SizedBox(width: 6),
-          Flexible(
-            child: Text(
-              '${formatThousands(steps)} шагов · $km км сегодня',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
+      child: Tappable(
+        onTap: (c) => showInfoBubble(
+          c,
+          title: 'Шаги за сегодня',
+          text:
+              'Берутся из Health Connect (часы или телефон). В день отдыха '
+              'вечером шаги дают опыт кардио: 3 опыта за каждую тысячу, до 30.',
+          actionLabel: 'Устройства',
+          onAction: () => context.push('/profile/devices'),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              LucideIcons.footprints,
+              size: 14,
+              color: AppColors.textMuted,
+            ),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                '${formatThousands(steps)} шагов · $km км сегодня',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }

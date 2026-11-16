@@ -36,6 +36,9 @@ import '../widgets/exercise_picker.dart';
 import '../widgets/format.dart';
 import '../widgets/warmup_card.dart';
 import '../widgets/guide.dart';
+import '../widgets/info_bubble.dart';
+import '../game/set_pulse.dart';
+import '../game/anti_fraud.dart' show PulseSample;
 
 class WorkoutScreen extends ConsumerWidget {
   const WorkoutScreen({super.key});
@@ -70,6 +73,99 @@ String _phaseLine(UserProgram program, HeroProfile? hero) {
       'Уровень «${level.label}»: ${level.exercises} упражнений, '
           '~${level.weeklySets} подходов на мышцу в неделю',
   };
+}
+
+/// Облако к строке фазы (п. 127): что значит фаза и как растёт нагрузка.
+String _phaseExplain(UserProgram program, HeroProfile? hero) {
+  final level = trainingLevelOf(hero, program);
+  final phase = switch (program.phaseFor(level)) {
+    ProgramPhase.start =>
+      'Первые ${ProgramPhase.startWorkouts} тренировок — «Старт»: по 2 подхода, '
+          'учимся технике и подбираем вес. Связки и суставы привыкают медленнее мышц, '
+          'поэтому начинаем мягко.',
+    ProgramPhase.base =>
+      'Уровень «${level.label}» по твоему опыту: ${level.exercises} упражнений и '
+          'около ${level.weeklySets} подходов на мышцу в неделю. С опытом уровень '
+          'растёт, а раз в несколько недель план сам облегчается — разгрузка.',
+  };
+  return '$phase\n\nРазминка подобрана под сегодняшние упражнения: 5 минут берегут суставы.';
+}
+
+/// Неделя по графику: какой день что тренировать (п. 127).
+Future<void> _showWeekPlan(
+  BuildContext context,
+  UserProgram program,
+  HeroProfile? hero,
+) {
+  final layout = hero == null
+      ? const <({int weekday, String title})>[]
+      : weekLayout(
+          days: program.days(
+            hero.loadDays.length,
+            format: hero.format,
+            adjacent: hasAdjacentDays(hero.loadDays),
+            level: trainingLevelOf(hero, program),
+          ),
+          nextIndex: program.nextDayIndex,
+          trainingDays: hero.loadDays,
+          today: DateTime.now(),
+        );
+  return showModalBottomSheet<void>(
+    context: context,
+    backgroundColor: AppColors.surface,
+    showDragHandle: true,
+    builder: (sheet) => SafeArea(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Неделя по графику',
+              style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+            ),
+            const SizedBox(height: 4),
+            const Text(
+              'Мышцам нужно 48 часов отдыха, поэтому группы чередуются по дням.',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            for (final d in layout)
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 6),
+                child: Row(
+                  children: [
+                    SizedBox(
+                      width: 36,
+                      child: Text(
+                        weekdayShort[d.weekday],
+                        style: const TextStyle(color: AppColors.textMuted),
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        d.title,
+                        style: const TextStyle(fontSize: 15),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: () {
+                Navigator.pop(sheet);
+                context.push('/profile/settings/schedule');
+              },
+              icon: const Icon(LucideIcons.calendarCog, size: 18),
+              label: const Text('Изменить график'),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Раскладка недели: какой день что тренировать — «Пн верх · Вт низ · Чт верх…»
@@ -182,18 +278,37 @@ class _StartView extends ConsumerWidget {
                             shrinkWrap: true,
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             children: [
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  8,
-                                  16,
-                                  4,
+                              // Нажатие — неделя по графику (п. 127).
+                              Tappable(
+                                onTap: (_) => _showWeekPlan(
+                                  context,
+                                  program,
+                                  ref.read(heroProvider),
                                 ),
-                                child: Text(
-                                  'Сегодня · ${today.title}',
-                                  style: const TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.w500,
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    8,
+                                    16,
+                                    4,
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Expanded(
+                                        child: Text(
+                                          'Сегодня · ${today.title}',
+                                          style: const TextStyle(
+                                            fontSize: 17,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      const Icon(
+                                        LucideIcons.calendarDays,
+                                        size: 18,
+                                        color: AppColors.textMuted,
+                                      ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -220,30 +335,40 @@ class _StartView extends ConsumerWidget {
                                     ],
                                   ),
                                 ),
-                              Padding(
-                                padding: const EdgeInsets.fromLTRB(
-                                  16,
-                                  0,
-                                  16,
-                                  8,
+                              Tappable(
+                                onTap: (c) => showInfoBubble(
+                                  c,
+                                  title: 'Как устроен план',
+                                  text: _phaseExplain(
+                                    program,
+                                    ref.read(heroProvider),
+                                  ),
                                 ),
-                                child: Text(
-                                  [
-                                    _phaseLine(
-                                      program,
-                                      ref.watch(heroProvider),
+                                child: Padding(
+                                  padding: const EdgeInsets.fromLTRB(
+                                    16,
+                                    0,
+                                    16,
+                                    8,
+                                  ),
+                                  child: Text(
+                                    [
+                                      _phaseLine(
+                                        program,
+                                        ref.watch(heroProvider),
+                                      ),
+                                      warmupSummary(
+                                        Warmup.forExercises([
+                                          for (final e in today.exercises)
+                                            e.exercise,
+                                        ], program.equipment),
+                                      ),
+                                      ...notes,
+                                    ].join('\n'),
+                                    style: const TextStyle(
+                                      fontSize: 13,
+                                      color: AppColors.textMuted,
                                     ),
-                                    warmupSummary(
-                                      Warmup.forExercises([
-                                        for (final e in today.exercises)
-                                          e.exercise,
-                                      ], program.equipment),
-                                    ),
-                                    ...notes,
-                                  ].join('\n'),
-                                  style: const TextStyle(
-                                    fontSize: 13,
-                                    color: AppColors.textMuted,
                                   ),
                                 ),
                               ),
@@ -585,6 +710,44 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     );
   }
 
+  /// Облако подхода: вес и повторы, отдых перед ним и пульс, если был датчик.
+  void _showSetInfo(BuildContext anchor, int entryIndex, int setIndex) {
+    final session = widget.session;
+    final entry = session.entries[entryIndex];
+    final set = entry.sets[setIndex];
+    final pulse = ref
+        .read(heartRateProvider.notifier)
+        .samplesBetween(session.startedAt, DateTime.now());
+    SetPulse? info;
+    for (final (id, i, p) in setPulses(
+      startedAt: session.startedAt,
+      entries: session.entries,
+      pulse: pulse,
+    )) {
+      if (id == entry.exercise.id && i == setIndex) info = p;
+    }
+    final volume = entry.exercise.usesWeight
+        ? ' · объём ${(set.weight * set.reps).round()} кг'
+        : '';
+    final rest = info?.rest;
+    final peak = info?.peak;
+    final base = info?.base;
+    showInfoBubble(
+      anchor,
+      title: 'Подход ${setIndex + 1}: ${formatSet(entry.exercise, set)}',
+      text: [
+        if (info != null)
+          'Записан на ${formatClock(Duration(seconds: info.t))} тренировки$volume',
+        if (rest != null)
+          'Отдых перед ним: ${formatClock(Duration(seconds: rest))}',
+        if (peak != null)
+          'Пульс: пик $peak${base == null ? '' : ', до подхода $base'} уд/мин'
+        else
+          'Пульса нет — с датчиком здесь будут пик и восстановление',
+      ].join('\n'),
+    );
+  }
+
   Future<void> _addExercise() async {
     final hero = ref.read(heroProvider);
     final exercise = await showExercisePicker(
@@ -777,6 +940,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                         onLog: (set) => _checkAndLog(i, set),
                         onUndo: () => _workout.undoLastSet(i),
                         onRemove: () => _workout.removeExercise(i),
+                        onSetInfo: (c, set) => _showSetInfo(c, i, set),
                         toFailure: toFailureFor(
                           trainingLevelOf(
                             ref.watch(heroProvider),
@@ -817,20 +981,64 @@ class _PulseIndicator extends ConsumerWidget {
         ),
       );
     }
-    return Semantics(
-      label: 'Пульс ${pulse.bpm ?? 'нет данных'}',
-      excludeSemantics: true,
-      child: Row(
-        children: [
-          Icon(
-            LucideIcons.heart,
-            size: 16,
-            color: Theme.of(context).colorScheme.primary,
+    return Tappable(
+      semantics: 'Пульс ${pulse.bpm ?? 'нет данных'}',
+      onTap: (c) => _showPulseInfo(c, ref),
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                LucideIcons.heart,
+                size: 16,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+              const SizedBox(width: 4),
+              Text(pulse.bpm?.toString() ?? '—', style: figureStyle(size: 15)),
+            ],
           ),
-          const SizedBox(width: 4),
-          Text(pulse.bpm?.toString() ?? '—', style: figureStyle(size: 15)),
-        ],
+        ),
       ),
+    );
+  }
+
+  /// Облако пульса (п. 127): зона сейчас, средний и максимум за тренировку.
+  void _showPulseInfo(BuildContext anchor, WidgetRef ref) {
+    final bpm = ref.read(heartRateProvider).bpm;
+    final max = ref.read(heroProvider)?.maxHeartRate ?? 190;
+    final started = ref.read(workoutProvider)?.startedAt;
+    final samples = started == null
+        ? const <PulseSample>[]
+        : ref
+              .read(heartRateProvider.notifier)
+              .samplesBetween(started, DateTime.now());
+    final pct = bpm == null ? null : (bpm * 100 / max).round();
+    final zone = switch (pct) {
+      null => 'нет данных',
+      < 60 => 'лёгкая',
+      < 70 => 'разминка',
+      < 80 => 'аэробная — выносливость',
+      < 90 => 'тяжёлая — сила и скорость',
+      _ => 'максимальная — ненадолго',
+    };
+    final avg = samples.isEmpty
+        ? null
+        : (samples.fold<int>(0, (a, s) => a + s.bpm) / samples.length).round();
+    final top = samples.isEmpty
+        ? null
+        : samples.map((s) => s.bpm).reduce((a, b) => a > b ? a : b);
+    showInfoBubble(
+      anchor,
+      title: 'Пульс ${bpm ?? '—'}${pct == null ? '' : ' · $pct% от максимума'}',
+      text: [
+        'Зона: $zone',
+        if (avg != null) 'За тренировку: средний $avg, максимум $top',
+        'Твой максимум — около $max уд/мин. Пульс подтверждает тренировку '
+            'и подсказывает, когда ты отдохнул.',
+      ].join('\n'),
+      actionLabel: 'Датчики',
+      onAction: () => GoRouter.of(anchor).push('/profile/heart-rate'),
     );
   }
 }
@@ -1010,7 +1218,11 @@ class _ExerciseCard extends StatelessWidget {
     required this.onUndo,
     required this.onRemove,
     this.toFailure = false,
+    this.onSetInfo,
   });
+
+  /// Нажатие на записанный подход — облако с пульсом и отдыхом (п. 127).
+  final void Function(BuildContext context, int setIndex)? onSetInfo;
 
   final ExerciseEntry entry;
 
@@ -1042,7 +1254,10 @@ class _ExerciseCard extends StatelessWidget {
               _PlanTarget(plan: entry.plan!, progress: progress),
             if (toFailure && !entry.isFull) const _ToFailureNote(),
             for (final (i, set) in entry.sets.indexed)
-              _SetRow(index: i + 1, text: formatSet(exercise, set)),
+              Tappable(
+                onTap: (c) => onSetInfo?.call(c, i),
+                child: _SetRow(index: i + 1, text: formatSet(exercise, set)),
+              ),
             if (entry.planDone)
               _ReserveQuestion(answer: entry.hadReserve, onAnswer: onReserve),
             // Свёрнутое и недоделанное — видно, что сюда можно вернуться (подходов не 4/4).
@@ -1179,24 +1394,38 @@ class _PlanTarget extends StatelessWidget {
     final range = DoubleProgression.repsRange(plan, progress);
     final unit = plan.exercise.unit == ExerciseUnit.seconds ? ' с' : '';
     final calibrating = plan.exercise.usesWeight && progress.isCalibrating;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 6, right: 12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Цель: ${plan.sets} × ${range.min}–${range.max}$unit · ${plan.repsInReserve} в запасе',
-            style: const TextStyle(
-              fontSize: 13,
-              color: AppColors.textSecondary,
-            ),
-          ),
-          if (calibrating)
+    return Tappable(
+      onTap: (c) => showInfoBubble(
+        c,
+        title: 'Подходы и запас',
+        text:
+            '${plan.sets} × ${range.min}–${range.max}$unit. «${plan.repsInReserve} в запасе» — '
+            'остановись, когда можешь сделать ещё ${plan.repsInReserve}: так сила растёт '
+            'без травм. Сделал верх диапазона во всех подходах с запасом — в следующий '
+            'раз вес чуть больше.',
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 6, right: 12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              'Подбери вес: ${range.max} повторов и ещё ${plan.repsInReserve} в запасе',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+              'Цель: ${plan.sets} × ${range.min}–${range.max}$unit · ${plan.repsInReserve} в запасе',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
             ),
-        ],
+            if (calibrating)
+              Text(
+                'Подбери вес: ${range.max} повторов и ещё ${plan.repsInReserve} в запасе',
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
