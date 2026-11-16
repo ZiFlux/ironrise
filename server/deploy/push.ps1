@@ -29,9 +29,11 @@ Invoke-Step 'папки на сервере' { ssh $Server 'mkdir -p /opt/ironri
 Invoke-Step 'копирование образа' { scp compose.prod.yml Caddyfile .env.prod.example api.tar.gz "${Server}:/opt/ironrise/" }
 Invoke-Step 'копирование скриптов' { scp deploy/setup-server.sh deploy/backup.sh "${Server}:/opt/ironrise/deploy/" }
 # Сайт (../site): заменяем целиком, чтобы удалённые файлы не оставались.
+# Сначала копия во временную папку: если scp оборвётся, живой сайт не пострадает.
 # Чистим содержимое, а не саму папку: Caddy смонтировал её и иначе видел бы удалённую.
-Invoke-Step 'копирование сайта' { ssh $Server 'mkdir -p /opt/ironrise/site && find /opt/ironrise/site -mindepth 1 -delete' }
-Invoke-Step 'scp сайта' { scp -r ../site/. "${Server}:/opt/ironrise/site/" }
+Invoke-Step 'папка для сайта' { ssh $Server 'rm -rf /opt/ironrise/site.new && mkdir -p /opt/ironrise/site.new /opt/ironrise/site' }
+Invoke-Step 'scp сайта' { scp -r ../site/. "${Server}:/opt/ironrise/site.new/" }
+Invoke-Step 'замена сайта' { ssh $Server 'find /opt/ironrise/site -mindepth 1 -delete && cp -a /opt/ironrise/site.new/. /opt/ironrise/site/ && rm -rf /opt/ironrise/site.new' }
 Remove-Item api.tar.gz
 $firebase = Test-Path secrets/firebase.json
 if ($firebase) { Invoke-Step 'scp firebase' { scp secrets/firebase.json "${Server}:/opt/ironrise/secrets/firebase.json" } }
