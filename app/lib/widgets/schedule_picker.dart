@@ -65,12 +65,10 @@ class ChoiceTile extends StatelessWidget {
     on ? load.add(day) : load.remove(day);
     return (format: format, days: withRecoveryDays(load));
   }
+  // Стиль от числа дней не зависит (TRAINING_SYSTEM.md 14): дни — любые.
   final next = {...days};
   on ? next.add(day) : next.remove(day);
-  final keeps =
-      format == TrainingFormat.custom ||
-      next.length == format.defaultDays.length;
-  return (format: keeps ? format : TrainingFormat.custom, days: next);
+  return (format: format, days: next);
 }
 
 /// Выбор формата и дней тренировок: в онбординге и при смене графика.
@@ -133,13 +131,16 @@ class SchedulePicker extends StatelessWidget {
           tooFew
               ? minimum
                     ? 'Выберите 2 дня загрузки не подряд — после каждого будет день восстановления'
+                    : days.length > maxTrainingDaysPerWeek
+                    ? 'Оставьте хотя бы день отдыха в неделю'
                     : 'Выберите минимум $minTrainingDaysPerWeek дня'
               : minimum
               ? 'Загрузка: ${load.map((d) => weekdayShort[d]).join(', ')}, восстановление: '
                     '${recovery.map((d) => weekdayShort[d]).join(', ')}. '
                     'Восстановление — по желанию: без него серия держится до '
                     '${maxRestDaysInRow(load.toList())} дн. отдыха подряд.'
-              : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.',
+              : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.'
+                    '${format == TrainingFormat.fullBody && hasAdjacentDays(days) ? ' Всё тело в соседние дни перекрыло бы мышцы — в такие недели программа даст верх/низ.' : ''}',
           style: TextStyle(
             color: tooFew
                 ? Theme.of(context).colorScheme.error

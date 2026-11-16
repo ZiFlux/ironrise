@@ -7,6 +7,7 @@ import { assertLookOwned } from '../economy/economy.service';
 import { BODY_PARTS } from '../game/body-part';
 import { CREATOR_ITEMS } from '../game/start-look';
 import { GoalSchema, MAX_EXTRA_GOALS } from '../game/goals';
+import { MIN_TRAINING_DAYS } from '../game/schedule';
 import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
@@ -28,7 +29,7 @@ export const RegisterSchema = z.object({
   trainingFormat: z.string().min(1).max(32),
   scheduleDays: z
     .array(z.number().int().min(0).max(6))
-    .min(3)
+    .min(MIN_TRAINING_DAYS)
     .max(7)
     .refine((d) => new Set(d).size === d.length, 'days must be unique'),
   appearance: z.record(z.string(), z.unknown()),

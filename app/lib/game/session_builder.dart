@@ -2,6 +2,7 @@ import 'body_part.dart';
 import 'exercise_catalog.dart';
 import 'muscles.dart';
 import 'program.dart';
+import 'training_format.dart';
 
 /// Уровень подготовки (п. 51–52 бэклога): сколько упражнений в тренировке,
 /// какая недельная норма подходов на мышцу и с какой ступени лесенки начинать.
@@ -207,15 +208,35 @@ const _focus = _DayTemplate('F', 'День отстающей части', [
 class SessionBuilder {
   const SessionBuilder._();
 
-  /// Шаблон недели: 3 тренировки — всё тело, 4 — верх/низ, 5+ — плюс день
-  /// отстающей части; сплит — три дня по кругу.
-  static List<_DayTemplate> _templates(int sessionsPerWeek, bool split) =>
-      switch (sessionsPerWeek) {
-        _ when split => const [_splitBack, _splitChest, _splitLegs],
-        <= 3 => const [_fullBodyA, _fullBodyB],
-        4 => const [_upper, _lower],
-        _ => const [_upper, _lower, _focus],
-      };
+  /// Раскладка по кругу (TRAINING_SYSTEM.md 14): стиль игрока на любое число дней.
+  /// [adjacent] — среди дней есть соседние: «всё тело» тогда нагрузило бы одни мышцы
+  /// два дня подряд, и программа берёт верх/низ.
+  static List<_DayTemplate> _templates(
+    TrainingFormat format,
+    int sessionsPerWeek,
+    TrainingLevel level, {
+    required bool start,
+    required bool adjacent,
+  }) {
+    const fullBody = [_fullBodyA, _fullBodyB];
+    const upperLower = [_upper, _lower];
+    const split = [_splitBack, _splitChest, _splitLegs];
+    // «Старт»: всё тело, а при соседних днях — верх/низ.
+    if (start) return adjacent ? upperLower : fullBody;
+    return switch (format) {
+      TrainingFormat.fullBody ||
+      TrainingFormat.minimum => adjacent ? upperLower : fullBody,
+      TrainingFormat.upperLower => upperLower,
+      TrainingFormat.split => split,
+      TrainingFormat.custom => switch (sessionsPerWeek) {
+        <= 2 => adjacent ? upperLower : fullBody,
+        3 when level == TrainingLevel.novice && !adjacent => fullBody,
+        3 => split,
+        4 => upperLower,
+        _ => split,
+      },
+    };
+  }
 
   /// Дни программы. [stepOf] — ступень человека в движении (лесенка),
   /// [start] — фаза «Старт»: меньше подходов, больше повторов, больше запаса.
@@ -224,11 +245,18 @@ class SessionBuilder {
     required int sessionsPerWeek,
     required Equipment equipment,
     required int Function(String pattern) stepOf,
-    bool split = false,
+    TrainingFormat format = TrainingFormat.custom,
+    bool adjacent = false,
     bool start = false,
     BodyPart? lagging,
   }) {
-    final templates = _templates(sessionsPerWeek, split);
+    final templates = _templates(
+      format,
+      sessionsPerWeek,
+      level,
+      start: start,
+      adjacent: adjacent,
+    );
     // Новичок в зале в фазе «Старт»: основа — свой вес (присед, отжимания, выпады,
     // пресс, гравитрон), с инвентарём — 2–3 упражнения с небольшим весом (13.3).
     final bodyweightFirst =
@@ -240,7 +268,9 @@ class SessionBuilder {
           level,
           equipment,
           stepOf,
-          t == _focus ? lagging : null,
+          // Отстающая часть — в дни, которые и так её тренируют: так она получает
+          // больше работы без перекрытия соседних дней (TRAINING_SYSTEM.md 14).
+          t == _focus || _trains(t, lagging) ? lagging : null,
           bodyweightFirst: bodyweightFirst,
         ),
     ];
@@ -295,6 +325,15 @@ class SessionBuilder {
     final kept = byPriority.take(level.exercises).toList()
       ..sort((a, b) => a.$2 - b.$2);
     return [for (final c in kept) (exercise: c.$3, compound: c.$4)];
+  }
+
+  /// День тренирует эту часть тела: в нём есть её движения.
+  static bool _trains(_DayTemplate t, BodyPart? part) {
+    final patterns = {
+      for (final slot in _partSlots[part] ?? const <_Slot>[]) slot.pattern,
+    };
+    return patterns.isNotEmpty &&
+        t.slots.any((s) => patterns.contains(s.pattern));
   }
 
   /// Движения, где новичку в зале на старте сначала даём свой вес (TRAINING_SYSTEM.md 13.3).

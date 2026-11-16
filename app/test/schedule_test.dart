@@ -16,22 +16,14 @@ void main() {
     );
   });
 
-  test(
-    'сдвиг дня сохраняет формат, другое число тренировок — «Свой график»',
-    () {
-      // Фулбоди Пн/Ср/Пт: Пт → Сб — тренировок всё ещё 3.
-      final moved = toggleTrainingDay(TrainingFormat.fullBody, {0, 2}, 5, true);
-      expect(moved.format, TrainingFormat.fullBody);
-      final more = toggleTrainingDay(
-        TrainingFormat.fullBody,
-        {0, 2, 4},
-        6,
-        true,
-      );
-      expect(more.format, TrainingFormat.custom);
-      expect(more.days, {0, 2, 4, 6});
-    },
-  );
+  test('стиль не зависит от числа дней (TRAINING_SYSTEM.md 14)', () {
+    // Фулбоди Пн/Ср/Пт: Пт → Сб — тренировок всё ещё 3.
+    final moved = toggleTrainingDay(TrainingFormat.fullBody, {0, 2}, 5, true);
+    expect(moved.format, TrainingFormat.fullBody);
+    final more = toggleTrainingDay(TrainingFormat.fullBody, {0, 2, 4}, 6, true);
+    expect(more.format, TrainingFormat.fullBody);
+    expect(more.days, {0, 2, 4, 6});
+  });
 
   test('дата следующей смены графика сохраняется в герое', () {
     final next = DateTime.utc(2026, 11, 19, 10);

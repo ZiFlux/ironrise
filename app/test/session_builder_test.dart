@@ -3,6 +3,7 @@ import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/muscles.dart';
 import 'package:ironrise/game/program.dart';
 import 'package:ironrise/game/session_builder.dart';
+import 'package:ironrise/game/training_format.dart';
 
 List<ProgramDay> plan(
   TrainingLevel level,
@@ -16,7 +17,7 @@ List<ProgramDay> plan(
   sessionsPerWeek: sessions,
   equipment: equipment,
   stepOf: (_) => level.startStep,
-  split: split,
+  format: split ? TrainingFormat.split : TrainingFormat.custom,
   start: start,
   lagging: lagging,
 );
@@ -160,5 +161,66 @@ void main() {
       provenLevel(completedWorkouts: 10, stepOf: (_) => 3),
       TrainingLevel.novice,
     );
+  });
+
+  group('стиль и дни: мышцы не перекрываются (TRAINING_SYSTEM.md 14)', () {
+    List<String> titles(
+      TrainingFormat f,
+      int n, {
+      bool adjacent = false,
+      TrainingLevel level = TrainingLevel.intermediate,
+      bool start = false,
+    }) => SessionBuilder.days(
+      level: level,
+      sessionsPerWeek: n,
+      equipment: Equipment.gym,
+      stepOf: (_) => level.startStep,
+      format: f,
+      adjacent: adjacent,
+      start: start,
+    ).map((d) => d.title).toList();
+
+    test('стиль работает на любое число дней', () {
+      for (final n in [2, 3, 4, 5, 6]) {
+        expect(titles(TrainingFormat.upperLower, n), ['Верх', 'Низ']);
+        expect(titles(TrainingFormat.split, n), hasLength(3));
+      }
+    });
+
+    test('всё тело в соседние дни — верх/низ', () {
+      expect(titles(TrainingFormat.fullBody, 3), ['Всё тело А', 'Всё тело Б']);
+      expect(titles(TrainingFormat.fullBody, 3, adjacent: true), [
+        'Верх',
+        'Низ',
+      ]);
+    });
+
+    test('«подбери сам» по числу дней', () {
+      expect(titles(TrainingFormat.custom, 2), ['Всё тело А', 'Всё тело Б']);
+      expect(titles(TrainingFormat.custom, 3), hasLength(3));
+      expect(titles(TrainingFormat.custom, 3, level: TrainingLevel.novice), [
+        'Всё тело А',
+        'Всё тело Б',
+      ]);
+      expect(titles(TrainingFormat.custom, 4), ['Верх', 'Низ']);
+      expect(titles(TrainingFormat.custom, 6), hasLength(3));
+    });
+
+    test('«Старт»: всё тело, при соседних днях — верх/низ', () {
+      expect(titles(TrainingFormat.split, 5, start: true), [
+        'Всё тело А',
+        'Всё тело Б',
+      ]);
+      expect(titles(TrainingFormat.split, 5, start: true, adjacent: true), [
+        'Верх',
+        'Низ',
+      ]);
+    });
+
+    test('соседние дни', () {
+      expect(hasAdjacentDays(const [0, 2, 4]), isFalse);
+      expect(hasAdjacentDays(const [0, 1, 3]), isTrue);
+      expect(hasAdjacentDays(const [6, 0]), isTrue);
+    });
   });
 }

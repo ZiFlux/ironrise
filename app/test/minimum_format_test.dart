@@ -30,23 +30,34 @@ void main() {
     expect(scheduleValid(minimum, withRecoveryDays({0})), isFalse);
     // Загрузки подряд — восстановление съедается, график неверный.
     expect(scheduleValid(minimum, withRecoveryDays({0, 1})), isFalse);
-    expect(scheduleValid(TrainingFormat.custom, {0, 2}), isFalse);
+    expect(scheduleValid(TrainingFormat.custom, {0}), isFalse);
+    expect(scheduleValid(TrainingFormat.custom, {0, 2}), isTrue);
+    expect(
+      scheduleValid(TrainingFormat.custom, {0, 1, 2, 3, 4, 5, 6}),
+      isFalse,
+    );
     expect(scheduleValid(TrainingFormat.custom, {0, 2, 4}), isTrue);
   });
 
-  test('восстановление: кардио, растяжка того, что работало, кор и дыхание', () {
-    final plan = recoveryPlan({BodyPart.chest, BodyPart.arms});
-    expect(plan.first.name, 'Лёгкое кардио');
-    expect(plan.last.name, startsWith('Дыхание'));
-    expect(plan.where((m) => m.part == BodyPart.chest), isNotEmpty);
-    expect(plan.where((m) => m.part == BodyPart.legs), isEmpty);
-    // Кор не грузили — добавлен.
-    expect(plan.where((m) => m.part == BodyPart.core), isNotEmpty);
-    expect(recoveryMinutes(plan), inInclusiveRange(10, 20));
-  });
+  test(
+    'восстановление: кардио, растяжка того, что работало, кор и дыхание',
+    () {
+      final plan = recoveryPlan({BodyPart.chest, BodyPart.arms});
+      expect(plan.first.name, 'Лёгкое кардио');
+      expect(plan.last.name, startsWith('Дыхание'));
+      expect(plan.where((m) => m.part == BodyPart.chest), isNotEmpty);
+      expect(plan.where((m) => m.part == BodyPart.legs), isEmpty);
+      // Кор не грузили — добавлен.
+      expect(plan.where((m) => m.part == BodyPart.core), isNotEmpty);
+      expect(recoveryMinutes(plan), inInclusiveRange(10, 20));
+    },
+  );
 
   test('серия: пропуск восстановления не сжигает её (п. 131)', () {
     // Пн/Чт загрузка: отдых до 3 дней (Пт–Вс), восстановление необязательно.
-    expect(maxRestDaysInRow(loadDaysOf(minimum, const [0, 1, 3, 4]).toList()), 3);
+    expect(
+      maxRestDaysInRow(loadDaysOf(minimum, const [0, 1, 3, 4]).toList()),
+      3,
+    );
   });
 }

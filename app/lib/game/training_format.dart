@@ -8,23 +8,27 @@ enum TrainingFormat {
     [0, 1, 3, 4],
   ),
   fullBody(
-    'Фулбоди',
-    '3 тренировки в неделю, всё тело за раз. Лучший старт для новичка',
+    'Всё тело',
+    'Каждая тренировка — всё тело. Лучше через день: мышцам нужно 48 часов',
     [0, 2, 4],
   ),
   upperLower(
     'Верх / низ',
-    '4 тренировки в неделю: верх и низ тела по очереди',
+    'Верх и низ тела по очереди — можно и в соседние дни',
     [0, 1, 3, 4],
   ),
-  split('Сплит', '5 тренировок в неделю, каждый день своя группа мышц', [
+  split('Сплит', 'По кругу: спина и бицепс → грудь и трицепс → ноги и плечи', [
     0,
     1,
     2,
     3,
     4,
   ]),
-  custom('Свой график', 'Выберите дни сами, минимум 3 в неделю', [0, 2, 4]);
+  custom(
+    'Подбери сам',
+    'Выбери дни — программа сама разложит мышцы так, чтобы они не перекрывались',
+    [0, 2, 4],
+  );
 
   const TrainingFormat(this.label, this.description, this.defaultDays);
 
@@ -37,7 +41,16 @@ enum TrainingFormat {
 
 const List<String> weekdayShort = ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'];
 
-const int minTrainingDaysPerWeek = 3;
+const int minTrainingDaysPerWeek = 2;
+
+/// Хотя бы один день отдыха в неделю.
+const int maxTrainingDaysPerWeek = 6;
+
+/// Среди дней есть соседние (с переходом Вс → Пн): «всё тело» в них перекрыло бы мышцы.
+bool hasAdjacentDays(Iterable<int> days) {
+  final all = days.toSet();
+  return all.length > 1 && all.any((d) => all.contains((d + 1) % 7));
+}
 
 /// Дней загрузки в формате «Минимум».
 const int minimumLoadDays = 2;
@@ -76,7 +89,8 @@ Set<int> withRecoveryDays(Iterable<int> loadDays) => {
 /// остальных — не меньше [minTrainingDaysPerWeek] дней.
 bool scheduleValid(TrainingFormat format, Set<int> days) {
   if (format != TrainingFormat.minimum) {
-    return days.length >= minTrainingDaysPerWeek;
+    return days.length >= minTrainingDaysPerWeek &&
+        days.length <= maxTrainingDaysPerWeek;
   }
   return loadDaysOf(format, days).length == minimumLoadDays &&
       recoveryDaysOf(format, days).length == minimumLoadDays;

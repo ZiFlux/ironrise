@@ -87,19 +87,23 @@ class UserProgram {
 
   /// Дни программы: 6–8 упражнений под уровень, подходы — под недельную норму
   /// мышц (session_builder.dart). «Старт» новичка — всё тело, 2 подхода.
+  /// Дни программы по стилю игрока и числу дней (TRAINING_SYSTEM.md 14).
+  /// [adjacent] — среди дней графика есть соседние.
   List<ProgramDay> days(
     int sessionsPerWeek, {
-    bool split = false,
+    TrainingFormat format = TrainingFormat.custom,
+    bool adjacent = false,
     TrainingLevel level = TrainingLevel.novice,
     BodyPart? lagging,
   }) {
     final start = phaseFor(level) == ProgramPhase.start;
     return SessionBuilder.days(
       level: level,
-      sessionsPerWeek: start ? 3 : sessionsPerWeek,
+      sessionsPerWeek: sessionsPerWeek,
       equipment: equipment,
       stepOf: (pattern) => levelOf(pattern, start: level.startStep),
-      split: split && !start,
+      format: format,
+      adjacent: adjacent,
       start: start,
       lagging: start ? null : lagging,
     );
@@ -118,11 +122,13 @@ class UserProgram {
     required int sessionsPerWeek,
     BodyPart? lagging,
     TrainingLevel level = TrainingLevel.novice,
-    bool split = false,
+    TrainingFormat format = TrainingFormat.custom,
+    bool adjacent = false,
   }) {
     final all = days(
       sessionsPerWeek,
-      split: split,
+      format: format,
+      adjacent: adjacent,
       level: level,
       lagging: lagging,
     );
@@ -491,7 +497,8 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       sessionsPerWeek: hero?.loadDays.length ?? 3,
       lagging: hero?.lagging.firstOrNull,
       level: trainingLevelOf(hero, program),
-      split: hero?.format == TrainingFormat.split,
+      format: hero?.format ?? TrainingFormat.custom,
+      adjacent: hasAdjacentDays(hero?.loadDays ?? const []),
     );
 
 /// Уровень по входной тренировке (п. 116), а без неё — по анкете героя.

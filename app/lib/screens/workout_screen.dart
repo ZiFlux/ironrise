@@ -71,18 +71,19 @@ String _phaseLine(UserProgram program, HeroProfile? hero) {
   };
 }
 
-/// Сплит: какой день недели что тренировать — «Пн спина и бицепс · Ср грудь…».
+/// Раскладка недели: какой день что тренировать — «Пн верх · Вт низ · Чт верх…»
+/// (TRAINING_SYSTEM.md 14). У «всего тела» без смены групп — не показываем.
 String? _splitLine(UserProgram program, HeroProfile? hero) {
-  if (hero?.format != TrainingFormat.split ||
-      program.phaseFor(trainingLevelOf(hero, program)) != ProgramPhase.base) {
-    return null;
-  }
+  if (hero == null) return null;
+  final days = program.days(
+    hero.loadDays.length,
+    format: hero.format,
+    adjacent: hasAdjacentDays(hero.loadDays),
+    level: trainingLevelOf(hero, program),
+  );
+  if (days.every((d) => d.title.startsWith('Всё тело'))) return null;
   final layout = weekLayout(
-    days: program.days(
-      hero!.loadDays.length,
-      split: true,
-      level: trainingLevelOf(hero, program),
-    ),
+    days: days,
     nextIndex: program.nextDayIndex,
     trainingDays: hero.loadDays,
     today: DateTime.now(),

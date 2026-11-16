@@ -362,13 +362,7 @@ class ShopCatalog {
       40,
     ),
     _color('tc_red', 'Красный', ShopSlot.topColor, const Color(0xFFD23C3C), 40),
-    _color(
-      'tc_gold',
-      'Золото',
-      ShopSlot.topColor,
-      const Color(0xFFD9B25A),
-      0,
-    ),
+    _color('tc_gold', 'Золото', ShopSlot.topColor, const Color(0xFFD9B25A), 0),
     _color(
       'tc_beta',
       'Бета',
@@ -453,7 +447,13 @@ class ShopCatalog {
     _shoe('sh_sneakers', 'Кроссовки', ShoeKind.sneakers, 0),
     _shoe('sh_slippers', 'Чешки', ShoeKind.slippers, 60),
     _shoe('sh_chunky', 'Массивные кроссовки', ShoeKind.chunky, 90),
-    _color('sn_white', 'Белые', ShopSlot.sneakersColor, const Color(0xFFEDEDED), 40),
+    _color(
+      'sn_white',
+      'Белые',
+      ShopSlot.sneakersColor,
+      const Color(0xFFEDEDED),
+      40,
+    ),
     _color(
       'sn_black',
       'Чёрные',
@@ -468,8 +468,20 @@ class ShopCatalog {
       const Color(0xFFC6FF3D),
       70,
     ),
-    _color('sn_red', 'Красные', ShopSlot.sneakersColor, const Color(0xFFE5484D), 70),
-    _color('sn_blue', 'Синие', ShopSlot.sneakersColor, const Color(0xFF3D7BFF), 70),
+    _color(
+      'sn_red',
+      'Красные',
+      ShopSlot.sneakersColor,
+      const Color(0xFFE5484D),
+      70,
+    ),
+    _color(
+      'sn_blue',
+      'Синие',
+      ShopSlot.sneakersColor,
+      const Color(0xFF3D7BFF),
+      70,
+    ),
     _color(
       'sn_gold',
       'Золотые',
@@ -595,12 +607,7 @@ class ShopCatalog {
     _accessory('acc_cap', 'Кепка', Accessory.cap, 80),
     _accessory('acc_glasses', 'Тёмные очки', Accessory.glasses, 60),
     _accessory('acc_headphones', 'Наушники', Accessory.headphones, 100),
-    _accessory(
-      'acc_gold_chain',
-      'Золотая цепь',
-      Accessory.goldChain,
-      0,
-    ),
+    _accessory('acc_gold_chain', 'Золотая цепь', Accessory.goldChain, 0),
     _accessory(
       'acc_beta_cap',
       'Кепка тестера',
