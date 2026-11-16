@@ -137,7 +137,8 @@ class SchedulePicker extends StatelessWidget {
               : minimum
               ? 'Загрузка: ${load.map((d) => weekdayShort[d]).join(', ')}, восстановление: '
                     '${recovery.map((d) => weekdayShort[d]).join(', ')}. '
-                    'Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.'
+                    'Восстановление — по желанию: без него серия держится до '
+                    '${maxRestDaysInRow(load.toList())} дн. отдыха подряд.'
               : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.',
           style: TextStyle(
             color: tooFew

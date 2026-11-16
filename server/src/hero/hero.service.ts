@@ -2,7 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { localDay } from '../common/day';
 import { PartMap, partMap } from '../game/body-part';
 import { laggingParts, levels, power } from '../game/progression';
-import { currentStreak, maxRestDaysInRow } from '../game/streak';
+import { currentStreak, restLimit } from '../game/streak';
 import { premiumStatus, PremiumStatus } from '../game/premium';
 import { nextScheduleChangeAt } from '../game/schedule';
 import { Boosters, readBoosters } from '../game/streak-rewards';
@@ -81,7 +81,7 @@ export class HeroService {
       streakDays: profile.streakDays,
       lastActiveDay: profile.lastActiveDay,
       today: localDay(now, profile.timezone),
-      maxRestDays: maxRestDaysInRow(profile.scheduleDays),
+      maxRestDays: restLimit(profile.trainingFormat, profile.scheduleDays),
     });
     return {
       nickname: profile.nickname,

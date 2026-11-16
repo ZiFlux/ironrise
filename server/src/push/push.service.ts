@@ -150,6 +150,7 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
         timezone: true,
         lastActiveDay: true,
         scheduleDays: true,
+        trainingFormat: true,
         streakDays: true,
         streakReminderDay: true,
         notificationSettings: true,
@@ -159,7 +160,7 @@ export class PushService implements OnModuleInit, OnModuleDestroy {
       const settings = parseSettings(p.notificationSettings);
       const today = localDay(now, p.timezone);
       if (!settings.streak_risk || p.streakReminderDay === today) continue;
-      if (!isStreakAtRisk(p.lastActiveDay!, today, p.scheduleDays)) continue;
+      if (!isStreakAtRisk(p.lastActiveDay!, today, p.scheduleDays, p.trainingFormat)) continue;
       if (localHour(now, p.timezone) < settings.streakReminderHour) continue;
       await this.db.profile.update({ where: { userId: p.userId }, data: { streakReminderDay: today } });
       this.notify(p.userId, {

@@ -857,3 +857,17 @@ describe('входная тренировка: монеты раз в 25 дне�
     expect(EntryTestSchema.safeParse({ ...ok, level: 'god' }).success).toBe(false);
   });
 });
+
+import { recoveryDaysOf, restLimit } from '../src/game/streak';
+
+describe('«Минимум»: восстановление необязательно, серия не сгорает (п. 131)', () => {
+  it('дни восстановления — после загрузки', () => {
+    expect([...recoveryDaysOf('minimum', [0, 1, 3, 4])].sort()).toEqual([1, 4]);
+    expect([...recoveryDaysOf('fullBody', [0, 1, 3, 4])]).toEqual([]);
+  });
+  it('отдых считается по дням загрузки: Пн/Чт — 3 дня, а не 2', () => {
+    expect(restLimit('minimum', [0, 1, 3, 4])).toBe(3);
+    expect(restLimit('custom', [0, 1, 3, 4])).toBe(2);
+    expect(restLimit('fullBody', [0, 2, 4])).toBe(2);
+  });
+});

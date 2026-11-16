@@ -44,4 +44,9 @@ void main() {
     expect(plan.where((m) => m.part == BodyPart.core), isNotEmpty);
     expect(recoveryMinutes(plan), inInclusiveRange(10, 20));
   });
+
+  test('серия: пропуск восстановления не сжигает её (п. 131)', () {
+    // Пн/Чт загрузка: отдых до 3 дней (Пт–Вс), восстановление необязательно.
+    expect(maxRestDaysInRow(loadDaysOf(minimum, const [0, 1, 3, 4]).toList()), 3);
+  });
 }

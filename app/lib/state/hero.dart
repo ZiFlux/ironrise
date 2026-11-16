@@ -286,7 +286,10 @@ class HeroProfile {
       body.age == null ? GameConfig.defaultMaxHeartRate : 220 - body.age!;
   List<BodyPart> get lagging => Progression.laggingParts(levels);
   int get power => Progression.power(levels, currentStreak(DateTime.now()));
-  int get maxRestDays => maxRestDaysInRow(trainingDays);
+
+  /// Сколько дней подряд можно отдыхать без потери серии. Кардио и восстановление в
+  /// дни отдыха необязательны (п. 131): у «Минимума» — по дням загрузки.
+  int get maxRestDays => maxRestDaysInRow(loadDays);
 
   /// Серия с учётом сегодняшнего дня (сгорает после лишнего дня отдыха).
   int currentStreak(DateTime today) => Streak.current(

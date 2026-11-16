@@ -42,6 +42,34 @@ export const maxRestDaysInRow = (days: number[]): number => {
   return max;
 };
 
+/**
+ * «Минимум» (п. 100): за днём загрузки идёт день восстановления. Как recoveryDaysOf в
+ * app/lib/game/training_format.dart: пары по порядку недели, с переходом через воскресенье.
+ */
+export const recoveryDaysOf = (format: string, days: readonly number[]): Set<number> => {
+  if (format !== 'minimum') return new Set();
+  const all = new Set(days);
+  const start = [0, 1, 2, 3, 4, 5, 6].find((d) => all.has(d) && !all.has((d + 6) % 7));
+  const recovery = new Set<number>();
+  if (start === undefined) return recovery;
+  for (let i = 0; i < 7; i++) {
+    const d = (start + i) % 7;
+    if (!all.has(d) || recovery.has(d)) continue;
+    if (all.has((d + 1) % 7)) recovery.add((d + 1) % 7);
+  }
+  return recovery;
+};
+
+/**
+ * Сколько дней подряд можно отдыхать без потери серии. Кардио и восстановление в дни
+ * отдыха — необязательны (п. 131): у «Минимума» считаем по дням загрузки, иначе
+ * пропущенный день восстановления сжигал бы серию.
+ */
+export const restLimit = (format: string, scheduleDays: readonly number[]): number => {
+  const recovery = recoveryDaysOf(format, scheduleDays);
+  return maxRestDaysInRow(scheduleDays.filter((d) => !recovery.has(d)));
+};
+
 /** Сегодня без активности серия сгорит завтра: отдых уже на пределе формата. */
-export const isStreakAtRisk = (lastActiveDay: string, today: string, scheduleDays: number[]): boolean =>
-  daysBetween(lastActiveDay, today) === maxRestDaysInRow(scheduleDays) + 1;
+export const isStreakAtRisk = (lastActiveDay: string, today: string, scheduleDays: number[], format = ''): boolean =>
+  daysBetween(lastActiveDay, today) === restLimit(format, scheduleDays) + 1;

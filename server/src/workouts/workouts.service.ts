@@ -4,7 +4,7 @@ import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
 import { summarizePulse } from '../game/pulse-summary';
 import { CardioSummary, scoreCardio } from '../game/cardio';
-import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../game/streak';
+import { currentStreak, restLimit, streakAfterActivity } from '../game/streak';
 import { StreakReward, readBoosters, streakReward, withCoinBoost, withXpBoost } from '../game/streak-rewards';
 import { BodyPart } from '../game/body-part';
 import { levels } from '../game/progression';
@@ -193,7 +193,7 @@ export class WorkoutsService {
           streakDays: profile.streakDays,
           lastActiveDay: profile.lastActiveDay,
           today: day,
-          maxRestDays: maxRestDaysInRow(profile.scheduleDays),
+          maxRestDays: restLimit(profile.trainingFormat, profile.scheduleDays),
         }) === 0;
       const summary = withCoinBoost(
         withPremiumCoins(
@@ -273,7 +273,7 @@ export class WorkoutsService {
       const last = profile.lastActiveDay;
       let streak: StreakReward | null = null;
       if (last === null || day >= last) {
-        const maxRest = maxRestDaysInRow(profile.scheduleDays);
+        const maxRest = restLimit(profile.trainingFormat, profile.scheduleDays);
         const after = streakAfterActivity({
           currentStreak: profile.streakDays,
           lastActiveDay: last,
