@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../avatar/avatar_view.dart';
 import '../game/aura.dart';
 import '../net/api_client.dart';
+import '../state/training_sound.dart';
 import '../state/account_state.dart';
 import '../state/aura_state.dart';
 import '../state/heart_rate_state.dart';
@@ -253,6 +254,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
       _index = 0;
       _stepEnd = now.add(Duration(seconds: _steps[0].seconds));
     });
+    TrainingSound.start();
     _timer = Timer.periodic(const Duration(milliseconds: 500), (_) => _tick());
   }
 
@@ -270,9 +272,14 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
       return;
     }
     // Догоняем все шаги, которые закончились, пока приложение было в фоне.
+    final before = _index;
     while (!now.isBefore(_stepEnd) && _index + 1 < _steps.length) {
       _index++;
       _stepEnd = _stepEnd.add(Duration(seconds: _steps[_index].seconds));
+    }
+    // Сигнал на смену шага: старт упражнения или начало отдыха (п. 72).
+    if (_index != before) {
+      _steps[_index].rest ? TrainingSound.rest() : TrainingSound.start();
     }
     if (!now.isBefore(_stepEnd)) {
       _complete();

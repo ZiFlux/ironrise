@@ -367,8 +367,7 @@ class ShopCatalog {
       'Золото',
       ShopSlot.topColor,
       const Color(0xFFD9B25A),
-      120,
-      premium: true,
+      0,
     ),
     _color(
       'tc_beta',
@@ -476,8 +475,7 @@ class ShopCatalog {
       'Золотые',
       ShopSlot.sneakersColor,
       const Color(0xFFD9B25B),
-      120,
-      premium: true,
+      0,
     ),
     _color(
       'sn_beta',
@@ -601,8 +599,7 @@ class ShopCatalog {
       'acc_gold_chain',
       'Золотая цепь',
       Accessory.goldChain,
-      150,
-      premium: true,
+      0,
     ),
     _accessory(
       'acc_beta_cap',

@@ -20,12 +20,15 @@ export const SHOP_PRICES: Readonly<Record<string, number>> = {
   // Костюм клоуна: только покупка, в редакторе старта его нет (COSTUME_ITEMS).
   hair_clown: 120, top_clown: 150, acc_clown_nose: 60,
   skin_iron: 0, skin_light: 0, skin_tan: 0, skin_brown: 0, skin_dark: 0,
-  // Премиум: купить можно только с подпиской, носить — всегда, раз куплено.
-  tc_gold: 120, sn_gold: 120, acc_gold_chain: 150,
+  // Золотой комплект — бесплатно всем с 16.11 (п. 111; раньше премиум за монеты).
+  tc_gold: 0, sn_gold: 0, acc_gold_chain: 0,
 };
 
-/** Вещи только для премиума — без подписки не продаются. */
-export const PREMIUM_ITEMS: ReadonlySet<string> = new Set(['tc_gold', 'sn_gold', 'acc_gold_chain']);
+/**
+ * Вещи только для премиума — без подписки не продаются. Пока пусто: стартовый
+ * золотой комплект стал бесплатным (п. 111), новые премиум-вещи — сюда.
+ */
+export const PREMIUM_ITEMS: ReadonlySet<string> = new Set<string>();
 
 /**
  * Эксклюзивы бета-тестеров: не продаются, выдаются аккаунту навсегда

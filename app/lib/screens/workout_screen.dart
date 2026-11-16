@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../game/to_failure.dart';
 import '../game/exercise_catalog.dart';
 import '../game/program.dart';
 import '../game/recommendation.dart';
@@ -15,6 +16,7 @@ import '../game/warmup.dart';
 import '../game/wellbeing.dart';
 import '../game/workout.dart';
 import '../game/workout_variant.dart';
+import '../state/training_sound.dart';
 import '../state/hero.dart';
 import '../game/training_format.dart';
 import '../state/cardio_state.dart';
@@ -462,6 +464,15 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   int _expanded = 0;
   DateTime? _restEndsAt;
 
+  /// Сигнал конца отдыха — «пора делать подход» (п. 72).
+  Timer? _restBell;
+
+  @override
+  void dispose() {
+    _restBell?.cancel();
+    super.dispose();
+  }
+
   WorkoutNotifier get _workout => ref.read(workoutProvider.notifier);
 
   @override
@@ -506,6 +517,11 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     setState(
       () => _restEndsAt = DateTime.now().add(GameConfig.restBetweenSets),
     );
+    TrainingSound.rest();
+    _restBell?.cancel();
+    _restBell = Timer(GameConfig.restBetweenSets, () {
+      if (mounted) TrainingSound.start();
+    });
   }
 
   /// Ответил «был запас?» — переходим к следующему упражнению плана.
@@ -582,7 +598,10 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                   ? const SizedBox.shrink()
                   : _RestBanner(
                       left: left,
-                      onSkip: () => setState(() => _restEndsAt = null),
+                      onSkip: () {
+                        _restBell?.cancel();
+                        setState(() => _restEndsAt = null);
+                      },
                       hint: _restHint(left),
                     );
             },
@@ -614,6 +633,13 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                         onLog: (set) => _logSet(i, set),
                         onUndo: () => _workout.undoLastSet(i),
                         onRemove: () => _workout.removeExercise(i),
+                        toFailure: toFailureFor(
+                          trainingLevelOf(
+                            ref.watch(heroProvider),
+                            ref.watch(programProvider),
+                          ),
+                          session.entries[i].exercise,
+                        ),
                       );
                     },
                   ),
@@ -823,9 +849,13 @@ class _ExerciseCard extends StatelessWidget {
     required this.onLog,
     required this.onUndo,
     required this.onRemove,
+    this.toFailure = false,
   });
 
   final ExerciseEntry entry;
+
+  /// Опытному: последний подход — до отказа (п. 73).
+  final bool toFailure;
   final ExerciseProgress progress;
   final ValueChanged<bool> onReserve;
   final bool expanded;
@@ -850,6 +880,7 @@ class _ExerciseCard extends StatelessWidget {
             ),
             if (entry.plan != null)
               _PlanTarget(plan: entry.plan!, progress: progress),
+            if (toFailure && !entry.isFull) const _ToFailureNote(),
             for (final (i, set) in entry.sets.indexed)
               _SetRow(index: i + 1, text: formatSet(exercise, set)),
             if (entry.planDone)
@@ -894,6 +925,49 @@ extension on _ExerciseCard {
 }
 
 /// «Цель: 2 × 10–12 · 3 в запасе» и подсказка при первом подборе веса.
+/// Пометка «последний подход — до отказа» с пояснением по нажатию.
+class _ToFailureNote extends StatelessWidget {
+  const _ToFailureNote();
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return InkWell(
+      borderRadius: BorderRadius.circular(8),
+      onTap: () => showDialog<void>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text(toFailureTitle),
+          content: const SingleChildScrollView(child: Text(toFailureText)),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('Понятно'),
+            ),
+          ],
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Icon(LucideIcons.flame, size: 16, color: accent),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                'Последний подход — до отказа',
+                style: TextStyle(fontSize: 13, color: accent),
+              ),
+            ),
+            const SizedBox(width: 4),
+            const Icon(LucideIcons.info, size: 14, color: AppColors.textMuted),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class _PlanTarget extends StatelessWidget {
   const _PlanTarget({required this.plan, required this.progress});
 

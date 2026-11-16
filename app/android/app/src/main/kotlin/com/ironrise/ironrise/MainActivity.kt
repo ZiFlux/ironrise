@@ -1,6 +1,8 @@
 package com.ironrise.ironrise
 
 import android.content.ContentValues
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.provider.CalendarContract
 import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
@@ -39,6 +41,17 @@ class MainActivity : FlutterFragmentActivity() {
                     level = call.argument<String>("level") ?: "",
                 )
                 result.success(true)
+            }
+        // Короткие сигналы тренировки: старт упражнения и начало отдыха (п. 72).
+        // Поток уведомлений — громкость и беззвучный режим телефона учитываются.
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, SOUND_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                val (tone, ms) = when (call.method) {
+                    "start" -> ToneGenerator.TONE_PROP_BEEP2 to 400
+                    "rest" -> ToneGenerator.TONE_PROP_ACK to 300
+                    else -> return@setMethodCallHandler result.notImplemented()
+                }
+                result.success(runCatching { beep(tone, ms) }.isSuccess)
             }
         MethodChannel(flutterEngine.dartExecutor.binaryMessenger, CALENDAR_CHANNEL)
             .setMethodCallHandler { call, result ->
@@ -142,6 +155,19 @@ class MainActivity : FlutterFragmentActivity() {
         }
     }
 
+    private var tones: ToneGenerator? = null
+
+    private fun beep(tone: Int, ms: Int) {
+        val gen = tones ?: ToneGenerator(AudioManager.STREAM_NOTIFICATION, 80).also { tones = it }
+        gen.startTone(tone, ms)
+    }
+
+    override fun onDestroy() {
+        tones?.release()
+        tones = null
+        super.onDestroy()
+    }
+
     private companion object {
         const val WATCH_CHANNEL = "ironrise/watch"
         const val PATH_PULSE = "/ironrise/pulse"
@@ -152,6 +178,7 @@ class MainActivity : FlutterFragmentActivity() {
         const val PATH_HELLO = "/ironrise/hello"
         const val PATH_VERSION = "/ironrise/version"
         const val CALENDAR_CHANNEL = "ironrise/calendar"
+        const val SOUND_CHANNEL = "ironrise/sound"
         const val SUMMARY_CHANNEL = "ironrise/summary"
         const val PATH_SUMMARY = "/ironrise/summary"
     }

@@ -178,10 +178,10 @@ describe('боты, лига, магазин', () => {
     for (let i = 1; i < sun.length; i++) expect(sun[i - 1].points).toBeGreaterThanOrEqual(sun[i].points);
   });
 
-  it('в магазине 80 вещей, из них 65 платных — как в клиенте', () => {
+  it('в магазине 80 вещей, из них 62 платных — как в клиенте (золото бесплатно, п. 111)', () => {
     const prices = Object.values(SHOP_PRICES);
     expect(prices).toHaveLength(80);
-    expect(prices.filter((p) => p > 0)).toHaveLength(65);
+    expect(prices.filter((p) => p > 0)).toHaveLength(62);
   });
 });
 
@@ -504,8 +504,9 @@ describe('стартовый образ', () => {
     expect(unpaidItems({ ...starter, accessories: ['cap'] }, CREATOR_ITEMS)).toEqual(['acc_cap']);
   });
 
-  it('аксессуары, премиум и вещи тестеров в редактор не входят', () => {
-    for (const id of ['acc_cap', 'acc_gold_chain', 'tc_gold', 'sn_gold', 'top_beta_tee', 'acc_beta_cap']) {
+  it('аксессуары и вещи тестеров в редактор не входят', () => {
+    // Золотой комплект бесплатен всем (п. 111) — его наличие в редакторе ничего не меняет.
+    for (const id of ['acc_cap', 'acc_gold_chain', 'top_beta_tee', 'acc_beta_cap']) {
       expect(CREATOR_ITEMS.has(id)).toBe(false);
     }
     expect(creatorItemsToGrant({ ...look, accessories: ['cap'] }, new Set())).not.toContain('acc_cap');
@@ -658,7 +659,7 @@ describe('живая лига', () => {
     for (const b of bots) {
       expect(b.points).toBeGreaterThanOrEqual(21);
       expect(b.points).toBeLessThanOrEqual(39);
-      expect(b.name).toMatch(/^[A-Za-z0-9_]+$/);
+      expect(b.name).toMatch(/^[\p{L}\d_]{3,20}$/u);
     }
   });
 });
