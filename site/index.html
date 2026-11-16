@@ -90,6 +90,13 @@
     .faq details[open] summary::after { content: "−"; }
     .faq details p { margin: 0 0 16px; color: var(--text-2); }
 
+    .road { display: grid; gap: 12px; }
+    .road .step { display: grid; grid-template-columns: 120px 1fr; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; }
+    .road .when { color: var(--accent); font-weight: 700; }
+    .road .done .when { color: var(--text-2); }
+    .road h3 { margin: 0 0 4px; font-size: 17px; }
+    .road p { margin: 0; color: var(--text-2); }
+    @media (max-width: 520px) { .road .step { grid-template-columns: 1fr; gap: 4px; } }
     .cta { text-align: center; }
     .cta p { color: var(--text-2); margin: 12px 0 24px; }
 
@@ -105,6 +112,7 @@
       <nav>
         <a href="#features">Возможности</a>
         <a href="#how">Как это работает</a>
+        <a href="#roadmap">Что дальше</a>
         <a href="#faq">Вопросы</a>
       </nav>
     </div>
@@ -155,6 +163,17 @@
         <figure><img src="img/workout.png" alt="Тренировка" loading="lazy"><figcaption>План тренировки</figcaption></figure>
         <figure><img src="img/stats.png" alt="Статистика" loading="lazy"><figcaption>Анализ и прогноз</figcaption></figure>
         <figure><img src="img/shop.png" alt="Магазин" loading="lazy"><figcaption>Стиль героя</figcaption></figure>
+      </div>
+    </section>
+
+    <section id="roadmap">
+      <h2>Что нового и что дальше</h2>
+      <p class="lead">Сейчас — версия 1.3. Обновления выходят каждые 1–2 недели.</p>
+      <div class="road">
+        <div class="step done"><div class="when">Ноябрь</div><div><h3>Версии 1.2–1.3 — уже вышли</h3><p>Входная тренировка и план по силам, несколько целей и свой путь у каждой, любой стиль и любые дни тренировок без перегрузки мышц, формат «Минимум» с днями восстановления, тренировки без интернета, инструкции для часов Huawei, Garmin, Polar, COROS и Amazfit, честный античит.</p></div></div>
+        <div class="step"><div class="when">Декабрь</div><div><h3>Сезон 2 и новые лиги</h3><p>Новый сезон с 28 декабря: свои награды и одежда. Больше лиг, можно заглянуть в чужие. Графики прогресса, нормы пульса по упражнениям.</p></div></div>
+        <div class="step"><div class="when">Январь</div><div><h3>Публичный запуск</h3><p>19–20 января — IronRise для всех в RuStore. До этого — полировка по отзывам бета-тестеров.</p></div></div>
+        <div class="step"><div class="when">После</div><div><h3>Дальше</h3><p>Премиум с пробным месяцем, новый облик героя и анимации, ЛФК и сон, команды и Google Play.</p></div></div>
       </div>
     </section>
 
