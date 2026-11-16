@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../game/watch_guides.dart';
 import '../state/heart_rate_state.dart';
 import '../theme.dart';
 
@@ -76,9 +77,7 @@ class _HowToCard extends StatelessWidget {
   const _HowToCard();
 
   static const _steps = [
-    'Часы на Wear OS (Galaxy Watch, Pixel Watch): откройте IronRise на часах и нажмите «Начать». Пульс появится здесь сам',
-    'Нагрудный датчик: наденьте его, он начнёт транслировать пульс сам',
-    'Часы Xiaomi, Amazfit, Huawei, Garmin, Polar: включите в настройках часов «Трансляция пульса» или «Heart rate broadcast»',
+    'Включите на часах трансляцию пульса — инструкция для вашей модели ниже',
     'Нажмите «Найти датчик» и выберите устройство из списка',
   ];
 
@@ -125,11 +124,76 @@ class _HowToCard extends StatelessWidget {
               'С подключённым пульсом тренировка подтверждается и даёт полный опыт',
               style: TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
+            const SizedBox(height: 12),
+            const Text(
+              'Ваши часы',
+              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+            ),
+            for (final g in watchGuides) _WatchGuideTile(guide: g),
+            const SizedBox(height: 4),
+            const Text(
+              'Меню у моделей и прошивок может отличаться. Не получилось — напишите '
+              'в канал бета-тестеров, добавим вашу модель.',
+              style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
           ],
         ),
       ),
     );
   }
+}
+
+/// Инструкция для одной марки часов — раскрывается по нажатию (п. 125).
+class _WatchGuideTile extends StatelessWidget {
+  const _WatchGuideTile({required this.guide});
+
+  final WatchGuide guide;
+
+  @override
+  Widget build(BuildContext context) => Theme(
+    data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+    child: ExpansionTile(
+      tilePadding: EdgeInsets.zero,
+      childrenPadding: const EdgeInsets.only(bottom: 8),
+      expandedCrossAxisAlignment: CrossAxisAlignment.start,
+      title: Text(guide.brand, style: const TextStyle(fontSize: 14)),
+      subtitle: Text(
+        [
+          guide.models,
+          guide.live ? 'пульс живьём' : 'пульс после тренировки',
+          if (guide.tested) 'проверено',
+        ].join(' · '),
+        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+      ),
+      children: [
+        for (final (i, step) in guide.steps.indexed)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                SizedBox(
+                  width: 20,
+                  child: Text(
+                    '${i + 1}',
+                    style: const TextStyle(color: AppColors.textMuted),
+                  ),
+                ),
+                Expanded(
+                  child: Text(
+                    step,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _ConnectedCard extends StatelessWidget {

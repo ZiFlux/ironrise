@@ -89,7 +89,9 @@ class DevicesScreen extends ConsumerWidget {
                 ? '${pulse.sensorName ?? 'Датчик'}: ${pulse.bpm ?? '—'} уд/мин'
                 : 'Нагрудный датчик или часы в режиме трансляции',
             ok: bleLive,
-            text: 'Пульс в реальном времени прямо во время подходов.',
+            text:
+                'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, '
+                'Polar, COROS, Amazfit и нагрудные датчики — инструкция для вашей модели внутри.',
             action: bleLive ? 'Открыть' : 'Найти датчик',
             onTap: () => context.go('/profile/heart-rate'),
           ),
