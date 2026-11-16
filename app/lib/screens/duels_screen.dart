@@ -19,6 +19,9 @@ import '../widgets/fit_screen.dart';
 import '../widgets/motion.dart';
 import '../widgets/status_toast.dart';
 import '../widgets/guide.dart';
+import '../widgets/info_bubble.dart';
+import '../widgets/fighter_compare.dart';
+import '../game/game_config.dart';
 
 /// Дуэли (экран 9). С аккаунтом — боты дня и друзья через сервер,
 /// без аккаунта — локальные боты.
@@ -390,6 +393,9 @@ class _FighterList extends StatelessWidget {
       child: Pressable(
         child: _FighterCard(
           fighter: f,
+          me: me,
+          // С друзьями — раз в день (не repeatable): у них есть профиль.
+          friend: !repeatable,
           myPower: me.power,
           result: results[f.id],
           repeatable: repeatable,
@@ -404,28 +410,61 @@ class _FighterList extends StatelessWidget {
         // Сила и счётчик боёв — одной строкой: место над списком у сезона и ауры.
         Row(
           children: [
-            Icon(LucideIcons.zap, size: 16, color: accent),
-            const SizedBox(width: 6),
-            Text('${me.power}', style: figureStyle(size: 16, color: accent)),
-            const SizedBox(width: 6),
-            const Flexible(
-              child: Text(
-                'твоя сила',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+            Flexible(
+              child: Tappable(
+                radius: 8,
+                onTap: (c) => showInfoBubble(
+                  c,
+                  title: 'Твоя сила ${me.power}',
+                  text:
+                      'В бою здоровье равно силе. Сила растёт только от тренировок: '
+                      '10 за уровень части тела и 2 за день серии (до 30).',
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(LucideIcons.zap, size: 16, color: accent),
+                    const SizedBox(width: 6),
+                    Text(
+                      '${me.power}',
+                      style: figureStyle(size: 16, color: accent),
+                    ),
+                    const SizedBox(width: 6),
+                    const Flexible(
+                      child: Text(
+                        'твоя сила',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Text(
-                counter,
-                textAlign: TextAlign.end,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
+              child: Tappable(
+                radius: 8,
+                onTap: (c) => showInfoBubble(
+                  c,
+                  title: 'Бои на сегодня',
+                  text:
+                      '${repeatable ? 'С каждым ботом можно драться снова после перезарядки, повторный бой — половина монет.' : 'С каждым другом — один бой в день.'} '
+                      'Счётчик обнулится в полночь — ${_untilMidnight()}.',
+                ),
+                child: Text(
+                  counter,
+                  textAlign: TextAlign.end,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -466,9 +505,20 @@ class _FighterList extends StatelessWidget {
   }
 }
 
+/// «через 3 ч 12 мин» до полуночи.
+String _untilMidnight() {
+  final now = DateTime.now();
+  final left = DateTime(now.year, now.month, now.day + 1).difference(now);
+  final h = left.inHours;
+  final m = left.inMinutes % 60;
+  return h > 0 ? 'через $h ч $m мин' : 'через $m мин';
+}
+
 class _FighterCard extends StatelessWidget {
   const _FighterCard({
     required this.fighter,
+    required this.me,
+    this.friend = false,
     required this.myPower,
     required this.result,
     required this.onFight,
@@ -477,6 +527,8 @@ class _FighterCard extends StatelessWidget {
   });
 
   final Fighter fighter;
+  final Fighter me;
+  final bool friend;
   final int myPower;
   final bool? result;
   final VoidCallback onFight;
@@ -510,42 +562,61 @@ class _FighterCard extends StatelessWidget {
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ConstrainedBox(
-              constraints: const BoxConstraints(minWidth: 48, maxWidth: 88),
-              child: AspectRatio(
-                aspectRatio: 0.5,
-                child: AvatarView(
-                  levels: fighter.levels,
-                  look: fighter.lookOrStarter,
-                ),
-              ),
-            ),
-            const SizedBox(width: 12),
             Expanded(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    fighter.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w500,
+              child: Tappable(
+                semantics: '${fighter.name}, сила ${fighter.power}, сравнить',
+                onTap: (_) => showFighterCompare(
+                  context,
+                  me: me,
+                  rival: fighter,
+                  friendId: friend ? fighter.id : null,
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(
+                        minWidth: 48,
+                        maxWidth: 88,
+                      ),
+                      child: AspectRatio(
+                        aspectRatio: 0.5,
+                        child: AvatarView(
+                          levels: fighter.levels,
+                          look: fighter.lookOrStarter,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'сила ${fighter.power} · $_strength',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
-                      fontSize: 13,
-                      color: AppColors.textMuted,
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            fighter.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            'сила ${fighter.power} · $_strength',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 13,
+                              color: AppColors.textMuted,
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
             // Четыре соперника — четыре одинаковые кнопки: лайм был бы везде,
@@ -577,7 +648,22 @@ class _FighterCard extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    _ResultTag(result! ? 'Победа' : 'Поражение', result!),
+                    Tappable(
+                      radius: 8,
+                      onTap: (c) => showInfoBubble(
+                        c,
+                        title: result! ? 'Победа' : 'Поражение',
+                        text: result!
+                            ? 'Победа приносит монеты и +${GameConfig.leagueWinPoints} '
+                                  'очков в лигу недели.${repeatable ? ' Повторный бой с тем же ботом — половина монет.' : ''}'
+                            : 'Поражение ничего не отнимает. Сила растёт только от '
+                                  'тренировок — подтяни отстающую часть тела и возвращайся.',
+                      ),
+                      child: _ResultTag(
+                        result! ? 'Победа' : 'Поражение',
+                        result!,
+                      ),
+                    ),
                     if (repeatable && nextFightAt != null)
                       Text(
                         _wait(nextFightAt!),
