@@ -51,5 +51,30 @@ export const authByEmail = new RateLimiter(5, 15 * 60_000);
 export const anyByIp = new RateLimiter(600, 60_000);
 /** Веб-админка: 60 запросов в минуту на адрес — перебор ключа бессмыслен. */
 export const adminByIp = new RateLimiter(60, 60_000);
+/**
+ * Журнал ошибок принимается без входа (аудит п. 130): без своего лимита им можно
+ * забить базу. Приложение шлёт раз в 2 минуты и после ошибок — 20 в минуту с запасом.
+ */
+export const logsByIp = new RateLimiter(20, 60_000);
+/** Поиск игроков по нику: не перебирать базу ников подряд. */
+export const searchByIp = new RateLimiter(60, 60_000);
 
 export const AUTH_LIMITED_PATHS = ['/v1/auth/login', '/v1/auth/register', '/v1/auth/delete-account'];
+
+/**
+ * Решение по запросу: null — пропустить, иначе — через сколько секунд повторить (429).
+ * Вынесено из RateLimitMiddleware, чтобы проверять тестами без Nest.
+ */
+export const rateLimitVerdict = (path: string, method: string, ip: string, email = ''): number | null => {
+  if (!anyByIp.allow(ip)) return anyByIp.retryAfterSec(ip);
+  if ((path === '/admin' || path.startsWith('/admin/') || path.startsWith('/v1/admin/')) && !adminByIp.allow(ip)) {
+    return adminByIp.retryAfterSec(ip);
+  }
+  if (path === '/v1/logs' && !logsByIp.allow(ip)) return logsByIp.retryAfterSec(ip);
+  if (path === '/v1/users/search' && !searchByIp.allow(ip)) return searchByIp.retryAfterSec(ip);
+  if (method === 'POST' && AUTH_LIMITED_PATHS.includes(path)) {
+    if (!authByIp.allow(ip)) return authByIp.retryAfterSec(ip);
+    if (email && !authByEmail.allow(email)) return authByEmail.retryAfterSec(email);
+  }
+  return null;
+};

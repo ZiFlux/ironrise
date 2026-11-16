@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { adminByIp, anyByIp, AUTH_LIMITED_PATHS, authByEmail, authByIp } from './rate-limit';
+import { rateLimitVerdict } from './rate-limit';
 
 // Из Express нужны только эти поля — без зависимости от его типов.
 type Request = IncomingMessage & { originalUrl: string; body?: { email?: unknown } };
@@ -26,15 +26,10 @@ const tooMany = (res: Response, retryAfter: number) => {
 @Injectable()
 export class RateLimitMiddleware implements NestMiddleware {
   use(req: Request, res: Response, next: NextFunction) {
-    const ip = clientIp(req);
-    if (!anyByIp.allow(ip)) return tooMany(res, anyByIp.retryAfterSec(ip));
     const path = req.originalUrl.split('?')[0];
-    if ((path === '/admin' || path.startsWith('/v1/admin/')) && !adminByIp.allow(ip)) return tooMany(res, adminByIp.retryAfterSec(ip));
-    if (req.method === 'POST' && AUTH_LIMITED_PATHS.includes(path)) {
-      if (!authByIp.allow(ip)) return tooMany(res, authByIp.retryAfterSec(ip));
-      const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
-      if (email && !authByEmail.allow(email)) return tooMany(res, authByEmail.retryAfterSec(email));
-    }
+    const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+    const retry = rateLimitVerdict(path, req.method ?? 'GET', clientIp(req), email);
+    if (retry !== null) return tooMany(res, retry);
     next();
   }
 }

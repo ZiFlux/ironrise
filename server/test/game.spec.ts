@@ -1079,3 +1079,21 @@ describe('аура: личная норма и открытие через не�
     expect(n.minPeak).toBe(110);
   });
 });
+
+import { rateLimitVerdict } from '../src/common/rate-limit';
+
+describe('аудит п. 130: лимиты на журнал без входа и поиск', () => {
+  it('журнал: 20 в минуту с адреса, дальше 429', () => {
+    const v = Array.from({ length: 22 }, () => rateLimitVerdict('/v1/logs', 'POST', '10.0.0.77'));
+    expect(v.slice(0, 20).every((x) => x === null)).toBe(true);
+    expect(v[20]).toBeGreaterThan(0);
+  });
+
+  it('поиск: 60 в минуту; админка по /v1/admin/ тоже ограничена', () => {
+    const v = Array.from({ length: 61 }, () => rateLimitVerdict('/v1/users/search', 'GET', '10.0.0.78'));
+    expect(v[59]).toBeNull();
+    expect(v[60]).toBeGreaterThan(0);
+    const a = Array.from({ length: 61 }, () => rateLimitVerdict('/v1/admin/api/stats', 'GET', '10.0.0.79'));
+    expect(a[60]).toBeGreaterThan(0);
+  });
+});

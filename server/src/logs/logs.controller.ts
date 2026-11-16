@@ -4,7 +4,12 @@ import { z } from 'zod';
 import { ZodPipe } from '../common/zod';
 import { PrismaService } from '../prisma.service';
 
-const KEEP_DAYS = 14;
+/**
+ * Сколько дней хранить журнал. На время закрытой и открытой беты не чистим —
+ * он нужен для разбора ошибок и улучшения алгоритмов (решение 17.11, политика
+ * обновлена). После беты — LOG_RETENTION_DAYS=14 в .env.prod.
+ */
+const KEEP_DAYS = Number.parseInt(process.env.LOG_RETENTION_DAYS ?? '', 10);
 
 export const LogBatchSchema = z.object({
   installId: z.string().min(8).max(64),
@@ -24,7 +29,7 @@ export const LogBatchSchema = z.object({
     .max(200),
 });
 
-/** Чистит логи старше 14 дней раз в сутки. */
+/** Чистит логи старше LOG_RETENTION_DAYS раз в сутки; не задано — не чистит (бета). */
 @Injectable()
 export class LogRetention implements OnModuleInit, OnModuleDestroy {
   private timer?: NodeJS.Timeout;
@@ -33,6 +38,7 @@ export class LogRetention implements OnModuleInit, OnModuleDestroy {
   constructor(private readonly db: PrismaService) {}
 
   onModuleInit() {
+    if (!Number.isFinite(KEEP_DAYS) || KEEP_DAYS <= 0) return;
     const prune = () =>
       this.db.clientLog
         .deleteMany({ where: { createdAt: { lt: new Date(Date.now() - KEEP_DAYS * 86_400_000) } } })
