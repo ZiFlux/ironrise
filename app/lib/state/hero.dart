@@ -53,7 +53,12 @@ class BodyStats {
     this.restingHeartRate,
     this.pushUps,
     this.pullUps,
+    this.entryLevel,
   });
+
+  /// Уровень по входной тренировке (п. 116): novice / intermediate / advanced.
+  /// Если есть — главнее самооценки из анкеты (program_state.dart, declaredLevelOf).
+  final String? entryLevel;
 
   /// Самопроверка в анкете: сколько раз отжимается и подтягивается за подход.
   /// Уточняет уровень подготовки (session_builder.dart).
@@ -76,6 +81,7 @@ class BodyStats {
     Experience? experience,
     int? pushUps,
     int? pullUps,
+    String? entryLevel,
   }) => BodyStats(
     sex: sex,
     heightCm: heightCm,
@@ -85,6 +91,7 @@ class BodyStats {
     restingHeartRate: restingHeartRate ?? this.restingHeartRate,
     pushUps: pushUps ?? this.pushUps,
     pullUps: pullUps ?? this.pullUps,
+    entryLevel: entryLevel ?? this.entryLevel,
   );
 
   Map<String, dynamic> toJson() => {
@@ -96,6 +103,7 @@ class BodyStats {
     'restingHeartRate': restingHeartRate,
     'pushUps': pushUps,
     'pullUps': pullUps,
+    if (entryLevel != null) 'entryLevel': entryLevel,
   };
 
   factory BodyStats.fromJson(Map<String, dynamic> j) => BodyStats(
@@ -109,6 +117,7 @@ class BodyStats {
     restingHeartRate: j['restingHeartRate'],
     pushUps: j['pushUps'],
     pullUps: j['pullUps'],
+    entryLevel: j['entryLevel'] as String?,
   );
 }
 

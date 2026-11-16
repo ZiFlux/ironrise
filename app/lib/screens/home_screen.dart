@@ -26,6 +26,7 @@ import '../widgets/body_part_sheet.dart';
 import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
 import '../widgets/weigh_in.dart';
+import '../state/entry_test_state.dart';
 import '../widgets/motion.dart';
 import '../widgets/shop_entry.dart';
 import '../widgets/guide.dart';
@@ -96,6 +97,7 @@ class HomeScreen extends ConsumerWidget {
                 ),
                 const _ActivityLine(),
                 const _TipLine(),
+                const _EntryTestLine(),
                 const _WeighInLine(),
                 const SizedBox(height: 8),
                 // В день отдыха по графику силовую не предлагаем — только кардио.
@@ -548,13 +550,82 @@ class _ActivityLine extends ConsumerWidget {
 }
 
 /// «Совет дня» одной строкой: открывает совет, показывает, получена ли награда.
+/// Входная тренировка (п. 116): пока не пройдена — настойчиво (после «позже» — через
+/// день), через 4 недели — «пора сравнить».
+class _EntryTestLine extends ConsumerWidget {
+  const _EntryTestLine();
+
+  /// Строка видна: первая не пройдена или пора повторить (и не отложено на сегодня).
+  static ({bool first, bool retest}) due(WidgetRef ref) {
+    ref.watch(entryTestProvider);
+    final tests = ref.read(entryTestProvider.notifier);
+    final now = DateTime.now();
+    final snoozed = tests.snoozed(now);
+    return (
+      first: tests.firstDue && !snoozed,
+      retest: tests.retestDue(now) && !snoozed,
+    );
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final (:first, :retest) = due(ref);
+    if (!first && !retest) return const SizedBox.shrink();
+    final accent = Theme.of(context).colorScheme.primary;
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: Material(
+        color: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(10),
+          side: BorderSide(color: accent.withValues(alpha: 0.5)),
+        ),
+        child: InkWell(
+          onTap: () => context.go('/entry-test'),
+          borderRadius: BorderRadius.circular(10),
+          child: SizedBox(
+            height: 40,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                children: [
+                  Icon(LucideIcons.clipboardCheck, size: 18, color: accent),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      first
+                          ? 'Входная тренировка · 12 мин · +50 монет'
+                          : 'Месяц прошёл — сравним, как ты вырос',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const Icon(
+                    LucideIcons.chevronRight,
+                    size: 16,
+                    color: AppColors.textMuted,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 /// «Пора взвеситься» — раз в 3 дня, пока вес не записан.
 class _WeighInLine extends ConsumerWidget {
   const _WeighInLine();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    if (!weighInDue(ref.watch(bodyLogProvider), DateTime.now())) {
+    // Одно напоминание за раз: главная без прокрутки, входная тренировка важнее.
+    final entry = _EntryTestLine.due(ref);
+    if (entry.first ||
+        entry.retest ||
+        !weighInDue(ref.watch(bodyLogProvider), DateTime.now())) {
       return const SizedBox.shrink();
     }
     return Padding(

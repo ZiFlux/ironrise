@@ -50,6 +50,8 @@ void main() {
         'hero_v1': hero.encode(),
         'health_consent_v1': '{"granted":true}',
         'hint_seen_home': true,
+        // Входная тренировка не предлагается — здесь проверяем плашку взвешивания.
+        'health_risk': true,
       });
       final prefs = await SharedPreferences.getInstance();
       final c = ProviderContainer(

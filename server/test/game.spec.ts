@@ -837,3 +837,23 @@ describe('цели: главная и до двух дополнительных
     expect(GoalsChangeSchema.safeParse({ goal: 'endurance', goals: ['consistency'] }).success).toBe(true);
   });
 });
+
+import { ENTRY_TEST_COINS, entryTestCoins, EntryTestSchema } from '../src/game/entry-test';
+
+describe('входная тренировка: монеты раз в 25 дней (п. 116)', () => {
+  const now = new Date('2026-12-20T12:00:00Z');
+  it('первая и через месяц — с монетами, раньше — без', () => {
+    expect(entryTestCoins(null, now)).toBe(ENTRY_TEST_COINS);
+    expect(entryTestCoins(new Date('2026-11-20T12:00:00Z'), now)).toBe(ENTRY_TEST_COINS);
+    expect(entryTestCoins(new Date('2026-12-10T12:00:00Z'), now)).toBe(0);
+  });
+  it('нереальные результаты не принимаем', () => {
+    const ok = {
+      clientId: 'abcdefgh1', at: now, level: 'novice',
+      results: { pushUps: 12, kneePushUps: false, squats60: 30, crunches60: 35, burpees60: 18, plankSec: 60, pullUps: null },
+    };
+    expect(EntryTestSchema.safeParse(ok).success).toBe(true);
+    expect(EntryTestSchema.safeParse({ ...ok, results: { ...ok.results, burpees60: 5000 } }).success).toBe(false);
+    expect(EntryTestSchema.safeParse({ ...ok, level: 'god' }).success).toBe(false);
+  });
+});

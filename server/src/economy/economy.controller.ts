@@ -4,6 +4,7 @@ import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
 import { AuraTrainingSchema } from '../season/aura-service';
 import { GoalsChangeSchema } from '../game/goals';
+import { EntryTestSchema } from '../game/entry-test';
 import { AppearanceSchema, BuySchema, EconomyService, NicknameChangeSchema, ScheduleSchema, ShowcaseSchema, StepsSchema, StartLookSchema, TipRewardSchema } from './economy.service';
 
 @Controller()
@@ -61,6 +62,12 @@ export class EconomyController {
   @Put('me/schedule')
   schedule(@UserId() userId: string, @Body(new ZodPipe(ScheduleSchema)) body: z.infer<typeof ScheduleSchema>) {
     return this.economy.changeSchedule(userId, body);
+  }
+
+  /** Входная тренировка (п. 116): результаты и +50 монет раз в 25 дней. */
+  @Post('entry-test')
+  entryTest(@UserId() userId: string, @Body(new ZodPipe(EntryTestSchema)) body: z.infer<typeof EntryTestSchema>) {
+    return this.economy.submitEntryTest(userId, body);
   }
 
   /** Сменить цели: главная и до двух дополнительных (п. 100). В любой момент. */

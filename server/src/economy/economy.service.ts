@@ -2,6 +2,7 @@ import { stepsXp } from '../game/steps';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { heroLevel } from '../game/social-progress';
 import { GoalsChangeSchema } from '../game/goals';
+import { EntryTestSchema, entryTestCoins } from '../game/entry-test';
 import { showcaseLock } from '../game/showcase';
 import { z } from 'zod';
 import { localDay } from '../common/day';
@@ -146,6 +147,41 @@ export class EconomyService {
   }
 
   /** Сменить график: раз в 7 дней, первая смена — сразу. 409 с датой, если рано. */
+  /**
+   * Входная тренировка (п. 116): сохраняем результаты, +50 монет не чаще раза в 25 дней.
+   * Повтор с тем же clientId (обрыв связи) ничего не начисляет второй раз.
+   */
+  async submitEntryTest(userId: string, input: z.infer<typeof EntryTestSchema>) {
+    const now = new Date();
+    if (input.at.getTime() > now.getTime() + 60_000) throw new BadRequestException('Entry test from the future');
+    return this.db.$transaction(async (tx) => {
+      await lockProfile(tx, userId);
+      const existing = await tx.entryTest.findUnique({
+        where: { userId_clientId: { userId, clientId: input.clientId } },
+        select: { coins: true },
+      });
+      if (existing) return { coins: existing.coins, duplicate: true, hero: await this.hero.state(userId, tx) };
+      const last = await tx.entryTest.findFirst({
+        where: { userId, coins: { gt: 0 } },
+        orderBy: { createdAt: 'desc' },
+        select: { createdAt: true },
+      });
+      const coins = entryTestCoins(last?.createdAt ?? null, now);
+      await tx.entryTest.create({
+        data: {
+          userId,
+          clientId: input.clientId,
+          at: input.at,
+          level: input.level,
+          results: input.results as Prisma.InputJsonValue,
+          coins,
+        },
+      });
+      if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'entry_test' } });
+      return { coins, duplicate: false, hero: await this.hero.state(userId, tx) };
+    });
+  }
+
   async changeGoals(userId: string, input: z.infer<typeof GoalsChangeSchema>) {
     await this.db.profile.update({ where: { userId }, data: { goal: input.goal, goals: input.goals } });
     return this.hero.state(userId);

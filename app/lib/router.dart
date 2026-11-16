@@ -5,6 +5,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'screens/account_screen.dart';
 import 'screens/cardio_screen.dart';
+import 'screens/entry_test_screen.dart';
 import 'screens/recovery_screen.dart';
 import 'screens/devices_screen.dart';
 import 'screens/duel_battle_screen.dart';
@@ -56,6 +57,7 @@ final routerProvider = Provider<GoRouter>((ref) {
     routes: [
       GoRoute(path: '/onboarding', builder: (_, _) => const OnboardingScreen()),
       GoRoute(path: '/privacy', builder: (_, _) => const PrivacyScreen()),
+      GoRoute(path: '/entry-test', builder: (_, _) => const EntryTestScreen()),
       GoRoute(path: '/feed', builder: (_, _) => const FeedScreen()),
       GoRoute(path: '/season', builder: (_, _) => const SeasonScreen()),
       GoRoute(

@@ -494,12 +494,14 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       split: hero?.format == TrainingFormat.split,
     );
 
-/// Уровень по анкете героя.
-TrainingLevel declaredLevelOf(HeroProfile? hero) => declaredLevel(
-  experience: hero?.body.experience?.index ?? 0,
-  pushUps: hero?.body.pushUps,
-  pullUps: hero?.body.pullUps,
-);
+/// Уровень по входной тренировке (п. 116), а без неё — по анкете героя.
+TrainingLevel declaredLevelOf(HeroProfile? hero) =>
+    TrainingLevel.values.asNameMap()[hero?.body.entryLevel] ??
+    declaredLevel(
+      experience: hero?.body.experience?.index ?? 0,
+      pushUps: hero?.body.pushUps,
+      pullUps: hero?.body.pullUps,
+    );
 
 /// Уровень подготовки: по анкете или по делу — что выше.
 TrainingLevel trainingLevelOf(HeroProfile? hero, UserProgram program) {

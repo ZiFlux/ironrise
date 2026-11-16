@@ -44,6 +44,7 @@ model User {
   nicknameHolds NicknameHold[]
   avatarParts   AvatarPart[]
   workouts      Workout[]
+  entryTests    EntryTest[]
   xpEvents      XpEvent[]
   walletTx      WalletTx[]
   refreshTokens RefreshToken[]
@@ -415,4 +416,24 @@ model FeedFist {
   user    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@id([eventId, userId])
+}
+
+/// Входная тренировка (п. 116): результаты для уровня игрока и статистики «как приложение
+/// улучшает форму». Первая и повторные (раз в ~4 недели).
+model EntryTest {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// Id с клиента: повторная отправка не начислит монеты дважды.
+  clientId  String
+  at        DateTime
+  /// Результаты по упражнениям: { pushUps, kneePushUps, squats60, crunches60, burpees60, plankSec, pullUps? }.
+  results   Json
+  /// Уровень, который вышел на телефоне (novice / intermediate / advanced).
+  level     String
+  coins     Int
+  createdAt DateTime @default(now())
+
+  @@unique([userId, clientId])
+  @@index([userId, at])
 }

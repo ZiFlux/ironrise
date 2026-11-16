@@ -402,6 +402,11 @@ class AccountNotifier extends Notifier<AccountState> {
     ),
   );
 
+  /// Входная тренировка (п. 116): результаты на сервер через очередь — без сети не теряются,
+  /// а clientId не даст начислить монеты дважды.
+  Future<void> enqueueEntryTest(Map<String, dynamic> body) =>
+      _enqueue(OutboxJob(path: '/v1/entry-test', body: body));
+
   Future<void> _enqueue(OutboxJob job) async {
     final jobs = _readOutbox()..add(job);
     // Без аккаунта очередь не растёт бесконечно: старейшие уходят первыми.
@@ -509,6 +514,8 @@ class AccountNotifier extends Notifier<AccountState> {
   Future<Map<String, dynamic>?> _withWatchPulse(
     Map<String, dynamic> body,
   ) async {
+    // Задания без пульса (входная тренировка) — как есть.
+    if (body['pulse'] is! List) return body;
     // Без согласия на данные о здоровье пульс не отправляем, даже записанный.
     if (!ref.read(healthConsentProvider).allowsPulse)
       return {...body, 'pulse': []};

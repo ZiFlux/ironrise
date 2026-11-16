@@ -15,6 +15,7 @@ import '../state/hero.dart';
 import '../state/program_state.dart';
 import '../state/providers.dart';
 import '../state/consent_state.dart';
+import '../state/entry_test_state.dart';
 import '../theme.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/schedule_picker.dart';
@@ -105,9 +106,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
     await ref.read(programProvider.notifier).setEquipment(_equipment);
     await ref.read(healthConsentProvider.notifier).set(_pulseConsent);
+    // Риск по здоровью — входную тренировку не предлагаем (TRAINING_SYSTEM.md 13.3).
+    await ref
+        .read(prefsProvider)
+        .setBool(healthRiskKey, _healthRisks.isNotEmpty);
     await ref.read(heroProvider.notifier).save(hero);
     await _renameOnServer(hero.nickname);
-    if (mounted) context.go('/');
+    if (!mounted) return;
+    // Сразу предлагаем входную тренировку: план по силам (п. 116). Можно отложить.
+    context.go(_healthRisks.isEmpty ? '/entry-test' : '/');
   }
 
   /// Героя создали заново, а аккаунт остался: ник — на сервер (первая смена бесплатна).
