@@ -737,9 +737,21 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                 ? const _EmptyHint()
                 : ListView.separated(
                     padding: const EdgeInsets.fromLTRB(20, 8, 20, 16),
-                    itemCount: session.entries.length + warmupRows,
+                    // Последняя строка — «+ Добавить упражнение»: второй вход на случай,
+                    // если нижнюю панель на телефоне что-то перекрывает (п. 136).
+                    itemCount: session.entries.length + warmupRows + 1,
                     separatorBuilder: (_, _) => const SizedBox(height: 8),
                     itemBuilder: (_, row) {
+                      if (row == session.entries.length + warmupRows) {
+                        return Align(
+                          alignment: Alignment.centerLeft,
+                          child: TextButton.icon(
+                            onPressed: _addExercise,
+                            icon: const Icon(LucideIcons.plus, size: 18),
+                            label: const Text('Добавить упражнение'),
+                          ),
+                        );
+                      }
                       if (row < warmupRows) {
                         return WarmupCard(
                           moveIds: session.warmup,
@@ -961,14 +973,22 @@ class _BottomActions extends StatelessWidget {
               ),
               onPressed: onAdd,
               icon: const Icon(LucideIcons.plus, size: 18),
-              label: const Text('Упражнение'),
+              // Крупный шрифт и узкий экран: подпись ужимается, а не переносится
+              // по буквам и не выталкивает кнопку за край.
+              label: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Упражнение', maxLines: 1),
+              ),
             ),
           ),
           const SizedBox(width: 8),
           Expanded(
             child: FilledButton(
               onPressed: canFinish ? onFinish : null,
-              child: const Text('Завершить'),
+              child: const FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text('Завершить', maxLines: 1),
+              ),
             ),
           ),
         ],
@@ -1441,8 +1461,13 @@ class _Stepper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Высота растёт с системным шрифтом, «−» и «+» компактные — на узком
+    // экране с крупным шрифтом «+» не уезжает за край (п. 136).
+    const tight = BoxConstraints(minWidth: 40, minHeight: 40);
     return Container(
-      height: 48,
+      constraints: BoxConstraints(
+        minHeight: MediaQuery.textScalerOf(context).scale(48).clamp(48, 72),
+      ),
       decoration: BoxDecoration(
         color: AppColors.raised,
         borderRadius: BorderRadius.circular(10),
@@ -1451,6 +1476,8 @@ class _Stepper extends StatelessWidget {
         children: [
           IconButton(
             tooltip: 'Меньше',
+            constraints: tight,
+            padding: EdgeInsets.zero,
             onPressed: onMinus,
             icon: const Icon(LucideIcons.minus, size: 18),
           ),
@@ -1458,24 +1485,29 @@ class _Stepper extends StatelessWidget {
             child: InkWell(
               onTap: onEdit,
               borderRadius: BorderRadius.circular(8),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Text(value, style: figureStyle(size: 16)),
-                  const SizedBox(height: 2),
-                  Text(
-                    label,
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textMuted,
+              child: FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(value, style: figureStyle(size: 16)),
+                    const SizedBox(height: 2),
+                    Text(
+                      label,
+                      style: const TextStyle(
+                        fontSize: 11,
+                        color: AppColors.textMuted,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),
           IconButton(
             tooltip: 'Больше',
+            constraints: tight,
+            padding: EdgeInsets.zero,
             onPressed: onPlus,
             icon: const Icon(LucideIcons.plus, size: 18),
           ),
