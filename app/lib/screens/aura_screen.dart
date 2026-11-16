@@ -316,12 +316,13 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
     final pulse = hr.samplesBetween(start, end);
     try {
       await hr.stopWatch();
-      await ref
+      final sent = await ref
           .read(auraProvider.notifier)
           .train(widget.kind, startedAt: start, finishedAt: end, pulse: pulse);
+      // Без сети тренировка в очереди и уйдёт сама, когда появится связь (п. 114).
       showStatus(
-        'Аура «${widget.kind.label}» прокачана',
-        kind: StatusKind.success,
+        sent ? 'Аура «${widget.kind.label}» прокачана' : 'Нет сети — тренировка сохранена и засчитается, когда появится связь',
+        kind: sent ? StatusKind.success : StatusKind.offline,
       );
       if (mounted) context.pop();
     } on ApiException catch (e) {

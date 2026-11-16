@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/anti_fraud.dart';
 import '../game/aura.dart';
+import '../net/api_client.dart';
 import 'account_state.dart';
 
 /// Прогресс одной ауры: тренировок, уровень (0 — не открыта), до следующего.
@@ -52,21 +53,39 @@ class AuraNotifier extends AsyncNotifier<AuraInfo> {
 
   /// Тренировка ауры пройдена: +1 к прогрессу. Сервер проверяет лимит
   /// (раз в день, два в неделю) и пульс с часов за время тренировки.
-  Future<void> train(
+  /// Нет сети — тренировка встаёт в очередь и уйдёт сама (п. 114): возвращает false.
+  Future<bool> train(
     AuraKind kind, {
     required DateTime startedAt,
     required DateTime finishedAt,
     required List<PulseSample> pulse,
   }) async {
-    final j = await ref.read(apiProvider).post('/v1/auras/${kind.name}/train', {
-      'startedAt': startedAt.toUtc().toIso8601String(),
-      'finishedAt': finishedAt.toUtc().toIso8601String(),
-      'pulse': [
-        for (final s in pulse)
-          {'at': s.at.toUtc().toIso8601String(), 'bpm': s.bpm},
-      ],
-    });
-    state = AsyncData(AuraInfo.fromJson(j));
+    try {
+      final j = await ref.read(apiProvider).post(
+        '/v1/auras/${kind.name}/train',
+        {
+          'startedAt': startedAt.toUtc().toIso8601String(),
+          'finishedAt': finishedAt.toUtc().toIso8601String(),
+          'pulse': [
+            for (final s in pulse)
+              {'at': s.at.toUtc().toIso8601String(), 'bpm': s.bpm},
+          ],
+        },
+      );
+      state = AsyncData(AuraInfo.fromJson(j));
+      return true;
+    } on ApiException catch (e) {
+      if (!e.isNetwork) rethrow;
+      await ref
+          .read(accountProvider.notifier)
+          .enqueueAura(
+            kind.name,
+            startedAt: startedAt,
+            finishedAt: finishedAt,
+            pulse: pulse,
+          );
+      return false;
+    }
   }
 
   Future<void> equip(AuraKind? kind) async {

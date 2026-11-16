@@ -131,6 +131,30 @@ class WorkoutResultScreen extends ConsumerWidget {
           if (!ref.watch(accountProvider).signedIn) ...[
             const SizedBox(height: 16),
             const SignUpCard(compact: true),
+          ] else if (ref.watch(accountProvider) case final a
+              when a.pending > 0 && !a.syncing) ...[
+            // Нет сети в зале — тренировка не потеряна (п. 114).
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                const Icon(
+                  LucideIcons.cloudOff,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Сохранено на телефоне. Отправится само, когда появится сеть '
+                    '(в очереди: ${a.pending})',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ],
           const SizedBox(height: 24),
           FilledButton(

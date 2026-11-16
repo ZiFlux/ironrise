@@ -13,6 +13,7 @@ import '../legal/privacy_policy.dart';
 import '../net/api_client.dart';
 import '../net/push.dart';
 import 'health_state.dart';
+import 'aura_state.dart';
 import 'consent_state.dart';
 import 'local_data.dart';
 import 'providers.dart';
@@ -200,6 +201,11 @@ String deviceTimeZone() {
 class AccountNotifier extends Notifier<AccountState> {
   ApiClient get _api => ref.read(apiProvider);
   Timer? _pulseRetry;
+
+  /// Нет сети, а в очереди тренировки — пробуем снова чаще, чем раз в 10 минут:
+  /// 30 с, 1, 2, 4 и дальше каждые 5 минут (п. 114).
+  Timer? _netRetry;
+  int _netFailures = 0;
   Timer? _autoTimer;
 
   /// Как часто перепроверять Health Connect, пока тренировка ждёт пульс.
@@ -242,6 +248,7 @@ class AccountNotifier extends Notifier<AccountState> {
     );
     ref.onDispose(lifecycle.dispose);
     ref.onDispose(() => _pulseRetry?.cancel());
+    ref.onDispose(() => _netRetry?.cancel());
     ref.onDispose(() => _autoTimer?.cancel());
     if (s.signedIn) Future.microtask(() => setupPush(ref, _api));
     return s;
@@ -359,6 +366,24 @@ class AccountNotifier extends Notifier<AccountState> {
     ];
   }
 
+  /// Тренировка ауры — тоже через очередь: в зале без сети она не теряется, а
+  /// сервер кладёт её в день окончания, даже если дошла позже (п. 114).
+  Future<void> enqueueAura(
+    String kind, {
+    required DateTime startedAt,
+    required DateTime finishedAt,
+    required List<PulseSample> pulse,
+  }) => _enqueue(
+    OutboxJob(
+      path: '/v1/auras/$kind/train',
+      body: {
+        'startedAt': startedAt.toUtc().toIso8601String(),
+        'finishedAt': finishedAt.toUtc().toIso8601String(),
+        'pulse': _pulseJson(pulse),
+      },
+    ),
+  );
+
   Future<void> enqueueCardio(
     CardioSession s,
     DateTime finishedAt,
@@ -459,6 +484,12 @@ class AccountNotifier extends Notifier<AccountState> {
     await ref.read(localDataProvider).wipe();
   }
 
+  void _scheduleNetRetry() {
+    _netRetry?.cancel();
+    final delay = netRetryDelay(_netFailures++);
+    _netRetry = Timer(delay, () => sync(reason: SyncReason.timer));
+  }
+
   /// Приложение открыто, а пульс с часов ещё не пришёл — проверим снова позже.
   void _schedulePulseRetry(bool waiting) {
     _pulseRetry?.cancel();
@@ -522,6 +553,9 @@ class AccountNotifier extends Notifier<AccountState> {
       ref.invalidate(serverBotsProvider);
       ref.invalidate(serverLeagueProvider);
       ref.invalidate(notificationsProvider);
+      ref.invalidate(auraProvider);
+      _netFailures = 0;
+      _netRetry?.cancel();
       final at = DateTime.now();
       state = state.copyWith(
         lastSyncedAt: at,
@@ -551,11 +585,18 @@ class AccountNotifier extends Notifier<AccountState> {
           error: e.message,
           rejected: state.rejected + rejected,
         );
+        if (e.isNetwork && state.pending > 0) _scheduleNetRetry();
       }
     } finally {
       state = state.copyWith(syncing: false);
     }
   }
+}
+
+/// Пауза перед новой попыткой отправить очередь без сети: 30 с, 1, 2, 4, затем 5 мин.
+Duration netRetryDelay(int failures) {
+  final seconds = 30 * (1 << failures.clamp(0, 4));
+  return Duration(seconds: seconds > 300 ? 300 : seconds);
 }
 
 final accountProvider = NotifierProvider<AccountNotifier, AccountState>(

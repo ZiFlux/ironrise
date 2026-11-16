@@ -91,7 +91,9 @@ export async function trainAura(
         healthConsentAt: true,
       },
     });
-    const today = localDay(now, p.timezone);
+    // День — по окончанию тренировки, а не по отправке: тренировку из зала без сети
+    // телефон досылает позже (п. 114), и она должна лечь в свой день.
+    const today = localDay(input.finishedAt < now ? input.finishedAt : now, p.timezone);
     const week = mondayOf(today);
     const used = p.auraWeek === week ? p.auraSessions : 0;
     if (p.auraLastDay === today) throw new ConflictException('Aura training already done today');
