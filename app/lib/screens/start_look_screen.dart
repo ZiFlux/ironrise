@@ -33,7 +33,8 @@ enum _Section {
   topColor('Цвет верха'),
   bottom('Низ'),
   bottomColor('Цвет низа'),
-  sneakers('Обувь');
+  sneakers('Обувь'),
+  sneakersColor('Цвет обуви');
 
   const _Section(this.label);
   final String label;
@@ -48,6 +49,7 @@ enum _Section {
     bottom => ShopSlot.bottom,
     bottomColor => ShopSlot.bottomColor,
     sneakers => ShopSlot.sneakers,
+    sneakersColor => ShopSlot.sneakersColor,
   };
 }
 

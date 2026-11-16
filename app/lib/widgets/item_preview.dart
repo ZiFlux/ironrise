@@ -42,7 +42,8 @@ class ItemPreview extends StatelessWidget {
       ShopSlot.topColor => const Rect.fromLTWH(38, 50, 124, 150),
       ShopSlot.bottom ||
       ShopSlot.bottomColor => const Rect.fromLTWH(48, 180, 104, 200),
-      ShopSlot.sneakers => const Rect.fromLTWH(58, 350, 84, 48),
+      ShopSlot.sneakers ||
+      ShopSlot.sneakersColor => const Rect.fromLTWH(58, 350, 84, 48),
       ShopSlot.accessory => switch (item.id) {
         'acc_gold_chain' => const Rect.fromLTWH(60, 40, 80, 80),
         'acc_wristbands' => const Rect.fromLTWH(18, 160, 164, 70),

@@ -60,6 +60,25 @@ export interface LeagueEntry {
   isBot?: boolean;
 }
 
+/** Живых игроков в таблице лиги не меньше этого — иначе добираем из соседних лиг. */
+export const MIN_LEAGUE_PLAYERS = 5;
+/** Больше этого соседей не добираем: таблица остаётся обозримой. */
+export const MAX_LEAGUE_PLAYERS = 10;
+
+/**
+ * Игроки для таблицы лиги [tier]: свои, а если их меньше [MIN_LEAGUE_PLAYERS] —
+ * плюс игроки ближайших лиг (сначала соседние, при равенстве — ниже), до
+ * [MAX_LEAGUE_PLAYERS]. Пока игроков мало (бета), иначе каждый сидел бы в своей
+ * лиге один с ботами и не видел других (баг 70).
+ */
+export const fillLeague = <T extends { tier: number }>(own: T[], others: T[], tier: number): T[] => {
+  if (own.length >= MIN_LEAGUE_PLAYERS) return own;
+  const near = [...others]
+    .filter((p) => p.tier !== tier)
+    .sort((a, b) => Math.abs(a.tier - tier) - Math.abs(b.tier - tier) || a.tier - b.tier);
+  return [...own, ...near.slice(0, Math.max(0, MAX_LEAGUE_PLAYERS - own.length))];
+};
+
 /** Ботов в живой лиге: двое, чтобы таблица не пустовала. */
 export const LIVE_LEAGUE_BOTS = 2;
 

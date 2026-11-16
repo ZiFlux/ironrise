@@ -48,11 +48,15 @@ Future<void> showExerciseDetails(BuildContext context, Exercise exercise) =>
       isScrollControlled: true,
       backgroundColor: AppColors.surface,
       shape: _sheetShape,
-      builder: (context) => ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * 0.85,
-        ),
-        child: _ExerciseDetails(exercise: exercise),
+      // Тянется и закрывается свайпом вниз и за полоску, и за содержимое, когда
+      // оно прокручено к началу (раньше свайп уходил в прокрутку, п. 71).
+      builder: (context) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.85,
+        minChildSize: 0.4,
+        maxChildSize: 0.92,
+        builder: (context, scroll) =>
+            _ExerciseDetails(exercise: exercise, scroll: scroll),
       ),
     );
 
@@ -429,9 +433,10 @@ class _ExerciseRow extends StatelessWidget {
 }
 
 class _ExerciseDetails extends ConsumerWidget {
-  const _ExerciseDetails({required this.exercise});
+  const _ExerciseDetails({required this.exercise, this.scroll});
 
   final Exercise exercise;
+  final ScrollController? scroll;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -459,6 +464,7 @@ class _ExerciseDetails extends ConsumerWidget {
     final guide = exerciseGuides[exercise.id];
     return SafeArea(
       child: SingleChildScrollView(
+        controller: scroll,
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
         child: Column(
           mainAxisSize: MainAxisSize.min,

@@ -11,6 +11,7 @@ enum ShopSlot {
   bottom('Низ'),
   bottomColor('Цвет низа'),
   sneakers('Обувь'),
+  sneakersColor('Цвет обуви'),
   accessory('Аксессуары'),
   skin('Кожа');
 
@@ -140,7 +141,7 @@ ShopItem _color(
       bottomColor: c,
       bottom: l.bottom == BottomKind.betaJoggers ? BottomKind.joggers : null,
     ),
-    ShopSlot.sneakers => l.copyWith(sneakersColor: c),
+    ShopSlot.sneakersColor => l.copyWith(sneakersColor: c),
     _ => l,
   },
   isWorn: (l) => switch (slot) {
@@ -148,7 +149,7 @@ ShopItem _color(
     ShopSlot.topColor => !l.top.fixedColor && l.topColor == c,
     ShopSlot.bottomColor =>
       l.bottom != BottomKind.betaJoggers && l.bottomColor == c,
-    ShopSlot.sneakers => l.sneakersColor == c,
+    ShopSlot.sneakersColor => l.sneakersColor == c,
     _ => false,
   },
 );
@@ -453,27 +454,27 @@ class ShopCatalog {
     _shoe('sh_sneakers', 'Кроссовки', ShoeKind.sneakers, 0),
     _shoe('sh_slippers', 'Чешки', ShoeKind.slippers, 60),
     _shoe('sh_chunky', 'Массивные кроссовки', ShoeKind.chunky, 90),
-    _color('sn_white', 'Белые', ShopSlot.sneakers, const Color(0xFFEDEDED), 40),
+    _color('sn_white', 'Белые', ShopSlot.sneakersColor, const Color(0xFFEDEDED), 40),
     _color(
       'sn_black',
       'Чёрные',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFF2A2A2E),
       40,
     ),
     _color(
       'sn_lime',
       'Лаймовые',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFFC6FF3D),
       70,
     ),
-    _color('sn_red', 'Красные', ShopSlot.sneakers, const Color(0xFFE5484D), 70),
-    _color('sn_blue', 'Синие', ShopSlot.sneakers, const Color(0xFF3D7BFF), 70),
+    _color('sn_red', 'Красные', ShopSlot.sneakersColor, const Color(0xFFE5484D), 70),
+    _color('sn_blue', 'Синие', ShopSlot.sneakersColor, const Color(0xFF3D7BFF), 70),
     _color(
       'sn_gold',
       'Золотые',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFFD9B25B),
       120,
       premium: true,
@@ -481,7 +482,7 @@ class ShopCatalog {
     _color(
       'sn_beta',
       'Бета',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFF8B5CF7),
       0,
       testerOnly: true,
@@ -490,7 +491,7 @@ class ShopCatalog {
     _color(
       'sn_streak',
       'Пламя',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFFFF5A20),
       0,
       testerOnly: true,
@@ -527,7 +528,7 @@ class ShopCatalog {
     _color(
       'sn_first_step',
       'Первый шаг',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFF5CE1A5),
       0,
       testerOnly: true,
@@ -537,7 +538,7 @@ class ShopCatalog {
     _color(
       'sn_s1',
       'Бирюза',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFF2EC4B6),
       0,
       testerOnly: true,
@@ -573,7 +574,7 @@ class ShopCatalog {
     _color(
       'sn_s1p',
       'Солнце',
-      ShopSlot.sneakers,
+      ShopSlot.sneakersColor,
       const Color(0xFFFFD166),
       0,
       testerOnly: true,

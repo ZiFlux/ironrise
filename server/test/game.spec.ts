@@ -3,6 +3,7 @@ import { BodyPart, PartMap, partMap } from '../src/game/body-part';
 import { scoreCardio, secondsInZone, zoneLowerBound } from '../src/game/cardio';
 import { GameConfig as C } from '../src/game/config';
 import { FighterSnapshot, seededRandom, simulateDuel } from '../src/game/duel';
+import { fillLeague, MAX_LEAGUE_PLAYERS } from '../src/game/bots';
 import { countsForSession, jointCode, withJointBonus } from '../src/game/joint';
 import { power } from '../src/game/progression';
 import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../src/game/streak';
@@ -749,5 +750,24 @@ describe('ауры', () => {
     const plain = simulateDuel(a, d, 7).log.filter((h) => h.byAttacker).length;
     const haste = simulateDuel({ ...a, aura: { kind: 'haste', level: 1 } }, d, 7).log.filter((h) => h.byAttacker).length;
     expect(haste).toBe(plain + 1);
+  });
+});
+
+describe('лига: добор игроков из соседних лиг (баг 70)', () => {
+  const p = (name: string, tier: number) => ({ name, tier });
+
+  it('своих хватает — соседей не берём', () => {
+    const own = [1, 2, 3, 4, 5].map((i) => p(`a${i}`, 2));
+    expect(fillLeague(own, [p('x', 1)], 2)).toEqual(own);
+  });
+
+  it('своих мало — сначала ближайшие лиги, при равенстве нижняя', () => {
+    const got = fillLeague([p('me-tier', 2)], [p('far', 5), p('up', 3), p('down', 1), p('same', 2)], 2);
+    expect(got.map((x) => x.name)).toEqual(['me-tier', 'down', 'up', 'far']);
+  });
+
+  it('не больше MAX_LEAGUE_PLAYERS', () => {
+    const others = Array.from({ length: 30 }, (_, i) => p(`o${i}`, 0));
+    expect(fillLeague([], others, 1)).toHaveLength(MAX_LEAGUE_PLAYERS);
   });
 });

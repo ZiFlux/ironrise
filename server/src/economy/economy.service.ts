@@ -2,7 +2,7 @@ import { stepsXp } from '../game/steps';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { z } from 'zod';
 import { localDay } from '../common/day';
-import { Bot, botsForDay, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, mondayOf } from '../game/bots';
+import { Bot, botsForDay, fillLeague, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, MIN_LEAGUE_PLAYERS, mondayOf } from '../game/bots';
 import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, PROMOTE_TOP, settleWeek, WeekSettlement } from '../game/league';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
@@ -375,11 +375,19 @@ export class EconomyService {
   /** Очки за неделю всех живых игроков лиги [tier], кроме [exceptId]: активные за 4 недели. */
   private async tierPlayers(tier: number, monday: string, today: string, exceptId: string) {
     const since = addWeeks(monday, -4);
-    const profiles = await this.db.profile.findMany({
-      where: { leagueTier: tier, lastActiveDay: { gte: since }, userId: { not: exceptId }, user: { bannedAt: null } },
-      select: { userId: true, nickname: true },
-      take: 30,
-    });
+    const active = { lastActiveDay: { gte: since }, userId: { not: exceptId }, user: { bannedAt: null } };
+    const select = { userId: true, nickname: true, leagueTier: true } as const;
+    const own = await this.db.profile.findMany({ where: { ...active, leagueTier: tier }, select, take: 30 });
+    // Мало своих — добираем соседей (fillLeague): в бете иначе каждый один в своей лиге.
+    const others =
+      own.length >= MIN_LEAGUE_PLAYERS
+        ? []
+        : await this.db.profile.findMany({ where: { ...active, leagueTier: { not: tier } }, select, take: 200 });
+    const profiles = fillLeague(
+      own.map((p) => ({ ...p, tier: p.leagueTier })),
+      others.map((p) => ({ ...p, tier: p.leagueTier })),
+      tier,
+    );
     if (profiles.length === 0) return [];
     const ids = profiles.map((p) => p.userId);
     const days = await this.db.workout.groupBy({

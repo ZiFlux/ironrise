@@ -573,8 +573,13 @@ class AvatarLayers {
       ..close();
   }
 
+  /// Волосы за головой: от висков вниз до [depth], бока расходятся на [spread].
+  /// Сверху — дуга за макушкой чуть ниже шапки, а не прямая на высоте виска:
+  /// иначе по бокам у широких причёсок (грива) видна ступенька.
   Path _backHair(double depth, double spread) {
     final rx = _f.headRx;
+    final headTop = BodyFrame.headCenter.dy - _f.headRy;
+    final crownY = (headTop + 1 - 0.25 * 30) / 0.75;
     return Path()
       ..moveTo(100 - rx - 3, 30)
       ..cubicTo(
@@ -593,6 +598,7 @@ class AvatarLayers {
         100 + rx + 3,
         30,
       )
+      ..cubicTo(100 + rx + 3, crownY, 100 - rx - 3, crownY, 100 - rx - 3, 30)
       ..close();
   }
 
@@ -707,26 +713,32 @@ class AvatarLayers {
         Offset.zero,
       );
     }
-    // Боковые пряди над ушами.
+    // Боковые пряди над ушами. Объединяем, а не складываем: у зеркальной пряди
+    // обход контура обратный, и там, где она ложится на зубец, заливка гасилась
+    // (серый треугольник в волосах).
+    var result = path;
     for (final side in const [-1.0, 1.0]) {
-      path.addPath(
+      result = Path.combine(
+        PathOperation.union,
+        result,
         polygonPath([
           Offset(100 + side * (rx - 3), 12),
           Offset(100 + side * (rx + 5), 14),
           Offset(100 + side * (rx + 0.5), 22),
         ]),
-        Offset.zero,
       );
     }
-    return path;
+    return result;
   }
 
   /// Вульфкат: рваные пряди-отскоки по бокам у скул.
   Path get _flicks {
     final rx = _f.headRx;
-    final path = Path();
+    var path = Path();
     for (final side in const [-1.0, 1.0]) {
-      path.addPath(
+      path = Path.combine(
+        PathOperation.union,
+        path,
         polygonPath([
           Offset(100 + side * (rx - 1), 26),
           Offset(100 + side * (rx + 4), 34),
@@ -734,7 +746,6 @@ class AvatarLayers {
           Offset(100 + side * (rx + 3), 41),
           Offset(100 + side * (rx - 2), 34),
         ]),
-        Offset.zero,
       );
     }
     return path;

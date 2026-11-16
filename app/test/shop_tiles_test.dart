@@ -16,7 +16,7 @@ void main() {
     for (final (slot, item) in [
       ('Цвет волос', 'Огненные'),
       ('Цвет низа', 'Угли'),
-      ('Обувь', 'Пламя'),
+      ('Цвет обуви', 'Пламя'),
       ('Цвет верха', 'Пламя'),
     ]) {
       testWidgets('магазин: $slot, шрифт ×$scale', (t) async {
@@ -53,6 +53,8 @@ void main() {
           c.read(routerProvider).go('/shop');
           await t.pump();
           await t.pump(const Duration(milliseconds: 500));
+          await t.ensureVisible(find.text(slot));
+          await t.pump();
           await t.tap(find.text(slot));
           await t.pump(const Duration(milliseconds: 500));
           expect(find.text(item), findsWidgets);
