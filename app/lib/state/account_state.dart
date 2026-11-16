@@ -19,6 +19,7 @@ import 'consent_state.dart';
 import 'goals_state.dart';
 import 'local_data.dart';
 import 'providers.dart';
+import 'season_state.dart';
 import 'server_game.dart';
 
 const _outboxKey = 'outbox_v1';
@@ -591,6 +592,8 @@ class AccountNotifier extends Notifier<AccountState> {
       ref.invalidate(serverLeagueProvider);
       ref.invalidate(notificationsProvider);
       ref.invalidate(auraProvider);
+      // Очки сезона растут от тренировок, боёв и советов — карточка в дуэлях не застывает.
+      ref.invalidate(seasonProvider);
       await ref.read(goalsSyncProvider).push();
       _netFailures = 0;
       _netRetry?.cancel();

@@ -579,6 +579,15 @@ class _LeaguesSheet extends ConsumerStatefulWidget {
 class _LeaguesSheetState extends ConsumerState<_LeaguesSheet> {
   late LeagueTier _tier = widget.mine;
 
+  /// Как выйти выше из этой лиги — как на сервере (server/src/game/league.ts).
+  static String _rule(LeagueTier t) {
+    if (t == LeagueTier.values.last)
+      return 'Вершина: не опускайся в последние 2 места';
+    final top = t.index >= 2 ? 'первое место' : 'первые 2 места';
+    final days = t.index >= 3 ? ' и 3 тренировочных дня' : '';
+    return 'Вверх: $top$days';
+  }
+
   @override
   Widget build(BuildContext context) {
     final table = ref.watch(serverLeagueTierProvider(_tier.index));
@@ -586,25 +595,51 @@ class _LeaguesSheetState extends ConsumerState<_LeaguesSheet> {
       controller: widget.scroll,
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
       children: [
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: [
-            for (final t in LeagueTier.values)
-              ChoiceChip(
-                avatar: Icon(LucideIcons.medal, size: 16, color: t.color),
-                label: Text(
-                  t == widget.mine
-                      ? '${t.title.split(' ').first} · моя'
-                      : t.title.split(' ').first,
-                ),
-                selected: t == _tier,
-                showCheckmark: false,
-                onSelected: (_) => setState(() => _tier = t),
-              ),
-          ],
+        const Text(
+          'Лиги недели',
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.w600),
+        ),
+        const SizedBox(height: 4),
+        const Text(
+          'От бронзовой к чемпионской. Неделя без тренировок или последние 2 места — '
+          'на ступень ниже. Нажми на лигу, чтобы увидеть её таблицу.',
+          style: TextStyle(fontSize: 13, color: AppColors.textMuted),
         ),
         const SizedBox(height: 12),
+        // Лестница по возрастанию: номер ступени, медаль, правило выхода вверх.
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              for (final t in LeagueTier.values)
+                _LeagueStep(
+                  tier: t,
+                  mine: t == widget.mine,
+                  selected: t == _tier,
+                  rule: _rule(t),
+                  first: t.index == 0,
+                  onTap: () => setState(() => _tier = t),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          children: [
+            Icon(LucideIcons.medal, size: 18, color: _tier.color),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                _tier == widget.mine ? '${_tier.title} — твоя' : _tier.title,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         table.when(
           data: (rows) => rows.isEmpty
               ? const Padding(
@@ -640,6 +675,102 @@ class _LeaguesSheetState extends ConsumerState<_LeaguesSheet> {
           ),
         ),
       ],
+    );
+  }
+}
+
+/// Ступень лестницы лиг.
+class _LeagueStep extends StatelessWidget {
+  const _LeagueStep({
+    required this.tier,
+    required this.mine,
+    required this.selected,
+    required this.rule,
+    required this.first,
+    required this.onTap,
+  });
+
+  final LeagueTier tier;
+  final bool mine;
+  final bool selected;
+  final String rule;
+  final bool first;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? AppColors.raised : Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+          decoration: BoxDecoration(
+            border: first
+                ? null
+                : const Border(top: BorderSide(color: AppColors.hairline)),
+          ),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 22,
+                child: Text(
+                  '${tier.index + 1}',
+                  style: figureStyle(size: 14, color: AppColors.textMuted),
+                ),
+              ),
+              Icon(LucideIcons.medal, size: 20, color: tier.color),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      tier.title,
+                      style: TextStyle(
+                        fontSize: 15,
+                        fontWeight: selected
+                            ? FontWeight.w600
+                            : FontWeight.w400,
+                      ),
+                    ),
+                    Text(
+                      rule,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (mine)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tier.color.withValues(alpha: 0.18),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'твоя',
+                    style: TextStyle(fontSize: 12, color: tier.color),
+                  ),
+                ),
+              if (selected) ...[
+                const SizedBox(width: 6),
+                const Icon(
+                  LucideIcons.chevronDown,
+                  size: 16,
+                  color: AppColors.textMuted,
+                ),
+              ],
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

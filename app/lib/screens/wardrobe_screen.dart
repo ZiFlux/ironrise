@@ -105,6 +105,10 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     ];
     final needsPremium = cart.any((i) => i.premium) && !hero.premium.active;
     final testerLocked = cart.any((i) => i.testerOnly);
+    // Покупки — только с аккаунтом: монеты и вещи хранит сервер, без него они
+    // пропали бы при регистрации или смене телефона. Примерка и своё — без ограничений.
+    final needsAccount =
+        cart.isNotEmpty && !ref.watch(accountProvider).signedIn;
 
     return Scaffold(
       appBar: AppBar(
@@ -212,11 +216,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                   const SizedBox(width: 8),
                   Expanded(
                     child: FilledButton(
-                      onPressed:
-                          !changed ||
-                              total > hero.coins ||
-                              needsPremium ||
-                              testerLocked
+                      onPressed: changed && needsAccount
+                          ? () => context.push('/profile/account')
+                          : !changed ||
+                                total > hero.coins ||
+                                needsPremium ||
+                                testerLocked
                           ? (needsPremium
                                 ? () => context.push('/shop/premium')
                                 : null)
@@ -224,6 +229,8 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                       child: Text(switch ((changed, cart.isEmpty)) {
                         (false, _) => 'Это твой образ',
                         (true, true) => 'Сохранить образ',
+                        (true, false) when needsAccount =>
+                          'Покупки — после регистрации',
                         (true, false) when testerLocked =>
                           cart.any((i) => i.streakDays != null)
                               ? 'Выдаётся за серию'

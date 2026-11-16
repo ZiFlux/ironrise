@@ -356,6 +356,7 @@ class _ShellState extends ConsumerState<_Shell>
   @override
   Widget build(BuildContext context) {
     final shell = widget.shell;
+    final signedIn = ref.watch(accountProvider.select((a) => a.signedIn));
     // Новый заход на вкладку — блоки на ней появятся заново (FadeSlideIn).
     return Scaffold(
       // Свайп вбок — соседняя вкладка. Горизонтальные списки внутри экранов
@@ -393,21 +394,25 @@ class _ShellState extends ConsumerState<_Shell>
         onDestinationSelected: (i) =>
             // Вкладка всегда открывается с главного экрана, а не с последнего вложенного.
             shell.goBranch(i, initialLocation: true),
-        destinations: const [
-          NavigationDestination(
+        destinations: [
+          const NavigationDestination(
             icon: Icon(LucideIcons.personStanding),
             label: 'Герой',
           ),
-          NavigationDestination(
+          const NavigationDestination(
             icon: Icon(LucideIcons.dumbbell),
             label: 'Тренировка',
           ),
-          NavigationDestination(icon: Icon(LucideIcons.swords), label: 'Дуэли'),
+          // Без аккаунта — с замком: дуэли и рейтинг после регистрации.
           NavigationDestination(
-            icon: Icon(LucideIcons.trophy),
-            label: 'Рейтинг',
+            icon: _Locked(locked: !signedIn, icon: LucideIcons.swords),
+            label: 'Дуэли',
           ),
           NavigationDestination(
+            icon: _Locked(locked: !signedIn, icon: LucideIcons.trophy),
+            label: 'Рейтинг',
+          ),
+          const NavigationDestination(
             icon: Icon(LucideIcons.circleUser),
             label: 'Профиль',
           ),
@@ -415,4 +420,21 @@ class _ShellState extends ConsumerState<_Shell>
       ),
     );
   }
+}
+
+/// Значок вкладки с маленьким замком: раздел откроется после регистрации.
+class _Locked extends StatelessWidget {
+  const _Locked({required this.locked, required this.icon});
+
+  final bool locked;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) => Badge(
+    isLabelVisible: locked,
+    backgroundColor: Colors.transparent,
+    offset: const Offset(6, -4),
+    label: const Icon(LucideIcons.lock, size: 11, color: Colors.white70),
+    child: Icon(icon),
+  );
 }

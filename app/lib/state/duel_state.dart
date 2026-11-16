@@ -9,6 +9,7 @@ import '../game/game_config.dart';
 import 'account_state.dart';
 import 'hero.dart';
 import 'providers.dart';
+import 'season_state.dart';
 import 'server_game.dart';
 
 const _duelsKey = 'duels_v1';
@@ -118,6 +119,7 @@ class DuelNotifier extends Notifier<DuelDay> {
     ref.read(currentDuelProvider.notifier).show(result);
     ref.invalidate(serverBotsProvider);
     ref.invalidate(serverLeagueProvider);
+    ref.invalidate(seasonProvider);
     return result;
   }
 
@@ -133,6 +135,7 @@ class DuelNotifier extends Notifier<DuelDay> {
     ref.read(currentDuelProvider.notifier).show(result);
     ref.invalidate(serverFriendsProvider);
     ref.invalidate(serverLeagueProvider);
+    ref.invalidate(seasonProvider);
     ref.invalidate(serverFriendsLeagueProvider);
     return result;
   }
