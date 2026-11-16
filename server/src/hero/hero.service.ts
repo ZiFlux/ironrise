@@ -25,6 +25,7 @@ export interface HeroState {
   /** Бустеры за серию на следующие тренировки. */
   boosters: Boosters;
   goal: string;
+  goals: string[];
   trainingFormat: string;
   /** Когда можно сменить график; null — уже можно (docs/PLAN.md 4.3). */
   nextScheduleChangeAt: Date | null;
@@ -89,6 +90,7 @@ export class HeroService {
       showcase: profile.showcase,
       boosters: readBoosters(profile.boosters),
       goal: profile.goal,
+      goals: profile.goals,
       trainingFormat: profile.trainingFormat,
       nextScheduleChangeAt: nextScheduleChangeAt(profile.formatChangedAt, now),
       scheduleDays: profile.scheduleDays,

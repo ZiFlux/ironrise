@@ -18,6 +18,7 @@ import '../state/consent_state.dart';
 import '../theme.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/schedule_picker.dart';
+import '../widgets/goals_picker.dart';
 import '../widgets/logo_mark.dart';
 import '../widgets/status_toast.dart';
 
@@ -41,6 +42,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   final _nickname = TextEditingController();
   AvatarSex _avatarSex = AvatarSex.male;
   Goal? _goal;
+  List<Goal> _extraGoals = const [];
   TrainingFormat _format = TrainingFormat.fullBody;
   Set<int> _days = TrainingFormat.fullBody.defaultDays.toSet();
   Sex? _sex;
@@ -88,6 +90,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     final hero = HeroProfile.create(
       nickname: normalizeNickname(_nickname.text),
       goal: _goal!,
+      extraGoals: _extraGoals,
       format: _format,
       trainingDays: _days.toList()..sort(),
       body: BodyStats(
@@ -287,12 +290,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         onChanged: (_) => setState(() {}),
       ),
       const SizedBox(height: 8),
-      for (final g in Goal.values)
-        ChoiceTile(
-          selected: _goal == g,
-          title: g.label,
-          onTap: () => setState(() => _goal = g),
-        ),
+      GoalsPicker(
+        goal: _goal,
+        extra: _extraGoals,
+        onChanged: (g, e) => setState(() {
+          _goal = g;
+          _extraGoals = e;
+        }),
+      ),
     ],
   );
 

@@ -24,6 +24,7 @@ import '../state/server_game.dart';
 import '../theme.dart';
 import '../widgets/beta_channel.dart';
 import '../widgets/consent_prompt.dart';
+import '../widgets/goals_picker.dart';
 import '../widgets/guide.dart';
 import '../widgets/screen_hint.dart';
 import 'account_screen.dart' show syncedWhen;
@@ -179,7 +180,11 @@ class _HeroInfo extends StatelessWidget {
     void schedule() => context.go('/profile/settings/schedule');
     final rows = <(String, String, VoidCallback?)>[
       ('Ник', hero.nickname, () => showNicknameDialog(context)),
-      ('Цель', hero.goal.label, null),
+      (
+        hero.extraGoals.isEmpty ? 'Цель' : 'Цели',
+        [hero.goal, ...hero.extraGoals].map((g) => g.label).join(', '),
+        () => showGoalsSheet(context),
+      ),
       ('Формат', hero.format.label, schedule),
       (
         'Дни',

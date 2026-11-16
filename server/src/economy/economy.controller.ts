@@ -3,6 +3,7 @@ import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
 import { AuraTrainingSchema } from '../season/aura-service';
+import { GoalsChangeSchema } from '../game/goals';
 import { AppearanceSchema, BuySchema, EconomyService, NicknameChangeSchema, ScheduleSchema, ShowcaseSchema, StepsSchema, StartLookSchema, TipRewardSchema } from './economy.service';
 
 @Controller()
@@ -60,6 +61,12 @@ export class EconomyController {
   @Put('me/schedule')
   schedule(@UserId() userId: string, @Body(new ZodPipe(ScheduleSchema)) body: z.infer<typeof ScheduleSchema>) {
     return this.economy.changeSchedule(userId, body);
+  }
+
+  /** Сменить цели: главная и до двух дополнительных (п. 100). В любой момент. */
+  @Put('me/goals')
+  goals(@UserId() userId: string, @Body(new ZodPipe(GoalsChangeSchema)) body: z.infer<typeof GoalsChangeSchema>) {
+    return this.economy.changeGoals(userId, body);
   }
 
   /** Сменить ник — раз в 30 дней, раньше — за монеты (paid). */

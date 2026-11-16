@@ -1,6 +1,7 @@
 import { stepsXp } from '../game/steps';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
 import { heroLevel } from '../game/social-progress';
+import { GoalsChangeSchema } from '../game/goals';
 import { showcaseLock } from '../game/showcase';
 import { z } from 'zod';
 import { localDay } from '../common/day';
@@ -145,6 +146,11 @@ export class EconomyService {
   }
 
   /** Сменить график: раз в 7 дней, первая смена — сразу. 409 с датой, если рано. */
+  async changeGoals(userId: string, input: z.infer<typeof GoalsChangeSchema>) {
+    await this.db.profile.update({ where: { userId }, data: { goal: input.goal, goals: input.goals } });
+    return this.hero.state(userId);
+  }
+
   changeSchedule(userId: string, input: z.infer<typeof ScheduleSchema>) {
     return this.db.$transaction(async (tx) => {
       await lockProfile(tx, userId);

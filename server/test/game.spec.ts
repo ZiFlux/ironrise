@@ -821,3 +821,19 @@ describe('нереальный вес не засчитывается (п. 75)',
     expect(fake.gains).toEqual([]);
   });
 });
+
+import { extraGoalsOk, GoalsChangeSchema } from '../src/game/goals';
+
+describe('цели: главная и до двух дополнительных (п. 100)', () => {
+  it('принимаем до двух разных, не совпадающих с главной', () => {
+    expect(extraGoalsOk('strength', [])).toBe(true);
+    expect(extraGoalsOk('strength', ['endurance', 'fatLoss'])).toBe(true);
+    expect(extraGoalsOk('strength', ['endurance', 'fatLoss', 'mass'])).toBe(false);
+    expect(extraGoalsOk('strength', ['strength'])).toBe(false);
+    expect(extraGoalsOk('strength', ['mass', 'mass'])).toBe(false);
+  });
+  it('неизвестную цель не принимаем', () => {
+    expect(GoalsChangeSchema.safeParse({ goal: 'hack', goals: [] }).success).toBe(false);
+    expect(GoalsChangeSchema.safeParse({ goal: 'endurance', goals: ['consistency'] }).success).toBe(true);
+  });
+});

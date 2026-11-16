@@ -6,6 +6,7 @@ import { isValidTimeZone } from '../common/day';
 import { assertLookOwned } from '../economy/economy.service';
 import { BODY_PARTS } from '../game/body-part';
 import { CREATOR_ITEMS } from '../game/start-look';
+import { GoalSchema, MAX_EXTRA_GOALS } from '../game/goals';
 import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
@@ -21,7 +22,9 @@ export const RegisterSchema = z.object({
   /** ТЗ: приложение 18+, без подтверждения аккаунт не создаётся. */
   adultConfirmed: z.literal(true),
   nickname: NicknameSchema,
-  goal: z.string().min(1).max(32),
+  goal: GoalSchema,
+  /** Дополнительные цели — до двух (п. 100). Старые клиенты не присылают. */
+  goals: z.array(GoalSchema).max(MAX_EXTRA_GOALS).default([]),
   trainingFormat: z.string().min(1).max(32),
   scheduleDays: z
     .array(z.number().int().min(0).max(6))
@@ -66,7 +69,7 @@ export class AuthService {
   ) {}
 
   async register(input: z.infer<typeof RegisterSchema>): Promise<Tokens> {
-    const { email, password, nickname, goal, trainingFormat, scheduleDays, appearance, timezone, age, restingHr } =
+    const { email, password, nickname, goal, goals, trainingFormat, scheduleDays, appearance, timezone, age, restingHr } =
       input;
     const consentAt = input.healthConsent ? new Date() : null;
     // У нового героя открыт редактор старта: можно всё, что в нём бесплатно.
@@ -91,6 +94,7 @@ export class AuthService {
               nickname,
               nicknameKey: key,
               goal,
+              goals: goals.filter((g, i) => g !== goal && goals.indexOf(g) === i),
               trainingFormat,
               scheduleDays,
               appearance: appearance as Prisma.InputJsonValue,

@@ -15,6 +15,7 @@ import '../net/push.dart';
 import 'health_state.dart';
 import 'aura_state.dart';
 import 'consent_state.dart';
+import 'goals_state.dart';
 import 'local_data.dart';
 import 'providers.dart';
 import 'server_game.dart';
@@ -419,6 +420,8 @@ class AccountNotifier extends Notifier<AccountState> {
       'adultConfirmed': true,
       'nickname': hero.nickname,
       'goal': hero.goal.name,
+      if (hero.extraGoals.isNotEmpty)
+        'goals': [for (final g in hero.extraGoals) g.name],
       'trainingFormat': hero.format.name,
       'scheduleDays': hero.trainingDays,
       'appearance': hero.look.toJson(),
@@ -554,6 +557,7 @@ class AccountNotifier extends Notifier<AccountState> {
       ref.invalidate(serverLeagueProvider);
       ref.invalidate(notificationsProvider);
       ref.invalidate(auraProvider);
+      await ref.read(goalsSyncProvider).push();
       _netFailures = 0;
       _netRetry?.cancel();
       final at = DateTime.now();

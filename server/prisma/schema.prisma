@@ -80,6 +80,8 @@ model Profile {
   /// Последняя выданная веха героя (средний уровень 5/10/20).
   heroMilestone    Int       @default(0)
   goal             String
+  /// Дополнительные цели (до двух, п. 100); главная — goal.
+  goals            String[]  @default([])
   trainingFormat   String
   /// 0 = понедельник … 6 = воскресенье.
   scheduleDays     Int[]

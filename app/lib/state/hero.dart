@@ -14,7 +14,11 @@ enum Goal {
   mass('Набрать массу'),
   strength('Стать сильнее'),
   fatLoss('Похудеть'),
+  endurance('Стать выносливее'),
   consistency('Тренироваться регулярно');
+
+  /// Дополнительных целей — не больше (TRAINING_SYSTEM.md 13.6).
+  static const maxExtra = 2;
 
   const Goal(this.label);
   final String label;
@@ -147,6 +151,7 @@ class HeroProfile {
   const HeroProfile({
     required this.nickname,
     required this.goal,
+    this.extraGoals = const [],
     required this.format,
     required this.trainingDays,
     required this.body,
@@ -170,6 +175,7 @@ class HeroProfile {
   factory HeroProfile.create({
     required String nickname,
     required Goal goal,
+    List<Goal> extraGoals = const [],
     required TrainingFormat format,
     required List<int> trainingDays,
     required BodyStats body,
@@ -177,6 +183,7 @@ class HeroProfile {
   }) => HeroProfile(
     nickname: nickname,
     goal: goal,
+    extraGoals: extraGoals,
     format: format,
     trainingDays: trainingDays,
     body: body,
@@ -192,6 +199,9 @@ class HeroProfile {
 
   final String nickname;
   final Goal goal;
+
+  /// Дополнительные цели (до [Goal.maxExtra]), без главной.
+  final List<Goal> extraGoals;
   final TrainingFormat format;
   final List<int> trainingDays;
   final BodyStats body;
@@ -287,12 +297,15 @@ class HeroProfile {
     bool startLocked = false,
     MusclePoints? muscles,
     Boosters? boosters,
+    Goal? goal,
+    List<Goal>? extraGoals,
   }) => HeroProfile(
     nickname: nickname ?? this.nickname,
     nextNicknameChangeAt: nicknameChangeAllowed
         ? null
         : nextNicknameChangeAt ?? this.nextNicknameChangeAt,
-    goal: goal,
+    goal: goal ?? this.goal,
+    extraGoals: extraGoals ?? this.extraGoals,
     format: format ?? this.format,
     trainingDays: trainingDays ?? this.trainingDays,
     nextScheduleChangeAt: scheduleChangeAllowed
@@ -317,6 +330,8 @@ class HeroProfile {
   String encode() => jsonEncode({
     'nickname': nickname,
     'goal': goal.name,
+    if (extraGoals.isNotEmpty)
+      'extraGoals': [for (final g in extraGoals) g.name],
     'format': format.name,
     'trainingDays': trainingDays,
     'body': body.toJson(),
@@ -352,6 +367,10 @@ class HeroProfile {
     return HeroProfile(
       nickname: j['nickname'],
       goal: Goal.values.byName(j['goal']),
+      extraGoals: [
+        for (final g in (j['extraGoals'] as List? ?? const []))
+          ?Goal.values.asNameMap()[g],
+      ],
       format: TrainingFormat.values.byName(j['format']),
       trainingDays: List<int>.from(j['trainingDays']),
       body: BodyStats.fromJson(j['body']),

@@ -24,6 +24,9 @@ final prefsProvider = Provider<SharedPreferences>(
 const _heroKey = 'hero_v1';
 
 /// Герой хранится локально, пока нет сервера.
+/// Цели менялись на телефоне и ещё не ушли на сервер (state/goals_state.dart).
+const goalsDirtyKey = 'goals_dirty';
+
 class HeroNotifier extends Notifier<HeroProfile?> {
   @override
   HeroProfile? build() {
@@ -211,6 +214,16 @@ class HeroNotifier extends Notifier<HeroProfile?> {
         look: look,
         // Ник — с сервера: он там уникален, а здесь мог остаться от сброса героя.
         nickname: me['nickname'] as String?,
+        // Цели — с сервера, если на телефоне нет неотправленной правки (п. 100).
+        goal: ref.read(prefsProvider).getBool(goalsDirtyKey) ?? false
+            ? null
+            : Goal.values.asNameMap()[me['goal']],
+        extraGoals: ref.read(prefsProvider).getBool(goalsDirtyKey) ?? false
+            ? null
+            : [
+                for (final g in (me['goals'] as List? ?? const []))
+                  ?Goal.values.asNameMap()[g],
+              ],
         nextNicknameChangeAt: me['nextNicknameChangeAt'] == null
             ? null
             : DateTime.parse(me['nextNicknameChangeAt'] as String).toLocal(),
