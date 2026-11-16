@@ -244,6 +244,17 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Вкладок в нижней панели: Герой, Тренировка, Дуэли, Рейтинг, Профиль.
 const _tabCount = 5;
 
+/// Свайп перелистывает вкладку, только если он решительный и почти горизонтальный
+/// (п. 77): палец прошёл ≥ 80 dp, быстро (≥ 600 dp/с), а путь и скорость вбок
+/// минимум вдвое больше, чем вниз/вверх. Прокрутка наискось вкладку не меняет.
+bool isTabSwipe(Offset path, Offset velocity) =>
+    path.dx.abs() >= 80 &&
+    velocity.dx.abs() >= 600 &&
+    path.dx.abs() >= 2 * path.dy.abs() &&
+    velocity.dx.abs() >= 2 * velocity.dy.abs() &&
+    // Палец и бросок — в одну сторону.
+    path.dx.sign == velocity.dx.sign;
+
 class _Shell extends StatefulWidget {
   const _Shell({required this.shell});
 
@@ -255,6 +266,8 @@ class _Shell extends StatefulWidget {
 
 class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
   int _visit = 0;
+  Offset? _dragFrom;
+  Offset? _dragTo;
 
   // Переключение вкладок «fade through» (Material): новая вкладка проявляется
   // и чуть подрастает. Вкладки не пересоздаются — их состояние сохраняется.
@@ -297,9 +310,14 @@ class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
       // перехватывают жест сами, поэтому мешать не будут.
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
+        onHorizontalDragStart: (d) => _dragFrom = d.globalPosition,
+        onHorizontalDragUpdate: (d) => _dragTo = d.globalPosition,
         onHorizontalDragEnd: (d) {
-          final v = d.primaryVelocity ?? 0;
-          if (v.abs() < 350) return;
+          final from = _dragFrom, to = _dragTo;
+          _dragFrom = _dragTo = null;
+          if (from == null || to == null) return;
+          if (!isTabSwipe(to - from, d.velocity.pixelsPerSecond)) return;
+          final v = d.velocity.pixelsPerSecond.dx;
           final next = shell.currentIndex + (v < 0 ? 1 : -1);
           if (next < 0 || next >= _tabCount) return;
           shell.goBranch(next, initialLocation: true);
