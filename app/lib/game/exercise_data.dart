@@ -54,6 +54,10 @@ const generatedExercises = <Exercise>[
   Exercise(id: 'side_plank', name: 'Боковая планка', pattern: 'core', difficulty: 2, gear: ExerciseGear.none, shares: {BodyPart.core: 1.0}, usesWeight: false, unit: ExerciseUnit.seconds, defaultReps: 25),
   Exercise(id: 'russian_twist', name: 'Русские скручивания', pattern: 'core', difficulty: 2, gear: ExerciseGear.none, shares: {BodyPart.core: 1.0}, usesWeight: false, defaultReps: 16, joints: {'lowerBack'}),
   Exercise(id: 'hanging_leg_raise', name: 'Подъём ног в висе', pattern: 'core', difficulty: 3, gear: ExerciseGear.gym, shares: {BodyPart.core: 0.8, BodyPart.arms: 0.2}, usesWeight: false, defaultReps: 8),
+  Exercise(id: 'jumping_jacks', name: 'Прыжки «звёздочка»', pattern: 'conditioning', difficulty: 1, gear: ExerciseGear.none, shares: {BodyPart.cardio: 0.7, BodyPart.legs: 0.2, BodyPart.arms: 0.1}, usesWeight: false, unit: ExerciseUnit.seconds, defaultReps: 40),
+  Exercise(id: 'mountain_climber', name: 'Скалолаз', pattern: 'conditioning', difficulty: 1, gear: ExerciseGear.none, shares: {BodyPart.cardio: 0.6, BodyPart.core: 0.3, BodyPart.legs: 0.1}, usesWeight: false, unit: ExerciseUnit.seconds, defaultReps: 30),
+  Exercise(id: 'jump_squat', name: 'Приседания с выпрыгиванием', pattern: 'conditioning', difficulty: 2, gear: ExerciseGear.none, shares: {BodyPart.cardio: 0.5, BodyPart.legs: 0.5}, usesWeight: false, defaultReps: 12, joints: {'knee'}),
+  Exercise(id: 'burpee', name: 'Бёрпи', pattern: 'conditioning', difficulty: 2, gear: ExerciseGear.none, shares: {BodyPart.cardio: 0.5, BodyPart.legs: 0.2, BodyPart.chest: 0.15, BodyPart.core: 0.15}, usesWeight: false, defaultReps: 10),
 ];
 
 const generatedWarmups = <WarmupMove>[
@@ -121,6 +125,10 @@ const generatedMuscles = <String, Map<Muscle, double>>{
   'side_plank': {Muscle.obliques: 0.7, Muscle.abs: 0.3},
   'russian_twist': {Muscle.obliques: 0.6, Muscle.abs: 0.4},
   'hanging_leg_raise': {Muscle.abs: 0.65, Muscle.obliques: 0.2, Muscle.forearms: 0.15},
+  'jumping_jacks': {Muscle.calves: 0.5, Muscle.quads: 0.3, Muscle.delts: 0.2},
+  'mountain_climber': {Muscle.abs: 0.6, Muscle.quads: 0.25, Muscle.obliques: 0.15},
+  'jump_squat': {Muscle.quads: 0.5, Muscle.glutes: 0.3, Muscle.calves: 0.2},
+  'burpee': {Muscle.quads: 0.4, Muscle.pecs: 0.3, Muscle.abs: 0.3},
 };
 
 const generatedGuides = <String, ExerciseGuide>{
@@ -171,6 +179,10 @@ const generatedGuides = <String, ExerciseGuide>{
   'side_plank': ExerciseGuide(['Упор на предплечье, локоть под плечом, ноги вместе.', 'Подними таз до прямой линии тела.', 'Держи, затем смени сторону — время на одну сторону.'], 'Таз проваливается к полу — лучше короче, но в линию.'),
   'russian_twist': ExerciseGuide(['Сидя, корпус отклонён назад, стопы на полу или чуть приподняты.', 'Поворачивай корпус, касаясь руками пола сбоку.', 'Счёт — касания с обеих сторон вместе.'], 'Двигаются только руки — поворачивай плечи вместе с ними.'),
   'hanging_leg_raise': ExerciseGuide(['Вис на перекладине, плечи активны.', 'Поднимай ноги, подкручивая таз к груди.', 'Опускай медленно, без раскачки.'], 'Махи по инерции — останови раскачку перед каждым повтором.'),
+  'jumping_jacks': ExerciseGuide(['Ноги вместе, руки вдоль тела.', 'Прыжком — ноги в стороны, руки над головой.', 'Прыжком обратно. Темп ровный, дыши свободно.'], 'Приземление на пятки — мягко на носки, колени слегка согнуты.'),
+  'mountain_climber': ExerciseGuide(['Упор лёжа на прямых руках, плечи над ладонями.', 'По очереди быстро подтягивай колени к груди.', 'Таз не поднимай, корпус прямой.'], 'Таз задран вверх — опусти его в линию с плечами.'),
+  'jump_squat': ExerciseGuide(['Присед до параллели, руки перед собой.', 'Мощно выпрыгни вверх.', 'Приземляйся мягко сразу в следующий присед.'], 'Жёсткое приземление на прямые ноги — бережём колени: мягко и с согнутыми коленями.'),
+  'burpee': ExerciseGuide(['Присед, ладони на пол.', 'Ноги прыжком назад в упор лёжа, при желании — отжимание.', 'Ноги обратно и прыжок вверх. Тяжело — без прыжка.'], 'Провисает поясница в упоре — держи тело прямым, лучше медленнее.'),
   'warm_bike': ExerciseGuide(['Сопротивление низкое, темп разговорный.', 'Под конец чуть ускорься.'], 'Разминка — не тренировка: если запыхался, сбавь.'),
   'warm_rower': ExerciseGuide(['Толчок ногами, затем корпус, затем руки.', 'Возврат в обратном порядке, спокойно.'], 'Тянуть руками раньше ног — главная работа у ног.'),
   'warm_march': ExerciseGuide(['Поднимай колени до уровня таза, руки работают.', 'Темп бодрый, но без прыжков.'], 'Сутулая спина — держи корпус ровно.'),

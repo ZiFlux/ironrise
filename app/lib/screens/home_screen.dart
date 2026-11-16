@@ -27,6 +27,7 @@ import '../widgets/level_plate.dart';
 import '../widgets/week_strip.dart';
 import '../widgets/weigh_in.dart';
 import '../state/entry_test_state.dart';
+import '../game/goal_path.dart';
 import '../widgets/motion.dart';
 import '../widgets/shop_entry.dart';
 import '../widgets/guide.dart';
@@ -625,7 +626,15 @@ class _WeighInLine extends ConsumerWidget {
     final entry = _EntryTestLine.due(ref);
     if (entry.first ||
         entry.retest ||
-        !weighInDue(ref.watch(bodyLogProvider), DateTime.now())) {
+        !weighInDue(
+          ref.watch(bodyLogProvider),
+          DateTime.now(),
+          // При цели «похудеть» — раз в 2 дня (п. 117).
+          every: weighInEveryFor(
+            ref.watch(heroProvider)?.goal,
+            ref.watch(heroProvider)?.extraGoals ?? const [],
+          ),
+        )) {
       return const SizedBox.shrink();
     }
     return Padding(

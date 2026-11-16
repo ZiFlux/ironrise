@@ -49,6 +49,10 @@ export const EXERCISE_DATA: readonly { id: string; name: string; equipment: 'non
   {"id": "side_plank", "name": "Боковая планка", "equipment": "none", "usesWeight": false, "shares": {"core": 1}},
   {"id": "russian_twist", "name": "Русские скручивания", "equipment": "none", "usesWeight": false, "shares": {"core": 1}},
   {"id": "hanging_leg_raise", "name": "Подъём ног в висе", "equipment": "gym", "usesWeight": false, "shares": {"core": 0.8, "arms": 0.2}},
+  {"id": "jumping_jacks", "name": "Прыжки «звёздочка»", "equipment": "none", "usesWeight": false, "shares": {"cardio": 0.7, "legs": 0.2, "arms": 0.1}},
+  {"id": "mountain_climber", "name": "Скалолаз", "equipment": "none", "usesWeight": false, "shares": {"cardio": 0.6, "core": 0.3, "legs": 0.1}},
+  {"id": "jump_squat", "name": "Приседания с выпрыгиванием", "equipment": "none", "usesWeight": false, "shares": {"cardio": 0.5, "legs": 0.5}},
+  {"id": "burpee", "name": "Бёрпи", "equipment": "none", "usesWeight": false, "shares": {"cardio": 0.5, "legs": 0.2, "chest": 0.15, "core": 0.15}},
 ];
 
 export const EXERCISE_MUSCLE_DATA: Readonly<Record<string, Record<string, number>>> = {
@@ -99,4 +103,8 @@ export const EXERCISE_MUSCLE_DATA: Readonly<Record<string, Record<string, number
   side_plank: {"obliques": 0.7, "abs": 0.3},
   russian_twist: {"obliques": 0.6, "abs": 0.4},
   hanging_leg_raise: {"abs": 0.65, "obliques": 0.2, "forearms": 0.15},
+  jumping_jacks: {"calves": 0.5, "quads": 0.3, "delts": 0.2},
+  mountain_climber: {"abs": 0.6, "quads": 0.25, "obliques": 0.15},
+  jump_squat: {"quads": 0.5, "glutes": 0.3, "calves": 0.2},
+  burpee: {"quads": 0.4, "pecs": 0.3, "abs": 0.3},
 };

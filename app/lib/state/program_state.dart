@@ -95,6 +95,7 @@ class UserProgram {
     bool adjacent = false,
     TrainingLevel level = TrainingLevel.novice,
     BodyPart? lagging,
+    Goal? goal,
   }) {
     final start = phaseFor(level) == ProgramPhase.start;
     return SessionBuilder.days(
@@ -106,6 +107,7 @@ class UserProgram {
       adjacent: adjacent,
       start: start,
       lagging: start ? null : lagging,
+      goal: goal,
     );
   }
 
@@ -124,11 +126,13 @@ class UserProgram {
     TrainingLevel level = TrainingLevel.novice,
     TrainingFormat format = TrainingFormat.custom,
     bool adjacent = false,
+    Goal? goal,
   }) {
     final all = days(
       sessionsPerWeek,
       format: format,
       adjacent: adjacent,
+      goal: goal,
       level: level,
       lagging: lagging,
     );
@@ -499,6 +503,7 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       level: trainingLevelOf(hero, program),
       format: hero?.format ?? TrainingFormat.custom,
       adjacent: hasAdjacentDays(hero?.loadDays ?? const []),
+      goal: hero?.goal,
     );
 
 /// Уровень по входной тренировке (п. 116), а без неё — по анкете героя.

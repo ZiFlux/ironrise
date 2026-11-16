@@ -7,6 +7,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../game/set_sanity.dart';
+import '../game/goal_path.dart';
 import '../state/records_state.dart';
 import '../game/to_failure.dart';
 import '../game/exercise_catalog.dart';
@@ -632,14 +633,15 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     if (record == true && mounted) _logSet(index, set);
   }
 
+  /// Отдых между подходами — по главной цели (п. 117): сила 2,5 мин, выносливость 45 с.
+  Duration get _rest => restFor(ref.read(heroProvider)?.goal);
+
   void _logSet(int index, SetRecord set) {
     _workout.logSet(index, set);
-    setState(
-      () => _restEndsAt = DateTime.now().add(GameConfig.restBetweenSets),
-    );
+    setState(() => _restEndsAt = DateTime.now().add(_rest));
     TrainingSound.rest();
     _restBell?.cancel();
-    _restBell = Timer(GameConfig.restBetweenSets, () {
+    _restBell = Timer(_rest, () {
       if (!mounted) return;
       TrainingSound.start();
       _workout.mark(WorkoutEventKind.restEnd);
@@ -720,6 +722,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                   ? const SizedBox.shrink()
                   : _RestBanner(
                       left: left,
+                      total: _rest,
                       onSkip: () {
                         _restBell?.cancel();
                         _workout.mark(WorkoutEventKind.restSkip);
@@ -837,7 +840,15 @@ class _EmptyHint extends StatelessWidget {
 }
 
 class _RestBanner extends StatelessWidget {
-  const _RestBanner({required this.left, required this.onSkip, this.hint});
+  const _RestBanner({
+    required this.left,
+    required this.onSkip,
+    this.hint,
+    this.total = const Duration(seconds: 90),
+  });
+
+  /// Весь отдых — для полоски прогресса.
+  final Duration total;
 
   final Duration left;
   final VoidCallback onSkip;
@@ -848,7 +859,7 @@ class _RestBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    final total = GameConfig.restBetweenSets.inSeconds;
+    final total = this.total.inSeconds;
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 8),
       padding: const EdgeInsets.fromLTRB(16, 8, 8, 8),

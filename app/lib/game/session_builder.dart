@@ -3,6 +3,8 @@ import 'exercise_catalog.dart';
 import 'muscles.dart';
 import 'program.dart';
 import 'training_format.dart';
+import 'goal_path.dart';
+import '../state/hero.dart' show Goal;
 
 /// Уровень подготовки (п. 51–52 бэклога): сколько упражнений в тренировке,
 /// какая недельная норма подходов на мышцу и с какой ступени лесенки начинать.
@@ -249,7 +251,14 @@ class SessionBuilder {
     bool adjacent = false,
     bool start = false,
     BodyPart? lagging,
+    Goal? goal,
   }) {
+    // Путь цели (п. 117): «Старт» одинаков для всех — без него.
+    final path = start || goal == null ? null : GoalPath.of(goal, level);
+    final maxExercises = (level.exercises + (path?.exerciseDelta ?? 0)).clamp(
+      4,
+      8,
+    );
     final templates = _templates(
       format,
       sessionsPerWeek,
@@ -272,6 +281,7 @@ class SessionBuilder {
           // больше работы без перекрытия соседних дней (TRAINING_SYSTEM.md 14).
           t == _focus || _trains(t, lagging) ? lagging : null,
           bodyweightFirst: bodyweightFirst,
+          maxExercises: maxExercises,
         ),
     ];
     final sets = _distributeSets(
@@ -285,7 +295,8 @@ class SessionBuilder {
       for (final (d, t) in templates.indexed)
         ProgramDay(t.id, t.title, [
           for (final (i, choice) in picked[d].indexed)
-            _planned(choice, sets[d][i], level, start),
+            _planned(choice, sets[d][i], level, start, path: path),
+          if (path?.finisher ?? false) _finisher(d, level),
         ]),
     ];
   }
@@ -298,6 +309,7 @@ class SessionBuilder {
     int Function(String pattern) stepOf,
     BodyPart? lagging, {
     bool bodyweightFirst = false,
+    int? maxExercises,
   }) {
     var slots = [...t.slots];
     if (lagging != null && lagging != BodyPart.cardio) {
@@ -322,7 +334,7 @@ class SessionBuilder {
     }
     final byPriority = [...chosen]
       ..sort((a, b) => a.$1 != b.$1 ? a.$1 - b.$1 : a.$2 - b.$2);
-    final kept = byPriority.take(level.exercises).toList()
+    final kept = byPriority.take(maxExercises ?? level.exercises).toList()
       ..sort((a, b) => a.$2 - b.$2);
     return [for (final c in kept) (exercise: c.$3, compound: c.$4)];
   }
@@ -477,12 +489,30 @@ class SessionBuilder {
     return sets;
   }
 
+  /// Финишер «на дыхалку» в конце дня (похудеть, выносливость): 2 подхода, по кругу
+  /// между днями. Новичку — без прыжков в упор: «звёздочка» и скалолаз.
+  static PlannedExercise _finisher(int day, TrainingLevel level) {
+    const easy = ['jumping_jacks', 'mountain_climber'];
+    const hard = ['burpee', 'jump_squat', 'mountain_climber'];
+    final pool = level == TrainingLevel.novice ? easy : hard;
+    final e = ExerciseCatalog.byId(pool[day % pool.length]);
+    final seconds = e.unit == ExerciseUnit.seconds;
+    return PlannedExercise(
+      e.id,
+      sets: 2,
+      repsMin: seconds ? 30 : 10,
+      repsMax: seconds ? 45 : 15,
+      repsInReserve: 2,
+    );
+  }
+
   static PlannedExercise _planned(
     ({Exercise exercise, bool compound}) c,
     int sets,
     TrainingLevel level,
-    bool start,
-  ) {
+    bool start, {
+    GoalPath? path,
+  }) {
     final e = c.exercise;
     if (e.unit == ExerciseUnit.seconds) {
       return PlannedExercise(
@@ -500,6 +530,19 @@ class SessionBuilder {
         repsMin: 10,
         repsMax: 12,
         repsInReserve: 3,
+      );
+    }
+    // Путь цели: свои повторы и запас (п. 117).
+    if (path != null) {
+      final (lo, hi) = c.compound ? path.compoundReps : path.isolationReps;
+      final reserve =
+          (level == TrainingLevel.advanced ? 1 : 2) + path.reserveDelta;
+      return PlannedExercise(
+        e.id,
+        sets: sets,
+        repsMin: lo,
+        repsMax: hi,
+        repsInReserve: reserve.clamp(0, 3),
       );
     }
     // Базовые — тяжелее (опытным 6–10), изоляция — 10–15.

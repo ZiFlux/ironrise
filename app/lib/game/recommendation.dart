@@ -22,7 +22,10 @@ class Recommendation {
   static Recommendation? forLagging(List<BodyPart> lagging) {
     if (lagging.isEmpty) return null;
     final part = lagging.first;
-    final options = ExerciseCatalog.forPart(part);
+    // Финишеры «на дыхалку» (п. 117) — не замена кардио-тренировке: для кардио — совет.
+    final options = ExerciseCatalog.forPart(part)
+        .where((e) => e.pattern != 'conditioning')
+        .toList();
     return Recommendation(
       part: part,
       exercise: options.isEmpty ? null : options.first,

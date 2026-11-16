@@ -235,9 +235,13 @@ BodySnapshot bodySnapshot(List<BodyMeasurement> log) {
 }
 
 /// Пора взвеситься: веса нет или последнему 3 дня и больше.
-bool weighInDue(List<BodyMeasurement> log, DateTime now) {
+bool weighInDue(
+  List<BodyMeasurement> log,
+  DateTime now, {
+  Duration every = weighInEvery,
+}) {
   final last = log.where((m) => m.weightKg != null).firstOrNull;
-  return last == null || now.difference(last.at) >= weighInEvery;
+  return last == null || now.difference(last.at) >= every;
 }
 
 /// Изменение веса за [days] дней: последний минус ближайший к началу периода.
