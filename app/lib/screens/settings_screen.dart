@@ -22,6 +22,7 @@ import '../state/settings.dart';
 import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/beta_channel.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/guide.dart';
 import '../widgets/screen_hint.dart';
@@ -70,6 +71,9 @@ class SettingsScreen extends ConsumerWidget {
               ],
             ),
           ),
+          const SizedBox(height: 24),
+          const _SectionLabel('Сообщество'),
+          const BetaChannelTile(),
           const SizedBox(height: 24),
           const _SectionLabel('Где тренируешься'),
           const _EquipmentPicker(),
