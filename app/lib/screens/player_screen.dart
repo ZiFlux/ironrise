@@ -22,6 +22,8 @@ import '../game/training_stats.dart';
 import '../state/showcase_state.dart';
 import '../state/training_log.dart';
 import '../widgets/body_part_sheet.dart';
+import '../widgets/info_bubble.dart';
+import '../widgets/streak_sheet.dart';
 import '../widgets/level_plate.dart';
 import '../game/hero_milestones.dart';
 import '../widgets/status_toast.dart';
@@ -682,40 +684,54 @@ class _Stats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tiles = [
-      ('Тренировок', '${records.workouts}'),
-      ('Подходов', formatThousands(records.sets)),
-      ('Серия', '${hero.streakDays}'),
-      ('Монеты', formatThousands(hero.coins)),
+    // Каждая плитка ведёт туда, где про это подробно (п. 127).
+    final tiles = <(String, String, void Function())>[
+      (
+        'Тренировок',
+        '${records.workouts}',
+        () => context.push('/workout/stats'),
+      ),
+      (
+        'Подходов',
+        formatThousands(records.sets),
+        () => context.push('/workout/stats'),
+      ),
+      ('Серия', '${hero.streakDays}', () => showStreakSheet(context)),
+      ('Монеты', formatThousands(hero.coins), () => context.push('/shop')),
     ];
     // Одна высота у всех плиток, даже если подпись где-то переносится.
     return IntrinsicHeight(
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          for (final (i, (label, value)) in tiles.indexed) ...[
+          for (final (i, (label, value, open)) in tiles.indexed) ...[
             if (i > 0) const SizedBox(width: 8),
             Expanded(
-              child: Container(
-                padding: const EdgeInsets.symmetric(vertical: 12),
-                decoration: BoxDecoration(
-                  color: AppColors.surface,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.hairline),
-                ),
-                child: Column(
-                  children: [
-                    Text(value, style: figureStyle(size: 17)),
-                    const SizedBox(height: 6),
-                    Text(
-                      label,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textMuted,
+              child: Tappable(
+                radius: 12,
+                semantics: '$label: $value',
+                onTap: (_) => open(),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.surface,
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: AppColors.hairline),
+                  ),
+                  child: Column(
+                    children: [
+                      Text(value, style: figureStyle(size: 17)),
+                      const SizedBox(height: 6),
+                      Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -835,33 +851,46 @@ class _LiftRow extends StatelessWidget {
         ? '${formatWeight(lift.weight)} кг × ${lift.reps}'
         : '${lift.reps} повт.';
     final oneRepMax = lift.oneRepMax;
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(exercise.name, style: const TextStyle(fontSize: 14)),
-                const SizedBox(height: 2),
-                Text(
-                  oneRepMax == null
-                      ? 'Лучший: $best'
-                      : 'Лучший: $best · максимум ≈ ${formatWeight((oneRepMax * 2).round() / 2)} кг',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppColors.textMuted,
+    return Tappable(
+      radius: 0,
+      onTap: (c) => showInfoBubble(
+        c,
+        title: exercise.name,
+        text:
+            'Лучший подход: $best${oneRepMax == null ? '' : '. Максимум на один раз — '
+                      'около ${formatWeight((oneRepMax * 2).round() / 2)} кг (по формуле, без проверки).'}'
+            '${level == null ? '' : ' Уровень «${level!.label}» — по весу относительно твоего веса тела.'}',
+        actionLabel: 'Динамика',
+        onAction: () => context.push('/workout/stats'),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        child: Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(exercise.name, style: const TextStyle(fontSize: 14)),
+                  const SizedBox(height: 2),
+                  Text(
+                    oneRepMax == null
+                        ? 'Лучший: $best'
+                        : 'Лучший: $best · максимум ≈ ${formatWeight((oneRepMax * 2).round() / 2)} кг',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Text(
-            level?.label ?? '—',
-            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
-          ),
-        ],
+            Text(
+              level?.label ?? '—',
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -974,52 +1003,56 @@ class _MuscleRow extends StatelessWidget {
         : balance < 0.9
         ? ('отстаёт', const Color(0xFFFFB547))
         : ('ровно', AppColors.textMuted);
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: [
-          SizedBox(
-            width: 112,
-            child: Row(
-              children: [
-                Flexible(
-                  child: Text(
-                    muscle.label,
-                    overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(fontSize: 14),
+    return Tappable(
+      radius: 6,
+      onTap: (_) => showBodyPartSheet(context, muscle.part),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: 8),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 112,
+              child: Row(
+                children: [
+                  Flexible(
+                    child: Text(
+                      muscle.label,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 14),
+                    ),
                   ),
-                ),
-                if (hot) ...[
-                  const SizedBox(width: 4),
-                  const Icon(
-                    LucideIcons.flame,
-                    size: 14,
-                    color: Color(0xFFFF8A3D),
-                  ),
+                  if (hot) ...[
+                    const SizedBox(width: 4),
+                    const Icon(
+                      LucideIcons.flame,
+                      size: 14,
+                      color: Color(0xFFFF8A3D),
+                    ),
+                  ],
                 ],
-              ],
-            ),
-          ),
-          Expanded(
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: LinearProgressIndicator(
-                value: ((balance - 0.6) / 0.9).clamp(0.05, 1.0),
-                minHeight: 6,
-                color: muscle.part.color,
-                backgroundColor: AppColors.raised,
               ),
             ),
-          ),
-          SizedBox(
-            width: 76,
-            child: Text(
-              tag,
-              textAlign: TextAlign.right,
-              style: TextStyle(fontSize: 13, color: color),
+            Expanded(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(3),
+                child: LinearProgressIndicator(
+                  value: ((balance - 0.6) / 0.9).clamp(0.05, 1.0),
+                  minHeight: 6,
+                  color: muscle.part.color,
+                  backgroundColor: AppColors.raised,
+                ),
+              ),
             ),
-          ),
-        ],
+            SizedBox(
+              width: 76,
+              child: Text(
+                tag,
+                textAlign: TextAlign.right,
+                style: TextStyle(fontSize: 13, color: color),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
