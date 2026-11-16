@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../game/set_sanity.dart';
+import '../state/records_state.dart';
 import '../game/to_failure.dart';
 import '../game/exercise_catalog.dart';
 import '../game/program.dart';
@@ -585,6 +588,42 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     setState(() => _expanded = widget.session.entries.length);
   }
 
+  /// Перед записью — проверка правдоподобия (п. 75): невозможное не засчитываем,
+  /// резкий скачок к рекорду переспрашиваем.
+  Future<void> _checkAndLog(int index, SetRecord set) async {
+    final exercise = widget.session.entries[index].exercise;
+    final best = ref.read(recordsProvider).best[exercise.id];
+    final sanity = checkSet(
+      exercise,
+      set,
+      best: best == null
+          ? null
+          : SetRecord(weight: best.weight, reps: best.reps),
+    );
+    if (sanity == SetSanity.ok) return _logSet(index, set);
+    final rng = Random();
+    final absurd = sanity == SetSanity.absurd;
+    final record = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text(absurd ? 'Не засчитано' : 'Это точно?'),
+        content: Text(absurd ? absurdJoke(rng) : jumpJoke(rng)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Исправлю'),
+          ),
+          if (!absurd)
+            FilledButton(
+              onPressed: () => Navigator.pop(context, true),
+              child: const Text('Да, это рекорд'),
+            ),
+        ],
+      ),
+    );
+    if (record == true && mounted) _logSet(index, set);
+  }
+
   void _logSet(int index, SetRecord set) {
     _workout.logSet(index, set);
     setState(
@@ -712,7 +751,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                           );
                           setState(() => _expanded = i);
                         },
-                        onLog: (set) => _logSet(i, set),
+                        onLog: (set) => _checkAndLog(i, set),
                         onUndo: () => _workout.undoLastSet(i),
                         onRemove: () => _workout.removeExercise(i),
                         toFailure: toFailureFor(

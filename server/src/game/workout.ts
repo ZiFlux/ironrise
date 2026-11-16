@@ -1,6 +1,6 @@
 import { BODY_PARTS, BodyPart, PartMap } from './body-part';
 import { GameConfig as C } from './config';
-import { findExercise } from './exercises';
+import { findExercise, isPlausibleSet } from './exercises';
 import { laggingParts, levelFromXp, levels, xpForSet } from './progression';
 
 export interface SetInput {
@@ -88,7 +88,9 @@ export const scoreStrength = (
   for (const entry of session.entries) {
     const exercise = findExercise(entry.exerciseId);
     if (!exercise) throw new UnknownExerciseError(entry.exerciseId);
-    const counted = Math.min(entry.sets.length, C.maxSetsPerExercise);
+    // Невозможные подходы (400 кг на бицепс) не засчитываются (п. 75).
+    const plausible = entry.sets.filter((set) => isPlausibleSet(exercise, set)).length;
+    const counted = Math.min(plausible, C.maxSetsPerExercise);
     for (const [part, share] of Object.entries(exercise.shares) as [BodyPart, number][]) {
       earned[part] = (earned[part] ?? 0) + xpForSet(share, lagging.has(part), validity) * counted;
     }

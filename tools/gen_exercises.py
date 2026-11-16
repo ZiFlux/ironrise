@@ -94,9 +94,11 @@ def dart(data):
 def ts(data):
     out = [f'/** {HEADER} */', "import type { BodyPart } from './body-part';", '',
            'export const EXERCISE_DATA: readonly { id: string; name: string; '
+           "equipment: 'none' | 'dumbbells' | 'gym'; usesWeight: boolean; "
            'shares: Partial<Record<BodyPart, number>> }[] = [']
     for e in data['strength']:
-        out.append('  ' + json.dumps({'id': e['id'], 'name': e['name'], 'shares': e['shares']},
+        out.append('  ' + json.dumps({'id': e['id'], 'name': e['name'], 'equipment': e['equipment'],
+                                      'usesWeight': e.get('usesWeight', True), 'shares': e['shares']},
                                      ensure_ascii=False) + ',')
     out += ['];', '', 'export const EXERCISE_MUSCLE_DATA: Readonly<Record<string, Record<string, number>>> = {']
     for e in data['strength']:

@@ -806,3 +806,18 @@ describe('витрина: аватарки-достижения только з�
     expect(showcaseLock({ icon: 'cat', pose: 'doubleBiceps' }, none)).toBeNull();
   });
 });
+
+describe('нереальный вес не засчитывается (п. 75)', () => {
+  const base = { startedAt: start, finishedAt: at(40) };
+  const xp = xpAll(0);
+  it('400 кг на бицепс с гантелями — подход без опыта', () => {
+    const real = scoreStrength({ ...base, entries: [{ exerciseId: 'db_curl', sets: [{ weight: 14, reps: 10 }] }] }, xp, 1);
+    const fake = scoreStrength({ ...base, entries: [{ exerciseId: 'db_curl', sets: [{ weight: 400, reps: 10 }] }] }, xp, 1);
+    expect(real.gains.length).toBeGreaterThan(0);
+    expect(fake.gains).toEqual([]);
+  });
+  it('отжимания: вес не важен, но 1000 повторов — нет', () => {
+    const fake = scoreStrength({ ...base, entries: [{ exerciseId: 'push_up', sets: [{ weight: 0, reps: 1000 }] }] }, xp, 1);
+    expect(fake.gains).toEqual([]);
+  });
+});
