@@ -12,9 +12,16 @@ param(
 # Windows PowerShell 5.1 считает ошибкой любой вывод программ в stderr (а docker и scp
 # пишут туда обычный прогресс), поэтому успех проверяется по коду возврата.
 $ErrorActionPreference = 'Continue'
+# SSH до VPS иногда обрывается на рукопожатии (код 255) — такой шаг повторяем
+# до 3 раз. Остальные ошибки — сразу стоп.
 function Invoke-Step([string]$What, [scriptblock]$Command) {
-  & $Command
-  if ($LASTEXITCODE -ne 0) { throw "$What — ошибка (код $LASTEXITCODE)" }
+  for ($try = 1; $try -le 3; $try++) {
+    & $Command
+    if ($LASTEXITCODE -eq 0) { return }
+    if ($LASTEXITCODE -ne 255 -or $try -eq 3) { throw "$What — ошибка (код $LASTEXITCODE)" }
+    Write-Host "  нет связи с сервером, повтор $($try + 1) из 3…" -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
+  }
 }
 $compose = 'docker compose -f compose.prod.yml --env-file .env.prod'
 
