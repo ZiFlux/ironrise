@@ -270,7 +270,7 @@ typedef _Point = ({String label, double value, String tip});
 
 /// Столбики одной серии; нажатие показывает значение над графиком.
 class _Bars extends StatefulWidget {
-  const _Bars({super.key, required this.points, required this.color});
+  const _Bars({required this.points, required this.color});
 
   final List<_Point> points;
   final Color color;

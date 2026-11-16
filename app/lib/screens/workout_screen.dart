@@ -148,13 +148,13 @@ class _StartView extends ConsumerWidget {
             id: 'workout.stats',
             child: IconButton(
               tooltip: 'Статистика',
-              onPressed: () => context.go('/workout/stats'),
+              onPressed: () => context.push('/workout/stats'),
               icon: const Icon(LucideIcons.chartColumn, size: 20),
             ),
           ),
           IconButton(
             tooltip: 'База знаний',
-            onPressed: () => context.go('/workout/exercises'),
+            onPressed: () => context.push('/workout/exercises'),
             icon: const Icon(LucideIcons.bookOpen, size: 20),
           ),
           const SizedBox(width: 8),
@@ -297,7 +297,7 @@ class _StartView extends ConsumerWidget {
             if (restDay) ...[
               if (recoveryDay && !cardioDone) ...[
                 FilledButton.icon(
-                  onPressed: () => context.go('/workout/recovery'),
+                  onPressed: () => context.push('/workout/recovery'),
                   icon: const Icon(LucideIcons.leaf, size: 18),
                   label: const Text('День восстановления · 15 минут'),
                 ),
@@ -306,7 +306,7 @@ class _StartView extends ConsumerWidget {
                 FilledButton.icon(
                   onPressed: cardioDone && ref.watch(cardioProvider) == null
                       ? null
-                      : () => context.go('/workout/cardio'),
+                      : () => context.push('/workout/cardio'),
                   icon: const Icon(LucideIcons.heartPulse, size: 18),
                   label: Text(
                     ref.watch(cardioProvider) != null
@@ -355,7 +355,7 @@ class _StartView extends ConsumerWidget {
               OutlinedButton.icon(
                 onPressed: cardioDone && ref.watch(cardioProvider) == null
                     ? null
-                    : () => context.go('/workout/cardio'),
+                    : () => context.push('/workout/cardio'),
                 icon: const Icon(LucideIcons.heartPulse, size: 18),
                 label: Text(
                   ref.watch(cardioProvider) != null
@@ -495,7 +495,7 @@ class _DoneToday extends StatelessWidget {
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton.icon(
-                  onPressed: () => context.go('/workout/stats'),
+                  onPressed: () => context.push('/workout/stats'),
                   icon: const Icon(LucideIcons.chartColumn, size: 16),
                   label: const Text('Статистика и динамика'),
                 ),
@@ -516,7 +516,7 @@ class _JointButton extends ConsumerWidget {
     final accent = Theme.of(context).colorScheme.primary;
     final active = joint?.bonusActive ?? false;
     return OutlinedButton.icon(
-      onPressed: () => context.go('/workout/joint'),
+      onPressed: () => context.push('/workout/joint'),
       icon: Icon(LucideIcons.users, size: 18, color: active ? accent : null),
       label: Text(
         active
@@ -809,7 +809,7 @@ class _PulseIndicator extends ConsumerWidget {
     if (!pulse.isConnected) {
       return IconButton(
         tooltip: 'Подключить датчик пульса',
-        onPressed: () => context.go('/profile/heart-rate'),
+        onPressed: () => context.push('/profile/heart-rate'),
         icon: const Icon(
           LucideIcons.heartOff,
           size: 18,
@@ -1045,6 +1045,9 @@ class _ExerciseCard extends StatelessWidget {
               _SetRow(index: i + 1, text: formatSet(exercise, set)),
             if (entry.planDone)
               _ReserveQuestion(answer: entry.hadReserve, onAnswer: onReserve),
+            // Свёрнутое и недоделанное — видно, что сюда можно вернуться (подходов не 4/4).
+            if (!expanded && !entry.isFull)
+              _AddSetHint(onTap: onExpand, more: entry.planDone),
             if (expanded)
               Padding(
                 padding: const EdgeInsets.only(top: 8, right: 12),
@@ -1084,7 +1087,44 @@ extension on _ExerciseCard {
   }
 }
 
-/// «Цель: 2 × 10–12 · 3 в запасе» и подсказка при первом подборе веса.
+/// Свёрнутая карточка, где ещё можно сделать подход: «+ Нажми, чтобы добавить подход».
+class _AddSetHint extends StatelessWidget {
+  const _AddSetHint({required this.onTap, required this.more});
+
+  final VoidCallback onTap;
+
+  /// План уже выполнен — подход сверх плана, подсказка спокойнее.
+  final bool more;
+
+  @override
+  Widget build(BuildContext context) {
+    final color = more
+        ? AppColors.textMuted
+        : Theme.of(context).colorScheme.primary;
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(0, 6, 12, 2),
+        child: Row(
+          children: [
+            Icon(LucideIcons.circlePlus, size: 16, color: color),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
+                more
+                    ? 'Нажми, чтобы добавить ещё подход'
+                    : 'Нажми, чтобы добавить подход',
+                style: TextStyle(fontSize: 13, color: color),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 /// Пометка «последний подход — до отказа» с пояснением по нажатию.
 class _ToFailureNote extends StatelessWidget {
   const _ToFailureNote();

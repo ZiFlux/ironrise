@@ -177,7 +177,7 @@ class _HeroInfo extends StatelessWidget {
       if (body.weightKg != null) '${formatWeight(body.weightKg!)} кг',
     ].join(', ');
     // Формат и дни меняются на отдельном экране (раз в неделю).
-    void schedule() => context.go('/profile/settings/schedule');
+    void schedule() => context.push('/profile/settings/schedule');
     final rows = <(String, String, VoidCallback?)>[
       ('Ник', hero.nickname, () => showNicknameDialog(context)),
       (
@@ -649,7 +649,7 @@ class _NavTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => ListTile(
-    onTap: () => context.go(path),
+    onTap: () => context.push(path),
     leading: Icon(icon, size: 18, color: AppColors.textSecondary),
     title: Text(title),
     subtitle: Text(
@@ -713,7 +713,7 @@ class _DataSection extends ConsumerWidget {
           const Divider(height: 1),
           ListTile(
             onTap: signedIn
-                ? () => context.go('/profile/account')
+                ? () => context.push('/profile/account')
                 : () => _confirmWipe(context, ref),
             leading: const Icon(
               LucideIcons.trash2,

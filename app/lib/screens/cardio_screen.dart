@@ -100,7 +100,7 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
                 if (!pulse.isConnected) ...[
                   const SizedBox(height: 8),
                   TextButton.icon(
-                    onPressed: () => context.go('/profile/heart-rate'),
+                    onPressed: () => context.push('/profile/heart-rate'),
                     icon: const Icon(LucideIcons.bluetooth, size: 16),
                     label: const Text('Подключить датчик пульса'),
                   ),

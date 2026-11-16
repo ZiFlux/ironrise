@@ -73,7 +73,7 @@ class SignUpCard extends StatelessWidget {
             ),
           const SizedBox(height: 6),
           FilledButton(
-            onPressed: () => context.go('/profile/account'),
+            onPressed: () => context.push('/profile/account'),
             child: const Text('Создать за минуту'),
           ),
         ],

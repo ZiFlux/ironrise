@@ -79,7 +79,7 @@ class DevicesScreen extends ConsumerWidget {
                 'Шаги, кардио и пульс из Samsung Health и других часов. '
                 'Пульс подтягивается и после тренировки.',
             action: health.connected ? 'Открыть' : 'Подключить',
-            onTap: () => context.go('/profile/health'),
+            onTap: () => context.push('/profile/health'),
           ),
           const SizedBox(height: 12),
           _DeviceCard(
@@ -93,7 +93,7 @@ class DevicesScreen extends ConsumerWidget {
                 'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, '
                 'Polar, COROS, Amazfit и нагрудные датчики — инструкция для вашей модели внутри.',
             action: bleLive ? 'Открыть' : 'Найти датчик',
-            onTap: () => context.go('/profile/heart-rate'),
+            onTap: () => context.push('/profile/heart-rate'),
           ),
         ],
       ),

@@ -80,7 +80,7 @@ class PlayerScreen extends ConsumerWidget {
               id: 'profile.settings',
               child: IconButton(
                 tooltip: 'Настройки и конфиденциальность',
-                onPressed: () => context.go('/profile/settings'),
+                onPressed: () => context.push('/profile/settings'),
                 icon: const Icon(LucideIcons.settings, size: 20),
               ),
             ),
@@ -451,7 +451,7 @@ class _Growth extends StatelessWidget {
               label: 'Старт',
               levels: _firstDay,
               look: hero.firstDayLook,
-              onTap: () => context.go('/profile/start-look'),
+              onTap: () => context.push('/profile/start-look'),
             ),
           ),
           Expanded(
@@ -525,7 +525,7 @@ class _StartLookCard extends StatelessWidget {
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
-        onTap: () => context.go('/profile/start-look'),
+        onTap: () => context.push('/profile/start-look'),
         child: Padding(
           padding: const EdgeInsets.fromLTRB(14, 12, 10, 12),
           child: Row(
@@ -648,9 +648,8 @@ class _Menu extends ConsumerWidget {
           for (final (i, (icon, title, subtitle, path)) in items.indexed) ...[
             if (i > 0) const Divider(height: 1, indent: 56),
             ListTile(
-              // Лента — поверх вкладок, с возвратом назад.
-              onTap: () =>
-                  path == '/feed' ? context.push(path) : context.go(path),
+              // Вложенные экраны — с возвратом назад, сюда же (п. 135).
+              onTap: () => context.push(path),
               leading: Icon(icon, size: 20),
               title: Text(title),
               subtitle: Text(

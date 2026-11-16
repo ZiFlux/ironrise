@@ -67,7 +67,7 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
           id: 'duels.friends',
           child: IconButton(
             tooltip: 'Друзья',
-            onPressed: () => context.go('/duels/friends'),
+            onPressed: () => context.push('/duels/friends'),
             icon: Badge(
               isLabelVisible: incoming > 0,
               label: Text('$incoming'),
@@ -97,7 +97,7 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
       body: _friendsTab
           ? friends.when(
               data: (d) => d.friends.isEmpty
-                  ? _Empty(onFind: () => context.go('/duels/friends'))
+                  ? _Empty(onFind: () => context.push('/duels/friends'))
                   : _FighterList(
                       me: me,
                       fighters: d.friends,
@@ -185,7 +185,7 @@ class _Perks extends ConsumerWidget {
               subtitle: aura == null
                   ? 'Способность в бою — открой'
                   : 'ур. $auraLevel · ${auras!.sessionsThisWeek}/${auras.perWeek} трен. за неделю',
-              onTap: () => context.go('/duels/auras'),
+              onTap: () => context.push('/duels/auras'),
             ),
           ),
         ],

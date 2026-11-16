@@ -74,7 +74,7 @@ class HomeScreen extends ConsumerWidget {
                       button: true,
                       label: 'Открыть гардероб',
                       child: GestureDetector(
-                        onTap: () => context.go('/wardrobe'),
+                        onTap: () => context.push('/wardrobe'),
                         child: PosingAvatar(
                           levels: hero.avatarLevels,
                           look: hero.look,
@@ -129,12 +129,12 @@ class HomeScreen extends ConsumerWidget {
                     child: Pressable(
                       child: switch ((strengthDone, cardioDone)) {
                         (_, false) when isRecoveryDay => FilledButton.icon(
-                          onPressed: () => context.go('/workout/recovery'),
+                          onPressed: () => context.push('/workout/recovery'),
                           icon: const Icon(LucideIcons.leaf, size: 18),
                           label: const Text('День восстановления · 15 минут'),
                         ),
                         (_, false) when !isTrainingDay => FilledButton.icon(
-                          onPressed: () => context.go('/workout/cardio'),
+                          onPressed: () => context.push('/workout/cardio'),
                           icon: const Icon(LucideIcons.heartPulse, size: 18),
                           label: const Text('День отдыха · лёгкое кардио'),
                         ),
@@ -153,7 +153,7 @@ class HomeScreen extends ConsumerWidget {
                           label: Text(planLabel(today)),
                         ),
                         (true, false) => OutlinedButton.icon(
-                          onPressed: () => context.go('/workout/cardio'),
+                          onPressed: () => context.push('/workout/cardio'),
                           icon: const Icon(LucideIcons.heartPulse, size: 18),
                           label: const Text('Силовая сделана · кардио'),
                         ),
@@ -242,7 +242,7 @@ class _Header extends ConsumerWidget {
                 tooltip: unread > 0
                     ? 'Уведомления: $unread новых'
                     : 'Уведомления',
-                onPressed: () => context.go('/notifications'),
+                onPressed: () => context.push('/notifications'),
                 icon: Badge(
                   isLabelVisible: unread > 0,
                   label: Text('$unread'),
@@ -294,7 +294,7 @@ class _Header extends ConsumerWidget {
                   ),
                 ),
                 semantics: 'Монеты ${hero.coins}, открыть магазин',
-                onTap: () => context.go('/shop'),
+                onTap: () => context.push('/shop'),
               ),
             ),
           ],
@@ -582,7 +582,7 @@ class _EntryTestLine extends ConsumerWidget {
           side: BorderSide(color: accent.withValues(alpha: 0.5)),
         ),
         child: InkWell(
-          onTap: () => context.go('/entry-test'),
+          onTap: () => context.push('/entry-test'),
           borderRadius: BorderRadius.circular(10),
           child: SizedBox(
             height: 40,
@@ -700,7 +700,7 @@ class _TipLine extends ConsumerWidget {
           side: const BorderSide(color: AppColors.hairline),
         ),
         child: InkWell(
-          onTap: () => context.go('/tip'),
+          onTap: () => context.push('/tip'),
           borderRadius: BorderRadius.circular(10),
           child: SizedBox(
             height: 40,

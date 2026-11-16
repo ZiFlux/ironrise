@@ -110,7 +110,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           if (shop)
             IconButton(
               tooltip: 'Премиум',
-              onPressed: () => context.go('/shop/premium'),
+              onPressed: () => context.push('/shop/premium'),
               icon: Icon(
                 LucideIcons.crown,
                 size: 20,
@@ -120,7 +120,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
           else
             IconButton(
               tooltip: 'Магазин',
-              onPressed: () => context.go('/shop'),
+              onPressed: () => context.push('/shop'),
               icon: const Icon(LucideIcons.shoppingBag, size: 20),
             ),
           _Coins(coins: hero.coins),
@@ -215,7 +215,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                               needsPremium ||
                               testerLocked
                           ? (needsPremium
-                                ? () => context.go('/shop/premium')
+                                ? () => context.push('/shop/premium')
                                 : null)
                           : () => _confirm(cart, look),
                       child: Text(switch ((changed, cart.isEmpty)) {

@@ -9,7 +9,6 @@ import '../game/body_part.dart';
 import '../game/cardio.dart';
 import '../game/exercise_catalog.dart';
 import '../game/recovery.dart';
-import '../game/workout.dart';
 import '../state/cardio_state.dart';
 import '../state/training_log.dart';
 import '../theme.dart';

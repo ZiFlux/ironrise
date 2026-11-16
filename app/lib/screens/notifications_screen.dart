@@ -40,7 +40,7 @@ class NotificationsScreen extends ConsumerWidget {
             ),
           IconButton(
             tooltip: 'Настройки уведомлений',
-            onPressed: () => context.go('/notifications/settings'),
+            onPressed: () => context.push('/notifications/settings'),
             icon: const Icon(LucideIcons.settings2, size: 20),
           ),
           const SizedBox(width: 8),

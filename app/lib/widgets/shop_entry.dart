@@ -26,7 +26,7 @@ class ShopButton extends StatelessWidget {
           label: 'Магазин',
           child: InkWell(
             borderRadius: BorderRadius.circular(20),
-            onTap: () => context.go('/shop'),
+            onTap: () => context.push('/shop'),
             child: Container(
               margin: const EdgeInsets.symmetric(horizontal: 4),
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -78,7 +78,7 @@ class PremiumBanner extends ConsumerWidget {
     return Pressable(
       child: InkWell(
         borderRadius: BorderRadius.circular(14),
-        onTap: () => context.go('/shop/premium'),
+        onTap: () => context.push('/shop/premium'),
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: 14,
