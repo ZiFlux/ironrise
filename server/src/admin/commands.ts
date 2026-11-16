@@ -321,3 +321,93 @@ export async function playerInfo(db: Db, who: string) {
     owned: owned.map((i) => i.itemId),
   };
 }
+
+const isoDay = (d: Date) => d.toISOString().slice(0, 10);
+
+/**
+ * Статистика для веб-админки (п. 120): игроки, активность, удержание, тренировки по
+ * дням, экономика, входные тренировки, цели и форматы. Только сводные числа — без
+ * персональных данных.
+ */
+export async function adminStats(db: Db & Pick<PrismaClient, 'entryTest'>, now = new Date()) {
+  const day = 86_400_000;
+  const ago = (n: number) => new Date(now.getTime() - n * day);
+  const today = isoDay(now);
+  const [total, new1, new7, active1, active7, active30, cohort, cohortActive] = await Promise.all([
+    db.user.count(),
+    db.user.count({ where: { createdAt: { gte: ago(1) } } }),
+    db.user.count({ where: { createdAt: { gte: ago(7) } } }),
+    db.profile.count({ where: { lastActiveDay: { gte: isoDay(ago(1)) } } }),
+    db.profile.count({ where: { lastActiveDay: { gte: isoDay(ago(7)) } } }),
+    db.profile.count({ where: { lastActiveDay: { gte: isoDay(ago(30)) } } }),
+    // Удержание: зарегистрированы 8–30 дней назад — сколько тренировались за последнюю неделю.
+    db.user.count({ where: { createdAt: { gte: ago(30), lt: ago(8) } } }),
+    db.user.count({
+      where: { createdAt: { gte: ago(30), lt: ago(8) }, profile: { lastActiveDay: { gte: isoDay(ago(7)) } } },
+    }),
+  ]);
+  const since14 = isoDay(ago(13));
+  const byDay = await db.workout.groupBy({
+    by: ['day', 'type'],
+    where: { day: { gte: since14 } },
+    _count: { _all: true },
+  });
+  const workoutsPerDay = Array.from({ length: 14 }, (_, i) => {
+    const d = isoDay(ago(13 - i));
+    const count = (t: string) => byDay.find((r) => r.day === d && r.type === t)?._count._all ?? 0;
+    return { day: d, strength: count('strength'), cardio: count('cardio') };
+  });
+  const [issued, spent, verified, allWeek] = await Promise.all([
+    db.walletTx.aggregate({ _sum: { amount: true }, where: { amount: { gt: 0 }, createdAt: { gte: ago(7) } } }),
+    db.walletTx.aggregate({ _sum: { amount: true }, where: { amount: { lt: 0 }, createdAt: { gte: ago(7) } } }),
+    db.workout.count({ where: { day: { gte: isoDay(ago(6)) }, validity: { gte: 0.99 } } }),
+    db.workout.count({ where: { day: { gte: isoDay(ago(6)) } } }),
+  ]);
+  const [goals, formats, entryLevels, openSuspicions] = await Promise.all([
+    db.profile.groupBy({ by: ['goal'], _count: { _all: true } }),
+    db.profile.groupBy({ by: ['trainingFormat'], _count: { _all: true } }),
+    db.entryTest.groupBy({ by: ['level'], _count: { _all: true } }),
+    db.suspicion.count({ where: { resolvedAt: null } }),
+  ]);
+  const counts = (rows: { _count: { _all: number } }[], key: (r: never) => string) =>
+    Object.fromEntries(rows.map((r) => [key(r as never), r._count._all]));
+  return {
+    today,
+    players: { total, new1, new7, active1, active7, active30 },
+    retention: { cohort, active: cohortActive, percent: cohort ? Math.round((cohortActive / cohort) * 100) : null },
+    workoutsPerDay,
+    week: {
+      workouts: allWeek,
+      verifiedPercent: allWeek ? Math.round((verified / allWeek) * 100) : null,
+      coinsIssued: issued._sum.amount ?? 0,
+      coinsSpent: -(spent._sum.amount ?? 0),
+    },
+    goals: counts(goals, (r: { goal: string }) => r.goal),
+    formats: counts(formats, (r: { trainingFormat: string }) => r.trainingFormat),
+    entryLevels: counts(entryLevels, (r: { level: string }) => r.level),
+    openSuspicions,
+  };
+}
+
+/** Последние тренировки игрока (веб-админка, карточка игрока). */
+export async function playerWorkouts(db: Db, who: string, take = 15) {
+  const u = await findUser(db, who);
+  const rows = await db.workout.findMany({
+    where: { userId: u.id },
+    orderBy: { startedAt: 'desc' },
+    take,
+    select: { day: true, type: true, validity: true, startedAt: true, endedAt: true, payload: true },
+  });
+  return rows.map((w) => {
+    const p = w.payload as { entries?: { sets: unknown[] }[]; activity?: string; summary?: { gains?: { xp: number }[] } } | null;
+    return {
+      day: w.day,
+      type: w.type,
+      minutes: Math.round((w.endedAt.getTime() - w.startedAt.getTime()) / 60_000),
+      sets: p?.entries?.reduce((n, e) => n + e.sets.length, 0) ?? 0,
+      activity: p?.activity ?? null,
+      xp: Math.round((p?.summary?.gains ?? []).reduce((n, g) => n + g.xp, 0)),
+      verified: w.validity >= 0.99,
+    };
+  });
+}

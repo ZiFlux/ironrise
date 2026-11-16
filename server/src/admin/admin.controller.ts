@@ -16,7 +16,7 @@ import { ZodPipe } from '../common/zod';
 import { PrismaService } from '../prisma.service';
 import { adminPageHtml } from './admin-page';
 import { adminToken, tokenMatches } from './admin-token';
-import { itemGroups, playerInfo, run } from './commands';
+import { adminStats, itemGroups, playerInfo, playerWorkouts, run } from './commands';
 
 const RunSchema = z.object({ args: z.array(z.string().max(200)).min(1).max(40) });
 
@@ -53,6 +53,20 @@ export class AdminController {
   async player(@Headers('x-admin-token') token?: string, @Query('who') who = '') {
     this.check(token);
     return this.safely(() => playerInfo(this.db, who.trim()));
+  }
+
+  /** Статистика (п. 120): игроки, активность, удержание, тренировки, экономика. */
+  @Get('api/stats')
+  stats(@Headers('x-admin-token') token?: string) {
+    this.check(token);
+    return adminStats(this.db);
+  }
+
+  /** Последние тренировки игрока. */
+  @Get('api/player/workouts')
+  async workouts(@Headers('x-admin-token') token?: string, @Query('who') who = '') {
+    this.check(token);
+    return this.safely(() => playerWorkouts(this.db, who.trim()));
   }
 
   @Post('api/run')

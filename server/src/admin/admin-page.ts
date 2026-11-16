@@ -38,6 +38,17 @@ export const adminPageHtml = String.raw`<!doctype html>
   .msg { margin-top:10px; padding:10px 12px; border-radius:10px; background:var(--raised); display:none; }
   .msg.err { color:var(--danger); }
   .hidden { display:none; }
+  .stats { display:grid; grid-template-columns:repeat(auto-fill,minmax(150px,1fr)); gap:8px; }
+  .stat { background:var(--surface); border:1px solid var(--line); border-radius:12px; padding:10px 12px; }
+  .stat b { display:block; font-size:22px; }
+  .stat span { color:var(--muted); font-size:12px; }
+  .bars { display:flex; align-items:flex-end; gap:4px; height:130px; padding-top:8px; }
+  .bars div { flex:1; display:flex; flex-direction:column; justify-content:flex-end; align-items:center; gap:2px; min-width:0; }
+  .bars i { display:block; width:100%; border-radius:3px 3px 0 0; }
+  .bars small { color:var(--muted); font-size:10px; }
+  table { width:100%; border-collapse:collapse; font-size:13px; }
+  td, th { padding:6px 4px; border-bottom:1px solid var(--line); text-align:left; }
+  th { color:var(--muted); font-weight:500; }
   .bar { position:sticky; bottom:0; background:var(--bg); padding:12px 0; border-top:1px solid var(--line); margin-top:16px; }
 </style>
 </head>
@@ -61,10 +72,13 @@ export const adminPageHtml = String.raw`<!doctype html>
         <button id="recent">Последние</button>
         <button id="history">Журнал</button>
         <button id="suspects">Подозрительные</button>
+        <button id="statsBtn">Статистика</button>
         <button id="logout">Выйти</button>
       </div>
     </div>
     <div id="msg" class="msg"></div>
+
+    <div id="statsBox" class="hidden"></div>
 
     <div id="listBox" class="hidden"><h2 id="listTitle"></h2><div class="card"><pre id="list"></pre></div></div>
 
@@ -75,6 +89,8 @@ export const adminPageHtml = String.raw`<!doctype html>
         <button id="clearSus">Не жулик — разблокировать</button>
         <button class="danger" id="confirmSus">Подтвердить блокировку</button>
       </div>
+      <h2>Тренировки</h2>
+      <div class="card"><table id="workouts"></table></div>
       <h2>Вещи</h2>
       <p class="legend">Зелёные — уже есть у игрока. Нажми на вещи, чтобы выбрать, потом «Выдать» или «Забрать».</p>
       <div id="groups"></div>
@@ -158,8 +174,106 @@ export const adminPageHtml = String.raw`<!doctype html>
       selected.clear();
       $('listBox').classList.add('hidden');
       render();
+      $('statsBox').classList.add('hidden');
       $('player').classList.remove('hidden');
+      loadWorkouts(p.nickname);
     }).catch(function (e) { $('player').classList.add('hidden'); show(e.message, true); });
+  }
+
+  function cell(tag, text) {
+    var el = document.createElement(tag);
+    el.textContent = text;
+    return el;
+  }
+
+  function loadWorkouts(who) {
+    var t = $('workouts');
+    t.textContent = '';
+    api('player/workouts?who=' + encodeURIComponent(who)).then(function (rows) {
+      var head = document.createElement('tr');
+      ['День', 'Вид', 'Мин', 'Подходы', 'Опыт', 'Часы'].forEach(function (h) { head.appendChild(cell('th', h)); });
+      t.appendChild(head);
+      if (!rows.length) {
+        var empty = document.createElement('tr');
+        var td = cell('td', 'Тренировок пока нет');
+        td.colSpan = 6;
+        empty.appendChild(td);
+        t.appendChild(empty);
+      }
+      rows.forEach(function (w) {
+        var tr = document.createElement('tr');
+        var kind = w.type === 'strength' ? 'Силовая' : (w.activity === 'recovery' ? 'Восстановление' : 'Кардио');
+        [w.day, kind, String(w.minutes), w.type === 'strength' ? String(w.sets) : '—', String(w.xp), w.verified ? '✓' : '—']
+          .forEach(function (v) { tr.appendChild(cell('td', v)); });
+        t.appendChild(tr);
+      });
+    }).catch(function (e) { show(e.message, true); });
+  }
+
+  var GOAL = { mass: 'Масса', strength: 'Сила', fatLoss: 'Похудеть', endurance: 'Выносливость', consistency: 'Регулярность' };
+  var FORMAT = { minimum: 'Минимум', fullBody: 'Всё тело', upperLower: 'Верх/низ', split: 'Сплит', custom: 'Подбери сам' };
+  var LEVEL = { novice: 'Новичок', intermediate: 'Средний', advanced: 'Опытный' };
+
+  function stats() {
+    show('');
+    api('stats').then(function (s) {
+      var box = $('statsBox');
+      box.textContent = '';
+      function section(title) { box.appendChild(cell('h2', title)); }
+      function tiles(items) {
+        var g = document.createElement('div');
+        g.className = 'stats';
+        items.forEach(function (it) {
+          var d = document.createElement('div');
+          d.className = 'stat';
+          d.appendChild(cell('b', it[1] === null || it[1] === undefined ? '—' : String(it[1])));
+          d.appendChild(cell('span', it[0]));
+          g.appendChild(d);
+        });
+        box.appendChild(g);
+      }
+      function note(text) { var p = cell('p', text); p.className = 'legend'; box.appendChild(p); }
+      section('Игроки');
+      tiles([['всего', s.players.total], ['новых за сутки', s.players.new1], ['новых за неделю', s.players.new7],
+        ['активны сегодня', s.players.active1], ['за неделю', s.players.active7], ['за месяц', s.players.active30],
+        ['удержание новичков, %', s.retention.percent], ['подозрений открыто', s.openSuspicions]]);
+      note('Удержание: из ' + s.retention.cohort + ' игроков, зарегистрированных 8–30 дней назад, на этой неделе тренировались ' + s.retention.active + '.');
+      section('Тренировки за 14 дней');
+      var max = Math.max(1, Math.max.apply(null, s.workoutsPerDay.map(function (d) { return d.strength + d.cardio; })));
+      var bars = document.createElement('div');
+      bars.className = 'card bars';
+      s.workoutsPerDay.forEach(function (d) {
+        var col = document.createElement('div');
+        col.title = d.day + ': силовых ' + d.strength + ', кардио ' + d.cardio;
+        col.appendChild(cell('small', String(d.strength + d.cardio)));
+        var c = document.createElement('i');
+        c.style.height = (d.cardio / max * 90) + 'px';
+        c.style.background = '#5aa9ff';
+        var st = document.createElement('i');
+        st.style.height = (d.strength / max * 90) + 'px';
+        st.style.background = 'var(--accent)';
+        col.appendChild(c);
+        col.appendChild(st);
+        col.appendChild(cell('small', d.day.slice(8)));
+        bars.appendChild(col);
+      });
+      box.appendChild(bars);
+      note('Лаймовые — силовые, синие — кардио. Подтверждены часами за неделю: ' + (s.week.verifiedPercent === null ? '—' : s.week.verifiedPercent + '%') + '.');
+      section('Экономика за неделю');
+      tiles([['тренировок', s.week.workouts], ['монет выдано', s.week.coinsIssued], ['монет потрачено', s.week.coinsSpent]]);
+      function dist(title, obj, names) {
+        section(title);
+        var keys = Object.keys(obj);
+        if (!keys.length) { note('Пока нет данных'); return; }
+        tiles(keys.map(function (k) { return [names[k] || k, obj[k]]; }));
+      }
+      dist('Главные цели', s.goals, GOAL);
+      dist('Форматы', s.formats, FORMAT);
+      dist('Уровни по входной тренировке', s.entryLevels, LEVEL);
+      $('listBox').classList.add('hidden');
+      $('player').classList.add('hidden');
+      box.classList.remove('hidden');
+    }).catch(function (e) { show(e.message, true); });
   }
 
   function render() {
@@ -219,6 +333,7 @@ export const adminPageHtml = String.raw`<!doctype html>
   $('who').onkeydown = function (e) { if (e.key === 'Enter') find(); };
   $('recent').onclick = function () { listOut('Последние зарегистрированные', ['list', '30']); };
   $('history').onclick = function () { listOut('Журнал действий', ['history', '30']); };
+  $('statsBtn').onclick = stats;
   $('suspects').onclick = function () { listOut('Подозрения античита — не разобранные', ['suspects']); };
   function verdict(cmd, text) {
     if (!player || !confirm(text + ' — ' + player.nickname + '?')) return;
