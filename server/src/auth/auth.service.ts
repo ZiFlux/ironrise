@@ -1,5 +1,5 @@
 import { GameConfig } from '../game/config';
-import { BadRequestException, ConflictException, ForbiddenException, Injectable, UnauthorizedException } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { z } from 'zod';
 import { isValidTimeZone } from '../common/day';
@@ -9,6 +9,8 @@ import { CREATOR_ITEMS } from '../game/start-look';
 import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
+import { bannedError } from './auth.guard';
+import { refreshAccess } from './ban';
 import { hashPassword, newRefreshToken, sha256, verifyPassword } from './passwords';
 
 const REFRESH_TTL_DAYS = 30;
@@ -48,9 +50,7 @@ export const RefreshSchema = z.object({ refreshToken: z.string().min(10) });
 
 /** Заблокированному — 403 с причиной: приложение покажет её и выйдет из аккаунта. */
 const assertNotBanned = (user: { bannedAt: Date | null; banReason: string | null }) => {
-  if (user.bannedAt) {
-    throw new ForbiddenException({ message: `Account banned: ${user.banReason ?? ''}`, banned: true, reason: user.banReason });
-  }
+  if (user.bannedAt) throw bannedError(user.banReason);
 };
 
 export interface Tokens {
@@ -127,12 +127,14 @@ export class AuthService {
 
   /** Ротация: старый refresh-токен гасится, выдаётся новая пара. */
   async refresh(refreshToken: string): Promise<Tokens> {
-    const stored = await this.db.refreshToken.findUnique({ where: { tokenHash: sha256(refreshToken) } });
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date()) {
-      throw new UnauthorizedException('Refresh token is invalid');
-    }
+    const stored = await this.db.refreshToken.findUnique({
+      where: { tokenHash: sha256(refreshToken) },
+      include: { user: { select: { bannedAt: true, banReason: true } } },
+    });
+    const access = refreshAccess(stored);
+    if (access.kind === 'banned') throw bannedError(access.reason);
+    if (!stored || access.kind === 'gone') throw new UnauthorizedException('Refresh token is invalid');
     await this.db.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
-    assertNotBanned(await this.db.user.findUniqueOrThrow({ where: { id: stored.userId } }));
     return this.issue(stored.userId);
   }
 

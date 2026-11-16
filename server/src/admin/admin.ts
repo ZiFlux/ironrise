@@ -176,7 +176,7 @@ async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
       if (!reason) throw new Error('Укажите причину блокировки — её увидит игрок');
       await db.$transaction([
         db.user.update({ where: { id: u.id }, data: { bannedAt: new Date(), banReason: reason } }),
-        // Сессии гасим сразу; выданный access-токен доживёт не больше 15 минут.
+        // Сессии гасим сразу; запросы по выданному access-токену сервер отклонит в течение 30 с (AuthGuard).
         db.refreshToken.updateMany({ where: { userId: u.id, revokedAt: null }, data: { revokedAt: new Date() } }),
       ]);
       await log(db, 'ban', u.id, { reason });

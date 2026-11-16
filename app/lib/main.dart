@@ -7,6 +7,7 @@ import 'net/app_log.dart';
 import 'net/push.dart';
 import 'env.dart';
 import 'router.dart';
+import 'screens/ban_screen.dart';
 import 'widgets/status_toast.dart';
 import 'state/account_state.dart';
 import 'state/providers.dart';
@@ -45,9 +46,11 @@ class IronRiseApp extends ConsumerWidget {
       // Метка DEV: отладочную сборку не перепутать с бетой.
       // Слой плашек статуса (widgets/status_toast.dart) — поверх всех экранов.
       builder: (context, child) {
+        // Заблокированный аккаунт — экран блокировки вместо всего приложения.
+        final banned = ref.watch(banProvider) != null;
         final app = Stack(
           children: [
-            child!,
+            banned ? const BanGate() : child!,
             Overlay(key: statusOverlayKey),
           ],
         );

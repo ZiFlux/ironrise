@@ -30,13 +30,15 @@ class ApiException implements Exception {
 
   bool get isNetwork => status == 0;
 
-  /// Запрос отклонён по существу (400, 409, 422): повторять бессмысленно.
   /// Аккаунт заблокирован администратором; причина — в [banReason].
   bool get isBanned => status == 403 && message.startsWith('Account banned');
 
   String get banReason => message.replaceFirst('Account banned:', '').trim();
 
-  bool get isRejected => status >= 400 && status < 500 && status != 401;
+  /// Запрос отклонён по существу (400, 409, 422): повторять бессмысленно.
+  /// Бан — не отказ по существу: тренировку из очереди не выбрасываем.
+  bool get isRejected =>
+      status >= 400 && status < 500 && status != 401 && !isBanned;
 
   @override
   String toString() => 'ApiException($status, $message)';

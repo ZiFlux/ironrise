@@ -19,6 +19,27 @@ import 'server_game.dart';
 
 const _outboxKey = 'outbox_v1';
 const _emailKey = 'account_email';
+const _bannedKey = 'account_banned';
+
+/// Причина блокировки аккаунта администратором ('' — без причины), null — не
+/// заблокирован. Пока задана, вместо приложения — экран блокировки (BanScreen).
+/// Снимается успешным входом в другой (или разблокированный) аккаунт.
+class BanNotifier extends Notifier<String?> {
+  @override
+  String? build() => ref.read(prefsProvider).getString(_bannedKey);
+
+  Future<void> set(String reason) async {
+    state = reason;
+    await ref.read(prefsProvider).setString(_bannedKey, reason);
+  }
+
+  Future<void> clear() async {
+    state = null;
+    await ref.read(prefsProvider).remove(_bannedKey);
+  }
+}
+
+final banProvider = NotifierProvider<BanNotifier, String?>(BanNotifier.new);
 const _autoSyncKey = 'auto_sync_v1';
 const _lastSyncKey = 'last_sync_v1';
 
@@ -365,6 +386,7 @@ class AccountNotifier extends Notifier<AccountState> {
     await _api.tokens.save(tokens);
     await ref.read(prefsProvider).setString(_emailKey, email.toLowerCase());
     state = state.copyWith(email: email.toLowerCase(), clearError: true);
+    await ref.read(banProvider.notifier).clear();
     if (state.autoSync) _startAutoTimer();
     await ref.read(healthConsentProvider.notifier).pushToServer();
     await sync();
@@ -477,6 +499,7 @@ class AccountNotifier extends Notifier<AccountState> {
       if (e.status == 401 || e.isBanned) {
         // Refresh-токен отозван или истёк: просим войти заново, очередь сохраняется.
         await ref.read(prefsProvider).remove(_emailKey);
+        if (e.isBanned) await ref.read(banProvider.notifier).set(e.banReason);
         state = state.copyWith(
           clearEmail: true,
           error: e.isBanned
