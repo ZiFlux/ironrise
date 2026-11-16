@@ -36,4 +36,14 @@ void main() {
     expect(pulseCovers([at(1), at(30), at(55)], from, to), isTrue);
     expect(AccountNotifier.watchSyncWait, const Duration(hours: 3));
   });
+
+  test('очередь помнит, чья тренировка: чужое не уйдёт в другой аккаунт', () {
+    const job = OutboxJob(path: '/v1/workouts/strength', body: {'a': 1});
+    // До входа — без владельца: уйдёт в первый аккаунт.
+    expect(OutboxJob.fromJson(job.toJson()).owner, isNull);
+    final mine = job.ownedBy('a@x.ru');
+    expect(OutboxJob.fromJson(mine.toJson()).owner, 'a@x.ru');
+    // Владелец не перезаписывается.
+    expect(mine.ownedBy('b@x.ru').owner, 'a@x.ru');
+  });
 }

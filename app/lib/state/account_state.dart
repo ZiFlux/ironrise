@@ -68,15 +68,30 @@ const _maxOutbox = 300;
 
 /// Тренировка, ожидающая отправки на сервер. clientId делает отправку идемпотентной.
 class OutboxJob {
-  const OutboxJob({required this.path, required this.body});
+  const OutboxJob({required this.path, required this.body, this.owner});
 
   final String path;
   final Map<String, dynamic> body;
 
-  Map<String, dynamic> toJson() => {'path': path, 'body': body};
+  /// Чья тренировка: e-mail аккаунта на момент записи. null — сделана до входа,
+  /// уйдёт в первый аккаунт, в который войдут. Чужая (вошли в другой аккаунт) —
+  /// не отправляется: иначе тренировки одного засчитались бы другому.
+  final String? owner;
 
-  factory OutboxJob.fromJson(Map<String, dynamic> j) =>
-      OutboxJob(path: j['path'], body: Map<String, dynamic>.from(j['body']));
+  Map<String, dynamic> toJson() => {
+    'path': path,
+    'body': body,
+    if (owner != null) 'owner': owner,
+  };
+
+  factory OutboxJob.fromJson(Map<String, dynamic> j) => OutboxJob(
+    path: j['path'],
+    body: Map<String, dynamic>.from(j['body']),
+    owner: j['owner'] as String?,
+  );
+
+  OutboxJob ownedBy(String? email) =>
+      OutboxJob(path: path, body: body, owner: owner ?? email);
 }
 
 class AccountState {
@@ -432,7 +447,7 @@ class AccountNotifier extends Notifier<AccountState> {
       _enqueue(OutboxJob(path: '/v1/entry-test', body: body));
 
   Future<void> _enqueue(OutboxJob job) async {
-    final jobs = _readOutbox()..add(job);
+    final jobs = _readOutbox()..add(job.ownedBy(state.email));
     // Без аккаунта очередь не растёт бесконечно: старейшие уходят первыми.
     await _writeOutbox(
       jobs.length > _maxOutbox ? jobs.sublist(jobs.length - _maxOutbox) : jobs,
@@ -492,6 +507,12 @@ class AccountNotifier extends Notifier<AccountState> {
 
   Future<void> logout() async {
     _autoTimer?.cancel();
+    // Пока вход ещё есть — отправить очередь: после выхода её не отправить.
+    if (state.pending > 0) {
+      try {
+        await sync(reason: SyncReason.manual);
+      } catch (_) {}
+    }
     await unregisterPush(_api);
     final refresh = await _api.tokens.readRefresh();
     if (refresh != null) {
@@ -576,8 +597,13 @@ class AccountNotifier extends Notifier<AccountState> {
       var jobs = _readOutbox();
       while (jobs.isNotEmpty) {
         final job = jobs.first;
-        final body = await _withWatchPulse(job.body);
-        if (body == null) {
+        final mine = job.owner == null || job.owner == state.email;
+        final body = mine ? await _withWatchPulse(job.body) : null;
+        if (!mine) {
+          // Тренировка другого аккаунта на этом телефоне: не отправляем, но и не
+          // теряем — уйдёт, когда её владелец снова войдёт.
+          waiting.add(job);
+        } else if (body == null) {
           waitingForPulse = true;
           waiting.add(job);
         } else {
@@ -591,9 +617,14 @@ class AccountNotifier extends Notifier<AccountState> {
         jobs = jobs.sublist(1);
         await _writeOutbox([...waiting, ...jobs]);
       }
-      await ref
-          .read(heroProvider.notifier)
-          .applyServer(await _api.get('/v1/me'));
+      // Тренировка ещё ждёт пульс (Samsung Health, до 3 ч) — на сервере её пока нет.
+      // Не накладываем его состояние: иначе опыт, монеты и серия на телефоне
+      // откатились бы до прихода пульса. Применим, когда очередь разойдётся.
+      if (!waitingForPulse) {
+        await ref
+            .read(heroProvider.notifier)
+            .applyServer(await _api.get('/v1/me'));
+      }
       // Уровни изменились — боты дня и лига на сервере тоже.
       ref.invalidate(serverBotsProvider);
       ref.invalidate(serverLeagueProvider);
