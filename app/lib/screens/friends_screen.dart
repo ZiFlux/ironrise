@@ -11,6 +11,7 @@ import '../state/server_game.dart';
 import '../game/duel.dart';
 import '../state/duel_state.dart';
 import '../theme.dart';
+import '../avatar/avatar_view.dart';
 import 'feed_screen.dart';
 import '../widgets/pair_card.dart';
 import '../widgets/sign_up_card.dart';
@@ -137,6 +138,44 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
+          // Заявки — первыми: на них ждут ответа (п. 109).
+          if (d != null) ...[
+            if (d.incoming.isNotEmpty) ...[
+              _Section('Хотят дружить · ${d.incoming.length}'),
+              for (final r in d.incoming)
+                _Row(
+                  title: r.nickname,
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        tooltip: 'Отклонить',
+                        onPressed: () =>
+                            _act(() => api.delete('/v1/friends/${r.userId}')),
+                        icon: const Icon(
+                          LucideIcons.x,
+                          size: 18,
+                          color: AppColors.textMuted,
+                        ),
+                      ),
+                      FilledButton(
+                        onPressed: () => _act(
+                          () => api.post(
+                            '/v1/friends/requests/${r.userId}/accept',
+                            {},
+                          ),
+                          done: '${r.nickname} теперь в друзьях',
+                        ),
+                        style: FilledButton.styleFrom(
+                          minimumSize: const Size(96, 36),
+                        ),
+                        child: const Text('Принять'),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ],
           const PairCard(),
           TextField(
             onChanged: _onQuery,
@@ -193,42 +232,9 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
               ),
             ),
           if (d != null) ...[
-            if (d.incoming.isNotEmpty) ...[
-              const _Section('Хотят дружить'),
-              for (final r in d.incoming)
-                _Row(
-                  title: r.nickname,
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        tooltip: 'Отклонить',
-                        onPressed: () =>
-                            _act(() => api.delete('/v1/friends/${r.userId}')),
-                        icon: const Icon(
-                          LucideIcons.x,
-                          size: 18,
-                          color: AppColors.textMuted,
-                        ),
-                      ),
-                      FilledButton(
-                        onPressed: () => _act(
-                          () => api.post(
-                            '/v1/friends/requests/${r.userId}/accept',
-                            {},
-                          ),
-                          done: '${r.nickname} теперь в друзьях',
-                        ),
-                        style: FilledButton.styleFrom(
-                          minimumSize: const Size(96, 36),
-                        ),
-                        child: const Text('Принять'),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-            const _Section('Друзья'),
+            _Section(
+              d.friends.isEmpty ? 'Друзья' : 'Друзья · ${d.friends.length}',
+            ),
             if (d.friends.isEmpty)
               const Text(
                 'Пока никого. Найди друга по нику: заявка придёт ему в приложение',
@@ -237,38 +243,61 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
             for (final f in d.friends)
               _Row(
                 onTap: () => context.push('/friend/${f.id}'),
+                leading: SizedBox(
+                  width: 28,
+                  height: 48,
+                  child: AvatarView(levels: f.levels, look: f.lookOrStarter),
+                ),
                 title: f.name,
-                subtitle: 'сила ${f.power} · витрина',
+                subtitle: d.results.containsKey(f.id)
+                    ? 'сила ${f.power} · сегодня ${d.results[f.id]! ? 'ты победил' : 'победил он'}'
+                    : 'сила ${f.power}',
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    if (pair == null)
-                      IconButton(
-                        tooltip: 'Позвать в напарники по серии',
-                        onPressed: () => invitePartner(ref, f.id, f.name),
-                        icon: const Icon(
-                          LucideIcons.handshake,
-                          size: 18,
-                          color: Color(0xFFFF8A3D),
-                        ),
+                    // С другом — один бой в день: кнопка, пока он ещё не был.
+                    if (!d.results.containsKey(f.id) && d.fightsLeft > 0)
+                      TextButton(
+                        onPressed: () => _answer(f),
+                        child: const Text('В бой'),
                       ),
-                    IconButton(
-                      tooltip: 'Удалить из друзей',
-                      onPressed: () => _confirmRemove(
-                        f.name,
-                        () => api.delete('/v1/friends/${f.id}'),
-                      ),
+                    // Редкие действия — в меню: удалить случайно не выйдет.
+                    PopupMenuButton<String>(
+                      tooltip: 'Ещё',
                       icon: const Icon(
-                        LucideIcons.userMinus,
+                        LucideIcons.ellipsisVertical,
                         size: 18,
                         color: AppColors.textMuted,
                       ),
+                      onSelected: (v) => switch (v) {
+                        'profile' => context.push('/friend/${f.id}'),
+                        'pair' => invitePartner(ref, f.id, f.name),
+                        _ => _confirmRemove(
+                          f.name,
+                          () => api.delete('/v1/friends/${f.id}'),
+                        ),
+                      },
+                      itemBuilder: (_) => [
+                        const PopupMenuItem(
+                          value: 'profile',
+                          child: Text('Профиль'),
+                        ),
+                        if (pair == null)
+                          const PopupMenuItem(
+                            value: 'pair',
+                            child: Text('Позвать в напарники по серии'),
+                          ),
+                        const PopupMenuItem(
+                          value: 'remove',
+                          child: Text('Удалить из друзей'),
+                        ),
+                      ],
                     ),
                   ],
                 ),
               ),
             if (d.outgoing.isNotEmpty) ...[
-              const _Section('Ждут ответа'),
+              _Section('Ждут ответа · ${d.outgoing.length}'),
               for (final r in d.outgoing)
                 _Row(
                   title: r.nickname,
@@ -374,8 +403,10 @@ class _Row extends StatelessWidget {
     required this.trailing,
     this.subtitle,
     this.onTap,
+    this.leading,
   });
 
+  final Widget? leading;
   final VoidCallback? onTap;
   final String title;
   final String? subtitle;
@@ -391,6 +422,7 @@ class _Row extends StatelessWidget {
       ),
       child: Row(
         children: [
+          if (leading != null) ...[leading!, const SizedBox(width: 12)],
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
