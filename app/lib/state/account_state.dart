@@ -11,6 +11,7 @@ import '../game/set_pulse.dart';
 import '../game/workout.dart';
 import '../legal/privacy_policy.dart';
 import '../net/api_client.dart';
+import '../net/app_log.dart';
 import '../net/push.dart';
 import 'health_state.dart';
 import 'aura_state.dart';
@@ -47,11 +48,12 @@ const _autoSyncKey = 'auto_sync_v1';
 const _lastSyncKey = 'last_sync_v1';
 
 /// Пока приложение открыто, синхронизация повторяется с этим шагом.
-const autoSyncEvery = Duration(minutes: 10);
+const autoSyncEvery = Duration(minutes: 5);
 
 /// Почему была синхронизация — для строки статуса в настройках.
 enum SyncReason {
   launch('при входе'),
+  change('после изменений'),
   timer('по расписанию'),
   background('при сворачивании'),
   manual('вручную');
@@ -88,7 +90,8 @@ class AccountState {
     this.lastReason,
   });
 
-  /// Автосинхронизация: при входе, каждые 10 минут и при сворачивании.
+  /// Автосинхронизация: при входе, после изменений на сервере, каждые 5 минут
+  /// и при сворачивании.
   final bool autoSync;
 
   /// Почему была последняя синхронизация.
@@ -203,11 +206,16 @@ class AccountNotifier extends Notifier<AccountState> {
   ApiClient get _api => ref.read(apiProvider);
   Timer? _pulseRetry;
 
-  /// Нет сети, а в очереди тренировки — пробуем снова чаще, чем раз в 10 минут:
+  /// Нет сети, а в очереди тренировки — пробуем снова чаще, чем раз в 5 минут:
   /// 30 с, 1, 2, 4 и дальше каждые 5 минут (п. 114).
   Timer? _netRetry;
   int _netFailures = 0;
   Timer? _autoTimer;
+  Timer? _afterWrite;
+
+  /// Синхронизацию попросили, пока шла предыдущая, — повторить сразу после неё,
+  /// иначе только что законченная тренировка ждала бы до таймера.
+  bool _again = false;
 
   /// Как часто перепроверять Health Connect, пока тренировка ждёт пульс.
   static const _pulseRetryEvery = Duration(minutes: 1);
@@ -223,7 +231,7 @@ class AccountNotifier extends Notifier<AccountState> {
       lastSyncedAt: last?.at,
       lastReason: last?.reason,
     );
-    // Автосинхронизация: сразу при входе, каждые 10 минут, пока приложение открыто,
+    // Автосинхронизация: сразу при входе, каждые 5 минут, пока приложение открыто,
     // и последний раз при сворачивании — до следующего открытия.
     // Выключена — как раньше: отправляем только накопившуюся очередь.
     if (s.signedIn && (s.autoSync || s.pending > 0)) {
@@ -251,6 +259,20 @@ class AccountNotifier extends Notifier<AccountState> {
     ref.onDispose(() => _pulseRetry?.cancel());
     ref.onDispose(() => _netRetry?.cancel());
     ref.onDispose(() => _autoTimer?.cancel());
+    // Покупка, награда, дуэль и т. п. — через несколько секунд сверяемся с сервером
+    // (одной синхронизацией на серию действий). Запросы самой синхронизации не в счёт.
+    ApiClient.onServerWrite = (_) {
+      if (state.syncing || !state.signedIn || !state.autoSync) return;
+      _afterWrite?.cancel();
+      _afterWrite = Timer(
+        afterWriteDelay(state.lastSyncedAt, DateTime.now()),
+        () => sync(reason: SyncReason.change),
+      );
+    };
+    ref.onDispose(() {
+      _afterWrite?.cancel();
+      ApiClient.onServerWrite = null;
+    });
     if (s.signedIn) Future.microtask(() => setupPush(ref, _api));
     return s;
   }
@@ -534,7 +556,12 @@ class AccountNotifier extends Notifier<AccountState> {
   /// Отправить очередь по порядку, затем взять состояние героя с сервера.
   /// Нет сети — очередь ждёт; данные отклонены — тренировка снимается с очереди.
   Future<void> sync({SyncReason reason = SyncReason.manual}) async {
-    if (!state.signedIn || state.syncing) return;
+    if (!state.signedIn) return;
+    if (state.syncing) {
+      _again = true;
+      return;
+    }
+    _again = false;
     state = state.copyWith(syncing: true, clearError: true);
     var rejected = 0;
     var waitingForPulse = false;
@@ -600,8 +627,24 @@ class AccountNotifier extends Notifier<AccountState> {
       }
     } finally {
       state = state.copyWith(syncing: false);
+      // Журнал — вместе с синхронизацией: после тренировки и покупки он тоже на сервере.
+      unawaited(AppLog.upload(_api));
+    }
+    if (_again && state.signedIn) {
+      _again = false;
+      await sync(reason: reason);
     }
   }
+}
+
+/// Пауза перед синхронизацией после изменения на сервере: 3 с, чтобы серия
+/// действий ушла одной синхронизацией, и не чаще раза в 15 с — предохранитель
+/// от зацикливания, если синхронизация сама вызовет запрос-изменение.
+Duration afterWriteDelay(DateTime? lastSync, DateTime now) {
+  const min = Duration(seconds: 3);
+  if (lastSync == null) return min;
+  final wait = const Duration(seconds: 15) - now.difference(lastSync);
+  return wait > min ? wait : min;
 }
 
 /// Пауза перед новой попыткой отправить очередь без сети: 30 с, 1, 2, 4, затем 5 мин.

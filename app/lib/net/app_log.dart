@@ -15,7 +15,8 @@ import 'api_client.dart';
 ///
 /// Пишет падения Flutter, неперехваченные ошибки, ошибки запросов к серверу и
 /// диагностику (debugPrint). Последние [_keep] записей лежат на телефоне и уходят
-/// на сервер при запуске, возврате в приложение и раз в 5 минут; без сети — ждут.
+/// на сервер при запуске, возврате и сворачивании, раз в 2 минуты, после каждой
+/// синхронизации и через 5 секунд после ошибки; без сети — ждут.
 /// Токены и пароли вычищаются до записи. Отправку можно выключить в настройках.
 class AppLog {
   AppLog._();
@@ -99,17 +100,35 @@ class AppLog {
       _entries.removeRange(0, _entries.length - _keep);
     }
     unawaited(_persist());
+    // Ошибку отправляем почти сразу: приложение могут закрыть до таймера.
+    if (level == 'error') uploadSoon();
   }
 
-  /// Запустить отправку: сейчас, раз в 5 минут и при возврате в приложение.
-  /// [api] — текущий клиент (адрес сервера и вход могут меняться).
+  static ApiClient Function()? _api;
+  static Timer? _soon;
+
+  /// Запустить отправку: сейчас, раз в 2 минуты, при возврате в приложение
+  /// и при сворачивании. [api] — текущий клиент (адрес сервера и вход могут меняться).
   static void startUploading(ApiClient Function() api) {
     // Не инициализирован (тесты) или уже запущен — ничего не делаем.
     if (_prefs == null || _timer != null) return;
-    _timer = Timer.periodic(const Duration(minutes: 5), (_) => upload(api()));
+    _api = api;
+    _timer = Timer.periodic(const Duration(minutes: 2), (_) => upload(api()));
     _lifecycle?.dispose();
-    _lifecycle = AppLifecycleListener(onResume: () => upload(api()));
+    _lifecycle = AppLifecycleListener(
+      onResume: () => upload(api()),
+      // Свернули — возможно, навсегда: отправляем, пока процесс жив.
+      onHide: () => upload(api()),
+    );
     unawaited(upload(api()));
+  }
+
+  /// Отправить через несколько секунд: события подряд уходят одной пачкой.
+  static void uploadSoon() {
+    final api = _api;
+    // Уже ждём — не откладываем: ошибка в каждом кадре иначе не дала бы отправить.
+    if (api == null || (_soon?.isActive ?? false)) return;
+    _soon = Timer(const Duration(seconds: 5), () => upload(api()));
   }
 
   /// Отправить накопленное пачками. Ошибка сети — оставить до следующего раза.

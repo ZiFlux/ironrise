@@ -122,8 +122,9 @@ class _SignedIn extends ConsumerWidget {
             title: const Text('Автосинхронизация'),
             subtitle: Text(
               account.autoSync
-                  ? 'При входе, каждые ${autoSyncEvery.inMinutes} минут, пока приложение '
-                        'открыто, и при сворачивании'
+                  ? 'При входе, после тренировок и покупок, каждые '
+                        '${autoSyncEvery.inMinutes} минут, пока приложение открыто, '
+                        'и при сворачивании'
                   : 'Выключена: тренировки отправляются при входе, '
                         'остальное — кнопкой ниже',
               style: const TextStyle(fontSize: 13),

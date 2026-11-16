@@ -154,8 +154,18 @@ class ApiClient {
       }
       throw ApiException(res.statusCode, message);
     }
+    // Что-то изменилось на сервере (покупка, награда, дуэль) — пусть приложение
+    // вскоре сверится с ним и отправит журнал. Журнал и вход сами не считаются.
+    if (method != 'GET' &&
+        !path.startsWith('/v1/logs') &&
+        !path.startsWith('/v1/auth')) {
+      onServerWrite?.call(path);
+    }
     return decoded;
   }
+
+  /// Вызывается после каждого успешного изменения на сервере (см. AccountNotifier).
+  static void Function(String path)? onServerWrite;
 
   /// В журнал тестера. Запросы самого журнала не пишем: без сети он забился бы
   /// записями о том, что не смог отправиться.
