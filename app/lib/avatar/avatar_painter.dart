@@ -304,6 +304,11 @@ class AvatarPainter extends CustomPainter {
       Path()
         ..addRect(Rect.fromLTRB(100 - frame.neck, 46, 100 + frame.neck, 64)),
     );
+    // Шарф — поверх шеи, иначе шея «проходит» сквозь обмотку.
+    if (layers.scarf case (final wrap, final tail)) {
+      _fillCloth(canvas, tail, _scarfDark);
+      _fillCloth(canvas, wrap, _scarf);
+    }
     _fillSkin(
       canvas,
       Path()..addOval(
@@ -350,6 +355,8 @@ class AvatarPainter extends CustomPainter {
   static const _betaDark = Color(0xFF17171A);
   static const _clownYellow = Color(0xFFFFD23F);
   static const _creatorBlack = Color(0xFF26262B);
+  static const _scarf = Color(0xFF3E6E9E);
+  static const _scarfDark = Color(0xFF2F587F);
   static const _clownDots = [
     Color(0xFFE5302A),
     Color(0xFF3D7BFF),

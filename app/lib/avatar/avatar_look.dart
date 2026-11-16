@@ -156,6 +156,9 @@ enum Accessory {
 
   /// Панама (батлпас).
   bucketHat,
+
+  /// Шарф (сезон 2 «Закалка»).
+  scarf,
 }
 
 class AvatarLook {

@@ -714,7 +714,7 @@ describe('сезоны', () => {
     const paid = seasonRewardsBetween(1, 'premium', 0, 30);
     expect(paid.items).toEqual(['hc_s1', 'sn_s1p', 'acc_bucket', 'tc_s1p']);
     expect(seasonRewardsBetween(1, 'free', 4, 5).items).toEqual(['sn_s1']);
-    expect(SEASON_ITEMS).toHaveLength(8);
+    expect(SEASON_ITEMS).toHaveLength(16); // сезоны 1 и 2
   });
 });
 
@@ -940,5 +940,14 @@ describe('письма админу: SMTP без библиотек (п. 113)', 
     expect(m).toContain('Content-Transfer-Encoding: base64');
     const body = m.split('\r\n\r\n')[1].replace(/\r\n/g, '');
     expect(Buffer.from(body, 'base64').toString('utf-8')).toBe('Привет');
+  });
+});
+
+describe('сезон 2 «Закалка» (28.12.2026)', () => {
+  it('начинается 28 декабря и раздаёт шарф на 20-м уровне', () => {
+    const s = seasonAt(new Date('2026-12-28T12:00:00Z'));
+    expect(s.number).toBe(2);
+    expect(s.name).toBe('Закалка');
+    expect(seasonRewardsBetween(2, 'free', 19, 20).items).toEqual(['acc_scarf']);
   });
 });

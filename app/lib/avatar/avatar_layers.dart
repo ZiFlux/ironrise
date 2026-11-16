@@ -457,6 +457,23 @@ class AvatarLayers {
       ..close();
   }
 
+  /// Шарф (сезон 2): обмотка вокруг шеи и конец, свисающий на грудь слева.
+  (Path, Path)? get scarf {
+    if (!_has(Accessory.scarf)) return null;
+    final x = _f.neck + 4;
+    final wrap = Path()
+      ..addRRect(
+        RRect.fromLTRBR(100 - x, 55, 100 + x, 65, const Radius.circular(5)),
+      );
+    final tail = polygonPath([
+      Offset(100 - x + 2, 60),
+      Offset(100 - x + 10, 60),
+      Offset(100 - x + 12, 92),
+      Offset(100 - x + 3, 93),
+    ]);
+    return (wrap, tail);
+  }
+
   /// Панама: купол и широкие опущенные поля.
   (Path, Path)? get bucketHat {
     if (!_has(Accessory.bucketHat)) return null;

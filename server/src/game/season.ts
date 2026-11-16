@@ -60,6 +60,11 @@ export const SEASON_ITEM_TABLE: Record<number, Record<SeasonTrack, Record<number
     free: { 5: 'sn_s1', 15: 'tc_s1', 20: 'hair_wolfcut', 25: 'bc_s1' },
     premium: { 10: 'hc_s1', 20: 'sn_s1p', 25: 'acc_bucket', 30: 'tc_s1p' },
   },
+  // Сезон 2 «Закалка» (с 28.12.2026): сталь и мороз, шарф.
+  2: {
+    free: { 5: 'sn_s2', 15: 'tc_s2', 20: 'acc_scarf', 25: 'bc_s2' },
+    premium: { 10: 'hc_s2', 20: 'sn_s2p', 25: 'bc_s2p', 30: 'tc_s2p' },
+  },
 };
 
 /** Все сезонные вещи: не продаются, носить можно только полученные. */
