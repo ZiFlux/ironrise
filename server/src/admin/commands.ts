@@ -26,12 +26,26 @@ export const HELP = `Команды (ник или e-mail игрока — <кт
   boosters <кто> <опыт> <монеты> — выставить бустеры серии (штук)
   nick <кто> <новый ник>         — переименовать (без кулдауна, старый ник не бронируется)
   duels-reset <кто>              — сбросить сегодняшние бои с ботами (перезарядку)
+  suspects                       — подозрения античита, не разобранные (п. 113)
+  clear <кто>                    — «не жулик»: закрыть подозрения и снять блокировку
+  confirm <кто> [причина]        — подтвердить: закрыть подозрения, блокировка остаётся
   history [N]                    — журнал действий администратора
   items                          — все id вещей по группам`;
 
 export type Db = Pick<
   PrismaClient,
-  '$transaction' | 'user' | 'profile' | 'walletTx' | 'inventoryItem' | 'avatarPart' | 'xpEvent' | 'refreshToken' | 'adminAction' | 'workout' | 'duel'
+  | '$transaction'
+  | 'user'
+  | 'profile'
+  | 'walletTx'
+  | 'inventoryItem'
+  | 'avatarPart'
+  | 'xpEvent'
+  | 'refreshToken'
+  | 'adminAction'
+  | 'workout'
+  | 'duel'
+  | 'suspicion'
 >;
 
 export async function findUser(db: Db, who: string) {
@@ -215,6 +229,38 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
       const { count } = await db.duel.deleteMany({ where: { attackerId: u.id, opponentKind: 'bot', day: today } });
       await log(db, 'duels-reset', u.id, { removed: count });
       return `Снято боёв с ботами за сегодня: ${count}. Монеты за них остаются у игрока.\n` + (await card(db, who));
+    }
+
+    case 'suspects': {
+      const rows = await db.suspicion.findMany({
+        where: { resolvedAt: null },
+        orderBy: { createdAt: 'desc' },
+        take: 50,
+        include: { user: { select: { bannedAt: true, profile: { select: { nickname: true } } } } },
+      });
+      return (
+        rows
+          .map(
+            (r) =>
+              `${r.createdAt.toISOString().slice(0, 16)}  ${(r.user.profile?.nickname ?? '—').padEnd(16)} ${r.kind}${r.severe ? ' [серьёзно]' : ''}${r.user.bannedAt ? ' [заблокирован]' : ''}  ${JSON.stringify(r.details)}`,
+          )
+          .join('\n') || 'Подозрений нет'
+      );
+    }
+
+    case 'clear':
+    case 'confirm': {
+      const u = await findUser(db, who);
+      const now = new Date();
+      const { count } = await db.suspicion.updateMany({ where: { userId: u.id, resolvedAt: null }, data: { resolvedAt: now } });
+      if (cmd === 'clear') {
+        await db.user.update({ where: { id: u.id }, data: { bannedAt: null, banReason: null } });
+      } else {
+        const reason = rest.join(' ').trim() || 'Нарушение честной игры: подозрительные тренировки';
+        await db.user.update({ where: { id: u.id }, data: { bannedAt: u.bannedAt ?? now, banReason: reason } });
+      }
+      await log(db, cmd, u.id, { resolved: count });
+      return `Закрыто подозрений: ${count}.\n` + (await card(db, who));
     }
 
     case 'history': {

@@ -60,6 +60,7 @@ export const adminPageHtml = String.raw`<!doctype html>
         <button class="primary" id="find">Найти</button>
         <button id="recent">Последние</button>
         <button id="history">Журнал</button>
+        <button id="suspects">Подозрительные</button>
         <button id="logout">Выйти</button>
       </div>
     </div>
@@ -70,6 +71,10 @@ export const adminPageHtml = String.raw`<!doctype html>
     <div id="player" class="hidden">
       <h2>Игрок</h2>
       <div class="card"><pre id="cardText"></pre></div>
+      <div class="row" style="margin-top:8px">
+        <button id="clearSus">Не жулик — разблокировать</button>
+        <button class="danger" id="confirmSus">Подтвердить блокировку</button>
+      </div>
       <h2>Вещи</h2>
       <p class="legend">Зелёные — уже есть у игрока. Нажми на вещи, чтобы выбрать, потом «Выдать» или «Забрать».</p>
       <div id="groups"></div>
@@ -214,6 +219,16 @@ export const adminPageHtml = String.raw`<!doctype html>
   $('who').onkeydown = function (e) { if (e.key === 'Enter') find(); };
   $('recent').onclick = function () { listOut('Последние зарегистрированные', ['list', '30']); };
   $('history').onclick = function () { listOut('Журнал действий', ['history', '30']); };
+  $('suspects').onclick = function () { listOut('Подозрения античита — не разобранные', ['suspects']); };
+  function verdict(cmd, text) {
+    if (!player || !confirm(text + ' — ' + player.nickname + '?')) return;
+    api('run', { args: [cmd, player.nickname] }).then(function () {
+      show(cmd === 'clear' ? 'Подозрения закрыты, блокировка снята' : 'Блокировка подтверждена');
+      find(player.nickname);
+    }).catch(function (e) { show(e.message, true); });
+  }
+  $('clearSus').onclick = function () { verdict('clear', 'Не жулик: закрыть подозрения и снять блокировку'); };
+  $('confirmSus').onclick = function () { verdict('confirm', 'Подтвердить блокировку'); };
   $('logout').onclick = logout;
   $('clear').onclick = function () { selected.clear(); render(); };
   $('give').onclick = function () { change('give'); };

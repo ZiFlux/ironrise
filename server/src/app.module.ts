@@ -21,6 +21,7 @@ import { SocialController } from './social/social.controller';
 import { SocialService } from './social/social.service';
 import { WorkoutsController } from './workouts/workouts.controller';
 import { WorkoutsService } from './workouts/workouts.service';
+import { AntiCheatService } from './workouts/anti-cheat.service';
 
 @Controller('health')
 class HealthController {
@@ -48,7 +49,7 @@ const jwtSecret = () => {
     // Только на сервере разработки: выдача монет и прочие инструменты.
     ...(devToolsEnabled ? [DevController] : []),
   ],
-  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, EconomyService, SocialService, PushService, JointService, LogRetention],
+  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, AntiCheatService, EconomyService, SocialService, PushService, JointService, LogRetention],
 })
 export class AppModule implements NestModule {
   /** Ограничение частоты: перебор паролей и заваливание запросами (common/rate-limit.ts). */

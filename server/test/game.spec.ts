@@ -228,7 +228,7 @@ describe('настройки уведомлений', () => {
   it('по умолчанию всё включено, напоминание в 19', () => {
     expect(parseSettings({})).toEqual({
       friend_request: true, friend_accepted: true, attacked: true, streak_risk: true, streakReminderHour: 19,
-      daily_tip: true, duels_refreshed: true, morningHour: 9, training_reminder: true,
+      daily_tip: true, duels_refreshed: true, morningHour: 9, training_reminder: true, admin_alert: true,
     });
   });
 
@@ -892,5 +892,30 @@ describe('сила ботов в лиге меняется по дням (16.11)
       anyDown ||= b < a;
     }
     expect(anyUp && anyDown).toBe(true);
+  });
+});
+
+import { bestByExercise, findCheats, shouldBlock } from '../src/game/anti-cheat';
+
+describe('античит после тренировки (п. 113)', () => {
+  const best = bestByExercise([[{ exerciseId: 'bench_press', sets: [{ weight: 60, reps: 8 }] }]]);
+  it('невозможный подход — серьёзно, сразу блок', () => {
+    const f = findCheats({ entries: [{ exerciseId: 'db_curl', sets: [{ weight: 400, reps: 10 }] }], best, pulse: null });
+    expect(f.map((x) => x.kind)).toEqual(['impossible_set']);
+    expect(shouldBlock(f, 0)).toBe(true);
+  });
+  it('скачок силы — подозрение, блок только на третьем за окно', () => {
+    const f = findCheats({ entries: [{ exerciseId: 'bench_press', sets: [{ weight: 120, reps: 8 }] }], best, pulse: null });
+    expect(f.map((x) => x.kind)).toEqual(['strength_jump']);
+    expect(shouldBlock(f, 0)).toBe(false);
+    expect(shouldBlock(f, 2)).toBe(true);
+  });
+  it('обычный прогресс и живой пульс — чисто', () => {
+    const pulse = { n: 600, avg: 120, min: 90, max: 155, perMinute: Array(12).fill(120) };
+    expect(findCheats({ entries: [{ exerciseId: 'bench_press', sets: [{ weight: 65, reps: 8 }] }], best, pulse })).toEqual([]);
+  });
+  it('плоский пульс 10+ минут — подозрение', () => {
+    const pulse = { n: 600, avg: 120, min: 119, max: 121, perMinute: Array(12).fill(120) };
+    expect(findCheats({ entries: [], best, pulse }).map((x) => x.kind)).toEqual(['flat_pulse']);
   });
 });

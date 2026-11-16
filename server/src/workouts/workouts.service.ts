@@ -17,6 +17,7 @@ import { premiumStatus, unverifiedValidityFor, withPremiumCoins } from '../game/
 import { HeroService, HeroState } from '../hero/hero.service';
 import { JointService } from '../joint/joint.service';
 import { PrismaService } from '../prisma.service';
+import { AntiCheatService } from './anti-cheat.service';
 import { SEASON_POINTS } from '../game/season';
 import { addSeasonPoints } from '../season/season';
 
@@ -93,12 +94,18 @@ export class WorkoutsService {
     private readonly db: PrismaService,
     private readonly hero: HeroService,
     private readonly joint: JointService,
+    private readonly antiCheat: AntiCheatService,
   ) {}
 
   submitStrength(userId: string, input: z.infer<typeof StrengthSchema>): Promise<WorkoutResult> {
     // В payload — только подходы: пульс хранится отдельно и лишь при согласии.
     const payload = { entries: input.entries, planCompleted: input.planCompleted, events: input.events };
-    return this.submit(userId, input, 'strength', payload, input.planCompleted ?? false, async (xpBefore, restingHr, _age, isTester, pulse) => {
+    return this.submitStrengthChecked(userId, input, payload);
+  }
+
+  /** Принять силовую и запустить античит (п. 113) — повтор не проверяется второй раз. */
+  private async submitStrengthChecked(userId: string, input: z.infer<typeof StrengthSchema>, payload: object) {
+    const result = await this.submit(userId, input, 'strength', payload, input.planCompleted ?? false, async (xpBefore, restingHr, _age, isTester, pulse) => {
       const validity = strengthValidity({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
@@ -114,6 +121,8 @@ export class WorkoutsService {
         throw e;
       }
     });
+    if (!result.duplicate) this.antiCheat.run(userId, result.workoutId);
+    return result;
   }
 
   submitCardio(userId: string, input: z.infer<typeof CardioSchema>): Promise<WorkoutResult> {

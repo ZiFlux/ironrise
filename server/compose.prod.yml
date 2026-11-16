@@ -35,6 +35,8 @@ services:
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
       # Ключ веб-админки (https://api.ironrise.ru/admin); пусто — веб-админки нет.
       ADMIN_TOKEN: ${ADMIN_TOKEN:-}
+      # Кому слать пуш античита (e-mail аккаунта админа в приложении); пусто — не слать.
+      ADMIN_NOTIFY_EMAIL: ${ADMIN_NOTIFY_EMAIL:-}
       # Потолок кучи Node: под нагрузкой API занимает ~180 МБ, на VPS с 0,6–1 ГБ
       # памяти не даём ему разрастаться и вытеснять базу в подкачку.
       NODE_OPTIONS: --max-old-space-size=256

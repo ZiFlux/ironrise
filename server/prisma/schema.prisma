@@ -45,6 +45,7 @@ model User {
   avatarParts   AvatarPart[]
   workouts      Workout[]
   entryTests    EntryTest[]
+  suspicions    Suspicion[]
   xpEvents      XpEvent[]
   walletTx      WalletTx[]
   refreshTokens RefreshToken[]
@@ -436,4 +437,24 @@ model EntryTest {
 
   @@unique([userId, clientId])
   @@index([userId, at])
+}
+
+/// Подозрение античита (п. 113): что нашли в тренировке. Решает админ (веб-админка).
+model Suspicion {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  workoutId  String?   @db.Uuid
+  /// impossible_set / strength_jump / flat_pulse
+  kind       String
+  severe     Boolean   @default(false)
+  details    Json
+  /// После этого подозрения аккаунт временно заблокирован.
+  blocked    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  /// Админ разобрался (снял блокировку или подтвердил).
+  resolvedAt DateTime?
+
+  @@index([userId, createdAt])
+  @@index([resolvedAt])
 }
