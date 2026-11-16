@@ -89,6 +89,9 @@ export const adminPageHtml = String.raw`<!doctype html>
         <button id="clearSus">Не жулик — разблокировать</button>
         <button class="danger" id="confirmSus">Подтвердить блокировку</button>
       </div>
+      <h2>Управление</h2>
+      <p class="legend">Каждое действие пишется в журнал. Игрок увидит изменения при следующей синхронизации (до 5 минут или при открытии приложения).</p>
+      <div class="card" id="actions"></div>
       <h2>Тренировки</h2>
       <div class="card"><table id="workouts"></table></div>
       <h2>Вещи</h2>
@@ -174,6 +177,7 @@ export const adminPageHtml = String.raw`<!doctype html>
       selected.clear();
       $('listBox').classList.add('hidden');
       render();
+      renderActions();
       $('statsBox').classList.add('hidden');
       $('player').classList.remove('hidden');
       loadWorkouts(p.nickname);
@@ -334,6 +338,82 @@ export const adminPageHtml = String.raw`<!doctype html>
       : 'Ничего не выбрано';
     $('give').disabled = !toGive.length;
     $('take').disabled = !toTake.length;
+  }
+
+  // Всемогущая панель: команда, поля и подпись. Значения полей идут аргументами
+  // после ника игрока — как в консольной админке (commands.ts).
+  var PARTS = [['all', 'все части'], ['chest', 'грудь'], ['back', 'спина'], ['arms', 'руки'], ['legs', 'ноги'], ['core', 'пресс'], ['cardio', 'кардио']];
+  var AURAS = [['fury', 'Ярость'], ['guard', 'Стойкость'], ['haste', 'Скорость'], ['focus', 'Фокус']];
+  var LEAGUES = [['0', 'Бронзовая'], ['1', 'Серебряная'], ['2', 'Золотая'], ['3', 'Платиновая'], ['4', 'Алмазная'], ['5', 'Чемпионская']];
+  var ACTIONS = [
+    { cmd: 'coins', title: 'Монеты', fields: [{ ph: '±сумма', num: true }, { ph: 'причина' }], go: 'Начислить' },
+    { cmd: 'level', title: 'Уровень', fields: [{ opts: PARTS }, { ph: 'уровень', num: true }], go: 'Выставить' },
+    { cmd: 'power', title: 'Сила', fields: [{ ph: 'сила ≈', num: true }], go: 'Выставить', note: 'ровно по всем частям' },
+    { cmd: 'xp', title: 'Опыт части', fields: [{ opts: PARTS.slice(1) }, { ph: '±опыт', num: true }], go: 'Изменить' },
+    { cmd: 'streak', title: 'Серия', fields: [{ ph: 'дней', num: true }], go: 'Выставить' },
+    { cmd: 'boosters', title: 'Бустеры', fields: [{ ph: 'опыт, шт', num: true }, { ph: 'монеты, шт', num: true }], go: 'Выставить' },
+    { cmd: 'aura', title: 'Аура', fields: [{ opts: AURAS }, { opts: [['0', '0 — закрыть'], ['1', '1'], ['2', '2'], ['3', '3'], ['4', '4'], ['5', '5']] }], go: 'Выставить' },
+    { cmd: 'aura-equip', title: 'Надеть ауру', fields: [{ opts: AURAS.concat([['off', 'снять']]) }], go: 'Применить' },
+    { cmd: 'aura-reset', title: 'Лимит аур', fields: [], go: 'Сбросить', note: 'можно снова тренировать ауру сегодня' },
+    { cmd: 'league', title: 'Лига', fields: [{ opts: LEAGUES }], go: 'Перевести' },
+    { cmd: 'season', title: 'Очки сезона', fields: [{ ph: '±очки', num: true }], go: 'Начислить' },
+    { cmd: 'premium', title: 'Премиум', fields: [{ ph: 'дней или off' }], go: 'Выдать' },
+    { cmd: 'tester', title: 'Тестер', fields: [{ opts: [['', 'выдать статус'], ['off', 'снять']] }], go: 'Применить' },
+    { cmd: 'nick', title: 'Ник', fields: [{ ph: 'новый ник' }], go: 'Переименовать' },
+    { cmd: 'start-look', title: 'Стартовый образ', fields: [], go: 'Открыть', note: 'снова бесплатный выбор на 14 дней' },
+    { cmd: 'duels-reset', title: 'Бои с ботами', fields: [], go: 'Сбросить', note: 'сегодняшние бои и перезарядка' },
+    { cmd: 'ban', title: 'Блокировка', fields: [{ ph: 'причина — её увидит игрок' }], go: 'Заблокировать', danger: true },
+    { cmd: 'unban', title: 'Разблокировать', fields: [], go: 'Снять блокировку' },
+  ];
+
+  function renderActions() {
+    var box = $('actions');
+    box.textContent = '';
+    ACTIONS.forEach(function (a) {
+      var row = document.createElement('div');
+      row.className = 'row';
+      row.style.marginBottom = '6px';
+      var label = cell('span', a.title);
+      label.style.minWidth = '140px';
+      row.appendChild(label);
+      var inputs = a.fields.map(function (fd) {
+        var el;
+        if (fd.opts) {
+          el = document.createElement('select');
+          fd.opts.forEach(function (o) {
+            var op = document.createElement('option');
+            op.value = o[0];
+            op.textContent = o[1];
+            el.appendChild(op);
+          });
+        } else {
+          el = document.createElement('input');
+          el.placeholder = fd.ph;
+          if (fd.num) { el.inputMode = 'numeric'; el.style.maxWidth = '120px'; }
+        }
+        row.appendChild(el);
+        return el;
+      });
+      var b = cell('button', a.go);
+      if (a.danger) b.className = 'danger';
+      b.onclick = function () {
+        var values = inputs.map(function (i) { return i.value.trim(); });
+        var args = [a.cmd, player.nickname];
+        values.forEach(function (v) { if (v !== '') args.push.apply(args, a.cmd === 'nick' || a.cmd === 'ban' || a.cmd === 'coins' ? [v] : v.split(/\s+/)); });
+        if (a.fields.some(function (fd, i) { return !fd.opts && !values[i] && fd.ph.indexOf('причина') !== 0; })) {
+          show('Заполните поля: ' + a.title, true);
+          return;
+        }
+        if (!confirm(a.title + ' — ' + player.nickname + ': ' + (values.join(' ') || a.go) + '?')) return;
+        api('run', { args: args }).then(function (r) {
+          show(a.title + ': готово. ' + (r.output || '').split('\n')[0]);
+          find(player.nickname);
+        }).catch(function (e) { show(e.message, true); });
+      };
+      row.appendChild(b);
+      if (a.note) { var n = cell('small', a.note); n.className = 'legend'; row.appendChild(n); }
+      box.appendChild(row);
+    });
   }
 
   function change(cmd) {

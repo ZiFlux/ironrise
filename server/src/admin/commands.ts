@@ -4,7 +4,10 @@
  */
 import { BODY_PARTS, BodyPart } from '../game/body-part';
 import { premiumStatus } from '../game/premium';
-import { levelFromXp } from '../game/progression';
+import { levelFromXp, levels as levelsOf, power as powerOf } from '../game/progression';
+import { AURA_KINDS, AURA_LEVEL_SESSIONS, AuraKind, auraLevel, readAuras } from '../game/aura';
+import { LEAGUE_TIERS } from '../game/league';
+import { GameConfig } from '../game/config';
 import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
 import { ACHIEVEMENT_ITEMS, AUTHOR_ITEMS, EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
 import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
@@ -31,6 +34,14 @@ export const HELP = `Команды (ник или e-mail игрока — <кт
   suspects                       — подозрения античита, не разобранные (п. 113)
   clear <кто>                    — «не жулик»: закрыть подозрения и снять блокировку
   confirm <кто> [причина]        — подтвердить: закрыть подозрения, блокировка остаётся
+  level <кто> <часть|all> <N>    — выставить уровень части тела (или всех) — сила пересчитается
+  power <кто> <N>                — поднять/опустить все части ровно до силы ≈ N
+  aura <кто> <вид> <уровень 0–5> — уровень ауры (fury guard haste focus); 0 — закрыть
+  aura-equip <кто> <вид|off>     — надеть ауру или снять
+  aura-reset <кто>               — снять лимит тренировок ауры на сегодня и неделю
+  league <кто> <0–5>             — лига (0 бронзовая … 5 чемпионская)
+  season <кто> <±очки>           — очки сезона (награды выдадутся при следующем начислении)
+  start-look <кто>               — снова открыть бесплатный выбор стартового образа на 14 дней
   history [N]                    — журнал действий администратора
   items                          — все id вещей по группам`;
 
@@ -92,6 +103,8 @@ async function card(db: Db, who: string): Promise<string> {
     `  опыт: ${xp.join(', ')}`,
     `  вещи: ${items.map((i) => i.itemId).join(', ') || '—'}`,
     `  бустеры: опыт ${readBoosters(p.boosters).xp}, монеты ${readBoosters(p.boosters).coins}; веха героя ${p.heroMilestone}`,
+    `  сила ${powerOf(levelsOf(Object.fromEntries(parts.map((r) => [r.part, r.xp])) as Record<BodyPart, number>), p.streakDays)}; лига ${LEAGUE_TIERS[p.leagueTier] ?? p.leagueTier}; сезон ${p.seasonNumber}, очков ${p.seasonPoints}`,
+    `  ауры: ${AURA_KINDS.map((k) => `${k} ${auraLevel(readAuras(p.auras)[k])}`).join(', ')}; надета ${p.auraEquipped ?? '—'}; на неделе ${p.auraSessions}`,
   ].join('\n');
 }
 
@@ -147,6 +160,111 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
         db.xpEvent.create({ data: { userId: u.id, part, xp: next - row.xp, validity: 1, wasLagging: false } }),
       ]);
       await log(db, 'xp', u.id, { part, delta: next - row.xp });
+      return card(db, who);
+    }
+
+    case 'level':
+    case 'power': {
+      const u = await findUser(db, who);
+      const rows = await db.avatarPart.findMany({ where: { userId: u.id } });
+      const xpNow = Object.fromEntries(rows.map((r) => [r.part, r.xp])) as Record<BodyPart, number>;
+      let target: Partial<Record<BodyPart, number>>;
+      if (cmd === 'level') {
+        const which = rest[0];
+        const lvl = int(rest[1], 'Уровень');
+        if (lvl < 1 || lvl > 500) throw new Error('Уровень: 1–500');
+        if (which !== 'all' && !BODY_PARTS.includes(which as BodyPart)) {
+          throw new Error(`Часть тела: ${BODY_PARTS.join(', ')} или all`);
+        }
+        const parts = which === 'all' ? BODY_PARTS : [which as BodyPart];
+        target = Object.fromEntries(parts.map((p) => [p, lvl]));
+      } else {
+        // Ровные уровни дают бонус баланса ×1,05: P ≈ (60·L + 2·min(S,30))·1,05.
+        const want = int(rest[0], 'Сила');
+        const streakBonus = 2 * Math.min(u.profile.streakDays, GameConfig.streakCap);
+        const lvl = Math.max(1, Math.round((want / GameConfig.powerBonusBalanced - streakBonus) / (10 * BODY_PARTS.length)));
+        target = Object.fromEntries(BODY_PARTS.map((p) => [p, lvl]));
+      }
+      const ops = (Object.entries(target) as [BodyPart, number][]).flatMap(([part, lvl]) => {
+        const xp = (lvl - 1) * GameConfig.xpPerLevel;
+        const delta = xp - (xpNow[part] ?? 0);
+        return [
+          db.avatarPart.upsert({
+            where: { userId_part: { userId: u.id, part } },
+            update: { xp },
+            create: { userId: u.id, part, xp },
+          }),
+          db.xpEvent.create({ data: { userId: u.id, part, xp: delta, validity: 1, wasLagging: false } }),
+        ];
+      });
+      await db.$transaction(ops);
+      const after = await db.avatarPart.findMany({ where: { userId: u.id } });
+      const lv = levelsOf(Object.fromEntries(after.map((r) => [r.part, r.xp])) as Record<BodyPart, number>);
+      await log(db, cmd, u.id, { target });
+      return `Сила теперь ${powerOf(lv, u.profile.streakDays)}.\n` + (await card(db, who));
+    }
+
+    case 'aura': {
+      const u = await findUser(db, who);
+      const kind = rest[0] as AuraKind;
+      if (!AURA_KINDS.includes(kind)) throw new Error(`Аура: ${AURA_KINDS.join(', ')}`);
+      const lvl = int(rest[1], 'Уровень');
+      if (lvl < 0 || lvl > AURA_LEVEL_SESSIONS.length) throw new Error(`Уровень ауры: 0–${AURA_LEVEL_SESSIONS.length}`);
+      const progress = readAuras(u.profile.auras);
+      progress[kind] = lvl === 0 ? 0 : AURA_LEVEL_SESSIONS[lvl - 1];
+      const equipped = lvl === 0 && u.profile.auraEquipped === kind ? null : u.profile.auraEquipped;
+      await db.profile.update({
+        where: { userId: u.id },
+        data: { auras: progress as unknown as Prisma.InputJsonValue, auraEquipped: equipped },
+      });
+      await log(db, 'aura', u.id, { kind, level: lvl });
+      return card(db, who);
+    }
+
+    case 'aura-equip': {
+      const u = await findUser(db, who);
+      const kind = rest[0] === 'off' ? null : (rest[0] as AuraKind);
+      if (kind !== null) {
+        if (!AURA_KINDS.includes(kind)) throw new Error(`Аура: ${AURA_KINDS.join(', ')} или off`);
+        if (auraLevel(readAuras(u.profile.auras)[kind]) === 0) throw new Error('Аура закрыта — сначала aura <кто> <вид> <уровень>');
+      }
+      await db.profile.update({ where: { userId: u.id }, data: { auraEquipped: kind } });
+      await log(db, 'aura-equip', u.id, { kind });
+      return card(db, who);
+    }
+
+    case 'aura-reset': {
+      const u = await findUser(db, who);
+      await db.profile.update({ where: { userId: u.id }, data: { auraWeek: null, auraSessions: 0, auraLastDay: null } });
+      await log(db, 'aura-reset', u.id, {});
+      return card(db, who);
+    }
+
+    case 'league': {
+      const u = await findUser(db, who);
+      const tier = int(rest[0], 'Лига');
+      if (tier < 0 || tier >= LEAGUE_TIERS.length) throw new Error(`Лига: 0–${LEAGUE_TIERS.length - 1}`);
+      await db.profile.update({ where: { userId: u.id }, data: { leagueTier: tier } });
+      await log(db, 'league', u.id, { tier });
+      return card(db, who);
+    }
+
+    case 'season': {
+      const u = await findUser(db, who);
+      const delta = int(rest[0], 'Очки');
+      const points = Math.max(0, u.profile.seasonPoints + delta);
+      await db.profile.update({ where: { userId: u.id }, data: { seasonPoints: points } });
+      await log(db, 'season', u.id, { delta, points });
+      return card(db, who);
+    }
+
+    case 'start-look': {
+      const u = await findUser(db, who);
+      await db.profile.update({
+        where: { userId: u.id },
+        data: { startLockedAt: null, startLookUntil: new Date(Date.now() + 14 * 86_400_000) },
+      });
+      await log(db, 'start-look', u.id, {});
       return card(db, who);
     }
 
