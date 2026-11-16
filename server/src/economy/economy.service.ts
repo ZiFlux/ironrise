@@ -1,5 +1,7 @@
 import { stepsXp } from '../game/steps';
 import { BadRequestException, ConflictException, ForbiddenException, Injectable } from '@nestjs/common';
+import { heroLevel } from '../game/social-progress';
+import { showcaseLock } from '../game/showcase';
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { Bot, botsForDay, fillLeague, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, MIN_LEAGUE_PLAYERS, mondayOf } from '../game/bots';
@@ -241,6 +243,14 @@ export class EconomyService {
   }
 
   async setShowcase(userId: string, showcase: z.infer<typeof ShowcaseSchema>) {
+    // Аватарки-достижения и поза победы — только если они действительно открыты.
+    const hero = await this.hero.state(userId);
+    const lock = showcaseLock(showcase, {
+      heroLevel: heroLevel(hero.levels),
+      streak: hero.streakDays,
+      workouts: await this.db.workout.count({ where: { userId } }),
+    });
+    if (lock) throw new ForbiddenException(lock);
     await this.db.profile.update({ where: { userId }, data: { showcase: showcase as Prisma.InputJsonValue } });
     return this.hero.state(userId);
   }

@@ -786,3 +786,23 @@ describe('метки подходов и пульс по подходам (п. 1
     expect(payload.entries[0].sets[0].peak).toBe(150); // исходник не тронут
   });
 });
+
+import { showcaseLock } from '../src/game/showcase';
+
+describe('витрина: аватарки-достижения только за достижения (п. 84)', () => {
+  const none = { heroLevel: 1, streak: 0, workouts: 0 };
+  it('обычная аватарка — всегда', () => {
+    expect(showcaseLock({ icon: 'cat' }, none)).toBeNull();
+  });
+  it('дракон — только после 100 тренировок, корона — с 20 уровня, медаль — серия 7', () => {
+    expect(showcaseLock({ icon: 'dragon' }, { ...none, workouts: 99 })).not.toBeNull();
+    expect(showcaseLock({ icon: 'dragon' }, { ...none, workouts: 100 })).toBeNull();
+    expect(showcaseLock({ icon: 'crown' }, { ...none, heroLevel: 19 })).not.toBeNull();
+    expect(showcaseLock({ icon: 'medal' }, { ...none, streak: 7 })).toBeNull();
+  });
+  it('поза победы — с 5 уровня героя', () => {
+    expect(showcaseLock({ icon: 'cat', pose: 'victory' }, { ...none, heroLevel: 4 })).not.toBeNull();
+    expect(showcaseLock({ icon: 'cat', pose: 'victory' }, { ...none, heroLevel: 5 })).toBeNull();
+    expect(showcaseLock({ icon: 'cat', pose: 'doubleBiceps' }, none)).toBeNull();
+  });
+});

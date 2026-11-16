@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../avatar/body_frame.dart';
 import '../net/api_client.dart';
+import '../widgets/status_toast.dart';
 import 'account_state.dart';
 import 'providers.dart';
 
@@ -62,7 +63,15 @@ class ShowcaseNotifier extends Notifier<Showcase> {
     if (!ref.read(accountProvider).signedIn) return;
     try {
       await ref.read(apiProvider).put('/v1/me/showcase', showcase.toJson());
-    } on ApiException {
+    } on ApiException catch (e) {
+      // Сервер проверяет достижения сам (п. 84): если тренировки ещё не дошли до
+      // сервера, аватарка-достижение откроется после синхронизации.
+      if (e.status == 403) {
+        showStatus(
+          'Сервер ещё не засчитал это достижение — витрина обновится после синхронизации',
+          kind: StatusKind.info,
+        );
+      }
       // Без сети или старый сервер — витрина останется на телефоне.
     }
   }
