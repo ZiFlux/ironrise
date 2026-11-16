@@ -52,12 +52,17 @@ class AuraScreen extends ConsumerWidget {
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             const SizedBox(height: 16),
+            if (!a.ready) ...[_LockedCard(info: a), const SizedBox(height: 12)],
             for (final p in a.auras)
               _AuraCard(
                 progress: p,
                 equipped: a.equipped == p.kind,
                 canTrain: a.canTrain,
-                limitLabel: a.trainedToday ? 'Завтра' : 'Лимит недели',
+                limitLabel: !a.ready
+                    ? 'Закрыто'
+                    : a.trainedToday
+                    ? 'Завтра'
+                    : 'Лимит недели',
               ),
           ],
         ),
@@ -67,6 +72,61 @@ class AuraScreen extends ConsumerWidget {
             onPressed: () => ref.invalidate(auraProvider),
             child: const Text('Не удалось загрузить — повторить'),
           ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Ауры ещё закрыты: сначала неделя обычных тренировок с пульсом.
+class _LockedCard extends StatelessWidget {
+  const _LockedCard({required this.info});
+
+  final AuraInfo info;
+
+  @override
+  Widget build(BuildContext context) {
+    final left = [
+      if (info.daysLeft > 0) '${info.daysLeft} дн.',
+      if (info.workoutsLeft > 0) '${info.workoutsLeft} трен. с пульсом',
+    ].join(' и ещё ');
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Icon(
+              LucideIcons.lock,
+              size: 20,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Ауры откроются через $left',
+                    style: const TextStyle(
+                      fontSize: 15,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  const Text(
+                    'За неделю обычных тренировок и кардио с часами или датчиком мы '
+                    'узнаем твой пульс на упражнениях. По нему и оценим тренировку '
+                    'ауры — честно для тебя, а не по общей планке.',
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -209,15 +269,20 @@ class AuraTrainingScreen extends ConsumerStatefulWidget {
   ConsumerState<AuraTrainingScreen> createState() => _AuraTrainingState();
 }
 
-typedef _Step = ({String title, int seconds, bool rest});
+typedef _Step = ({String title, int seconds, bool rest, String how});
 
 class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
   late final List<_Step> _steps = [
     for (var r = 0; r < AuraKind.rounds; r++)
       for (final (i, m) in widget.kind.moves.indexed) ...[
-        (title: m.name, seconds: m.seconds, rest: false),
+        (title: m.name, seconds: m.seconds, rest: false, how: m.how),
         if (r < AuraKind.rounds - 1 || i < widget.kind.moves.length - 1)
-          (title: 'Отдых', seconds: AuraKind.restSeconds, rest: true),
+          (
+            title: 'Отдых',
+            seconds: AuraKind.restSeconds,
+            rest: true,
+            how: 'Походи и выровняй дыхание',
+          ),
       ],
   ];
 
@@ -358,15 +423,16 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
         _error = switch (e.status) {
           422 when e.message.contains('6-40') =>
             'Тренировка короче 6 минут — не засчитана',
-          422 when e.message.contains('no_consent') =>
-            'Без согласия на данные о пульсе ауру не засчитать — включите его в настройках',
+          422 when e.message.contains('no_consent') => 'Без согласия на данные о пульсе ауру не засчитать — включите его в настройках',
           422 when e.message.contains('coverage') =>
             'Пульс записан только на часть тренировки — держите часы или датчик '
                 'включёнными до конца. Если пульс идёт через Samsung Health, '
                 'подождите минуту и нажмите «Повторить»',
-          422 when e.message.contains('low') =>
-            'Пульс слишком спокойный для ауры: нужен средний от 85 или пик от 110',
-          422 => 'Нет пульса с часов или датчика — тренировка ауры не засчитана',
+          422 when e.message.contains('low') => 'Пульс слишком спокойный для ауры: нужен средний от 85 или пик от 110',
+          422 =>
+            'Нет пульса с часов или датчика — тренировка ауры не засчитана',
+          409 when e.message.contains('locked') =>
+            'Ауры ещё закрыты: сначала неделя тренировок с пульсом',
           409 => 'Тренировка ауры уже была — следующая завтра',
           _ => 'Нет связи с сервером — попробуйте ещё раз',
         };
@@ -431,16 +497,28 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                           style: const TextStyle(fontSize: 16),
                         ),
                         const SizedBox(height: 6),
-                        Text(
-                          [
-                            for (final m in kind.moves)
-                              '${m.name} — ${m.seconds} с',
-                          ].join('\n'),
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            color: AppColors.textSecondary,
+                        for (final m in kind.moves)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  '${m.name} — ${m.seconds} с',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                                Text(
+                                  m.how,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textSecondary,
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        ),
                         const SizedBox(height: 6),
                         Text(
                           '${AuraKind.rounds} круга, отдых ${AuraKind.restSeconds} с · '
@@ -509,6 +587,18 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                   textAlign: TextAlign.center,
                   style: figureStyle(size: 56),
                 ),
+                // Как делать: сейчас — текущее, на отдыхе — следующее упражнение.
+                Text(
+                  step.rest && next != null ? next.how : step.how,
+                  textAlign: TextAlign.center,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
+                const SizedBox(height: 4),
                 Text(
                   next == null ? 'Последнее' : 'Дальше: ${next.title}',
                   textAlign: TextAlign.center,

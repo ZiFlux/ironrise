@@ -1031,3 +1031,51 @@ describe('кардио: больше 2 часов не засчитываетс�
     expect(s.durationSec).toBe(C.cardioMaxMinutes * 60);
   });
 });
+
+import { auraNorm } from '../src/game/aura-norm';
+
+describe('аура: личная норма и открытие через неделю', () => {
+  const now = new Date('2026-11-20T12:00:00Z');
+  const day = (n: number) => new Date(now.getTime() - n * 86_400_000);
+  const w = (daysAgo: number, avg: number, max: number, entries?: { exerciseId: string; sets: { peak?: number }[] }[]) => ({
+    startedAt: day(daysAgo),
+    pulse: { n: 300, avg, min: 70, max, perMinute: [] },
+    entries,
+  });
+
+  it('новичок: заперто, пока нет недели и трёх тренировок с пульсом', () => {
+    const n = auraNorm({ kind: 'fury', workouts: [w(2, 120, 150), w(1, 118, 148)], now });
+    expect(n.ready).toBe(false);
+    expect(n.daysLeft).toBe(5);
+    expect(n.workoutsLeft).toBe(1);
+    expect(auraNorm({ kind: 'fury', workouts: [], now }).daysLeft).toBe(7);
+  });
+
+  it('через неделю — открыто, пороги от своих тренировок', () => {
+    const n = auraNorm({ kind: 'fury', workouts: [w(8, 120, 150), w(5, 110, 140), w(1, 130, 160)], now });
+    expect(n.ready).toBe(true);
+    expect(n.minAvg).toBe(Math.round(120 * 0.85));
+    expect(n.minPeak).toBe(Math.round(150 * 0.9));
+  });
+
+  it('пик — по тем же движениям, что в ауре, если они были', () => {
+    const sets = (peak: number) => [{ peak }, { peak }];
+    const n = auraNorm({
+      kind: 'guard',
+      workouts: [
+        w(9, 100, 160, [{ exerciseId: 'plank', sets: sets(120) }, { exerciseId: 'barbell_squat', sets: sets(170) }]),
+        w(4, 100, 160, [{ exerciseId: 'side_plank', sets: sets(124) }]),
+        w(2, 100, 160),
+      ],
+      now,
+    });
+    expect(n.minPeak).toBe(Math.round(122 * 0.9));
+  });
+
+  it('уже качал ауру — не запираем, без данных общие пороги', () => {
+    const n = auraNorm({ kind: 'focus', workouts: [], now, grandfathered: true });
+    expect(n.ready).toBe(true);
+    expect(n.minAvg).toBe(85);
+    expect(n.minPeak).toBe(110);
+  });
+});

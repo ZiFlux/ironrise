@@ -14,6 +14,7 @@ import {
 import { mondayOf } from '../game/bots';
 import { localDay } from '../common/day';
 import { GameConfig } from '../game/config';
+import { AURA_NORM_WINDOW_DAYS, AURA_UNLOCK_DAYS, auraNorm, NormWorkout } from '../game/aura-norm';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 type Tx = Prisma.TransactionClient | PrismaClient;
@@ -27,6 +28,28 @@ export async function auraSnapshot(db: Tx, userId: string) {
   return level > 0 ? { kind, level } : null;
 }
 
+/**
+ * Тренировки с пульсом для личной нормы ауры: за окно нормы, но не меньше
+ * срока открытия — по первой из них считаем, прошла ли неделя.
+ */
+async function normWorkouts(db: Tx, userId: string, now: Date): Promise<NormWorkout[]> {
+  const days = Math.max(AURA_NORM_WINDOW_DAYS, AURA_UNLOCK_DAYS) * 3;
+  const rows = await db.workout.findMany({
+    where: { userId, status: 'accepted', startedAt: { gte: new Date(now.getTime() - days * 86_400_000) } },
+    select: { startedAt: true, pulse: true, payload: true },
+    orderBy: { startedAt: 'desc' },
+    take: 120,
+  });
+  return rows.map((r) => ({
+    startedAt: r.startedAt,
+    pulse: r.pulse,
+    entries: (r.payload as { entries?: NormWorkout['entries'] } | null)?.entries,
+  }));
+}
+
+/** Уже качал ауры до правила «сначала неделя тренировок» — не запираем снова. */
+const grandfathered = (progress: Record<AuraKind, number>) => AURA_KINDS.some((k) => progress[k] > 0);
+
 /** Экран аур: уровни, прогресс, выбранная и сколько тренировок осталось на неделе. */
 export async function auraState(db: Tx, userId: string, now = new Date()) {
   const p = await db.profile.findUniqueOrThrow({
@@ -37,7 +60,15 @@ export async function auraState(db: Tx, userId: string, now = new Date()) {
   const week = mondayOf(today);
   const used = p.auraWeek === week ? p.auraSessions : 0;
   const progress = readAuras(p.auras);
+  // Открытие аур одно для всех видов — берём любой вид, пороги здесь не нужны.
+  const norm = auraNorm({
+    kind: 'fury',
+    workouts: await normWorkouts(db, userId, now),
+    now,
+    grandfathered: grandfathered(progress),
+  });
   return {
+    unlock: { ready: norm.ready, daysLeft: norm.daysLeft, workoutsLeft: norm.workoutsLeft },
     equipped: p.auraEquipped,
     trainedToday: p.auraLastDay === today,
     sessionsThisWeek: used,
@@ -104,12 +135,25 @@ export async function trainAura(
           .filter((s) => s.at >= input.startedAt && s.at <= input.finishedAt)
           .sort((x, y) => x.at.getTime() - y.at.getTime())
       : [];
+    const progressBefore = readAuras(p.auras);
+    const norm = auraNorm({
+      kind: kind as AuraKind,
+      workouts: await normWorkouts(tx, userId, now),
+      now,
+      grandfathered: grandfathered(progressBefore),
+    });
+    // Сначала неделя обычных тренировок с пульсом: по ним — личная норма.
+    if (!norm.ready) {
+      throw new ConflictException(`Aura locked: ${norm.daysLeft} days, ${norm.workoutsLeft} workouts left`);
+    }
     // Причина — в тексте ошибки, телефон показывает её человеческими словами.
-    const problem = p.healthConsentAt ? auraPulseProblem(pulse, seconds, GameConfig.minPulseCoverage) : 'no_consent';
+    const problem = p.healthConsentAt
+      ? auraPulseProblem(pulse, seconds, GameConfig.minPulseCoverage, norm)
+      : 'no_consent';
     if (problem) {
       throw new UnprocessableEntityException(`Aura training needs heart rate from a watch or sensor: ${problem}`);
     }
-    const progress = readAuras(p.auras);
+    const progress = progressBefore;
     progress[kind as AuraKind] += 1;
     await tx.profile.update({
       where: { userId },

@@ -16,11 +16,19 @@ class AuraInfo {
     required this.sessionsThisWeek,
     required this.perWeek,
     required this.auras,
+    this.ready = true,
+    this.daysLeft = 0,
+    this.workoutsLeft = 0,
   });
 
   factory AuraInfo.fromJson(Map<String, dynamic> j) => AuraInfo(
     equipped: AuraKind.values.asNameMap()[j['equipped']],
     trainedToday: j['trainedToday'] == true,
+    // Старый сервер блокировку не присылает — тогда ауры открыты.
+    ready: (j['unlock'] as Map?)?['ready'] != false,
+    daysLeft: ((j['unlock'] as Map?)?['daysLeft'] as num?)?.toInt() ?? 0,
+    workoutsLeft:
+        ((j['unlock'] as Map?)?['workoutsLeft'] as num?)?.toInt() ?? 0,
     sessionsThisWeek: (j['sessionsThisWeek'] as num).toInt(),
     perWeek: (j['perWeek'] as num).toInt(),
     auras: [
@@ -43,7 +51,12 @@ class AuraInfo {
   final int perWeek;
   final List<AuraProgress> auras;
 
-  bool get canTrain => !trainedToday && sessionsThisWeek < perWeek;
+  /// Ауры открываются после недели тренировок с пульсом: по ним — личная норма.
+  final bool ready;
+  final int daysLeft;
+  final int workoutsLeft;
+
+  bool get canTrain => ready && !trainedToday && sessionsThisWeek < perWeek;
 }
 
 class AuraNotifier extends AsyncNotifier<AuraInfo> {

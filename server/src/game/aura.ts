@@ -31,13 +31,15 @@ export const auraPulseProblem = (
   pulse: { at: Date; bpm: number }[],
   seconds: number,
   minCoverage: number,
+  /** Личные пороги (aura-norm.ts); без них — общие. */
+  limits: { minAvg: number; minPeak: number } = { minAvg: AURA_MIN_AVG_BPM, minPeak: AURA_MIN_PEAK_BPM },
 ): AuraPulseProblem | null => {
   if (pulse.length < 2) return 'no_pulse';
   const covered = (pulse[pulse.length - 1].at.getTime() - pulse[0].at.getTime()) / 1000;
   if (seconds <= 0 || covered / seconds < minCoverage) return 'coverage';
   const avg = pulse.reduce((sum, s) => sum + s.bpm, 0) / pulse.length;
   const peak = Math.max(...pulse.map((s) => s.bpm));
-  return avg >= AURA_MIN_AVG_BPM || peak >= AURA_MIN_PEAK_BPM ? null : 'low';
+  return avg >= limits.minAvg || peak >= limits.minPeak ? null : 'low';
 };
 export const AURA_MAX_LEVEL = 5;
 
