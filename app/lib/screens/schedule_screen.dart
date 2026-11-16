@@ -58,16 +58,16 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     setState(() => _saving = true);
     final days = _days.toList()..sort();
     try {
+      // Нотификатор — до await: экран могут закрыть во время запроса (п. 137).
+      final heroes = ref.read(heroProvider.notifier);
       if (ref.read(accountProvider).signedIn) {
         final hero = await ref.read(apiProvider).put('/v1/me/schedule', {
           'trainingFormat': _format.name,
           'scheduleDays': days,
         });
-        await ref.read(heroProvider.notifier).applyServer(hero);
+        await heroes.applyServer(hero);
       } else {
-        await ref
-            .read(heroProvider.notifier)
-            .changeScheduleLocally(_format, days);
+        await heroes.changeScheduleLocally(_format, days);
       }
       if (!mounted) return;
       showStatus('График обновлён', kind: StatusKind.success);

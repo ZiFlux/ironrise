@@ -40,14 +40,16 @@ class _NicknameDialogState extends ConsumerState<_NicknameDialog> {
       _serverError = null;
     });
     try {
+      // Нотификатор — до await: диалог могут закрыть во время запроса (п. 137).
+      final heroes = ref.read(heroProvider.notifier);
       if (ref.read(accountProvider).signedIn) {
         final me = await ref.read(apiProvider).put('/v1/me/nickname', {
           'nickname': nickname,
           if (paid) 'paid': true,
         });
-        await ref.read(heroProvider.notifier).applyServer(me);
+        await heroes.applyServer(me);
       } else {
-        await ref.read(heroProvider.notifier).renameLocally(nickname);
+        await heroes.renameLocally(nickname);
       }
       if (mounted) Navigator.of(context).pop();
     } on ApiException catch (e) {

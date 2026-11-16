@@ -21,6 +21,8 @@ class NotificationsScreen extends ConsumerWidget {
     } on ApiException {
       // Нет сети — отметим в следующий раз.
     }
+    // Экран могли закрыть, пока шёл запрос (п. 137).
+    if (!ref.context.mounted) return;
     ref.invalidate(notificationsProvider);
   }
 

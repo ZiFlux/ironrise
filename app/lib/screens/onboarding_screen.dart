@@ -104,14 +104,19 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
       avatarSex: _avatarSex,
     );
-    await ref.read(programProvider.notifier).setEquipment(_equipment);
-    await ref.read(healthConsentProvider.notifier).set(_pulseConsent);
+    // Всё из ref — до первого await (п. 137).
+    final program = ref.read(programProvider.notifier);
+    final consent = ref.read(healthConsentProvider.notifier);
+    final prefs = ref.read(prefsProvider);
+    final heroes = ref.read(heroProvider.notifier);
+    final signedIn = ref.read(accountProvider).signedIn;
+    final api = ref.read(apiProvider);
+    await program.setEquipment(_equipment);
+    await consent.set(_pulseConsent);
     // Риск по здоровью — входную тренировку не предлагаем (TRAINING_SYSTEM.md 13.3).
-    await ref
-        .read(prefsProvider)
-        .setBool(healthRiskKey, _healthRisks.isNotEmpty);
-    await ref.read(heroProvider.notifier).save(hero);
-    await _renameOnServer(hero.nickname);
+    await prefs.setBool(healthRiskKey, _healthRisks.isNotEmpty);
+    await heroes.save(hero);
+    if (signedIn) await _renameOnServer(api, hero.nickname);
     if (!mounted) return;
     // Сразу предлагаем входную тренировку: план по силам (п. 116). Можно отложить.
     context.go(_healthRisks.isEmpty ? '/entry-test' : '/');
@@ -119,12 +124,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   /// Героя создали заново, а аккаунт остался: ник — на сервер (первая смена бесплатна).
   /// Не вышло — синхронизация вернёт ник аккаунта, говорим почему.
-  Future<void> _renameOnServer(String nickname) async {
-    if (!ref.read(accountProvider).signedIn) return;
+  Future<void> _renameOnServer(ApiClient api, String nickname) async {
     try {
-      await ref.read(apiProvider).put('/v1/me/nickname', {
-        'nickname': nickname,
-      });
+      await api.put('/v1/me/nickname', {'nickname': nickname});
     } on ApiException catch (e) {
       if (!mounted) return;
       showStatusError(

@@ -46,9 +46,10 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   }
 
   Future<void> _confirm(List<ShopItem> cart, AvatarLook look) async {
+    final heroes = ref.read(heroProvider.notifier);
     final ok = ref.read(accountProvider).signedIn
         ? await _confirmOnServer(cart, look)
-        : await ref.read(heroProvider.notifier).buyAndWear(cart, look);
+        : await heroes.buyAndWear(cart, look);
     if (!mounted || ok == null) return;
     if (ok) {
       showStatus(
@@ -64,6 +65,8 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   /// С аккаунтом монеты списывает сервер. null — ошибка уже показана.
   Future<bool?> _confirmOnServer(List<ShopItem> cart, AvatarLook look) async {
     final api = ref.read(apiProvider);
+    // Нотификатор — до await: экран могут закрыть во время покупки (п. 137).
+    final heroes = ref.read(heroProvider.notifier);
     try {
       final hero = cart.isEmpty
           ? await api.put('/v1/me/appearance', {'appearance': look.toJson()})
@@ -71,7 +74,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
               'itemIds': [for (final i in cart) i.id],
               'appearance': look.toJson(),
             });
-      await ref.read(heroProvider.notifier).applyServer(hero);
+      await heroes.applyServer(hero);
       return true;
     } on ApiException catch (e) {
       if (e.status == 409) return false;

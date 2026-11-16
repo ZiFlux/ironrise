@@ -70,6 +70,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
   Future<void> _act(Future<void> Function() action, {String? done}) async {
     try {
       await action();
+      if (!mounted) return;
       ref.invalidate(serverFriendsProvider);
       ref.invalidate(serverFriendsLeagueProvider);
       if (done != null && mounted) {

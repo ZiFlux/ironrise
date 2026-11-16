@@ -39,6 +39,7 @@ class _TipScreenState extends ConsumerState<TipScreen> {
 
   Future<void> _answer(Tip tip, int option) async {
     await ref.read(tipsProvider.notifier).answer(tip, option);
+    if (!mounted) return;
     final after = ref.read(tipsProvider);
     if (after != null && after.done && (after.coins ?? 0) > 0) {
       showStatus(

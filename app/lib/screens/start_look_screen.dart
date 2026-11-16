@@ -135,16 +135,19 @@ class _StartLookScreenState extends ConsumerState<StartLookScreen> {
 
   Future<void> _save(AvatarLook look, {required bool lock}) async {
     if (lock && !await _confirmLock()) return;
+    if (!mounted) return;
     setState(() => _busy = true);
     try {
+      // Нотификатор — до await: экран могут закрыть во время запроса (п. 137).
+      final heroes = ref.read(heroProvider.notifier);
       if (ref.read(accountProvider).signedIn) {
         final hero = await ref.read(apiProvider).put('/v1/me/start-look', {
           'appearance': look.toJson(),
           'lock': lock,
         });
-        await ref.read(heroProvider.notifier).applyServer(hero);
+        await heroes.applyServer(hero);
       } else {
-        await ref.read(heroProvider.notifier).saveStartLook(look, lock: lock);
+        await heroes.saveStartLook(look, lock: lock);
       }
       if (!mounted) return;
       setState(() => _draft = null);

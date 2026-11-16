@@ -170,6 +170,8 @@ class _ActiveCardioState extends ConsumerState<_ActiveCardio> {
   }
 
   Future<void> _confirmCancel() async {
+    // Ссылку берём до диалога: экран могут закрыть, пока он открыт (п. 137).
+    final cardio = ref.read(cardioProvider.notifier);
     final cancel = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
@@ -188,7 +190,7 @@ class _ActiveCardioState extends ConsumerState<_ActiveCardio> {
         ],
       ),
     );
-    if (cancel == true) ref.read(cardioProvider.notifier).cancel();
+    if (cancel == true) cardio.cancel();
   }
 
   @override

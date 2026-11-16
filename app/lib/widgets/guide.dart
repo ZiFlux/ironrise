@@ -193,14 +193,15 @@ class _TabGuideState extends ConsumerState<TabGuide> {
   Future<void> _finish(bool completed) async {
     _entry?.remove();
     _entry = null;
+    // Всё нужное из ref — до await: подсказку закрывают и уходя с вкладки (п. 137).
     final prefs = ref.read(prefsProvider);
+    final achievements = ref.read(achievementsProvider.notifier);
     await prefs.setBool(_doneKey(widget.tab), true);
     if (completed) await prefs.setBool(_completedKey(widget.tab), true);
     final all = tabGuides.keys.every(
       (t) => prefs.getBool(_completedKey(t)) == true,
     );
-    if (all)
-      await ref.read(achievementsProvider.notifier).claim(Achievement.guide);
+    if (all) await achievements.claim(Achievement.guide);
   }
 
   @override
