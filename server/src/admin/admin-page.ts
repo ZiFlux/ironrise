@@ -270,6 +270,27 @@ export const adminPageHtml = String.raw`<!doctype html>
       dist('Главные цели', s.goals, GOAL);
       dist('Форматы', s.formats, FORMAT);
       dist('Уровни по входной тренировке', s.entryLevels, LEVEL);
+      section('Нормы пульса по упражнениям (60 дней)');
+      var normsBox = document.createElement('div');
+      normsBox.className = 'card';
+      box.appendChild(normsBox);
+      api('pulse-norms').then(function (rows) {
+        if (!rows.length) {
+          normsBox.appendChild(cell('p', 'Пока мало данных: норма считается от 20 подходов с пульсом в упражнении.'));
+          return;
+        }
+        var t = document.createElement('table');
+        var head = document.createElement('tr');
+        ['Упражнение', 'Подходов', 'Пик', 'Отдых', 'Разброс'].forEach(function (h) { head.appendChild(cell('th', h)); });
+        t.appendChild(head);
+        rows.forEach(function (n) {
+          var tr = document.createElement('tr');
+          [n.name, String(n.sets), n.peakMedian + ' уд/мин', n.baseMedian === null ? '—' : n.baseMedian + ' уд/мин', '±' + Math.round(n.peakSpread / 2)]
+            .forEach(function (v) { tr.appendChild(cell('td', v)); });
+          t.appendChild(tr);
+        });
+        normsBox.appendChild(t);
+      }).catch(function (e) { show(e.message, true); });
       $('listBox').classList.add('hidden');
       $('player').classList.add('hidden');
       box.classList.remove('hidden');

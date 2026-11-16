@@ -16,7 +16,7 @@ import { ZodPipe } from '../common/zod';
 import { PrismaService } from '../prisma.service';
 import { adminPageHtml } from './admin-page';
 import { adminToken, tokenMatches } from './admin-token';
-import { adminStats, itemGroups, playerInfo, playerWorkouts, run } from './commands';
+import { adminPulseNorms, adminStats, itemGroups, playerInfo, playerWorkouts, run } from './commands';
 
 const RunSchema = z.object({ args: z.array(z.string().max(200)).min(1).max(40) });
 
@@ -60,6 +60,13 @@ export class AdminController {
   stats(@Headers('x-admin-token') token?: string) {
     this.check(token);
     return adminStats(this.db);
+  }
+
+  /** Нормы пульса по упражнениям (п. 118) — копим для алгоритмов. */
+  @Get('api/pulse-norms')
+  norms(@Headers('x-admin-token') token?: string) {
+    this.check(token);
+    return adminPulseNorms(this.db);
   }
 
   /** Последние тренировки игрока. */

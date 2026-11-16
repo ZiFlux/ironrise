@@ -10,6 +10,8 @@ import { ACHIEVEMENT_ITEMS, AUTHOR_ITEMS, EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_I
 import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 import { SEASON_ITEMS } from '../game/season';
+import { pulseNorms } from '../game/pulse-norms';
+import { findExercise } from '../game/exercises';
 
 export const HELP = `Команды (ник или e-mail игрока — <кто>):
   find <кто>                     — карточка игрока
@@ -410,4 +412,19 @@ export async function playerWorkouts(db: Db, who: string, take = 15) {
       verified: w.validity >= 0.99,
     };
   });
+}
+
+/**
+ * Нормы пульса по упражнениям за 60 дней (п. 118) — для админки. Пульсовые поля в
+ * тренировках есть только у игроков с согласием на данные о здоровье (п. 106).
+ */
+export async function adminPulseNorms(db: Db, now = new Date()) {
+  const rows = await db.workout.findMany({
+    where: { type: 'strength', startedAt: { gte: new Date(now.getTime() - 60 * 86_400_000) } },
+    select: { payload: true },
+    take: 5000,
+  });
+  type Entry = { exerciseId: string; sets: { peak?: number; base?: number }[] };
+  const norms = pulseNorms(rows.map((r) => ((r.payload as { entries?: Entry[] } | null)?.entries ?? []) as Entry[]));
+  return norms.map((n) => ({ ...n, name: findExercise(n.exerciseId)?.name ?? n.exerciseId }));
 }

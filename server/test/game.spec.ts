@@ -983,3 +983,21 @@ describe('чужая лига: без «я», но со зрителем', () =>
     expect(t.filter((e) => e.isBot)).toHaveLength(LIVE_LEAGUE_BOTS);
   });
 });
+
+import { pulseNorms } from '../src/game/pulse-norms';
+
+describe('нормы пульса по упражнениям (п. 118)', () => {
+  const w = (peak: number, base: number) => [{ exerciseId: 'push_up', sets: [{ peak, base }] }];
+  it('медиана пика и отдыха, разброс; мало подходов — нормы нет', () => {
+    const many = Array.from({ length: 21 }, (_, i) => w(140 + (i % 5), 100 + (i % 3)));
+    const [n] = pulseNorms(many);
+    expect(n.exerciseId).toBe('push_up');
+    expect(n.sets).toBe(21);
+    expect(n.peakMedian).toBe(142);
+    expect(n.baseMedian).toBe(101);
+    expect(pulseNorms(many.slice(0, 5))).toEqual([]);
+  });
+  it('подходы без пульса не считаются', () => {
+    expect(pulseNorms([[{ exerciseId: 'push_up', sets: [{}, {}] }]], 1)).toEqual([]);
+  });
+});
