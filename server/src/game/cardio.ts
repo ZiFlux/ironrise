@@ -51,7 +51,8 @@ export const scoreCardio = (args: {
   const lagging = new Set(laggingParts(levels(args.xpBefore)));
   const bonus = lagging.has('cardio') ? C.laggingXpMultiplier : 1;
   const summary = buildSummary({ cardio: C.cardioXpPerMinute * effectiveMin * bonus }, args.xpBefore, lagging, {
-    durationSec,
+    // Засчитывается не больше лимита — и в журнале тоже (старые клиенты шлют полное время).
+    durationSec: Math.min(durationSec, C.cardioMaxMinutes * 60),
     totalSets: 0,
     validity: verified ? 1 : unverified,
   });

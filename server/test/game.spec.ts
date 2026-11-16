@@ -1001,3 +1001,33 @@ describe('нормы пульса по упражнениям (п. 118)', () => 
     expect(pulseNorms([[{ exerciseId: 'push_up', sets: [{}, {}] }]], 1)).toEqual([]);
   });
 });
+
+import { auraPulseProblem } from '../src/game/aura';
+import { scoreCardio as scoreCardioCap } from '../src/game/cardio';
+
+describe('аура: проверка пульса', () => {
+  const t0 = new Date('2026-11-16T10:00:00Z').getTime();
+  const series = (bpm: (i: number) => number, minutes = 8) =>
+    Array.from({ length: minutes * 6 + 1 }, (_, i) => ({ at: new Date(t0 + i * 10_000), bpm: bpm(i) }));
+  const seconds = 8 * 60;
+
+  it('без пульса и с дырой — понятная причина', () => {
+    expect(auraPulseProblem([], seconds, C.minPulseCoverage)).toBe('no_pulse');
+    expect(auraPulseProblem(series(() => 120, 2), seconds, C.minPulseCoverage)).toBe('coverage');
+  });
+
+  it('статика 80–90 с подъёмами засчитывается, сидя — нет', () => {
+    expect(auraPulseProblem(series((i) => 86 + (i % 6)), seconds, C.minPulseCoverage)).toBeNull();
+    expect(auraPulseProblem(series((i) => (i % 12 === 0 ? 112 : 78)), seconds, C.minPulseCoverage)).toBeNull();
+    expect(auraPulseProblem(series(() => 72), seconds, C.minPulseCoverage)).toBe('low');
+  });
+});
+
+describe('кардио: больше 2 часов не засчитывается', () => {
+  it('длительность в итоге обрезана до лимита', () => {
+    const startedAt = new Date('2026-11-16T08:00:00Z');
+    const finishedAt = new Date('2026-11-16T11:30:00Z');
+    const s = scoreCardioCap({ startedAt, finishedAt, pulse: [], xpBefore: partMap(() => 0) });
+    expect(s.durationSec).toBe(C.cardioMaxMinutes * 60);
+  });
+});

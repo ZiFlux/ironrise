@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../game/game_config.dart';
 import '../game/cardio.dart';
 import '../game/streak_rewards.dart';
 import '../game/workout.dart';
@@ -49,7 +50,13 @@ class CardioNotifier extends Notifier<CardioSession?> {
     final hero = ref.read(heroProvider);
     if (session == null || hero == null) return null;
 
-    final finishedAt = DateTime.now();
+    // Больше 2 часов не засчитывается: конец обрезаем — и в журнале, и на сервере
+    // длительность не больше лимита, даже если кардио забыли выключить.
+    final now = DateTime.now();
+    final limit = session.startedAt.add(
+      const Duration(minutes: GameConfig.cardioMaxMinutes),
+    );
+    final finishedAt = now.isAfter(limit) ? limit : now;
     ref.read(heartRateProvider.notifier).stopWatch();
     final live = ref
         .read(heartRateProvider.notifier)

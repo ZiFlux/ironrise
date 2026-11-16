@@ -17,7 +17,28 @@ export const AURA_SESSIONS_PER_WEEK = 2;
 /** Тренировка ауры подтверждается пульсом: длительность и средний пульс. */
 export const AURA_MIN_SECONDS = 6 * 60;
 export const AURA_MAX_SECONDS = 40 * 60;
-export const AURA_MIN_AVG_BPM = 95;
+/**
+ * Нагрузка подтверждена пульсом: средний от [AURA_MIN_AVG_BPM] или пик от [AURA_MIN_PEAK_BPM].
+ * 95 в среднем было слишком строго для статики и фокуса (планка держит 80–90 уд/мин).
+ */
+export const AURA_MIN_AVG_BPM = 85;
+export const AURA_MIN_PEAK_BPM = 110;
+
+/** Почему тренировка ауры не засчитана по пульсу; null — всё в порядке. */
+export type AuraPulseProblem = 'no_pulse' | 'coverage' | 'low';
+
+export const auraPulseProblem = (
+  pulse: { at: Date; bpm: number }[],
+  seconds: number,
+  minCoverage: number,
+): AuraPulseProblem | null => {
+  if (pulse.length < 2) return 'no_pulse';
+  const covered = (pulse[pulse.length - 1].at.getTime() - pulse[0].at.getTime()) / 1000;
+  if (seconds <= 0 || covered / seconds < minCoverage) return 'coverage';
+  const avg = pulse.reduce((sum, s) => sum + s.bpm, 0) / pulse.length;
+  const peak = Math.max(...pulse.map((s) => s.bpm));
+  return avg >= AURA_MIN_AVG_BPM || peak >= AURA_MIN_PEAK_BPM ? null : 'low';
+};
 export const AURA_MAX_LEVEL = 5;
 
 /** Сколько тренировок ауры нужно для уровня 1…5 (накопительно). */

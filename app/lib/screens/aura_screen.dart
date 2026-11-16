@@ -12,6 +12,10 @@ import '../state/training_sound.dart';
 import '../state/account_state.dart';
 import '../state/aura_state.dart';
 import '../state/heart_rate_state.dart';
+import '../state/health_state.dart';
+import '../state/consent_state.dart';
+import '../game/game_config.dart';
+import '../game/anti_fraud.dart' show PulseSample;
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/aura_flame.dart';
@@ -305,6 +309,14 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
     _submit();
   }
 
+  /// Пульс покрывает тренировку настолько, что сервер её примет.
+  static bool _covers(List<PulseSample> pulse, DateTime start, DateTime end) {
+    if (pulse.length < 2) return false;
+    final total = end.difference(start).inSeconds;
+    final covered = pulse.last.at.difference(pulse.first.at).inSeconds;
+    return total > 0 && covered / total >= GameConfig.minPulseCoverage;
+  }
+
   Future<void> _submit() async {
     final end = _finishedAt ?? DateTime.now();
     final start = _startedAt ?? end;
@@ -313,9 +325,17 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
       _error = null;
     });
     final hr = ref.read(heartRateProvider.notifier);
-    final pulse = hr.samplesBetween(start, end);
+    final health = ref.read(healthProvider.notifier);
+    var pulse = hr.samplesBetween(start, end);
     try {
       await hr.stopWatch();
+      // Живого пульса мало (часы без нашего приложения, Samsung Health) — берём
+      // записанный в Health Connect, как у кардио. Без согласия — не трогаем.
+      if (ref.read(healthConsentProvider).allowsPulse &&
+          !_covers(pulse, start, end)) {
+        final stored = await health.heartRateBetween(start, end);
+        if (stored.length > pulse.length) pulse = stored;
+      }
       final sent = await ref
           .read(auraProvider.notifier)
           .train(widget.kind, startedAt: start, finishedAt: end, pulse: pulse);
@@ -329,11 +349,24 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
       if (!mounted) return;
       setState(() {
         _saving = false;
-        _canRetry = e.isNetwork || e.status >= 500;
+        _canRetry =
+            e.isNetwork ||
+            e.status >= 500 ||
+            (e.status == 422 &&
+                (e.message.contains('coverage') ||
+                    e.message.contains('no_pulse')));
         _error = switch (e.status) {
           422 when e.message.contains('6-40') =>
             'Тренировка короче 6 минут — не засчитана',
-          422 => 'Нет пульса с часов — тренировка ауры не засчитана',
+          422 when e.message.contains('no_consent') =>
+            'Без согласия на данные о пульсе ауру не засчитать — включите его в настройках',
+          422 when e.message.contains('coverage') =>
+            'Пульс записан только на часть тренировки — держите часы или датчик '
+                'включёнными до конца. Если пульс идёт через Samsung Health, '
+                'подождите минуту и нажмите «Повторить»',
+          422 when e.message.contains('low') =>
+            'Пульс слишком спокойный для ауры: нужен средний от 85 или пик от 110',
+          422 => 'Нет пульса с часов или датчика — тренировка ауры не засчитана',
           409 => 'Тренировка ауры уже была — следующая завтра',
           _ => 'Нет связи с сервером — попробуйте ещё раз',
         };

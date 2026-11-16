@@ -3,8 +3,8 @@ import { z } from 'zod';
 import {
   AURA_KINDS,
   AURA_MAX_SECONDS,
-  AURA_MIN_AVG_BPM,
   AURA_MIN_SECONDS,
+  auraPulseProblem,
   AURA_SESSIONS_PER_WEEK,
   AuraKind,
   auraLevel,
@@ -13,7 +13,7 @@ import {
 } from '../game/aura';
 import { mondayOf } from '../game/bots';
 import { localDay } from '../common/day';
-import { hasEnoughPulse } from '../game/anti-fraud';
+import { GameConfig } from '../game/config';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
 
 type Tx = Prisma.TransactionClient | PrismaClient;
@@ -63,7 +63,7 @@ export const AuraTrainingSchema = z.object({
 /**
  * Тренировка ауры: +1 к её прогрессу. Не больше одной в день и двух в неделю;
  * засчитывается только с пульсом (часы или датчик): он покрывает тренировку
- * и в среднем не ниже [AURA_MIN_AVG_BPM]. Первая открытая — выбирается сама.
+ * и показывает нагрузку (auraPulseProblem). Первая открытая — выбирается сама.
  */
 export async function trainAura(
   db: PrismaClient,
@@ -104,9 +104,10 @@ export async function trainAura(
           .filter((s) => s.at >= input.startedAt && s.at <= input.finishedAt)
           .sort((x, y) => x.at.getTime() - y.at.getTime())
       : [];
-    const avg = pulse.length ? pulse.reduce((sum, s) => sum + s.bpm, 0) / pulse.length : 0;
-    if (!hasEnoughPulse(pulse, seconds) || avg < AURA_MIN_AVG_BPM) {
-      throw new UnprocessableEntityException('Aura training needs heart rate from a watch or sensor');
+    // Причина — в тексте ошибки, телефон показывает её человеческими словами.
+    const problem = p.healthConsentAt ? auraPulseProblem(pulse, seconds, GameConfig.minPulseCoverage) : 'no_consent';
+    if (problem) {
+      throw new UnprocessableEntityException(`Aura training needs heart rate from a watch or sensor: ${problem}`);
     }
     const progress = readAuras(p.auras);
     progress[kind as AuraKind] += 1;
