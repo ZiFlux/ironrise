@@ -17,6 +17,7 @@ import '../state/providers.dart';
 import '../state/consent_state.dart';
 import '../state/entry_test_state.dart';
 import '../theme.dart';
+import '../widgets/info_bubble.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/schedule_picker.dart';
 import '../widgets/goals_picker.dart';
@@ -207,15 +208,35 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
     );
   }
 
-  Widget _title(String title, String subtitle) => Padding(
+  /// [why] — «зачем спрашиваем и на что влияет»: значок «?» у заголовка (п. 127, пункт 30).
+  Widget _title(String title, String subtitle, {String? why}) => Padding(
     padding: const EdgeInsets.only(top: 24, bottom: 20),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          title,
-          style: Theme.of(context).textTheme.headlineMedium
-              ?.copyWith(fontWeight: FontWeight.w500),
+        Row(
+          children: [
+            Flexible(
+              child: Text(
+                title,
+                style: Theme.of(context).textTheme.headlineMedium
+                    ?.copyWith(fontWeight: FontWeight.w500),
+              ),
+            ),
+            if (why != null)
+              Builder(
+                builder: (c) => IconButton(
+                  tooltip: 'Зачем это',
+                  onPressed: () =>
+                      showInfoBubble(c, title: 'Зачем спрашиваем', text: why),
+                  icon: const Icon(
+                    LucideIcons.circleQuestionMark,
+                    size: 20,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+          ],
         ),
         const SizedBox(height: 8),
         Text(
@@ -271,7 +292,13 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
 
   Widget _heroStep() => ListView(
     children: [
-      _title('Твой герой', 'Как его зовут и к чему он идёт'),
+      _title(
+        'Твой герой',
+        'Как его зовут и к чему он идёт',
+        why:
+            'Ник видят друзья и соперники в лиге. Цель меняет программу: повторы, '
+            'отдых и число упражнений. Поменять цель можно потом в настройках.',
+      ),
       Row(
         children: [
           for (final sex in AvatarSex.values) ...[
@@ -328,6 +355,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _title(
         'Как будешь тренироваться?',
         'Отдых по графику не сбрасывает серию. Новичкам лучше начать с 3 тренировок в неделю.',
+        why:
+            'По дням и стилю программа раскладывает упражнения так, чтобы мышцы '
+            'отдыхали 48 часов. Дни отдыха по графику серию не сжигают. График '
+            'меняется в настройках.',
       ),
       SchedulePicker(
         format: _format,
@@ -352,6 +383,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _title(
         'Пара вопросов о здоровье',
         'Чтобы нагрузка была безопасной. Ответы остаются на телефоне',
+        why:
+            'Если есть риск, мы не предлагаем входную тренировку на время и советуем '
+            'начать мягко и посоветоваться с врачом. Ответы на сервер не уходят.',
       ),
       for (final (i, question) in _healthQuestions.indexed)
         SwitchListTile(
@@ -386,6 +420,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _title(
         'Немного о тебе',
         'Поможет подобрать нагрузку по силам. Можно заполнить позже.',
+        why:
+            'Рост, вес и опыт помогают подобрать стартовые веса и уровень программы. '
+            'Отжимания и подтягивания — твой стартовый уровень силы. Пол нужен для '
+            'норм силы (облик героя выбирается отдельно).',
       ),
       SegmentedButton<Sex>(
         segments: [
