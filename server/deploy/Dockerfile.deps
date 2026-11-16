@@ -1,0 +1,7 @@
+# Зависимости API (node_modules) — отдельный образ. Он большой (~900 МБ) и меняется
+# только вместе с package-lock.json, поэтому на VPS едет редко (deploy/push.ps1, п. 126).
+# Тег — первые 12 знаков SHA-256 от package-lock.json.
+FROM node:26.13.0-slim
+WORKDIR /app
+COPY package.json package-lock.json ./
+RUN npm ci

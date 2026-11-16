@@ -7,3 +7,6 @@ src/generated
 !.env.beta.example
 *.tsbuildinfo
 test
+.release
+*.tar.gz
+*.tar

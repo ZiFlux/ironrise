@@ -1,0 +1,9 @@
+# Сборка кода API на компьютере разработчика поверх образа зависимостей.
+# Из него push.ps1 забирает только dist — несколько мегабайт.
+ARG DEPS
+FROM ironrise-api-deps:${DEPS}
+COPY prisma ./prisma
+COPY prisma.config.ts tsconfig.json tsconfig.build.json nest-cli.json ./
+COPY src ./src
+# generate к базе не подключается, но конфиг Prisma требует адрес — даём фиктивный.
+RUN DATABASE_URL=postgresql://build@localhost/build npx prisma generate && npx nest build
