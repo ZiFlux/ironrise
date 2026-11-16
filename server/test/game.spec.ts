@@ -657,8 +657,8 @@ describe('живая лига', () => {
     expect(table.filter((e) => e.isPlayer)).toHaveLength(1);
     const bots = table.filter((e) => e.isBot);
     for (const b of bots) {
-      expect(b.points).toBeGreaterThanOrEqual(21);
-      expect(b.points).toBeLessThanOrEqual(39);
+      expect(b.points).toBeGreaterThanOrEqual(15);
+      expect(b.points).toBeLessThanOrEqual(45);
       expect(b.name).toMatch(/^[\p{L}\d_]{3,20}$/u);
     }
   });
@@ -869,5 +869,28 @@ describe('«Минимум»: восстановление необязател�
     expect(restLimit('minimum', [0, 1, 3, 4])).toBe(3);
     expect(restLimit('custom', [0, 1, 3, 4])).toBe(2);
     expect(restLimit('fullBody', [0, 2, 4])).toBe(2);
+  });
+});
+
+import { botDailyFactor } from '../src/game/bots';
+
+describe('сила ботов в лиге меняется по дням (16.11)', () => {
+  it('в пределах ×0,5…1,5, одинаково для всех, то больше, то меньше', () => {
+    const days = [1, 2, 3, 4, 5, 6, 7].map((d) => botDailyFactor(12345, d));
+    expect(days.every((f) => f >= 0.5 && f <= 1.5)).toBe(true);
+    expect(botDailyFactor(12345, 4)).toBe(days[3]);
+    const ups = days.slice(1).filter((f, i) => f > days[i]).length;
+    const downs = days.slice(1).filter((f, i) => f < days[i]).length;
+    expect(ups + downs).toBeGreaterThan(0);
+    // На множестве недель встречаются оба направления.
+    let anyUp = false;
+    let anyDown = false;
+    for (let seed = 1; seed < 50; seed++) {
+      const a = botDailyFactor(seed, 3);
+      const b = botDailyFactor(seed, 4);
+      anyUp ||= b > a;
+      anyDown ||= b < a;
+    }
+    expect(anyUp && anyDown).toBe(true);
   });
 });

@@ -83,8 +83,22 @@ export const fillLeague = <T extends { tier: number }>(own: T[], others: T[], ti
 export const LIVE_LEAGUE_BOTS = 2;
 
 /**
+ * Сила бота в лиге «гуляет» день ото дня (16.11): старт недели — ×0,7…1,3 от медианы
+ * живых, затем каждый день случайный шаг ±0,25 в пределах ×0,5…1,5. Бот то вырывается
+ * вперёд, то отстаёт; детерминировано по неделе и дню — у всех игроков лиги одинаково.
+ */
+export const botDailyFactor = (seed: number, day: number): number => {
+  const rnd = seededRandom(seed);
+  let factor = 0.7 + rnd() * 0.6;
+  for (let d = 1; d < day; d++) {
+    factor = Math.min(1.5, Math.max(0.5, factor + (rnd() - 0.5) * 0.5));
+  }
+  return factor;
+};
+
+/**
  * Живая лига (п. 46 бэклога): игроки своей лиги с их очками за неделю и два бота,
- * которые растут вместе с игроками — их очки от медианы живых (×0,7…1,3).
+ * которые растут вместе с игроками — их очки от медианы живых, множитель меняется по дням.
  */
 export const liveLeague = (args: {
   today: string;
@@ -101,8 +115,7 @@ export const liveLeague = (args: {
   const daysPassed = daysBetween(mondayOf(args.today), args.today) + 1;
   const entries: LeagueEntry[] = live.map((p) => ({ name: p.name, points: p.points, isPlayer: p.id === args.me.id }));
   for (let b = 0; b < LIVE_LEAGUE_BOTS; b++) {
-    const rnd = seededRandom(weekSeed * 31 + b);
-    const factor = 0.7 + rnd() * 0.6;
+    const factor = botDailyFactor(weekSeed * 31 + b, daysPassed);
     // В начале недели у всех мало — боту хотя бы день активности, чтобы не стоял на нуле.
     const floor = Math.min(daysPassed, 2) * LEAGUE_WORKOUT_POINTS * 0.5;
     entries.push({ name: names[b], points: Math.round(Math.max(floor, median * factor)), isPlayer: false, isBot: true });
