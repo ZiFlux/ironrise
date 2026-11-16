@@ -59,7 +59,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: '/privacy', builder: (_, _) => const PrivacyScreen()),
       GoRoute(path: '/entry-test', builder: (_, _) => const EntryTestScreen()),
       GoRoute(path: '/feed', builder: (_, _) => const FeedScreen()),
-      GoRoute(path: '/season', builder: (_, _) => const SeasonScreen()),
+      GoRoute(
+        path: '/season',
+        builder: (_, _) =>
+            const ScreenHint(id: 'season', child: SeasonScreen()),
+      ),
       GoRoute(
         path: '/friend/:id',
         builder: (_, state) =>
@@ -120,7 +124,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'result',
-                    builder: (_, _) => const WorkoutResultScreen(),
+                    builder: (_, _) => const ScreenHint(
+                      id: 'result',
+                      child: WorkoutResultScreen(),
+                    ),
                   ),
                   GoRoute(
                     path: 'exercises',
@@ -140,7 +147,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'joint',
-                    builder: (_, _) => const JointScreen(),
+                    builder: (_, _) =>
+                        const ScreenHint(id: 'joint', child: JointScreen()),
                   ),
                 ],
               ),
@@ -155,15 +163,20 @@ final routerProvider = Provider<GoRouter>((ref) {
                 routes: [
                   GoRoute(
                     path: 'battle',
-                    builder: (_, _) => const DuelBattleScreen(),
+                    builder: (_, _) => const ScreenHint(
+                      id: 'battle',
+                      child: DuelBattleScreen(),
+                    ),
                   ),
                   GoRoute(
                     path: 'friends',
-                    builder: (_, _) => const FriendsScreen(),
+                    builder: (_, _) =>
+                        const ScreenHint(id: 'friends', child: FriendsScreen()),
                   ),
                   GoRoute(
                     path: 'auras',
-                    builder: (_, _) => const AuraScreen(),
+                    builder: (_, _) =>
+                        const ScreenHint(id: 'auras', child: AuraScreen()),
                     routes: [
                       GoRoute(
                         path: ':kind',
@@ -221,7 +234,8 @@ final routerProvider = Provider<GoRouter>((ref) {
                   ),
                   GoRoute(
                     path: 'friends',
-                    builder: (_, _) => const FriendsScreen(),
+                    builder: (_, _) =>
+                        const ScreenHint(id: 'friends', child: FriendsScreen()),
                   ),
                   GoRoute(
                     path: 'health',
