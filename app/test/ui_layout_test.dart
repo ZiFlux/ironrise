@@ -134,6 +134,7 @@ List<Override> _serverFakes() {
         wins: 7,
         tier: LeagueTier.silver,
         promoteTop: 2,
+        minDaysToPromote: 1,
         demoteBottom: 2,
         lastWeek: (rank: 2, outcome: 'promoted', tierBefore: 0, tierAfter: 1),
       ),

@@ -102,18 +102,23 @@ export const botDailyFactor = (seed: number, day: number): number => {
  */
 export const liveLeague = (args: {
   today: string;
-  me: { id: string; name: string; points: number };
+  /** Я — в таблице всегда (своя лига); в чужой лиге (п. 108) — не передаётся. */
+  me?: { id: string; name: string; points: number };
   players: { id: string; name: string; points: number }[];
   tier: number;
+  /** Кого отметить как «я» в чужой лиге, если он в ней есть. */
+  viewerId?: string;
 }): LeagueEntry[] => {
-  const live = [args.me, ...args.players.filter((p) => p.id !== args.me.id)];
+  const me = args.me;
+  const live = me ? [me, ...args.players.filter((p) => p.id !== me.id)] : [...args.players];
+  const selfId = me?.id ?? args.viewerId;
   const sorted = [...live.map((p) => p.points)].sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)] ?? 0;
   const weekSeed = daySeed(mondayOf(args.today)) + args.tier * 7;
   const nameRnd = seededRandom(weekSeed);
   const names = botNames(Array.from({ length: LIVE_LEAGUE_BOTS }, () => nameRnd() < 0.5), nameRnd);
   const daysPassed = daysBetween(mondayOf(args.today), args.today) + 1;
-  const entries: LeagueEntry[] = live.map((p) => ({ name: p.name, points: p.points, isPlayer: p.id === args.me.id }));
+  const entries: LeagueEntry[] = live.map((p) => ({ name: p.name, points: p.points, isPlayer: p.id === selfId }));
   for (let b = 0; b < LIVE_LEAGUE_BOTS; b++) {
     const factor = botDailyFactor(weekSeed * 31 + b, daysPassed);
     // В начале недели у всех мало — боту хотя бы день активности, чтобы не стоял на нуле.

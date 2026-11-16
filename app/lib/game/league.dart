@@ -80,7 +80,10 @@ class WeeklyLeague {
 enum LeagueTier {
   bronze('Бронзовая лига', Color(0xFFC08457)),
   silver('Серебряная лига', Color(0xFFB8BEC6)),
-  gold('Золотая лига', Color(0xFFD9B25A));
+  gold('Золотая лига', Color(0xFFD9B25A)),
+  platinum('Платиновая лига', Color(0xFF7FD4D4)),
+  diamond('Алмазная лига', Color(0xFF6FA8FF)),
+  champion('Чемпионская лига', Color(0xFFE45CFF));
 
   const LeagueTier(this.title, this.color);
 

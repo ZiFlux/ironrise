@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, ParseIntPipe, Get, HttpCode, Param, Post, Put, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
@@ -118,5 +118,11 @@ export class EconomyController {
   @Get('league')
   league(@UserId() userId: string) {
     return this.economy.league(userId);
+  }
+
+  /** Посмотреть другую лигу этой недели (п. 108): 0 — бронзовая … 5 — чемпионская. */
+  @Get('league/tier/:tier')
+  leagueView(@UserId() userId: string, @Param('tier', ParseIntPipe) tier: number) {
+    return this.economy.leagueView(userId, tier);
   }
 }

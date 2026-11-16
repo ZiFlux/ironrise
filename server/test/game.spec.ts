@@ -951,3 +951,35 @@ describe('сезон 2 «Закалка» (28.12.2026)', () => {
     expect(seasonRewardsBetween(2, 'free', 19, 20).items).toEqual(['acc_scarf']);
   });
 });
+
+import { LEAGUE_TIERS } from '../src/game/league';
+
+describe('лиги: шесть уровней, выше — труднее (п. 108)', () => {
+  it('шесть лиг', () => {
+    expect(LEAGUE_TIERS).toHaveLength(6);
+  });
+  it('бронза и серебро — первые двое вверх', () => {
+    expect(weekOutcome(2, 10, 1, 0)).toBe('up');
+    expect(weekOutcome(2, 10, 1, 1)).toBe('up');
+  });
+  it('с золотой — только первое место', () => {
+    expect(weekOutcome(2, 10, 3, 2)).toBe('stay');
+    expect(weekOutcome(1, 10, 1, 2)).toBe('up');
+  });
+  it('с платиновой — ещё и 3 тренировочных дня', () => {
+    expect(weekOutcome(1, 10, 2, 3)).toBe('stay');
+    expect(weekOutcome(1, 10, 3, 3)).toBe('up');
+  });
+  it('неделя без тренировок и последние места — вниз', () => {
+    expect(weekOutcome(1, 10, 0, 4)).toBe('down');
+    expect(weekOutcome(10, 10, 3, 4)).toBe('down');
+  });
+});
+
+describe('чужая лига: без «я», но со зрителем', () => {
+  it('зритель отмечен, если он в этой лиге', () => {
+    const t = liveLeague({ today: '2026-11-18', players: [{ id: 'u1', name: 'Аня', points: 20 }, { id: 'u2', name: 'Я', points: 10 }], tier: 1, viewerId: 'u2' });
+    expect(t.filter((e) => e.isPlayer).map((e) => e.name)).toEqual(['Я']);
+    expect(t.filter((e) => e.isBot)).toHaveLength(LIVE_LEAGUE_BOTS);
+  });
+});

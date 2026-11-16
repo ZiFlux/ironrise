@@ -43,6 +43,7 @@ class _LeagueView extends StatelessWidget {
     this.footer = 'Рейтинг «Мой вуз» появится позже',
     this.tier,
     this.promoteTop = 0,
+    this.minDaysToPromote = 1,
     this.demoteBottom = 0,
     this.lastWeek,
   });
@@ -59,6 +60,9 @@ class _LeagueView extends StatelessWidget {
   /// null — лига без уровней (друзья, без аккаунта).
   final LeagueTier? tier;
   final int promoteTop;
+
+  /// Сколько тренировочных дней нужно для повышения (с платиновой — 3, п. 108).
+  final int minDaysToPromote;
   final int demoteBottom;
   final LeagueWeekResult? lastWeek;
 
@@ -128,13 +132,32 @@ class _LeagueView extends StatelessWidget {
                                 const SizedBox(width: 8),
                               ],
                               Expanded(
-                                child: Text(
-                                  tier?.title ?? title,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: const TextStyle(
-                                    fontSize: 16,
-                                    fontWeight: FontWeight.w500,
+                                // Нажатие на лигу — все лиги этой недели (п. 108).
+                                child: GestureDetector(
+                                  behavior: HitTestBehavior.opaque,
+                                  onTap: tier == null
+                                      ? null
+                                      : () => showLeaguesSheet(context, tier!),
+                                  child: Row(
+                                    children: [
+                                      Flexible(
+                                        child: Text(
+                                          tier?.title ?? title,
+                                          maxLines: 1,
+                                          overflow: TextOverflow.ellipsis,
+                                          style: const TextStyle(
+                                            fontSize: 16,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                      ),
+                                      if (tier != null)
+                                        const Icon(
+                                          LucideIcons.chevronRight,
+                                          size: 16,
+                                          color: AppColors.textMuted,
+                                        ),
+                                    ],
                                   ),
                                 ),
                               ),
@@ -155,7 +178,7 @@ class _LeagueView extends StatelessWidget {
                             'Тренировка +${GameConfig.leagueWorkoutPoints} · '
                             'победа в дуэли +${GameConfig.leagueWinPoints}'
                             '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
-                            '${tier == null ? '' : '\nПервые $promoteTop — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
+                            '${tier == null ? '' : '\n${promoteTop == 1 ? 'Первое место' : 'Первые $promoteTop'}${minDaysToPromote > 1 ? ' (и $minDaysToPromote трен.)' : ''} — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textSecondary,
@@ -396,6 +419,7 @@ class _ServerRatingState extends ConsumerState<_ServerRating> {
             header: header,
             tier: d.tier,
             promoteTop: d.promoteTop,
+            minDaysToPromote: d.minDaysToPromote,
             demoteBottom: d.demoteBottom,
             lastWeek: d.lastWeek,
           ),
@@ -448,3 +472,96 @@ class _LastWeekBanner extends StatelessWidget {
 /// длиннее — прокручивается сам список, шапка остаётся на месте.
 Widget _fitOrList(bool fits, Widget child) =>
     fits ? FitScreen(child: child) : child;
+
+/// Все лиги этой недели (п. 108): выбрать лигу и посмотреть её таблицу.
+Future<void> showLeaguesSheet(BuildContext context, LeagueTier mine) =>
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: AppColors.surface,
+      showDragHandle: true,
+      builder: (_) => DraggableScrollableSheet(
+        expand: false,
+        initialChildSize: 0.75,
+        maxChildSize: 0.92,
+        builder: (_, scroll) => _LeaguesSheet(mine: mine, scroll: scroll),
+      ),
+    );
+
+class _LeaguesSheet extends ConsumerStatefulWidget {
+  const _LeaguesSheet({required this.mine, required this.scroll});
+
+  final LeagueTier mine;
+  final ScrollController scroll;
+
+  @override
+  ConsumerState<_LeaguesSheet> createState() => _LeaguesSheetState();
+}
+
+class _LeaguesSheetState extends ConsumerState<_LeaguesSheet> {
+  late LeagueTier _tier = widget.mine;
+
+  @override
+  Widget build(BuildContext context) {
+    final table = ref.watch(serverLeagueTierProvider(_tier.index));
+    return ListView(
+      controller: widget.scroll,
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 24),
+      children: [
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            for (final t in LeagueTier.values)
+              ChoiceChip(
+                avatar: Icon(LucideIcons.medal, size: 16, color: t.color),
+                label: Text(
+                  t == widget.mine
+                      ? '${t.title.split(' ').first} · моя'
+                      : t.title.split(' ').first,
+                ),
+                selected: t == _tier,
+                showCheckmark: false,
+                onSelected: (_) => setState(() => _tier = t),
+              ),
+          ],
+        ),
+        const SizedBox(height: 12),
+        table.when(
+          data: (rows) => rows.isEmpty
+              ? const Padding(
+                  padding: EdgeInsets.all(24),
+                  child: Center(
+                    child: Text(
+                      'В этой лиге пока никого',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  ),
+                )
+              : Card(
+                  clipBehavior: Clip.antiAlias,
+                  child: Column(
+                    children: [
+                      for (final (i, e) in rows.indexed)
+                        _Row(place: i + 1, entry: e, first: i == 0),
+                    ],
+                  ),
+                ),
+          loading: () => const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+          ),
+          error: (_, _) => const Padding(
+            padding: EdgeInsets.all(24),
+            child: Center(
+              child: Text(
+                'Не удалось загрузить — проверьте сеть',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+}

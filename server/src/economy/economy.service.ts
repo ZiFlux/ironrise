@@ -7,7 +7,7 @@ import { showcaseLock } from '../game/showcase';
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { Bot, botsForDay, fillLeague, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, MIN_LEAGUE_PLAYERS, mondayOf } from '../game/bots';
-import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, PROMOTE_TOP, settleWeek, WeekSettlement } from '../game/league';
+import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, minTrainedDaysToPromote, promoteTopFor, settleWeek, TOP_TIER, WeekSettlement } from '../game/league';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
 import { unpaidItems } from '../game/looks';
@@ -425,14 +425,14 @@ export class EconomyService {
   }
 
   /** Очки за неделю всех живых игроков лиги [tier], кроме [exceptId]: активные за 4 недели. */
-  private async tierPlayers(tier: number, monday: string, today: string, exceptId: string) {
+  private async tierPlayers(tier: number, monday: string, today: string, exceptId: string, fill = true) {
     const since = addWeeks(monday, -4);
     const active = { lastActiveDay: { gte: since }, userId: { not: exceptId }, user: { bannedAt: null } };
     const select = { userId: true, nickname: true, leagueTier: true } as const;
     const own = await this.db.profile.findMany({ where: { ...active, leagueTier: tier }, select, take: 30 });
     // Мало своих — добираем соседей (fillLeague): в бете иначе каждый один в своей лиге.
     const others =
-      own.length >= MIN_LEAGUE_PLAYERS
+      !fill || own.length >= MIN_LEAGUE_PLAYERS
         ? []
         : await this.db.profile.findMany({ where: { ...active, leagueTier: { not: tier } }, select, take: 200 });
     const profiles = fillLeague(
@@ -472,7 +472,8 @@ export class EconomyService {
       wins,
       tier,
       tierName: LEAGUE_TIERS[tier],
-      promoteTop: PROMOTE_TOP,
+      promoteTop: promoteTopFor(tier),
+      minDaysToPromote: minTrainedDaysToPromote(tier),
       demoteBottom: DEMOTE_BOTTOM,
       lastWeek: last,
       entries: liveLeague({
@@ -481,6 +482,22 @@ export class EconomyService {
         players: await this.tierPlayers(tier, mondayOf(day), day, userId),
         tier,
       }),
+    };
+  }
+
+  /**
+   * Чужая лига (п. 108): таблица лиги [tier] этой недели, только посмотреть. Без добора
+   * соседей — видно, кто на самом деле в этой лиге; мой ник отмечен, если я в ней.
+   */
+  async leagueView(userId: string, tier: number) {
+    if (!Number.isInteger(tier) || tier < 0 || tier > TOP_TIER) throw new BadRequestException('Unknown league');
+    const day = await this.today(userId);
+    const players = await this.tierPlayers(tier, mondayOf(day), day, '00000000-0000-0000-0000-000000000000', false);
+    return {
+      tier,
+      tierName: LEAGUE_TIERS[tier],
+      promoteTop: promoteTopFor(tier),
+      entries: liveLeague({ today: day, players, tier, viewerId: userId }),
     };
   }
 

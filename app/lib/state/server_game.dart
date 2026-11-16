@@ -107,9 +107,24 @@ typedef ServerLeague = ({
   int wins,
   LeagueTier tier,
   int promoteTop,
+  int minDaysToPromote,
   int demoteBottom,
   LeagueWeekResult? lastWeek,
 });
+
+/// Чужая лига этой недели — только посмотреть (п. 108): 0 — бронзовая … 5 — чемпионская.
+final serverLeagueTierProvider = FutureProvider.autoDispose
+    .family<List<LeagueEntry>, int>((ref, tier) async {
+      final j = await ref.read(apiProvider).get('/v1/league/tier/$tier');
+      return [
+        for (final e in j['entries'] as List)
+          LeagueEntry(
+            name: e['name'] as String,
+            points: (e['points'] as num).toInt(),
+            isPlayer: e['isPlayer'] == true,
+          ),
+      ];
+    });
 
 final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
   ref,
@@ -128,6 +143,7 @@ final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
     wins: (j['wins'] as num).toInt(),
     tier: LeagueTier.of((j['tier'] as num?)?.toInt() ?? 0),
     promoteTop: (j['promoteTop'] as num?)?.toInt() ?? 0,
+    minDaysToPromote: (j['minDaysToPromote'] as num?)?.toInt() ?? 1,
     demoteBottom: (j['demoteBottom'] as num?)?.toInt() ?? 0,
     lastWeek: switch (j['lastWeek']) {
       final Map<String, dynamic> w => (

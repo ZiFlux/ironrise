@@ -5,10 +5,17 @@
  * героя не трогаем: теряется только место в лигах.
  */
 
-export const LEAGUE_TIERS = ['Бронзовая', 'Серебряная', 'Золотая'] as const;
+export const LEAGUE_TIERS = ['Бронзовая', 'Серебряная', 'Золотая', 'Платиновая', 'Алмазная', 'Чемпионская'] as const;
 export const TOP_TIER = LEAGUE_TIERS.length - 1;
 export const PROMOTE_TOP = 2;
 export const DEMOTE_BOTTOM = 2;
+
+/**
+ * Чем выше лига, тем труднее подняться (п. 108): с золотой — только первое место,
+ * с платиновой — ещё и не меньше 3 тренировочных дней за неделю.
+ */
+export const promoteTopFor = (tier: number): number => (tier >= 2 ? 1 : PROMOTE_TOP);
+export const minTrainedDaysToPromote = (tier: number): number => (tier >= 3 ? 3 : 1);
 
 export type WeekOutcome = 'up' | 'stay' | 'down';
 
@@ -20,9 +27,9 @@ export interface WeekSettlement {
   tierAfter: number;
 }
 
-export const weekOutcome = (rank: number, size: number, trainedDays: number): WeekOutcome => {
+export const weekOutcome = (rank: number, size: number, trainedDays: number, tier = 0): WeekOutcome => {
   if (trainedDays === 0) return 'down';
-  if (rank <= PROMOTE_TOP) return 'up';
+  if (rank <= promoteTopFor(tier) && trainedDays >= minTrainedDaysToPromote(tier)) return 'up';
   if (rank > size - DEMOTE_BOTTOM) return 'down';
   return 'stay';
 };
@@ -40,7 +47,7 @@ export const settleWeek = (args: {
   size: number;
   trainedDays: number;
 }): WeekSettlement => {
-  const outcome = weekOutcome(args.rank, args.size, args.trainedDays);
+  const outcome = weekOutcome(args.rank, args.size, args.trainedDays, args.tier);
   return { week: args.week, rank: args.rank, outcome, tierBefore: args.tier, tierAfter: tierAfter(args.tier, outcome) };
 };
 
