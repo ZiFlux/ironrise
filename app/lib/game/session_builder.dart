@@ -229,9 +229,20 @@ class SessionBuilder {
     BodyPart? lagging,
   }) {
     final templates = _templates(sessionsPerWeek, split);
+    // Новичок в зале в фазе «Старт»: основа — свой вес (присед, отжимания, выпады,
+    // пресс, гравитрон), с инвентарём — 2–3 упражнения с небольшим весом (13.3).
+    final bodyweightFirst =
+        start && level == TrainingLevel.novice && equipment == Equipment.gym;
     final picked = [
       for (final t in templates)
-        _pick(t, level, equipment, stepOf, t == _focus ? lagging : null),
+        _pick(
+          t,
+          level,
+          equipment,
+          stepOf,
+          t == _focus ? lagging : null,
+          bodyweightFirst: bodyweightFirst,
+        ),
     ];
     final sets = _distributeSets(
       picked,
@@ -255,8 +266,9 @@ class SessionBuilder {
     TrainingLevel level,
     Equipment equipment,
     int Function(String pattern) stepOf,
-    BodyPart? lagging,
-  ) {
+    BodyPart? lagging, {
+    bool bodyweightFirst = false,
+  }) {
     var slots = [...t.slots];
     if (lagging != null && lagging != BodyPart.cardio) {
       // В день отстающей части её движения — первыми и обязательными.
@@ -267,7 +279,13 @@ class SessionBuilder {
     final chosen =
         <(int, int, Exercise, bool)>[]; // приоритет, порядок, упражнение
     for (final (order, slot) in slots.indexed) {
-      final e = _exerciseFor(slot, equipment, stepOf, used);
+      final e = _exerciseFor(
+        slot,
+        equipment,
+        stepOf,
+        used,
+        bodyweightFirst: bodyweightFirst,
+      );
       if (e == null) continue;
       used.add(e.id);
       chosen.add((slot.priority, order, e, slot.compound));
@@ -278,6 +296,15 @@ class SessionBuilder {
       ..sort((a, b) => a.$2 - b.$2);
     return [for (final c in kept) (exercise: c.$3, compound: c.$4)];
   }
+
+  /// Движения, где новичку в зале на старте сначала даём свой вес (TRAINING_SYSTEM.md 13.3).
+  static const _bodyweightBasics = {
+    'squat',
+    'push_h',
+    'lunge',
+    'core',
+    'pull_v',
+  };
 
   /// Движения под отстающую часть тела (день отстающей части).
   static const _partSlots = <BodyPart, List<_Slot>>{
@@ -300,19 +327,26 @@ class SessionBuilder {
     _Slot slot,
     Equipment equipment,
     int Function(String pattern) stepOf,
-    Set<String> used,
-  ) {
+    Set<String> used, {
+    bool bodyweightFirst = false,
+  }) {
     bool ok(Exercise e) => isAvailable(e.id, equipment) && !used.contains(e.id);
+    final preferBodyweight =
+        bodyweightFirst && _bodyweightBasics.contains(slot.pattern);
     final step = stepOf(slot.pattern);
     if (slot.prefer.isNotEmpty) {
       final options = [
         for (final id in slot.prefer)
-          if (ExerciseCatalog.tryById(id) case final e? when ok(e)) e,
+          if (ExerciseCatalog.tryById(id) case final e? when ok(e))
+            // Новичку в зале — только варианты со своим весом; нет таких в
+            // предпочтениях — ищем по всей базе ниже.
+            if (!preferBodyweight || !e.usesWeight) e,
       ];
       // Из предпочтений — первое не сложнее ступени человека, иначе самое простое.
       final fit = options.where((e) => e.difficulty <= step).firstOrNull;
       if (fit != null) return fit;
-      if (options.isNotEmpty) {
+      // Новичку в зале не даём сложное из предпочтений — ищем проще по всей базе.
+      if (options.isNotEmpty && !preferBodyweight) {
         return options.reduce((a, b) => a.difficulty <= b.difficulty ? a : b);
       }
     }
@@ -324,7 +358,9 @@ class SessionBuilder {
             // Ближе к ступени, в зале — с весом (его видно, как растёт), потом попроще.
             int rank(Exercise e) =>
                 (e.difficulty - step).abs() * 10 +
-                (equipment == Equipment.gym && !e.usesWeight ? 5 : 0) +
+                (preferBodyweight
+                    ? (e.usesWeight ? 5 : 0)
+                    : (equipment == Equipment.gym && !e.usesWeight ? 5 : 0)) +
                 e.difficulty;
             return rank(a) - rank(b);
           });
