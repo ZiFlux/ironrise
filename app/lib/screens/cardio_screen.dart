@@ -72,12 +72,13 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
                   runSpacing: 8,
                   children: [
                     for (final a in CardioActivity.values)
-                      ChoiceChip(
-                        label: Text(a.label),
-                        selected: a == _activity,
-                        showCheckmark: false,
-                        onSelected: (_) => setState(() => _activity = a),
-                      ),
+                      if (a != CardioActivity.recovery)
+                        ChoiceChip(
+                          label: Text(a.label),
+                          selected: a == _activity,
+                          showCheckmark: false,
+                          onSelected: (_) => setState(() => _activity = a),
+                        ),
                   ],
                 ),
                 const Spacer(),

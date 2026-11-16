@@ -70,7 +70,7 @@ class TrainingStatsScreen extends ConsumerWidget {
                       level: trainingLevelOf(hero, ref.watch(programProvider)),
                       now: now,
                     ),
-                    plannedPerWeek: hero.trainingDays.length,
+                    plannedPerWeek: hero.loadDays.length,
                   ),
                 ],
                 const SizedBox(height: 20),

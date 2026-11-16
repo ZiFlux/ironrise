@@ -203,7 +203,19 @@ class HeroProfile {
   /// Дополнительные цели (до [Goal.maxExtra]), без главной.
   final List<Goal> extraGoals;
   final TrainingFormat format;
+
+  /// Все активные дни графика (у «Минимума» — вместе с днями восстановления).
   final List<int> trainingDays;
+
+  /// Дни силовой тренировки (загрузки), по возрастанию.
+  List<int> get loadDays => loadDaysOf(format, trainingDays).toList()..sort();
+
+  /// Дни восстановления «Минимума» (у других форматов — пусто).
+  Set<int> get recoveryDays => recoveryDaysOf(format, trainingDays);
+
+  bool isLoadDay(DateTime day) => loadDays.contains(day.weekday - 1);
+
+  bool isRecoveryDay(DateTime day) => recoveryDays.contains(day.weekday - 1);
   final BodyStats body;
   final AvatarLook look;
   final Map<BodyPart, int> xp;

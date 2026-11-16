@@ -76,7 +76,7 @@ class TipsNotifier extends Notifier<DailyTips?> {
 
   DailyTips _pick(DateTime now) {
     final hero = ref.read(heroProvider)!;
-    final training = hero.trainingDays.contains(now.weekday - 1);
+    final training = hero.isLoadDay(now);
     final tips = TipPicker.pickSet(
       day: now,
       isTrainingDay: training,

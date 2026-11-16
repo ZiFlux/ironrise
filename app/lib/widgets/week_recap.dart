@@ -84,7 +84,7 @@ class WeekRecap {
     return WeekRecap(
       weekStart: weekStart,
       workouts: week.length,
-      planned: hero.trainingDays.length,
+      planned: hero.loadDays.length,
       gains: gains,
       levelUps: {
         for (final p in BodyPart.values)

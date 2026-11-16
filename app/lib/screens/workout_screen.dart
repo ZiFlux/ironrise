@@ -79,12 +79,12 @@ String? _splitLine(UserProgram program, HeroProfile? hero) {
   }
   final layout = weekLayout(
     days: program.days(
-      hero!.trainingDays.length,
+      hero!.loadDays.length,
       split: true,
       level: trainingLevelOf(hero, program),
     ),
     nextIndex: program.nextDayIndex,
-    trainingDays: hero.trainingDays,
+    trainingDays: hero.loadDays,
     today: DateTime.now(),
   );
   return layout
@@ -109,12 +109,11 @@ class _StartView extends ConsumerWidget {
     final cardioDone = doneToday(log, WorkoutKind.cardio, now);
     // День отдыха по графику: предлагаем кардио, силовая — только по желанию.
     final restDay =
-        !strengthDone &&
-        !(ref.watch(heroProvider)?.trainingDays.contains(now.weekday - 1) ??
-            true);
+        !strengthDone && !(ref.watch(heroProvider)?.isLoadDay(now) ?? true);
+    final recoveryDay = ref.watch(heroProvider)?.isRecoveryDay(now) ?? false;
     final level = trainingLevelOf(ref.watch(heroProvider), program);
     final rhythm = Periodization.available(level, trial: program.rhythmTrial);
-    final sessions = ref.watch(heroProvider)?.trainingDays.length ?? 3;
+    final sessions = ref.watch(heroProvider)?.loadDays.length ?? 3;
     final untilDeload = Periodization.untilDeload(
       level: level,
       completedWorkouts: program.completedWorkouts,
@@ -294,19 +293,27 @@ class _StartView extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             if (restDay) ...[
-              FilledButton.icon(
-                onPressed: cardioDone && ref.watch(cardioProvider) == null
-                    ? null
-                    : () => context.go('/workout/cardio'),
-                icon: const Icon(LucideIcons.heartPulse, size: 18),
-                label: Text(
-                  ref.watch(cardioProvider) != null
-                      ? 'Продолжить кардио'
-                      : cardioDone
-                      ? 'Кардио сегодня уже было'
-                      : 'Лёгкое кардио',
+              if (recoveryDay && !cardioDone) ...[
+                FilledButton.icon(
+                  onPressed: () => context.go('/workout/recovery'),
+                  icon: const Icon(LucideIcons.leaf, size: 18),
+                  label: const Text('День восстановления · 15 минут'),
                 ),
-              ),
+                const SizedBox(height: 8),
+              ] else
+                FilledButton.icon(
+                  onPressed: cardioDone && ref.watch(cardioProvider) == null
+                      ? null
+                      : () => context.go('/workout/cardio'),
+                  icon: const Icon(LucideIcons.heartPulse, size: 18),
+                  label: Text(
+                    ref.watch(cardioProvider) != null
+                        ? 'Продолжить кардио'
+                        : cardioDone
+                        ? 'Кардио сегодня уже было'
+                        : 'Лёгкое кардио',
+                  ),
+                ),
               const SizedBox(height: 8),
               TextButton(
                 onPressed: () =>

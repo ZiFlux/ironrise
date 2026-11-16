@@ -71,7 +71,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool get _canContinue => switch (_step) {
     0 => _isAdult,
     1 => nicknameProblem(_nickname.text) == null && _goal != null,
-    2 => _days.length >= minTrainingDaysPerWeek,
+    2 => scheduleValid(_format, _days),
     3 => _healthRisks.isEmpty || _healthAcknowledged,
     _ => true,
   };

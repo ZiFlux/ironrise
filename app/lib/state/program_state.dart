@@ -488,7 +488,7 @@ final programProvider = NotifierProvider<ProgramNotifier, UserProgram>(
 AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
     program.planFor(
       now: DateTime.now(),
-      sessionsPerWeek: hero?.trainingDays.length ?? 3,
+      sessionsPerWeek: hero?.loadDays.length ?? 3,
       lagging: hero?.lagging.firstOrNull,
       level: trainingLevelOf(hero, program),
       split: hero?.format == TrainingFormat.split,

@@ -75,7 +75,8 @@ export const StrengthSchema = Base.extend({
 });
 
 export const CardioSchema = Base.extend({
-  activity: z.enum(['run', 'walk', 'bike', 'elliptical', 'other']),
+  // recovery — день восстановления «Минимума»: лёгкое кардио и растяжка (п. 100).
+  activity: z.enum(['run', 'walk', 'bike', 'elliptical', 'other', 'recovery']),
 });
 
 export interface WorkoutResult {

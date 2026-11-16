@@ -59,6 +59,12 @@ class ChoiceTile extends StatelessWidget {
   int day,
   bool on,
 ) {
+  // «Минимум»: выбираются дни загрузки, восстановление — следующий день само.
+  if (format == TrainingFormat.minimum) {
+    final load = loadDaysOf(format, days);
+    on ? load.add(day) : load.remove(day);
+    return (format: format, days: withRecoveryDays(load));
+  }
   final next = {...days};
   on ? next.add(day) : next.remove(day);
   final keeps =
@@ -82,7 +88,10 @@ class SchedulePicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final tooFew = days.length < minTrainingDaysPerWeek;
+    final minimum = format == TrainingFormat.minimum;
+    final recovery = recoveryDaysOf(format, days);
+    final load = loadDaysOf(format, days);
+    final tooFew = !scheduleValid(format, days);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
@@ -94,9 +103,9 @@ class SchedulePicker extends StatelessWidget {
             onTap: () => onChanged(f, f.defaultDays.toSet()),
           ),
         const SizedBox(height: 16),
-        const Text(
-          'Дни тренировок',
-          style: TextStyle(fontWeight: FontWeight.w500),
+        Text(
+          minimum ? 'Дни загрузки' : 'Дни тренировок',
+          style: const TextStyle(fontWeight: FontWeight.w500),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -105,8 +114,13 @@ class SchedulePicker extends StatelessWidget {
           children: [
             for (var i = 0; i < 7; i++)
               FilterChip(
-                label: Text(weekdayShort[i]),
-                selected: days.contains(i),
+                label: Text(
+                  recovery.contains(i)
+                      ? '${weekdayShort[i]} · восст.'
+                      : weekdayShort[i],
+                ),
+                // У «Минимума» отмечаются дни загрузки; восстановление — следом само.
+                selected: minimum ? load.contains(i) : days.contains(i),
                 onSelected: (on) {
                   final next = toggleTrainingDay(format, days, i, on);
                   onChanged(next.format, next.days);
@@ -117,7 +131,13 @@ class SchedulePicker extends StatelessWidget {
         const SizedBox(height: 12),
         Text(
           tooFew
-              ? 'Выберите минимум $minTrainingDaysPerWeek дня'
+              ? minimum
+                    ? 'Выберите 2 дня загрузки не подряд — после каждого будет день восстановления'
+                    : 'Выберите минимум $minTrainingDaysPerWeek дня'
+              : minimum
+              ? 'Загрузка: ${load.map((d) => weekdayShort[d]).join(', ')}, восстановление: '
+                    '${recovery.map((d) => weekdayShort[d]).join(', ')}. '
+                    'Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.'
               : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.',
           style: TextStyle(
             color: tooFew

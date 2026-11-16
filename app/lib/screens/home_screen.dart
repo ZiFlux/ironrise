@@ -40,9 +40,9 @@ class HomeScreen extends ConsumerWidget {
 
     final recommendation = Recommendation.forLagging(hero.lagging);
     final today = ref.watch(todayPlanProvider).day;
-    final isTrainingDay = hero.trainingDays.contains(
-      DateTime.now().weekday - 1,
-    );
+    // Силовая — только в дни загрузки; у «Минимума» после неё — день восстановления.
+    final isTrainingDay = hero.isLoadDay(DateTime.now());
+    final isRecoveryDay = hero.isRecoveryDay(DateTime.now());
     // В день — одна силовая и одно кардио: после силовой план не предлагаем.
     final log = ref.watch(trainingLogProvider);
     final strengthDone = doneToday(log, WorkoutKind.strength, DateTime.now());
@@ -125,6 +125,11 @@ class HomeScreen extends ConsumerWidget {
                     id: 'home.plan',
                     child: Pressable(
                       child: switch ((strengthDone, cardioDone)) {
+                        (_, false) when isRecoveryDay => FilledButton.icon(
+                          onPressed: () => context.go('/workout/recovery'),
+                          icon: const Icon(LucideIcons.leaf, size: 18),
+                          label: const Text('День восстановления · 15 минут'),
+                        ),
                         (_, false) when !isTrainingDay => FilledButton.icon(
                           onPressed: () => context.go('/workout/cardio'),
                           icon: const Icon(LucideIcons.heartPulse, size: 18),
@@ -157,7 +162,20 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                if (!isTrainingDay) _RestDayNote(maxRestDays: hero.maxRestDays),
+                if (isRecoveryDay)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 6),
+                    child: Text(
+                      'После загрузки — лёгкий день: растяжка и кардио, серия продлится',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        color: AppColors.textMuted,
+                        fontSize: 13,
+                      ),
+                    ),
+                  )
+                else if (!isTrainingDay)
+                  _RestDayNote(maxRestDays: hero.maxRestDays),
               ],
             ),
           ),

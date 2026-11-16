@@ -93,7 +93,7 @@ class _ScheduleScreenState extends ConsumerState<ScheduleScreen> {
     final allowed = canChangeSchedule(next, DateTime.now());
     final changed =
         _format != hero.format || !_sameDays(_days, hero.trainingDays);
-    final enoughDays = _days.length >= minTrainingDaysPerWeek;
+    final enoughDays = scheduleValid(_format, _days);
 
     return Scaffold(
       appBar: AppBar(title: const Text('График тренировок')),

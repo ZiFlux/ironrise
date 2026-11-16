@@ -11,7 +11,10 @@ enum CardioActivity {
   walk('Быстрая ходьба'),
   bike('Велосипед'),
   elliptical('Эллипс'),
-  other('Другое');
+  other('Другое'),
+
+  /// День восстановления «Минимума»: кардио + растяжка (экран recovery_screen.dart).
+  recovery('Восстановление');
 
   const CardioActivity(this.label);
   final String label;

@@ -24,7 +24,7 @@ Summary summaryOf(
 ) {
   final strength = doneToday(log, WorkoutKind.strength, now);
   final cardio = doneToday(log, WorkoutKind.cardio, now);
-  final trainingDay = hero.trainingDays.contains(now.weekday - 1);
+  final trainingDay = hero.isLoadDay(now);
   final today = switch ((strength, cardio)) {
     (true, true) => 'На сегодня всё — отдых',
     (true, false) => 'Силовая сделана',
