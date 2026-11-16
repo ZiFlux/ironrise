@@ -6,6 +6,7 @@ import 'package:flutter/widgets.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/anti_fraud.dart';
+import '../game/game_config.dart';
 import '../game/cardio.dart';
 import '../game/set_pulse.dart';
 import '../game/workout.dart';
@@ -529,8 +530,9 @@ class AccountNotifier extends Notifier<AccountState> {
   }
 
   /// Сколько ждать, пока Samsung Health и другие приложения часов передадут
-  /// пульс в Health Connect (обычно несколько минут).
-  static const _watchSyncWait = Duration(minutes: 10);
+  /// пульс в Health Connect: обычно минуты, но бывает и через час-два (часы
+  /// синхронизируются с телефоном пачками). Дольше — уходит с тем, что есть.
+  static const watchSyncWait = Duration(hours: 3);
 
   /// Тело запроса с пульсом из Health Connect, если живого пульса не было.
   /// null — пульса пока нет, но он может появиться: отправку откладываем.
@@ -549,8 +551,9 @@ class AccountNotifier extends Notifier<AccountState> {
     final pulse = await ref
         .read(healthProvider.notifier)
         .heartRateBetween(from, to);
-    final mayStillArrive = DateTime.now().difference(to) < _watchSyncWait;
-    if (pulse.isEmpty && mayStillArrive) return null;
+    final mayStillArrive = DateTime.now().difference(to) < watchSyncWait;
+    // Ждём, пока пульс не покроет тренировку: Samsung Health досылает его частями.
+    if (mayStillArrive && !pulseCovers(pulse, from, to)) return null;
     return {...body, 'pulse': _pulseJson(pulse)};
   }
 
@@ -567,22 +570,26 @@ class AccountNotifier extends Notifier<AccountState> {
     var rejected = 0;
     var waitingForPulse = false;
     try {
+      // Задание, которое ждёт пульс из Samsung Health, остаётся в очереди, а
+      // остальные (кардио, аура, входная тренировка) уходят, не дожидаясь его.
+      final waiting = <OutboxJob>[];
       var jobs = _readOutbox();
       while (jobs.isNotEmpty) {
-        final body = await _withWatchPulse(jobs.first.body);
-        // Часы ещё не синхронизировались — подождём, тренировка останется в очереди.
+        final job = jobs.first;
+        final body = await _withWatchPulse(job.body);
         if (body == null) {
           waitingForPulse = true;
-          break;
-        }
-        try {
-          await _api.post(jobs.first.path, body);
-        } on ApiException catch (e) {
-          if (!e.isRejected) rethrow;
-          rejected++;
+          waiting.add(job);
+        } else {
+          try {
+            await _api.post(job.path, body);
+          } on ApiException catch (e) {
+            if (!e.isRejected) rethrow;
+            rejected++;
+          }
         }
         jobs = jobs.sublist(1);
-        await _writeOutbox(jobs);
+        await _writeOutbox([...waiting, ...jobs]);
       }
       await ref
           .read(heroProvider.notifier)
@@ -638,6 +645,15 @@ class AccountNotifier extends Notifier<AccountState> {
       await sync(reason: reason);
     }
   }
+}
+
+/// Пульс покрывает тренировку настолько, что сервер её засчитает (как
+/// hasEnoughPulse на сервере): от первой до последней точки — не меньше доли.
+bool pulseCovers(List<PulseSample> pulse, DateTime from, DateTime to) {
+  if (pulse.length < 2) return false;
+  final total = to.difference(from).inSeconds;
+  final covered = pulse.last.at.difference(pulse.first.at).inSeconds;
+  return total > 0 && covered / total >= GameConfig.minPulseCoverage;
 }
 
 /// Пауза перед синхронизацией после изменения на сервере: 3 с, чтобы серия
