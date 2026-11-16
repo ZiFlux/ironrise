@@ -2,6 +2,7 @@ import { DevController, devToolsEnabled } from './dev/dev.controller';
 import { Controller, Get, MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
 import { RateLimitMiddleware } from './common/rate-limit.middleware';
 import { JwtModule } from '@nestjs/jwt';
+import { AdminController } from './admin/admin.controller';
 import { AuthController } from './auth/auth.controller';
 import { AuthGuard } from './auth/auth.guard';
 import { AuthService } from './auth/auth.service';
@@ -42,7 +43,7 @@ const jwtSecret = () => {
     }),
   ],
   controllers: [
-    LogsController, LegalController,
+    LogsController, LegalController, AdminController,
     HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController, NotificationsController, JointController,
     // Только на сервере разработки: выдача монет и прочие инструменты.
     ...(devToolsEnabled ? [DevController] : []),

@@ -1,6 +1,6 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import { anyByIp, AUTH_LIMITED_PATHS, authByEmail, authByIp } from './rate-limit';
+import { adminByIp, anyByIp, AUTH_LIMITED_PATHS, authByEmail, authByIp } from './rate-limit';
 
 // Из Express нужны только эти поля — без зависимости от его типов.
 type Request = IncomingMessage & { originalUrl: string; body?: { email?: unknown } };
@@ -29,6 +29,7 @@ export class RateLimitMiddleware implements NestMiddleware {
     const ip = clientIp(req);
     if (!anyByIp.allow(ip)) return tooMany(res, anyByIp.retryAfterSec(ip));
     const path = req.originalUrl.split('?')[0];
+    if ((path === '/admin' || path.startsWith('/v1/admin/')) && !adminByIp.allow(ip)) return tooMany(res, adminByIp.retryAfterSec(ip));
     if (req.method === 'POST' && AUTH_LIMITED_PATHS.includes(path)) {
       if (!authByIp.allow(ip)) return tooMany(res, authByIp.retryAfterSec(ip));
       const email = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';

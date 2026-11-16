@@ -33,6 +33,8 @@ services:
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in .env.prod}
       PORT: "3000"
       FIREBASE_SERVICE_ACCOUNT: ${FIREBASE_SERVICE_ACCOUNT:-}
+      # Ключ веб-админки (https://api.ironrise.ru/admin); пусто — веб-админки нет.
+      ADMIN_TOKEN: ${ADMIN_TOKEN:-}
       # Потолок кучи Node: под нагрузкой API занимает ~180 МБ, на VPS с 0,6–1 ГБ
       # памяти не даём ему разрастаться и вытеснять базу в подкачку.
       NODE_OPTIONS: --max-old-space-size=256

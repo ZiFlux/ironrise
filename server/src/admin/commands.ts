@@ -1,0 +1,277 @@
+/**
+ * Команды админки — общие для консоли (admin.ts, ярлык «Админка») и веб-админки
+ * (admin.controller.ts). Каждое изменение пишется в журнал AdminAction.
+ */
+import { BODY_PARTS, BodyPart } from '../game/body-part';
+import { premiumStatus } from '../game/premium';
+import { levelFromXp } from '../game/progression';
+import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
+import { ACHIEVEMENT_ITEMS, AUTHOR_ITEMS, EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
+import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
+import { Prisma, PrismaClient } from '../generated/prisma/client';
+import { SEASON_ITEMS } from '../game/season';
+
+export const HELP = `Команды (ник или e-mail игрока — <кто>):
+  find <кто>                     — карточка игрока
+  list [N]                       — последние зарегистрированные
+  coins <кто> <±N> [причина]     — начислить или списать монеты
+  give <кто> <вещь...>           — выдать вещи (id из магазина)
+  take <кто> <вещь...>           — забрать вещи
+  xp <кто> <часть> <±N>          — поправить опыт части тела (chest back arms legs core cardio)
+  streak <кто> <N>               — выставить серию дней
+  premium <кто> <дней|off>       — премиум на N дней или снять
+  tester <кто> [off]             — статус бета-тестера (с вещами тестера)
+  ban <кто> <причина>            — заблокировать: вход закрыт, сессии сброшены
+  unban <кто>                    — снять блокировку
+  boosters <кто> <опыт> <монеты> — выставить бустеры серии (штук)
+  nick <кто> <новый ник>         — переименовать (без кулдауна, старый ник не бронируется)
+  duels-reset <кто>              — сбросить сегодняшние бои с ботами (перезарядку)
+  history [N]                    — журнал действий администратора
+  items                          — все id вещей по группам`;
+
+export type Db = Pick<
+  PrismaClient,
+  '$transaction' | 'user' | 'profile' | 'walletTx' | 'inventoryItem' | 'avatarPart' | 'xpEvent' | 'refreshToken' | 'adminAction' | 'workout' | 'duel'
+>;
+
+export async function findUser(db: Db, who: string) {
+  const user = await db.user.findFirst({
+    where: who.includes('@')
+      ? { email: who.toLowerCase() }
+      : { profile: { nickname: { equals: who, mode: 'insensitive' } } },
+    include: { profile: true },
+  });
+  if (!user?.profile) throw new Error(`Игрок «${who}» не найден`);
+  return user as typeof user & { profile: NonNullable<typeof user.profile> };
+}
+
+const log = (db: Db, command: string, userId: string | null, details: object) =>
+  db.adminAction.create({ data: { command, userId, details: details as Prisma.InputJsonValue } });
+
+const int = (s: string | undefined, what: string): number => {
+  const n = Number(s);
+  if (!Number.isInteger(n)) throw new Error(`${what}: нужно целое число, получено «${s ?? ''}»`);
+  return n;
+};
+
+async function card(db: Db, who: string): Promise<string> {
+  const u = await findUser(db, who);
+  const [coins, parts, items, workouts] = await Promise.all([
+    db.walletTx.aggregate({ where: { userId: u.id }, _sum: { amount: true } }),
+    db.avatarPart.findMany({ where: { userId: u.id } }),
+    db.inventoryItem.findMany({ where: { userId: u.id }, select: { itemId: true } }),
+    db.workout.count({ where: { userId: u.id } }),
+  ]);
+  const p = u.profile;
+  const prem = premiumStatus(p);
+  const xp = BODY_PARTS.map((part) => {
+    const v = parts.find((r) => r.part === part)?.xp ?? 0;
+    return `${part} ${levelFromXp(v)} ур. (${v} xp)`;
+  });
+  return [
+    `${p.nickname} <${u.email}>  id ${u.id}`,
+    `  создан ${u.createdAt.toISOString().slice(0, 10)}, тренировок ${workouts}, серия ${p.streakDays}, последний день ${p.lastActiveDay ?? '—'}`,
+    `  монеты ${coins._sum.amount ?? 0}; премиум ${prem.active ? prem.source + (prem.until ? ' до ' + prem.until.toISOString().slice(0, 10) : '') : 'нет'}; тестер ${p.isTester ? 'да' : 'нет'}`,
+    `  блокировка: ${u.bannedAt ? `${u.bannedAt.toISOString().slice(0, 16)} — ${u.banReason ?? ''}` : 'нет'}`,
+    `  опыт: ${xp.join(', ')}`,
+    `  вещи: ${items.map((i) => i.itemId).join(', ') || '—'}`,
+    `  бустеры: опыт ${readBoosters(p.boosters).xp}, монеты ${readBoosters(p.boosters).coins}; веха героя ${p.heroMilestone}`,
+  ].join('\n');
+}
+
+export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string> {
+  switch (cmd) {
+    case 'find':
+      return card(db, who);
+
+    case 'list': {
+      const users = await db.user.findMany({
+        orderBy: { createdAt: 'desc' },
+        take: rest.length ? int(who, 'N') : who ? int(who, 'N') : 20,
+        include: { profile: { select: { nickname: true, isTester: true } } },
+      });
+      return users
+        .map((u) => `${u.createdAt.toISOString().slice(0, 10)}  ${u.profile?.nickname ?? '—'}  <${u.email}>${u.profile?.isTester ? '  [тестер]' : ''}${u.bannedAt ? '  [бан]' : ''}`)
+        .join('\n');
+    }
+
+    case 'coins': {
+      const u = await findUser(db, who);
+      const amount = int(rest[0], 'Сумма');
+      const reason = rest.slice(1).join(' ') || 'корректировка';
+      await db.walletTx.create({ data: { userId: u.id, amount, reason: `admin:${reason}` } });
+      await log(db, 'coins', u.id, { amount, reason });
+      return card(db, who);
+    }
+
+    case 'give':
+    case 'take': {
+      const u = await findUser(db, who);
+      const known = new Set([...Object.keys(SHOP_PRICES), ...EXCLUSIVE_ITEMS]);
+      const bad = rest.filter((id) => !known.has(id));
+      if (!rest.length || bad.length) throw new Error(`Неизвестные вещи: ${bad.join(', ') || '(не указаны)'} — список: items`);
+      if (cmd === 'give') {
+        await db.inventoryItem.createMany({ data: rest.map((itemId) => ({ userId: u.id, itemId })), skipDuplicates: true });
+      } else {
+        await db.inventoryItem.deleteMany({ where: { userId: u.id, itemId: { in: rest } } });
+      }
+      await log(db, cmd, u.id, { items: rest });
+      return (await card(db, who)) + (cmd === 'take' ? '\n  (если вещь надета, она пропадёт с аватара при следующей смене образа)' : '');
+    }
+
+    case 'xp': {
+      const u = await findUser(db, who);
+      const part = rest[0] as BodyPart;
+      if (!BODY_PARTS.includes(part)) throw new Error(`Часть тела: ${BODY_PARTS.join(', ')}`);
+      const delta = int(rest[1], 'Опыт');
+      const row = await db.avatarPart.findUniqueOrThrow({ where: { userId_part: { userId: u.id, part } } });
+      const next = Math.max(0, row.xp + delta);
+      await db.$transaction([
+        db.avatarPart.update({ where: { userId_part: { userId: u.id, part } }, data: { xp: next } }),
+        db.xpEvent.create({ data: { userId: u.id, part, xp: next - row.xp, validity: 1, wasLagging: false } }),
+      ]);
+      await log(db, 'xp', u.id, { part, delta: next - row.xp });
+      return card(db, who);
+    }
+
+    case 'streak': {
+      const u = await findUser(db, who);
+      const days = int(rest[0], 'Серия');
+      // Серия считается от последнего активного дня — ставим его на сегодня (в поясе игрока).
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: u.profile.timezone }).format(new Date());
+      await db.profile.update({ where: { userId: u.id }, data: { streakDays: Math.max(0, days), lastActiveDay: today } });
+      await log(db, 'streak', u.id, { days });
+      return card(db, who);
+    }
+
+    case 'premium': {
+      const u = await findUser(db, who);
+      const off = rest[0] === 'off';
+      const until = off ? null : new Date(Date.now() + int(rest[0], 'Дней') * 86_400_000);
+      await db.profile.update({ where: { userId: u.id }, data: { premiumUntil: until } });
+      await log(db, 'premium', u.id, { until });
+      return card(db, who);
+    }
+
+    case 'tester': {
+      const u = await findUser(db, who);
+      const off = rest[0] === 'off';
+      await db.profile.update({ where: { userId: u.id }, data: { isTester: !off } });
+      if (!off) {
+        await db.inventoryItem.createMany({
+          data: TESTER_ITEMS.map((itemId) => ({ userId: u.id, itemId })),
+          skipDuplicates: true,
+        });
+      }
+      await log(db, 'tester', u.id, { on: !off });
+      return card(db, who);
+    }
+
+    case 'ban': {
+      const u = await findUser(db, who);
+      const reason = rest.join(' ').trim();
+      if (!reason) throw new Error('Укажите причину блокировки — её увидит игрок');
+      await db.$transaction([
+        db.user.update({ where: { id: u.id }, data: { bannedAt: new Date(), banReason: reason } }),
+        // Сессии гасим сразу; запросы по выданному access-токену сервер отклонит в течение 30 с (AuthGuard).
+        db.refreshToken.updateMany({ where: { userId: u.id, revokedAt: null }, data: { revokedAt: new Date() } }),
+      ]);
+      await log(db, 'ban', u.id, { reason });
+      return card(db, who);
+    }
+
+    case 'unban': {
+      const u = await findUser(db, who);
+      await db.user.update({ where: { id: u.id }, data: { bannedAt: null, banReason: null } });
+      await log(db, 'unban', u.id, {});
+      return card(db, who);
+    }
+
+    case 'boosters': {
+      const u = await findUser(db, who);
+      const boosters = { xp: Math.max(0, int(rest[0], 'Бустеры опыта')), coins: Math.max(0, int(rest[1], 'Бустеры монет')) };
+      await db.profile.update({ where: { userId: u.id }, data: { boosters } });
+      await log(db, 'boosters', u.id, boosters);
+      return card(db, who);
+    }
+
+    case 'nick': {
+      const u = await findUser(db, who);
+      const parsed = NicknameSchema.safeParse(rest.join(' '));
+      if (!parsed.success) throw new Error('Ник: 3–20 знаков, буквы, цифры, «_» и пробелы');
+      const nickname = parsed.data;
+      if (isReservedNickname(nickname)) throw new Error('Этот ник запрещён (выдаёт себя за проект)');
+      const key = nicknameKey(nickname);
+      const taken = await db.profile.findUnique({ where: { nicknameKey: key }, select: { userId: true } });
+      if (taken && taken.userId !== u.id) throw new Error('Ник занят другим игроком');
+      await db.profile.update({ where: { userId: u.id }, data: { nickname, nicknameKey: key } });
+      await log(db, 'nick', u.id, { from: u.profile.nickname, to: nickname });
+      return card(db, nickname);
+    }
+
+    case 'duels-reset': {
+      const u = await findUser(db, who);
+      const today = new Intl.DateTimeFormat('en-CA', { timeZone: u.profile.timezone }).format(new Date());
+      const { count } = await db.duel.deleteMany({ where: { attackerId: u.id, opponentKind: 'bot', day: today } });
+      await log(db, 'duels-reset', u.id, { removed: count });
+      return `Снято боёв с ботами за сегодня: ${count}. Монеты за них остаются у игрока.\n` + (await card(db, who));
+    }
+
+    case 'history': {
+      const rows = await db.adminAction.findMany({ orderBy: { at: 'desc' }, take: who ? int(who, 'N') : 30 });
+      const names = new Map(
+        (await db.profile.findMany({ where: { userId: { in: rows.flatMap((r) => (r.userId ? [r.userId] : [])) } } })).map(
+          (p) => [p.userId, p.nickname],
+        ),
+      );
+      return rows
+        .map((r) => `${r.at.toISOString().slice(0, 16)}  ${r.command.padEnd(8)} ${names.get(r.userId ?? '') ?? '—'}  ${JSON.stringify(r.details)}`)
+        .join('\n') || 'Журнал пуст';
+    }
+
+    case 'items':
+      return itemGroups()
+        .map((g) => `${g.name}: ${g.items.map((i) => (i.price ? `${i.id} (${i.price})` : i.id)).join(', ')}`)
+        .join('\n');
+
+    default:
+      return HELP;
+  }
+}
+
+
+/** Все вещи, которые можно выдать, по группам (цена — у продающихся). */
+export function itemGroups(): { name: string; items: { id: string; price: number | null }[] }[] {
+  const groups: [string, (id: string) => boolean][] = [
+    ['Причёски', (id) => id.startsWith('hair_')],
+    ['Цвет волос', (id) => id.startsWith('hc_')],
+    ['Верх', (id) => id.startsWith('top_')],
+    ['Цвет верха', (id) => id.startsWith('tc_')],
+    ['Низ', (id) => id.startsWith('bottom_')],
+    ['Цвет низа', (id) => id.startsWith('bc_')],
+    ['Обувь', (id) => id.startsWith('sn_')],
+    ['Аксессуары', (id) => id.startsWith('acc_')],
+  ];
+  const forSale = Object.keys(SHOP_PRICES).filter((id) => SHOP_PRICES[id] > 0);
+  const priced = (ids: readonly string[]) => ids.map((id) => ({ id, price: SHOP_PRICES[id] > 0 ? SHOP_PRICES[id] : null }));
+  return [
+    ...groups.map(([name, test]) => ({ name, items: priced(forSale.filter(test)) })),
+    { name: 'Тестерам', items: priced(TESTER_ITEMS) },
+    { name: 'За серию', items: priced(STREAK_ITEMS) },
+    { name: 'Создателю', items: priced(AUTHOR_ITEMS) },
+    { name: 'За достижения', items: priced(Object.values(ACHIEVEMENT_ITEMS)) },
+    { name: 'Сезонные', items: priced(SEASON_ITEMS) },
+  ];
+}
+
+/** Карточка игрока для веб-админки: текст как в консоли и список вещей. */
+export async function playerInfo(db: Db, who: string) {
+  const u = await findUser(db, who);
+  const owned = await db.inventoryItem.findMany({ where: { userId: u.id }, select: { itemId: true } });
+  return {
+    nickname: u.profile.nickname,
+    banned: u.bannedAt != null,
+    card: await card(db, who),
+    owned: owned.map((i) => i.itemId),
+  };
+}

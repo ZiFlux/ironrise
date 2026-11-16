@@ -24,6 +24,8 @@ services:
       PORT: "3000"
       # Инструменты разработки (выдача монет). На бете не задано.
       DEV_TOOLS: "true"
+      # Ключ веб-админки (http://localhost:3000/admin). Только для DEV.
+      ADMIN_TOKEN: dev-admin-token-only-for-local-server
     ports:
       - "3000:3000"
 

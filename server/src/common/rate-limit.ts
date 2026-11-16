@@ -49,5 +49,7 @@ export class RateLimiter {
 export const authByIp = new RateLimiter(10, 15 * 60_000);
 export const authByEmail = new RateLimiter(5, 15 * 60_000);
 export const anyByIp = new RateLimiter(600, 60_000);
+/** Веб-админка: 60 запросов в минуту на адрес — перебор ключа бессмыслен. */
+export const adminByIp = new RateLimiter(60, 60_000);
 
 export const AUTH_LIMITED_PATHS = ['/v1/auth/login', '/v1/auth/register', '/v1/auth/delete-account'];

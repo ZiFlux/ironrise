@@ -30,7 +30,20 @@ function Ask([string]$Question) { (Read-Host "$Question (д/н)") -match '^(д|y
 function Invoke-Remote([string]$Script) {
   $local = Join-Path $env:TEMP 'ironrise-remote.sh'
   [IO.File]::WriteAllText($local, ($Script -replace "`r", ''), [Text.UTF8Encoding]::new($false))
-  scp -q -o ConnectTimeout=60 $local "${Vps}:/tmp/ironrise-remote.sh"
-  if ($LASTEXITCODE -ne 0) { Fail 'Не удалось связаться с сервером по SSH' }
-  ssh -o ConnectTimeout=60 $Vps 'bash /tmp/ironrise-remote.sh; rm -f /tmp/ironrise-remote.sh'
+  # SSH до VPS иногда обрывается на рукопожатии — повторяем. Копирование повторять
+  # безопасно; команду — только если соединения не было (код 255 и пустой вывод),
+  # иначе, например, монеты начислились бы дважды.
+  for ($try = 1; $try -le 3; $try++) {
+    scp -q -o ConnectTimeout=30 $local "${Vps}:/tmp/ironrise-remote.sh"
+    if ($LASTEXITCODE -eq 0) { break }
+    if ($try -eq 3) { Fail 'Не удалось связаться с сервером по SSH' }
+    Write-Host "Нет связи с сервером, повтор $($try + 1) из 3…" -ForegroundColor Yellow
+  }
+  for ($try = 1; $try -le 3; $try++) {
+    $out = ssh -o ConnectTimeout=30 $Vps 'bash /tmp/ironrise-remote.sh; rm -f /tmp/ironrise-remote.sh'
+    $code = $LASTEXITCODE
+    if ($code -ne 255 -or $out) { $out; $global:LASTEXITCODE = $code; return }
+    if ($try -eq 3) { Fail 'Сервер не ответил по SSH — команда не выполнена' }
+    Write-Host "Нет связи с сервером, повтор $($try + 1) из 3…" -ForegroundColor Yellow
+  }
 }
