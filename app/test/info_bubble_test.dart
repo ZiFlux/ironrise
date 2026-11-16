@@ -19,7 +19,8 @@ Future<ProviderContainer> _open(WidgetTester tester, String path) async {
     nickname: 'Тест',
     goal: Goal.strength,
     format: TrainingFormat.fullBody,
-    trainingDays: const [0, 2, 4],
+    // Каждый день — тренировочный: тесты не зависят от дня недели запуска.
+    trainingDays: const [0, 1, 2, 3, 4, 5, 6],
     body: const BodyStats(),
     avatarSex: AvatarSex.male,
   );
@@ -66,10 +67,10 @@ void main() {
 
   testWidgets('день недели — облако дня', (tester) async {
     await _open(tester, '/');
-    await tester.tap(find.text('Пн').first);
+    await tester.tap(find.text(weekdayShort[DateTime.now().weekday - 1]).first);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.textContaining('по графику', findRichText: true), findsWidgets);
+    expect(find.textContaining('Сегодня по графику'), findsOneWidget);
     await _close(tester);
   });
 

@@ -114,8 +114,10 @@ Future<void> _showWeekPlan(
     context: context,
     backgroundColor: AppColors.surface,
     showDragHandle: true,
+    isScrollControlled: true,
     builder: (sheet) => SafeArea(
-      child: Padding(
+      // 6–7 тренировочных дней не помещаются — прокрутка.
+      child: SingleChildScrollView(
         padding: const EdgeInsets.fromLTRB(20, 0, 20, 16),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -266,16 +268,24 @@ class _StartView extends ConsumerWidget {
             Expanded(
               child: GuideTarget(
                 id: 'workout.plan',
+                // Всё прокручиваемо: «потяни вниз — синхронизация» работает и в день отдыха.
                 child: strengthDone
-                    ? _DoneToday(log: log, next: today)
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: _DoneToday(log: log, next: today),
+                      )
                     : restDay
-                    ? const _RestDayCard()
+                    ? const SingleChildScrollView(
+                        physics: AlwaysScrollableScrollPhysics(),
+                        child: _RestDayCard(),
+                      )
                     : Align(
                         alignment: Alignment.topCenter,
                         child: Card(
                           clipBehavior: Clip.antiAlias,
                           child: ListView(
                             shrinkWrap: true,
+                            physics: const AlwaysScrollableScrollPhysics(),
                             padding: const EdgeInsets.symmetric(vertical: 8),
                             children: [
                               // Нажатие — неделя по графику (п. 127).
@@ -518,9 +528,11 @@ class _RestDayCard extends StatelessWidget {
               children: [
                 Icon(LucideIcons.moon, size: 20),
                 SizedBox(width: 10),
-                Text(
-                  'По графику — отдых',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                Expanded(
+                  child: Text(
+                    'По графику — отдых',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  ),
                 ),
               ],
             ),

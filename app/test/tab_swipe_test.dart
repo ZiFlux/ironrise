@@ -2,29 +2,21 @@ import 'package:flutter/painting.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ironrise/router.dart';
 
-// П. 77: вкладки листаются только решительным горизонтальным свайпом.
+// П. 77: вкладка «натягивается» — переход, только если при отпускании натянули
+// дальше трети экрана и вели вбок. Скорость не важна.
 void main() {
-  test('быстрый горизонтальный свайп — листает', () {
-    expect(
-      isTabSwipe(const Offset(-150, 20), const Offset(-1200, 100)),
-      isTrue,
-    );
-    expect(isTabSwipe(const Offset(120, -10), const Offset(900, 0)), isTrue);
+  const width = 360.0;
+
+  test('натянул дальше точки вбок — переход', () {
+    expect(tabPullCommits(const Offset(-130, 20), width), isTrue);
+    expect(tabPullCommits(const Offset(120, -10), width), isTrue);
   });
 
-  test('наискось вниз — не листает', () {
-    expect(
-      isTabSwipe(const Offset(-120, 90), const Offset(-1000, 800)),
-      isFalse,
-    );
+  test('не дотянул — пружинит обратно', () {
+    expect(tabPullCommits(const Offset(-80, 0), width), isFalse);
   });
 
-  test('короткий или медленный — не листает', () {
-    expect(isTabSwipe(const Offset(-50, 0), const Offset(-2000, 0)), isFalse);
-    expect(isTabSwipe(const Offset(-200, 0), const Offset(-300, 0)), isFalse);
-  });
-
-  test('палец туда, бросок обратно — не листает', () {
-    expect(isTabSwipe(const Offset(-150, 0), const Offset(900, 0)), isFalse);
+  test('наискось вниз — не переход, даже далеко', () {
+    expect(tabPullCommits(const Offset(-150, 100), width), isFalse);
   });
 }

@@ -40,6 +40,7 @@ import 'game/aura.dart';
 import 'widgets/guide.dart';
 import 'widgets/screen_hint.dart';
 import 'state/providers.dart';
+import 'theme.dart';
 import 'state/account_state.dart';
 import 'state/season_state.dart';
 import 'state/server_game.dart';
@@ -263,16 +264,23 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Вкладок в нижней панели: Герой, Тренировка, Дуэли, Рейтинг, Профиль.
 const _tabCount = 5;
 
-/// Свайп перелистывает вкладку, только если он решительный и почти горизонтальный
-/// (п. 77): палец прошёл ≥ 80 dp, быстро (≥ 600 dp/с), а путь и скорость вбок
-/// минимум вдвое больше, чем вниз/вверх. Прокрутка наискось вкладку не меняет.
-bool isTabSwipe(Offset path, Offset velocity) =>
-    path.dx.abs() >= 80 &&
-    velocity.dx.abs() >= 600 &&
-    path.dx.abs() >= 2 * path.dy.abs() &&
-    velocity.dx.abs() >= 2 * velocity.dy.abs() &&
-    // Палец и бросок — в одну сторону.
-    path.dx.sign == velocity.dx.sign;
+/// Иконки и подписи вкладок — для подсказки, куда ведёт натяжение.
+const _tabs = [
+  (LucideIcons.personStanding, 'Герой'),
+  (LucideIcons.dumbbell, 'Тренировка'),
+  (LucideIcons.swords, 'Дуэли'),
+  (LucideIcons.trophy, 'Рейтинг'),
+  (LucideIcons.circleUser, 'Профиль'),
+];
+
+/// Докуда натянуть вкладку, чтобы при отпускании перейти: доля ширины экрана.
+const tabPullShare = 0.3;
+
+/// «Натяжной» свайп (п. 77): вкладка тянется за пальцем, переход — только если
+/// при отпускании натянули дальше [tabPullShare] ширины и вели вбок, а не вниз.
+/// Скорость не важна: быстрый смах наискось вкладку не меняет.
+bool tabPullCommits(Offset path, double width) =>
+    path.dx.abs() >= width * tabPullShare && path.dx.abs() >= 2 * path.dy.abs();
 
 class _Shell extends ConsumerStatefulWidget {
   const _Shell({required this.shell});
@@ -283,11 +291,71 @@ class _Shell extends ConsumerStatefulWidget {
   ConsumerState<_Shell> createState() => _ShellState();
 }
 
-class _ShellState extends ConsumerState<_Shell>
-    with SingleTickerProviderStateMixin {
+class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
   int _visit = 0;
-  Offset? _dragFrom;
-  Offset? _dragTo;
+
+  /// Натяжение: откуда начали и насколько тянем сейчас (0 — покой).
+  Offset? _pullFrom;
+  Offset _pull = Offset.zero;
+
+  /// Палец ушёл вниз/вверх сильнее, чем вбок, — это прокрутка, натяжение отменено.
+  bool _pullCancelled = false;
+
+  /// Возврат вкладки на место, если не дотянули.
+  late final AnimationController _snap =
+      AnimationController(
+        vsync: this,
+        duration: const Duration(milliseconds: 220),
+      )..addListener(
+        () => setState(
+          () => _pull = Offset(
+            _snapFrom * (1 - Curves.easeOut.transform(_snap.value)),
+            0,
+          ),
+        ),
+      );
+  double _snapFrom = 0;
+
+  void _pullStart(DragStartDetails d) {
+    _snap.stop();
+    _pullFrom = d.globalPosition;
+    _pullCancelled = false;
+    setState(() => _pull = Offset.zero);
+  }
+
+  void _pullUpdate(DragUpdateDetails d) {
+    final from = _pullFrom;
+    if (from == null || _pullCancelled) return;
+    final path = d.globalPosition - from;
+    if (path.dy.abs() > path.dx.abs()) {
+      _pullCancelled = true;
+      _release();
+      return;
+    }
+    setState(() => _pull = path);
+  }
+
+  void _pullEnd(DragEndDetails _) {
+    final shell = widget.shell;
+    final width = MediaQuery.sizeOf(context).width;
+    final next = shell.currentIndex + (_pull.dx < 0 ? 1 : -1);
+    if (!_pullCancelled &&
+        tabPullCommits(_pull, width) &&
+        next >= 0 &&
+        next < _tabCount) {
+      setState(() => _pull = Offset.zero);
+      shell.goBranch(next, initialLocation: true);
+    } else {
+      _release();
+    }
+    _pullFrom = null;
+  }
+
+  /// Пружиной на место.
+  void _release() {
+    _snapFrom = _pull.dx;
+    _snap.forward(from: 0);
+  }
 
   // Переключение вкладок «fade through» (Material): новая вкладка проявляется
   // и чуть подрастает. Вкладки не пересоздаются — их состояние сохраняется.
@@ -307,6 +375,7 @@ class _ShellState extends ConsumerState<_Shell>
 
   @override
   void dispose() {
+    _snap.dispose();
     _switch.dispose();
     super.dispose();
   }
@@ -363,28 +432,24 @@ class _ShellState extends ConsumerState<_Shell>
       // перехватывают жест сами, поэтому мешать не будут.
       body: GestureDetector(
         behavior: HitTestBehavior.translucent,
-        onHorizontalDragStart: (d) => _dragFrom = d.globalPosition,
-        onHorizontalDragUpdate: (d) => _dragTo = d.globalPosition,
-        onHorizontalDragEnd: (d) {
-          final from = _dragFrom, to = _dragTo;
-          _dragFrom = _dragTo = null;
-          if (from == null || to == null) return;
-          if (!isTabSwipe(to - from, d.velocity.pixelsPerSecond)) return;
-          final v = d.velocity.pixelsPerSecond.dx;
-          final next = shell.currentIndex + (v < 0 ? 1 : -1);
-          if (next < 0 || next >= _tabCount) return;
-          shell.goBranch(next, initialLocation: true);
-        },
-        // Свайп сверху вниз на любой вкладке — синхронизация (вертикальная прокрутка
-        // любого уровня вложенности, когда она упёрлась в верх).
-        child: RefreshIndicator(
-          onRefresh: _refresh,
-          notificationPredicate: (n) => n.metrics.axis == Axis.vertical,
-          child: FadeTransition(
-            opacity: _fade,
-            child: ScaleTransition(
-              scale: _scale,
-              child: TabVisit(visit: _visit, child: shell),
+        onHorizontalDragStart: _pullStart,
+        onHorizontalDragUpdate: _pullUpdate,
+        onHorizontalDragEnd: _pullEnd,
+        onHorizontalDragCancel: _release,
+        child: _PullFrame(
+          pull: _pull.dx,
+          current: shell.currentIndex,
+          // Свайп сверху вниз на любой вкладке — синхронизация (вертикальная прокрутка
+          // любого уровня вложенности, когда она упёрлась в верх).
+          child: RefreshIndicator(
+            onRefresh: _refresh,
+            notificationPredicate: (n) => n.metrics.axis == Axis.vertical,
+            child: FadeTransition(
+              opacity: _fade,
+              child: ScaleTransition(
+                scale: _scale,
+                child: TabVisit(visit: _visit, child: shell),
+              ),
             ),
           ),
         ),
@@ -437,4 +502,85 @@ class _Locked extends StatelessWidget {
     label: const Icon(LucideIcons.lock, size: 11, color: Colors.white70),
     child: Icon(icon),
   );
+}
+
+/// Вкладка, натянутая пальцем: сдвигается вслед (с сопротивлением), а сбоку
+/// проявляется соседняя вкладка — значок и подпись. Натянули до точки перехода —
+/// значок загорается: отпусти, и откроется она.
+class _PullFrame extends StatelessWidget {
+  const _PullFrame({
+    required this.pull,
+    required this.current,
+    required this.child,
+  });
+
+  final double pull;
+  final int current;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    final width = MediaQuery.sizeOf(context).width;
+    final target = current + (pull < 0 ? 1 : -1);
+    final exists = pull != 0 && target >= 0 && target < _tabCount;
+    // У крайних вкладок тянется туго — некуда.
+    final shift = exists ? pull * 0.45 : pull * 0.12;
+    final progress = (pull.abs() / (width * tabPullShare)).clamp(0.0, 1.0);
+    final ready = exists && progress >= 1;
+    final accent = Theme.of(context).colorScheme.primary;
+    return Stack(
+      children: [
+        Positioned.fill(
+          child: Transform.translate(offset: Offset(shift, 0), child: child),
+        ),
+        if (exists)
+          Positioned(
+            top: 0,
+            bottom: 0,
+            left: pull > 0 ? 8 : null,
+            right: pull < 0 ? 8 : null,
+            child: IgnorePointer(
+              child: Center(
+                child: Opacity(
+                  opacity: progress,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 120),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 12,
+                    ),
+                    decoration: BoxDecoration(
+                      color: ready ? accent : AppColors.raised,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          _tabs[target].$1,
+                          size: 22,
+                          color: ready
+                              ? AppColors.onAccent
+                              : AppColors.textSecondary,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          _tabs[target].$2,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: ready
+                                ? AppColors.onAccent
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ),
+      ],
+    );
+  }
 }
