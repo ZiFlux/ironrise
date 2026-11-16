@@ -204,95 +204,118 @@ class _StartLookScreenState extends ConsumerState<StartLookScreen> {
       appBar: AppBar(title: const Text('Мой старт')),
       body: SafeArea(
         top: false,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
-              child: Text(
-                open
-                    ? 'Собери себя таким, какой ты сейчас: это точка «Старт» '
-                          'на экране прогресса. Одежда здесь бесплатная, '
-                          'ещё ${_days(daysLeft)}.'
-                    : 'Старт уже зафиксирован. Образ меняется в инвентаре и магазине.',
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-            Expanded(
-              child: AvatarView(
-                levels: _firstDay,
-                look: open ? look : hero.firstDayLook,
-                withLamp: true,
-              ),
-            ),
-            if (open) ...[
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 36,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  children: [
-                    for (final s in _Section.values)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 8),
-                        child: ChoiceChip(
-                          label: Text(s.label),
-                          selected: s == _section,
-                          showCheckmark: false,
-                          onSelected: (_) => setState(() => _section = s),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              SizedBox(
-                height: MediaQuery.textScalerOf(context).scale(104),
-                child: ListView.separated(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  itemCount: options.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 8),
-                  itemBuilder: (_, i) => Pressable(
-                    scale: 0.94,
-                    child: _OptionTile(
-                      option: options[i],
-                      selected: options[i].selected(look),
-                      onTap: () =>
-                          setState(() => _draft = options[i].apply(look)),
+        // Крупный шрифт или низкий экран — прокрутка с аватаром фиксированной высоты,
+        // иначе ряды выбора уезжают за низ (п. 78).
+        child: LayoutBuilder(
+          builder: (context, box) {
+            final compact =
+                box.maxHeight < 560 ||
+                MediaQuery.textScalerOf(context).scale(10) > 14;
+            final column = Column(
+              mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 0, 20, 4),
+                  child: Text(
+                    open
+                        ? 'Собери себя таким, какой ты сейчас: это точка «Старт» '
+                              'на экране прогресса. Одежда здесь бесплатная, '
+                              'ещё ${_days(daysLeft)}.'
+                        : 'Старт уже зафиксирован. Образ меняется в инвентаре и магазине.',
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
                     ),
                   ),
                 ),
-              ),
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: !changed || _busy
-                            ? null
-                            : () => _save(look, lock: false),
-                        child: const Text('Сохранить'),
+                if (compact)
+                  SizedBox(
+                    height: 240,
+                    child: AvatarView(
+                      levels: _firstDay,
+                      look: open ? look : hero.firstDayLook,
+                      withLamp: true,
+                    ),
+                  )
+                else
+                  Expanded(
+                    child: AvatarView(
+                      levels: _firstDay,
+                      look: open ? look : hero.firstDayLook,
+                      withLamp: true,
+                    ),
+                  ),
+                if (open) ...[
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    height: 36,
+                    child: ListView(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      children: [
+                        for (final s in _Section.values)
+                          Padding(
+                            padding: const EdgeInsets.only(right: 8),
+                            child: ChoiceChip(
+                              label: Text(s.label),
+                              selected: s == _section,
+                              showCheckmark: false,
+                              onSelected: (_) => setState(() => _section = s),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    height: MediaQuery.textScalerOf(context).scale(104),
+                    child: ListView.separated(
+                      scrollDirection: Axis.horizontal,
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      itemCount: options.length,
+                      separatorBuilder: (_, _) => const SizedBox(width: 8),
+                      itemBuilder: (_, i) => Pressable(
+                        scale: 0.94,
+                        child: _OptionTile(
+                          option: options[i],
+                          selected: options[i].selected(look),
+                          onTap: () =>
+                              setState(() => _draft = options[i].apply(look)),
+                        ),
                       ),
                     ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _busy ? null : () => _save(look, lock: true),
-                        child: const Text('Зафиксировать'),
-                      ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton(
+                            onPressed: !changed || _busy
+                                ? null
+                                : () => _save(look, lock: false),
+                            child: const Text('Сохранить'),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: FilledButton(
+                            onPressed: _busy
+                                ? null
+                                : () => _save(look, lock: true),
+                            child: const Text('Зафиксировать'),
+                          ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
-              ),
-            ] else
-              const SizedBox(height: 24),
-          ],
+                  ),
+                ] else
+                  const SizedBox(height: 24),
+              ],
+            );
+            return compact ? SingleChildScrollView(child: column) : column;
+          },
         ),
       ),
     );

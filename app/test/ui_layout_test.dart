@@ -297,12 +297,12 @@ Future<void> _audit(
   required List<_Problem> problems,
 }) async {
   for (final MapEntry(key: sizeName, value: size) in _sizes.entries) {
-    for (final scale in [1.0, 1.3]) {
+    for (final scale in [1.0, 1.3, 1.6, 2.0]) {
       // Крупный шрифт проверяем на типичном экране — так делает большинство людей.
       if (scale != 1.0 && size != _typical) continue;
       for (final path in routes) {
         final where =
-            '${signedIn ? 'аккаунт' : 'офлайн'} · $path · $sizeName${scale == 1.0 ? '' : ' · шрифт ×1,3'}';
+            '${signedIn ? 'аккаунт' : 'офлайн'} · $path · $sizeName${scale == 1.0 ? '' : ' · шрифт ×${scale.toString().replaceAll('.', ',')}'}';
         tester.view.physicalSize = size;
         tester.view.devicePixelRatio = 1;
         tester.platformDispatcher.textScaleFactorTestValue = scale;
@@ -357,7 +357,7 @@ Future<void> _audit(
           await tester.pump(const Duration(milliseconds: 600));
           // Бой — сразу к итогу: панель с разбором и реваншем занимает больше всего места.
           if (path == '/duels/battle') {
-            await tester.tap(find.text('Пропустить'));
+            await tester.tap(find.text('Пропустить').first);
             await tester.pump();
             await tester.pump(const Duration(milliseconds: 600));
           }

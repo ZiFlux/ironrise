@@ -199,15 +199,22 @@ class _HeroInfo extends StatelessWidget {
           for (final (label, value, onTap) in rows)
             InkWell(
               onTap: onTap,
-              child: SizedBox(
-                height: 44,
+              // Крупный шрифт — строка выше, подпись ужимается, а не вылезает (п. 78).
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      Text(
-                        label,
-                        style: const TextStyle(color: AppColors.textSecondary),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(

@@ -88,9 +88,11 @@ class _SeasonView extends ConsumerWidget {
                       style: figureStyle(size: 32, color: accent),
                     ),
                     const SizedBox(width: 6),
-                    Text(
-                      'уровень из ${s.maxLevel}',
-                      style: const TextStyle(color: AppColors.textSecondary),
+                    Flexible(
+                      child: Text(
+                        'уровень из ${s.maxLevel}',
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
                     ),
                   ],
                 ),
