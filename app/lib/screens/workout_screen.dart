@@ -104,6 +104,11 @@ class _StartView extends ConsumerWidget {
     final now = DateTime.now();
     final strengthDone = doneToday(log, WorkoutKind.strength, now);
     final cardioDone = doneToday(log, WorkoutKind.cardio, now);
+    // День отдыха по графику: предлагаем кардио, силовая — только по желанию.
+    final restDay =
+        !strengthDone &&
+        !(ref.watch(heroProvider)?.trainingDays.contains(now.weekday - 1) ??
+            true);
     final level = trainingLevelOf(ref.watch(heroProvider), program);
     final rhythm = Periodization.available(level, trial: program.rhythmTrial);
     final sessions = ref.watch(heroProvider)?.trainingDays.length ?? 3;
@@ -163,6 +168,8 @@ class _StartView extends ConsumerWidget {
                 id: 'workout.plan',
                 child: strengthDone
                     ? _DoneToday(log: log, next: today)
+                    : restDay
+                    ? const _RestDayCard()
                     : Align(
                         alignment: Alignment.topCenter,
                         child: Card(
@@ -283,49 +290,115 @@ class _StartView extends ConsumerWidget {
               ),
             ),
             const SizedBox(height: 16),
-            if (!strengthDone) ...[
-              GuideTarget(
-                id: 'workout.start',
-                child: FilledButton(
-                  onPressed: () =>
-                      ref.read(workoutProvider.notifier).startPlanned(today),
-                  child: Text(planLabel(today)),
+            if (restDay) ...[
+              FilledButton.icon(
+                onPressed: cardioDone && ref.watch(cardioProvider) == null
+                    ? null
+                    : () => context.go('/workout/cardio'),
+                icon: const Icon(LucideIcons.heartPulse, size: 18),
+                label: Text(
+                  ref.watch(cardioProvider) != null
+                      ? 'Продолжить кардио'
+                      : cardioDone
+                      ? 'Кардио сегодня уже было'
+                      : 'Лёгкое кардио',
                 ),
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () {
-                  final notifier = ref.read(workoutProvider.notifier)..start();
-                  final exercise = rec?.exercise;
-                  if (exercise != null) notifier.addExercise(exercise);
-                },
+                onPressed: () =>
+                    ref.read(workoutProvider.notifier).startPlanned(today),
                 style: TextButton.styleFrom(
                   foregroundColor: AppColors.textSecondary,
                 ),
-                child: const Text('Без плана'),
+                child: const Text('Всё равно силовая сегодня'),
               ),
               const SizedBox(height: 8),
-            ],
-            OutlinedButton.icon(
-              onPressed: cardioDone && ref.watch(cardioProvider) == null
-                  ? null
-                  : () => context.go('/workout/cardio'),
-              icon: const Icon(LucideIcons.heartPulse, size: 18),
-              label: Text(
-                ref.watch(cardioProvider) != null
-                    ? 'Продолжить кардио'
-                    : cardioDone
-                    ? 'Кардио сегодня уже было'
-                    : 'Кардио',
+              _JointButton(),
+            ] else ...[
+              if (!strengthDone) ...[
+                GuideTarget(
+                  id: 'workout.start',
+                  child: FilledButton(
+                    onPressed: () =>
+                        ref.read(workoutProvider.notifier).startPlanned(today),
+                    child: Text(planLabel(today)),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                TextButton(
+                  onPressed: () {
+                    final notifier = ref.read(workoutProvider.notifier)
+                      ..start();
+                    final exercise = rec?.exercise;
+                    if (exercise != null) notifier.addExercise(exercise);
+                  },
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textSecondary,
+                  ),
+                  child: const Text('Без плана'),
+                ),
+                const SizedBox(height: 8),
+              ],
+              OutlinedButton.icon(
+                onPressed: cardioDone && ref.watch(cardioProvider) == null
+                    ? null
+                    : () => context.go('/workout/cardio'),
+                icon: const Icon(LucideIcons.heartPulse, size: 18),
+                label: Text(
+                  ref.watch(cardioProvider) != null
+                      ? 'Продолжить кардио'
+                      : cardioDone
+                      ? 'Кардио сегодня уже было'
+                      : 'Кардио',
+                ),
               ),
-            ),
-            const SizedBox(height: 8),
-            _JointButton(),
+              const SizedBox(height: 8),
+              _JointButton(),
+            ],
           ],
         ),
       ),
     );
   }
+}
+
+/// День отдыха по графику: зачем отдыхать и что можно сделать.
+class _RestDayCard extends StatelessWidget {
+  const _RestDayCard();
+
+  @override
+  Widget build(BuildContext context) => const Align(
+    alignment: Alignment.topCenter,
+    child: Card(
+      child: Padding(
+        padding: EdgeInsets.all(20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(LucideIcons.moon, size: 20),
+                SizedBox(width: 10),
+                Text(
+                  'По графику — отдых',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+            SizedBox(height: 10),
+            Text(
+              'Мышцы растут, пока ты восстанавливаешься. Сегодня лучше лёгкое '
+              'кардио на 20–30 минут: прогулка, велосипед, плавание. Серия не '
+              'сгорит, а кардио тоже качает героя.',
+              style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Силовая на сегодня сделана: итог, что дальше и вход в статистику.

@@ -98,7 +98,10 @@ class HomeScreen extends ConsumerWidget {
                 const _TipLine(),
                 const _WeighInLine(),
                 const SizedBox(height: 8),
-                if (recommendation != null && !strengthDone) ...[
+                // В день отдыха по графику силовую не предлагаем — только кардио.
+                if (recommendation != null &&
+                    !strengthDone &&
+                    isTrainingDay) ...[
                   FadeSlideIn(
                     index: 2,
                     child: _LaggingCard(
@@ -122,6 +125,15 @@ class HomeScreen extends ConsumerWidget {
                     id: 'home.plan',
                     child: Pressable(
                       child: switch ((strengthDone, cardioDone)) {
+                        (_, false) when !isTrainingDay => FilledButton.icon(
+                          onPressed: () => context.go('/workout/cardio'),
+                          icon: const Icon(LucideIcons.heartPulse, size: 18),
+                          label: const Text('День отдыха · лёгкое кардио'),
+                        ),
+                        (_, true) when !isTrainingDay => const FilledButton(
+                          onPressed: null,
+                          child: Text('На сегодня всё — отдыхай'),
+                        ),
                         (false, _) => FilledButton.icon(
                           onPressed: () {
                             ref
