@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/hero_milestones.dart';
 import '../game/progression.dart';
+import 'account_state.dart';
+import 'aura_state.dart';
 import 'hero.dart';
 import 'program_state.dart';
 import 'providers.dart';
@@ -43,6 +45,7 @@ Summary summaryOf(
 final summaryPublisherProvider = Provider<void>((ref) {
   if (!Platform.isAndroid) return;
   Summary? last;
+  String? lastAura;
   void publish() {
     final hero = ref.read(heroProvider);
     if (hero == null) return;
@@ -52,13 +55,20 @@ final summaryPublisherProvider = Provider<void>((ref) {
       ref.read(todayPlanProvider).day.title,
       DateTime.now(),
     );
-    if (s == last) return;
+    // Надетая аура — для эффекта на часах (неизвестную часы просто не рисуют).
+    // Без аккаунта аур нет — и сервер не трогаем.
+    final aura = ref.read(accountProvider).signedIn
+        ? ref.read(auraProvider).value?.equipped?.name ?? ''
+        : '';
+    if (s == last && aura == lastAura) return;
     last = s;
+    lastAura = aura;
     _summary
         .invokeMethod<bool>('publish', {
           'streak': s.streak,
           'today': s.today,
           'level': s.level,
+          'aura': aura,
         })
         .catchError((_) => false);
   }
@@ -66,5 +76,8 @@ final summaryPublisherProvider = Provider<void>((ref) {
   ref.listen(heroProvider, (_, _) => publish());
   ref.listen(trainingLogProvider, (_, _) => publish());
   ref.listen(todayPlanProvider, (_, _) => publish());
+  if (ref.read(accountProvider).signedIn) {
+    ref.listen(auraProvider, (_, _) => publish());
+  }
   Future.microtask(publish);
 });

@@ -59,6 +59,7 @@ class MainActivity : ComponentActivity() {
             repeatOnLifecycle(Lifecycle.State.STARTED) {
                 launch { WorkoutStore.state.collect(::render) }
                 launch { tickClock() }
+                launch { watchAura() }
             }
         }
     }
@@ -77,12 +78,17 @@ class MainActivity : ComponentActivity() {
         val zone = Zone.of(state.bpm)
         bpmText.text = state.bpm?.toString() ?: "—"
         bpmText.setTextColor(if (state.active) zone.color else MUTED)
-        zoneText.text = if (state.active && state.bpm != null) "уд/мин · ${zone.label}" else "уд/мин"
+        zoneText.text = when {
+            state.active && state.bpm != null -> "уд/мин · ${zone.label}"
+            ring.aura != null -> "аура: ${ring.aura!!.name}"
+            else -> "уд/мин"
+        }
         actionButton.text = if (state.active) "Завершить" else "Начать"
         (actionButton.background as? android.graphics.drawable.GradientDrawable)?.setColor(if (state.active) STOP else ACCENT)
         // Дуга по краю: пульс от максимума (190), цвет зоны.
         ring.color = zone.color
         ring.fraction = if (state.active) (state.bpm ?: 0) / 190f else 0f
+        ring.active = state.active
         if (state.active) window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         else window.clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         renderTime(state)
@@ -117,6 +123,28 @@ class MainActivity : ComponentActivity() {
         )
         val minutes = (last.endedAtMillis - last.startedAtMillis) / 60_000
         return "Последняя: $ago, $minutes мин"
+    }
+
+    /**
+     * Аура из сводки телефона. Неизвестный часам id (аура новее приложения)
+     * даёт null — кольцо без эффекта, остальное работает как обычно.
+     */
+    private suspend fun watchAura() {
+        val prefs = getSharedPreferences(Summary.PREFS, MODE_PRIVATE)
+        val apply = {
+            ring.aura = Auras.of(Summary.read(this).aura.ifEmpty { null })
+            render(WorkoutStore.state.value)
+        }
+        val listener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
+            if (key == "aura") apply()
+        }
+        apply()
+        prefs.registerOnSharedPreferenceChangeListener(listener)
+        try {
+            kotlinx.coroutines.awaitCancellation()
+        } finally {
+            prefs.unregisterOnSharedPreferenceChangeListener(listener)
+        }
     }
 
     private suspend fun tickClock() {

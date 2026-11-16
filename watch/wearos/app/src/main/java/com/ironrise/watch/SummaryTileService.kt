@@ -94,9 +94,10 @@ class SummaryTileService : TileService() {
 }
 
 /** Сводка от телефона: хранится на часах до следующего обновления. */
-data class Summary(val streak: Int, val today: String, val level: String) {
+/** [aura] — id надетой ауры с телефона; пусто — ауры нет (или телефон старый). */
+data class Summary(val streak: Int, val today: String, val level: String, val aura: String = "") {
     companion object {
-        private const val PREFS = "summary"
+        const val PREFS = "summary"
 
         fun read(context: Context): Summary {
             val p = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -104,6 +105,7 @@ data class Summary(val streak: Int, val today: String, val level: String) {
                 streak = p.getInt("streak", 0),
                 today = p.getString("today", null) ?: "Открой IronRise на телефоне",
                 level = p.getString("level", null) ?: "",
+                aura = p.getString("aura", null) ?: "",
             )
         }
 
@@ -112,6 +114,7 @@ data class Summary(val streak: Int, val today: String, val level: String) {
                 .putInt("streak", summary.streak)
                 .putString("today", summary.today)
                 .putString("level", summary.level)
+                .putString("aura", summary.aura)
                 .apply()
         }
     }

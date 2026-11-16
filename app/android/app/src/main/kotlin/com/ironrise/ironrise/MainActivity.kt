@@ -39,6 +39,7 @@ class MainActivity : FlutterFragmentActivity() {
                     streak = call.argument<Number>("streak")?.toInt() ?: 0,
                     today = call.argument<String>("today") ?: "",
                     level = call.argument<String>("level") ?: "",
+                    aura = call.argument<String>("aura") ?: "",
                 )
                 result.success(true)
             }
@@ -73,7 +74,7 @@ class MainActivity : FlutterFragmentActivity() {
      * Сводка для виджета и плитки на часах: серия, что сегодня, уровень героя.
      * Виджет читает её из SharedPreferences, часы получают через Data Layer.
      */
-    private fun publishSummary(streak: Int, today: String, level: String) {
+    private fun publishSummary(streak: Int, today: String, level: String, aura: String) {
         getSharedPreferences(SummaryWidget.PREFS, MODE_PRIVATE).edit()
             .putInt("streak", streak)
             .putString("today", today)
@@ -84,6 +85,9 @@ class MainActivity : FlutterFragmentActivity() {
             dataMap.putInt("streak", streak)
             dataMap.putString("today", today)
             dataMap.putString("level", level)
+            // Надетая аура (id из AuraKind). Старые часы ключ не читают, новые
+            // рисуют эффект, только если знают этот id.
+            dataMap.putString("aura", aura)
         }.asPutDataRequest().setUrgent()
         Wearable.getDataClient(applicationContext).putDataItem(request)
     }
@@ -143,6 +147,9 @@ class MainActivity : FlutterFragmentActivity() {
                     PATH_PULSE -> events.success("pulse;" + String(message.data))
                     PATH_STOPPED -> events.success("stopped")
                     PATH_VERSION -> events.success("version;" + String(message.data))
+                    // Что умеют часы: «proto=2;auras=fury,guard». Старые часы не шлют.
+                    PATH_CAPS -> events.success("caps;" + String(message.data))
+                    // Прочие пути — от более новых часов: молча пропускаем.
                 }
             }
             watchListener = listener
@@ -177,6 +184,7 @@ class MainActivity : FlutterFragmentActivity() {
         const val PATH_STOP = "/ironrise/stop"
         const val PATH_HELLO = "/ironrise/hello"
         const val PATH_VERSION = "/ironrise/version"
+        const val PATH_CAPS = "/ironrise/caps"
         const val CALENDAR_CHANNEL = "ironrise/calendar"
         const val SOUND_CHANNEL = "ironrise/sound"
         const val SUMMARY_CHANNEL = "ironrise/summary"

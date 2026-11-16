@@ -127,6 +127,10 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
   void _onWatchMessage(WatchMessage? message) {
     final bluetoothActive =
         state.isConnected && state.source == PulseSource.bluetooth;
+    if (message is WatchCaps) {
+      ref.read(watchCapsProvider.notifier).set(message);
+      return;
+    }
     if (message is WatchVersion) {
       ref.read(watchVersionProvider.notifier).set(message.version);
       // Часы ответили — подключены: награда за первое подключение.
@@ -362,12 +366,46 @@ class WatchVersion extends WatchMessage {
   final String version;
 }
 
-/// Сообщение от часов: «pulse;пульс;шаги;время_мс», «stopped» или «version;1.1.0».
+/// Что умеют часы — ответ новых часов на «hello» (старые не шлют, тогда протокол 1).
+class WatchCaps extends WatchMessage {
+  const WatchCaps({required this.protocol, required this.auras});
+
+  final int protocol;
+
+  /// Ауры, которые часы умеют рисовать (id из AuraKind).
+  final Set<String> auras;
+}
+
+/// Протокол часов, который понимает этот телефон. Всё, что сверх, — игнорируется,
+/// так что любые часы с протоколом ≥ 1 передают пульс при любой версии телефона.
+const watchProtocol = 2;
+
+/// Сообщение от часов: «pulse;пульс;шаги;время_мс[;…]», «stopped», «version;1.1.0»
+/// или «caps;proto=2;auras=fury,guard». Лишние поля от более новых часов
+/// пропускаем, непонятное — отбрасываем.
 WatchMessage? parseWatchMessage(String raw) {
-  if (raw == 'stopped') return const WatchStopped();
-  if (raw.startsWith('version;')) return WatchVersion(raw.substring(8));
+  if (raw == 'stopped' || raw.startsWith('stopped;')) {
+    return const WatchStopped();
+  }
+  if (raw.startsWith('version;')) {
+    final v = raw.substring(8).split(';').first.trim();
+    return v.isEmpty ? null : WatchVersion(v);
+  }
+  if (raw.startsWith('caps;')) {
+    final fields = {
+      for (final kv in raw.substring(5).split(';'))
+        if (kv.split('=') case [final k, final v]) k.trim(): v.trim(),
+    };
+    return WatchCaps(
+      protocol: int.tryParse(fields['proto'] ?? '') ?? 1,
+      auras: {
+        for (final a in (fields['auras'] ?? '').split(','))
+          if (a.trim().isNotEmpty) a.trim(),
+      },
+    );
+  }
   final parts = raw.split(';');
-  if (parts.length != 4 || parts[0] != 'pulse') return null;
+  if (parts.length < 4 || parts[0] != 'pulse') return null;
   final bpm = int.tryParse(parts[1]);
   final steps = int.tryParse(parts[2]);
   final millis = int.tryParse(parts[3]);
@@ -403,4 +441,16 @@ final watchVersionProvider = NotifierProvider<WatchVersionNotifier, String?>(
 
 final heartRateProvider = NotifierProvider<HeartRateNotifier, HeartRateState>(
   HeartRateNotifier.new,
+);
+
+/// Возможности часов; null — часы старые (протокол 1) или не ответили.
+class WatchCapsNotifier extends Notifier<WatchCaps?> {
+  @override
+  WatchCaps? build() => null;
+
+  void set(WatchCaps caps) => state = caps;
+}
+
+final watchCapsProvider = NotifierProvider<WatchCapsNotifier, WatchCaps?>(
+  WatchCapsNotifier.new,
 );

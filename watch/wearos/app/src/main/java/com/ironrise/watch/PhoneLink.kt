@@ -30,6 +30,16 @@ class PhoneLink(context: Context) {
         }
     }
 
+    /** Что умеют часы: протокол и ауры, которые они рисуют. */
+    suspend fun sendCaps(nodeId: String) {
+        val body = "proto=$WATCH_PROTOCOL;auras=${Auras.ids.joinToString(",")}"
+        try {
+            messages.sendMessage(nodeId, PATH_CAPS, body.toByteArray()).await()
+        } catch (e: Exception) {
+            Log.w(TAG, "Не удалось отправить возможности", e)
+        }
+    }
+
     private suspend fun send(path: String, body: String) {
         try {
             for (id in connectedPhones()) {
@@ -63,6 +73,7 @@ class PhoneLink(context: Context) {
         /** Телефон спрашивает версию, часы отвечают на [PATH_VERSION]. */
         const val PATH_HELLO = "/ironrise/hello"
         const val PATH_VERSION = "/ironrise/version"
+        const val PATH_CAPS = "/ironrise/caps"
 
         /** Сводка от телефона для плитки (DataItem). */
         const val PATH_SUMMARY = "/ironrise/summary"

@@ -41,7 +41,10 @@ class DevicesScreen extends ConsumerWidget {
     final anyConnected = health.connected || pulse.isConnected;
     final watchVersion = ref.watch(watchVersionProvider);
     final appVersion = ref.watch(appVersionProvider).value;
-    final outdated =
+    // Пульс передают любые часы: протокол обратно совместим. Разница версий —
+    // только повод обновиться ради нового (эффекты аур), а не поломка.
+    final caps = ref.watch(watchCapsProvider);
+    final differs =
         watchVersion != null &&
         appVersion != null &&
         watchVersion != appVersion;
@@ -59,14 +62,15 @@ class DevicesScreen extends ConsumerWidget {
             status: watchLive
                 ? 'Передаёт пульс: ${pulse.bpm ?? '—'} уд/мин'
                 : 'Wear OS: Galaxy Watch и другие',
-            ok: watchLive && !outdated,
+            ok: watchLive,
             text: [
               'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, '
                   'часы сами начнут передавать пульс — ничего нажимать не нужно.',
               if (watchVersion != null) 'На часах версия $watchVersion.',
-              // Одна версия на телефоне и часах (п. 48): иначе что-то может не работать.
-              if (outdated)
-                'На телефоне $appVersion — обновите приложение на часах до той же версии.',
+              if (differs && (caps?.protocol ?? 1) < watchProtocol)
+                'Пульс работает. Обновите IronRise на часах — появятся эффекты аур.'
+              else if (differs)
+                'На телефоне $appVersion — всё совместимо.',
             ].join(' '),
           ),
           const SizedBox(height: 12),

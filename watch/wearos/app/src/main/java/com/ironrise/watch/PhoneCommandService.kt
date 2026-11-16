@@ -28,7 +28,13 @@ class PhoneCommandService : WearableListenerService() {
             val map = DataMapItem.fromDataItem(event.dataItem).dataMap
             Summary.save(
                 this,
-                Summary(map.getInt("streak"), map.getString("today") ?: "", map.getString("level") ?: ""),
+                // Ключа «aura» у старого телефона нет — тогда без эффекта.
+                Summary(
+                    map.getInt("streak"),
+                    map.getString("today") ?: "",
+                    map.getString("level") ?: "",
+                    map.getString("aura") ?: "",
+                ),
             )
             TileService.getUpdater(this).requestUpdate(SummaryTileService::class.java)
         }
@@ -38,7 +44,14 @@ class PhoneCommandService : WearableListenerService() {
         when (event.path) {
             PhoneLink.PATH_START -> startWorkout()
             PhoneLink.PATH_STOP -> if (WorkoutStore.state.value.active) WorkoutService.stop(this)
-            PhoneLink.PATH_HELLO -> runBlocking { PhoneLink(this@PhoneCommandService).sendVersion(event.sourceNodeId, BuildConfig.VERSION_NAME) }
+            PhoneLink.PATH_HELLO -> runBlocking {
+                val link = PhoneLink(this@PhoneCommandService)
+                // Версия — как раньше (её ждут старые телефоны), возможности — отдельным
+                // сообщением: старый телефон незнакомый путь просто пропустит.
+                link.sendVersion(event.sourceNodeId, BuildConfig.VERSION_NAME)
+                link.sendCaps(event.sourceNodeId)
+            }
+            // Незнакомые команды — от более нового телефона: молча пропускаем.
         }
     }
 
