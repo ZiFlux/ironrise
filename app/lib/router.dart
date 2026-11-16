@@ -40,6 +40,11 @@ import 'game/aura.dart';
 import 'widgets/guide.dart';
 import 'widgets/screen_hint.dart';
 import 'state/providers.dart';
+import 'state/account_state.dart';
+import 'state/season_state.dart';
+import 'state/server_game.dart';
+import 'net/app_log.dart';
+import 'widgets/status_toast.dart';
 import 'widgets/motion.dart';
 
 final routerProvider = Provider<GoRouter>((ref) {
@@ -269,16 +274,17 @@ bool isTabSwipe(Offset path, Offset velocity) =>
     // Палец и бросок — в одну сторону.
     path.dx.sign == velocity.dx.sign;
 
-class _Shell extends StatefulWidget {
+class _Shell extends ConsumerStatefulWidget {
   const _Shell({required this.shell});
 
   final StatefulNavigationShell shell;
 
   @override
-  State<_Shell> createState() => _ShellState();
+  ConsumerState<_Shell> createState() => _ShellState();
 }
 
-class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
+class _ShellState extends ConsumerState<_Shell>
+    with SingleTickerProviderStateMixin {
   int _visit = 0;
   Offset? _dragFrom;
   Offset? _dragTo;
@@ -315,6 +321,38 @@ class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
     }
   }
 
+  /// «Потяни вниз»: синхронизация с сервером, свежие данные вкладок и журнал.
+  Future<void> _refresh() async {
+    final account = ref.read(accountProvider.notifier);
+    if (!ref.read(accountProvider).signedIn) {
+      showStatus(
+        'Синхронизация — с аккаунтом. Войди в профиле',
+        kind: StatusKind.info,
+      );
+      return;
+    }
+    await account.sync(reason: SyncReason.manual);
+    // Шла фоновая синхронизация — sync() лишь поставил повтор; ждём, пока закончится.
+    for (var i = 0; i < 75 && ref.read(accountProvider).syncing; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    // То, что синхронизация сама не трогает: друзья, сезон.
+    ref.invalidate(serverFriendsProvider);
+    ref.invalidate(serverFriendsLeagueProvider);
+    ref.invalidate(seasonProvider);
+    await AppLog.upload(ref.read(apiProvider));
+    if (!mounted) return;
+    final error = ref.read(accountProvider).error;
+    if (error == null) {
+      showStatus('Синхронизировано', kind: StatusKind.success);
+    } else {
+      showStatusError(
+        error,
+        network: error.contains('недоступен') || error.contains('не отвечает'),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final shell = widget.shell;
@@ -336,11 +374,17 @@ class _ShellState extends State<_Shell> with SingleTickerProviderStateMixin {
           if (next < 0 || next >= _tabCount) return;
           shell.goBranch(next, initialLocation: true);
         },
-        child: FadeTransition(
-          opacity: _fade,
-          child: ScaleTransition(
-            scale: _scale,
-            child: TabVisit(visit: _visit, child: shell),
+        // Свайп сверху вниз на любой вкладке — синхронизация (вертикальная прокрутка
+        // любого уровня вложенности, когда она упёрлась в верх).
+        child: RefreshIndicator(
+          onRefresh: _refresh,
+          notificationPredicate: (n) => n.metrics.axis == Axis.vertical,
+          child: FadeTransition(
+            opacity: _fade,
+            child: ScaleTransition(
+              scale: _scale,
+              child: TabVisit(visit: _visit, child: shell),
+            ),
           ),
         ),
       ),

@@ -15,7 +15,11 @@ class FitScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => CustomScrollView(
-    physics: const ClampingScrollPhysics(),
+    // Всегда отзывается на оттягивание — даже когда всё помещается: так работает
+    // «потяни вниз — синхронизация» (оболочка вкладок в router.dart).
+    physics: const AlwaysScrollableScrollPhysics(
+      parent: ClampingScrollPhysics(),
+    ),
     slivers: [SliverFillRemaining(hasScrollBody: false, child: child)],
   );
 }

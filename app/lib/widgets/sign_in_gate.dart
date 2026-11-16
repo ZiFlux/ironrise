@@ -26,44 +26,51 @@ class SignInGate extends StatelessWidget {
       appBar: AppBar(title: Text(title)),
       body: SafeArea(
         top: false,
-        child: Center(
-          child: SingleChildScrollView(
+        // Прокрутка на весь экран: «потяни вниз» работает и здесь.
+        child: LayoutBuilder(
+          builder: (context, box) => SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Icon(icon, size: 56, color: theme.colorScheme.primary),
-                const SizedBox(height: 16),
-                Text(
-                  '$title — только для зарегистрированных',
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.titleLarge,
+            child: ConstrainedBox(
+              constraints: BoxConstraints(minHeight: box.maxHeight - 48),
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(icon, size: 56, color: theme.colorScheme.primary),
+                    const SizedBox(height: 16),
+                    Text(
+                      '$title — только для зарегистрированных',
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.titleLarge,
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      text,
+                      textAlign: TextAlign.center,
+                      style: theme.textTheme.bodyMedium?.copyWith(
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    GuideTarget(
+                      id: 'gate.register',
+                      child: FilledButton.icon(
+                        icon: const Icon(LucideIcons.userPlus),
+                        label: const Text('Зарегистрироваться'),
+                        onPressed: () => context.push('/profile/account'),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    OutlinedButton.icon(
+                      icon: const Icon(LucideIcons.logIn),
+                      label: const Text('Войти'),
+                      onPressed: () => context.push('/profile/account?login=1'),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 8),
-                Text(
-                  text,
-                  textAlign: TextAlign.center,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                GuideTarget(
-                  id: 'gate.register',
-                  child: FilledButton.icon(
-                    icon: const Icon(LucideIcons.userPlus),
-                    label: const Text('Зарегистрироваться'),
-                    onPressed: () => context.push('/profile/account'),
-                  ),
-                ),
-                const SizedBox(height: 8),
-                OutlinedButton.icon(
-                  icon: const Icon(LucideIcons.logIn),
-                  label: const Text('Войти'),
-                  onPressed: () => context.push('/profile/account?login=1'),
-                ),
-              ],
+              ),
             ),
           ),
         ),
