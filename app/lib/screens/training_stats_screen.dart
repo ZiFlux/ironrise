@@ -10,6 +10,7 @@ import '../state/program_state.dart';
 import '../state/records_state.dart';
 import '../state/training_log.dart';
 import '../state/providers.dart';
+import '../widgets/line_chart.dart';
 import '../widgets/training_analysis_view.dart';
 import '../widgets/weigh_in.dart';
 import '../widgets/week_recap.dart';
@@ -457,7 +458,8 @@ class _ExerciseProgressState extends State<_ExerciseProgress> {
           ),
         ),
         const SizedBox(height: 12),
-        _Bars(
+        // Динамика — кривой: виден тренд (п. 105).
+        LineChart(
           key: ValueKey(id),
           color: widget.accent,
           points: [

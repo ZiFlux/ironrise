@@ -3,6 +3,8 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'line_chart.dart';
+
 import '../state/body_log.dart';
 import '../state/health_state.dart';
 import '../state/providers.dart';
@@ -179,6 +181,26 @@ class BodySummary extends ConsumerWidget {
               ),
           ],
         ),
+        // Вес — кривой за последние взвешивания (п. 105), когда их хотя бы два.
+        if ([
+              for (final m in log)
+                if (m.weightKg != null) m,
+            ]
+            case final weights when weights.length >= 2) ...[
+          const SizedBox(height: 12),
+          LineChart(
+            color: Theme.of(context).colorScheme.primary,
+            height: 90,
+            points: [
+              for (final m in weights.take(20).toList().reversed)
+                (
+                  label: '${m.at.day}.${m.at.month.toString().padLeft(2, '0')}',
+                  value: m.weightKg!,
+                  tip: '${formatDate(m.at)}: ${formatKg(m.weightKg!)} кг',
+                ),
+            ],
+          ),
+        ],
         const SizedBox(height: 8),
         Text(
           s.analysedAt == null
