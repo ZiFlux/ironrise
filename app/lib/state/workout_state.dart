@@ -102,6 +102,13 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     );
   }
 
+  /// Метка в журнал тренировки (п. 106): открыто упражнение, отдых кончился или пропущен.
+  void mark(WorkoutEventKind kind, {String? exerciseId}) {
+    final session = state;
+    if (session == null) return;
+    _save(session.withEvent(kind, exerciseId: exerciseId));
+  }
+
   void logSet(int entryIndex, SetRecord set) => _updateEntry(
     entryIndex,
     (entry) => entry.withSet(

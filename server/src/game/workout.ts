@@ -129,3 +129,19 @@ export const applyDailyCap = <T extends WorkoutSummary>(
  */
 export const withPlanBonus = <T extends WorkoutSummary>(summary: T, planCompleted: boolean): T =>
   planCompleted ? { ...summary, coins: Math.round(summary.coins * (1 + C.planCoinBonus)) } : summary;
+
+/**
+ * Тренировка без пульсовых полей подходов (peak, base) — для игроков без согласия на
+ * данные о здоровье (п. 106). Время подходов и отдыха остаётся: это не данные о здоровье.
+ */
+export const withoutSetPulse = <T extends object>(payload: T): T => {
+  const entries = (payload as { entries?: { sets?: Record<string, unknown>[] }[] }).entries;
+  if (!Array.isArray(entries)) return payload;
+  return {
+    ...payload,
+    entries: entries.map((e) => ({
+      ...e,
+      sets: (e.sets ?? []).map(({ peak: _peak, base: _base, ...rest }) => rest),
+    })),
+  };
+};

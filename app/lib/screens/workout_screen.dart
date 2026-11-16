@@ -593,7 +593,9 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     TrainingSound.rest();
     _restBell?.cancel();
     _restBell = Timer(GameConfig.restBetweenSets, () {
-      if (mounted) TrainingSound.start();
+      if (!mounted) return;
+      TrainingSound.start();
+      _workout.mark(WorkoutEventKind.restEnd);
     });
   }
 
@@ -673,6 +675,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                       left: left,
                       onSkip: () {
                         _restBell?.cancel();
+                        _workout.mark(WorkoutEventKind.restSkip);
                         setState(() => _restEndsAt = null);
                       },
                       hint: _restHint(left),
@@ -702,7 +705,13 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                         ),
                         onReserve: (reserve) => _answerReserve(i, reserve),
                         expanded: i == _expanded,
-                        onExpand: () => setState(() => _expanded = i),
+                        onExpand: () {
+                          _workout.mark(
+                            WorkoutEventKind.exerciseOpen,
+                            exerciseId: session.entries[i].exercise.id,
+                          );
+                          setState(() => _expanded = i);
+                        },
                         onLog: (set) => _logSet(i, set),
                         onUndo: () => _workout.undoLastSet(i),
                         onRemove: () => _workout.removeExercise(i),

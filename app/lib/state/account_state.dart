@@ -7,6 +7,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../game/anti_fraud.dart';
 import '../game/cardio.dart';
+import '../game/set_pulse.dart';
 import '../game/workout.dart';
 import '../legal/privacy_policy.dart';
 import '../net/api_client.dart';
@@ -305,19 +306,58 @@ class AccountNotifier extends Notifier<AccountState> {
         'clientId': newClientId(),
         'startedAt': s.startedAt.toUtc().toIso8601String(),
         'finishedAt': finishedAt.toUtc().toIso8601String(),
-        'entries': [
-          for (final e in s.entries)
-            if (e.sets.isNotEmpty)
+        'entries': _strengthEntries(s, pulse),
+        if (s.events.isNotEmpty)
+          'events': [
+            for (final e in s.events)
               {
-                'exerciseId': e.exercise.id,
-                'sets': [for (final set in e.sets) set.toJson()],
+                't': e.at.difference(s.startedAt).inSeconds.clamp(0, 86400),
+                'k': e.kind.code,
+                if (e.exerciseId != null) 'ex': e.exerciseId,
               },
-        ],
+          ],
         'pulse': _pulseJson(pulse),
         if (s.planCompleted) 'planCompleted': true,
       },
     ),
   );
+
+  /// Подходы с метками времени и сводкой пульса по каждому (п. 106): секунды от
+  /// начала, отдых перед подходом, пик и пульс отдыха. Пульс — только при согласии
+  /// ([pulse] тогда пустой и пиков нет).
+  static List<Map<String, dynamic>> _strengthEntries(
+    WorkoutSession s,
+    List<PulseSample> pulse,
+  ) {
+    final perSet = {
+      for (final (id, i, p) in setPulses(
+        startedAt: s.startedAt,
+        entries: s.entries,
+        pulse: pulse,
+      ))
+        (id, i): p,
+    };
+    return [
+      for (final e in s.entries)
+        if (e.sets.isNotEmpty)
+          {
+            'exerciseId': e.exercise.id,
+            'sets': [
+              for (final (i, set) in e.sets.indexed)
+                {
+                  'weight': set.weight,
+                  'reps': set.reps,
+                  if (perSet[(e.exercise.id, i)] case final p?) ...{
+                    't': p.t,
+                    'rest': ?p.rest,
+                    'peak': ?p.peak,
+                    'base': ?p.base,
+                  },
+                },
+            ],
+          },
+    ];
+  }
 
   Future<void> enqueueCardio(
     CardioSession s,

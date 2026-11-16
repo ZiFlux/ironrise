@@ -81,6 +81,33 @@ class ExerciseEntry {
   );
 }
 
+/// Метка в журнале тренировки (п. 106): что происходило между подходами.
+/// Вместе с временем подходов это позволяет сопоставить пульс с фазами тренировки.
+enum WorkoutEventKind {
+  /// Открыта карточка упражнения — примерно начало первого подхода.
+  exerciseOpen('open'),
+
+  /// Таймер отдыха закончился сам.
+  restEnd('rest_end'),
+
+  /// Отдых пропущен кнопкой.
+  restSkip('rest_skip');
+
+  const WorkoutEventKind(this.code);
+
+  /// Код для сервера и JSON.
+  final String code;
+
+  static WorkoutEventKind? byCode(String? code) =>
+      values.where((k) => k.code == code).firstOrNull;
+}
+
+typedef WorkoutEvent = ({
+  DateTime at,
+  WorkoutEventKind kind,
+  String? exerciseId,
+});
+
 class WorkoutSession {
   const WorkoutSession({
     required this.startedAt,
@@ -88,7 +115,11 @@ class WorkoutSession {
     this.planDayId,
     this.warmup = const [],
     this.warmupDone = const {},
+    this.events = const [],
   });
+
+  /// Метки между подходами (п. 106); время подходов — в SetRecord.at.
+  final List<WorkoutEvent> events;
 
   final DateTime startedAt;
   final List<ExerciseEntry> entries;
@@ -115,13 +146,26 @@ class WorkoutSession {
   WorkoutSession copyWith({
     List<ExerciseEntry>? entries,
     Set<String>? warmupDone,
+    List<WorkoutEvent>? events,
   }) => WorkoutSession(
     startedAt: startedAt,
     entries: entries ?? this.entries,
     planDayId: planDayId,
     warmup: warmup,
     warmupDone: warmupDone ?? this.warmupDone,
+    events: events ?? this.events,
   );
+
+  /// Добавить метку; не больше 300 за тренировку (как принимает сервер).
+  WorkoutSession withEvent(WorkoutEventKind kind, {String? exerciseId}) =>
+      events.length >= 300
+      ? this
+      : copyWith(
+          events: [
+            ...events,
+            (at: DateTime.now(), kind: kind, exerciseId: exerciseId),
+          ],
+        );
 
   Map<String, dynamic> toJson() => {
     'startedAt': startedAt.toIso8601String(),
@@ -129,6 +173,15 @@ class WorkoutSession {
     if (planDayId != null) 'planDayId': planDayId,
     if (warmup.isNotEmpty) 'warmup': warmup,
     if (warmupDone.isNotEmpty) 'warmupDone': warmupDone.toList(),
+    if (events.isNotEmpty)
+      'events': [
+        for (final e in events)
+          {
+            'at': e.at.toIso8601String(),
+            'k': e.kind.code,
+            if (e.exerciseId != null) 'ex': e.exerciseId,
+          },
+      ],
   };
 
   factory WorkoutSession.fromJson(Map<String, dynamic> j) => WorkoutSession(
@@ -137,6 +190,15 @@ class WorkoutSession {
     planDayId: j['planDayId'],
     warmup: List<String>.from(j['warmup'] ?? const []),
     warmupDone: {...List<String>.from(j['warmupDone'] ?? const [])},
+    events: [
+      for (final e in (j['events'] as List? ?? const []))
+        if (WorkoutEventKind.byCode(e['k'] as String?) case final kind?)
+          (
+            at: DateTime.parse(e['at'] as String),
+            kind: kind,
+            exerciseId: e['ex'] as String?,
+          ),
+    ],
   );
 }
 

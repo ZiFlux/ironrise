@@ -10,7 +10,7 @@ import { BodyPart } from '../game/body-part';
 import { levels } from '../game/progression';
 import { heroLevel, heroMilestonesDue } from '../game/social-progress';
 import { addMusclePoints, MusclePoints, musclePointsOf } from '../game/muscles';
-import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap, withPlanBonus } from '../game/workout';
+import { scoreStrength, UnknownExerciseError, WorkoutSummary, applyDailyCap, withPlanBonus, withoutSetPulse } from '../game/workout';
 import { Prisma } from '../generated/prisma/client';
 import { withJointBonus } from '../game/joint';
 import { premiumStatus, unverifiedValidityFor, withPremiumCoins } from '../game/premium';
@@ -42,7 +42,17 @@ export const StrengthSchema = Base.extend({
       z.object({
         exerciseId: z.string().min(1).max(64),
         sets: z
-          .array(z.object({ weight: z.number().min(0).max(1000), reps: z.number().int().min(1).max(1000) }))
+          .array(
+            z.object({
+              weight: z.number().min(0).max(1000),
+              reps: z.number().int().min(1).max(1000),
+              // Метки подхода (п. 106): секунды от начала, отдых перед ним, пик и пульс отдыха.
+              t: z.number().int().min(0).max(86_400).optional(),
+              rest: z.number().int().min(0).max(86_400).optional(),
+              peak: z.number().int().min(30).max(230).optional(),
+              base: z.number().int().min(30).max(230).optional(),
+            }),
+          )
           .min(1)
           .max(50),
       }),
@@ -51,6 +61,17 @@ export const StrengthSchema = Base.extend({
     .max(30),
   /** Все упражнения дня программы сделаны: +20% монет. */
   planCompleted: z.boolean().optional(),
+  /** Метки между подходами (п. 106): секунды от начала, вид, упражнение. */
+  events: z
+    .array(
+      z.object({
+        t: z.number().int().min(0).max(86_400),
+        k: z.enum(['open', 'rest_end', 'rest_skip']),
+        ex: z.string().min(1).max(64).optional(),
+      }),
+    )
+    .max(300)
+    .optional(),
 });
 
 export const CardioSchema = Base.extend({
@@ -75,7 +96,7 @@ export class WorkoutsService {
 
   submitStrength(userId: string, input: z.infer<typeof StrengthSchema>): Promise<WorkoutResult> {
     // В payload — только подходы: пульс хранится отдельно и лишь при согласии.
-    const payload = { entries: input.entries, planCompleted: input.planCompleted };
+    const payload = { entries: input.entries, planCompleted: input.planCompleted, events: input.events };
     return this.submit(userId, input, 'strength', payload, input.planCompleted ?? false, async (xpBefore, restingHr, _age, isTester, pulse) => {
       const validity = strengthValidity({
         startedAt: input.startedAt,
@@ -205,7 +226,8 @@ export class WorkoutsService {
           endedAt: finishedAt,
           day,
           validity: summary.validity,
-          payload: { ...payload, summary } as unknown as Prisma.InputJsonValue,
+          // Пик и пульс отдыха по подходам — данные о здоровье: без согласия не храним.
+          payload: { ...(profile.healthConsentAt ? payload : withoutSetPulse(payload)), summary } as unknown as Prisma.InputJsonValue,
           // Храним сводку, а не сырой ряд: сырой нужен только для расчёта выше.
           pulse: (summarizePulse(pulse) ?? { n: 0 }) as unknown as Prisma.InputJsonValue,
         },

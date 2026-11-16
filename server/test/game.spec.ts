@@ -7,7 +7,7 @@ import { fillLeague, MAX_LEAGUE_PLAYERS } from '../src/game/bots';
 import { countsForSession, jointCode, withJointBonus } from '../src/game/joint';
 import { power } from '../src/game/progression';
 import { currentStreak, maxRestDaysInRow, streakAfterActivity } from '../src/game/streak';
-import { applyDailyCap, scoreStrength, StrengthSession, withPlanBonus } from '../src/game/workout';
+import { applyDailyCap, scoreStrength, StrengthSession, withPlanBonus, withoutSetPulse } from '../src/game/workout';
 
 // Те же сценарии, что в app/test/*.dart: формулы клиента и сервера должны совпадать.
 
@@ -770,5 +770,19 @@ describe('лига: добор игроков из соседних лиг (ба
   it('не больше MAX_LEAGUE_PLAYERS', () => {
     const others = Array.from({ length: 30 }, (_, i) => p(`o${i}`, 0));
     expect(fillLeague([], others, 1)).toHaveLength(MAX_LEAGUE_PLAYERS);
+  });
+});
+
+describe('метки подходов и пульс по подходам (п. 106)', () => {
+  it('без согласия убираем пик и пульс отдыха, время оставляем', () => {
+    const payload = {
+      entries: [{ exerciseId: 'push_up', sets: [{ weight: 0, reps: 10, t: 90, rest: 75, peak: 150, base: 110 }] }],
+      events: [{ t: 10, k: 'open' }],
+    };
+    expect(withoutSetPulse(payload)).toEqual({
+      entries: [{ exerciseId: 'push_up', sets: [{ weight: 0, reps: 10, t: 90, rest: 75 }] }],
+      events: [{ t: 10, k: 'open' }],
+    });
+    expect(payload.entries[0].sets[0].peak).toBe(150); // исходник не тронут
   });
 });
