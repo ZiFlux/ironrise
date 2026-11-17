@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../avatar/avatar_view.dart';
 import '../game/aura.dart';
+import '../game/cardio.dart';
 import '../net/api_client.dart';
 import '../state/training_sound.dart';
 import '../state/account_state.dart';
@@ -598,6 +599,9 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                     color: AppColors.textSecondary,
                   ),
                 ),
+                const SizedBox(height: 8),
+                // Пульс (п. 107): аура засчитывается только при повышенном пульсе.
+                _AuraPulse(rest: step.rest, color: kind.color),
                 const SizedBox(height: 4),
                 Text(
                   next == null ? 'Последнее' : 'Дальше: ${next.title}',
@@ -614,6 +618,57 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
           ),
         ),
       ),
+    );
+  }
+}
+
+/// Живой пульс в тренировке ауры: в движении — «поднят» или «ускорься»
+/// (порог — нижняя граница кардио-зоны), на отдыхе — просто значение.
+class _AuraPulse extends ConsumerWidget {
+  const _AuraPulse({required this.rest, required this.color});
+
+  final bool rest;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final bpm = ref.watch(heartRateProvider).bpm;
+    final hero = ref.watch(heroProvider);
+    final zone = hero == null
+        ? CardioScoring.zoneLowerBound()
+        : CardioScoring.zoneLowerBound(
+            resting: hero.restingHeartRate,
+            max: hero.maxHeartRate,
+          );
+    final (text, tone) = switch (bpm) {
+      null => (
+        'Нет пульса — без него аура не засчитается',
+        AppColors.textMuted,
+      ),
+      _ when rest => ('Отдых — пульс можно отпустить', AppColors.textSecondary),
+      final b when b >= zone => ('Пульс поднят — так держать', color),
+      _ => ('Ускорься: пульс должен быть от $zone', AppColors.textSecondary),
+    };
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(
+          LucideIcons.heartPulse,
+          size: 18,
+          color: bpm == null ? AppColors.textMuted : const Color(0xFFFF6B5E),
+        ),
+        const SizedBox(width: 6),
+        Text(bpm?.toString() ?? '—', style: figureStyle(size: 20)),
+        const SizedBox(width: 10),
+        Flexible(
+          child: Text(
+            text,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 13, color: tone),
+          ),
+        ),
+      ],
     );
   }
 }

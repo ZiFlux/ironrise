@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../game/goal_path.dart';
+import '../state/rest_state.dart';
 import '../game/body_part.dart';
 import '../net/api_client.dart';
 import '../net/app_log.dart';
@@ -93,6 +95,7 @@ class SettingsScreen extends ConsumerWidget {
                   ref.read(programProvider.notifier).setRhythmTrial(on),
             ),
           ],
+          const _RestTile(),
           // Тренировки в календарь телефона — он синхронизируется на часы.
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
@@ -827,4 +830,68 @@ String _accountLine(AccountState a) {
       ? 'ещё не синхронизировано'
       : 'синхр. ${syncedWhen(synced)}';
   return '${a.email} · $sync';
+}
+
+/// Отдых между подходами (п. 107): по главной цели или свой.
+class _RestTile extends ConsumerWidget {
+  const _RestTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final own = ref.watch(restSettingProvider);
+    ref.watch(heroProvider);
+    final current = restOf(ref);
+    return ListTile(
+      contentPadding: EdgeInsets.zero,
+      title: const Text('Отдых между подходами'),
+      subtitle: Text(
+        own == null
+            ? 'По цели — ${restLabel(current)}'
+            : 'Свой — ${restLabel(current)}',
+        style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+      ),
+      trailing: const Icon(
+        LucideIcons.chevronRight,
+        size: 18,
+        color: AppColors.textMuted,
+      ),
+      onTap: () => showModalBottomSheet<void>(
+        context: context,
+        backgroundColor: AppColors.surface,
+        builder: (sheet) => SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Padding(
+                padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
+                child: Text(
+                  'Таймер отдыха после подхода. Пульс ещё высокий — приложение подскажет подождать',
+                  style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+                ),
+              ),
+              for (final choice in restChoices)
+                ListTile(
+                  title: Text(
+                    choice == null
+                        ? 'По цели (${restLabel(restFor(ref.read(heroProvider)?.goal))})'
+                        : restLabel(Duration(seconds: choice)),
+                  ),
+                  trailing: choice == own
+                      ? Icon(
+                          LucideIcons.check,
+                          size: 18,
+                          color: Theme.of(sheet).colorScheme.primary,
+                        )
+                      : null,
+                  onTap: () {
+                    ref.read(restSettingProvider.notifier).set(choice);
+                    Navigator.pop(sheet);
+                  },
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }

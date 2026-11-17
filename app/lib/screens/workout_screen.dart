@@ -6,9 +6,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../state/rest_state.dart';
 import '../avatar/avatar_look.dart';
 import '../game/set_sanity.dart';
-import '../game/goal_path.dart';
 import '../state/records_state.dart';
 import '../game/to_failure.dart';
 import '../game/exercise_catalog.dart';
@@ -837,19 +837,41 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     if (record == true && mounted) _logSet(index, set);
   }
 
-  /// Отдых между подходами — по главной цели (п. 117): сила 2,5 мин, выносливость 45 с.
-  Duration get _rest => restFor(ref.read(heroProvider)?.goal);
+  /// Отдых между подходами — свой из настроек или по главной цели (п. 107, 117).
+  Duration get _rest => restOf(ref);
+
+  /// Весь текущий отдых (с добавками «+30 с») — для полоски на плашке.
+  Duration _restTotal = const Duration(seconds: 90);
 
   void _logSet(int index, SetRecord set) {
     _workout.logSet(index, set);
-    setState(() => _restEndsAt = DateTime.now().add(_rest));
     TrainingSound.rest();
+    _startRest(_rest);
+  }
+
+  /// Запустить (или продлить) отдых: плашка, звонок в конце, метка в журнал.
+  void _startRest(Duration total, {DateTime? from}) {
+    final start = from ?? DateTime.now();
+    setState(() {
+      _restTotal = total;
+      _restEndsAt = start.add(total);
+    });
     _restBell?.cancel();
-    _restBell = Timer(_rest, () {
+    _restBell = Timer(_restEndsAt!.difference(DateTime.now()), () {
       if (!mounted) return;
       TrainingSound.start();
       _workout.mark(WorkoutEventKind.restEnd);
     });
+  }
+
+  /// «+30 с»: продлить идущий отдых.
+  void _moreRest() {
+    final ends = _restEndsAt;
+    if (ends == null) return;
+    _startRest(
+      _restTotal + const Duration(seconds: 30),
+      from: ends.subtract(_restTotal),
+    );
   }
 
   /// Ответил «был запас?» — переходим к следующему упражнению плана.
@@ -926,7 +948,8 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                   ? const SizedBox.shrink()
                   : _RestBanner(
                       left: left,
-                      total: _rest,
+                      total: _restTotal,
+                      onMore: _moreRest,
                       onSkip: () {
                         _restBell?.cancel();
                         _workout.mark(WorkoutEventKind.restSkip);
@@ -1107,7 +1130,11 @@ class _RestBanner extends StatelessWidget {
     required this.onSkip,
     this.hint,
     this.total = const Duration(seconds: 90),
+    this.onMore,
   });
+
+  /// «+30 с» к отдыху.
+  final VoidCallback? onMore;
 
   /// Весь отдых — для полоски прогресса.
   final Duration total;
@@ -1150,6 +1177,8 @@ class _RestBanner extends StatelessWidget {
                 style: figureStyle(size: 15, color: accent),
               ),
               const Spacer(),
+              if (onMore != null)
+                TextButton(onPressed: onMore, child: const Text('+30 с')),
               TextButton(onPressed: onSkip, child: const Text('Пропустить')),
             ],
           ),
