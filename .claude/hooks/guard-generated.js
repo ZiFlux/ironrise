@@ -11,6 +11,8 @@ process.stdin.on('end', () => {
   const rules = [
     [/app\/lib\/game\/exercise_data\.dart$|server\/src\/game\/exercise-data\.ts$/,
       'Сгенерированный файл. Правьте shared/exercises.json и запустите py -I tools/gen_exercises.py.'],
+    [/app\/lib\/game\/banwords_data\.dart$|server\/src\/game\/banwords-data\.ts$/,
+      'Сгенерированный файл. Правьте shared/banwords.json и запустите py -I tools/gen_banwords.py.'],
     [/server\/src\/legal\/privacy-text\.ts$|docs\/PRIVACY\.md$/,
       'Сгенерированный файл. Правьте app/lib/legal/privacy_policy.dart и запустите (из app/) dart run tool/gen_privacy.dart.'],
     [/server\/src\/generated\//,

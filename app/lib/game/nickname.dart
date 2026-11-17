@@ -1,6 +1,8 @@
 /// Ники: те же правила, что на сервере (server/src/game/nickname.ts).
 library;
 
+import 'banwords_data.dart';
+
 /// Смена ника — раз в 30 дней (первая — сразу); раньше — за монеты.
 const nicknameChangeDays = 30;
 const nicknameChangeCoins = 300;
@@ -18,6 +20,7 @@ String? nicknameProblem(String raw) {
   if (n.length > 20) return 'Не длиннее 20 знаков';
   if (!_allowed.hasMatch(n)) return 'Только буквы, цифры, пробел и _';
   if (isReservedNickname(n)) return 'Этот ник занят проектом';
+  if (isOffensiveNickname(n)) return 'Без мата, оскорблений и политики';
   return null;
 }
 
@@ -64,8 +67,79 @@ bool isReservedNickname(String nickname) {
 String? nicknameServerError(String message) => switch (message) {
   'Nickname is taken' => 'Этот ник уже занят',
   'Nickname is reserved' => 'Этот ник занят проектом',
+  'Nickname is not allowed' =>
+    'Такой ник нельзя: без мата, оскорблений и политики',
   'Not enough coins' => 'Не хватает монет',
   _ when message.startsWith('Nickname can be changed') =>
     'Ник можно менять раз в $nicknameChangeDays дней',
   _ => null,
 };
+
+// ── Фильтр ников: мат, оскорбления, разжигание, политика ──────────────────
+// Список — shared/banwords.json; логика — как в server/src/game/nickname.ts.
+
+String _squeeze(String s) =>
+    s.replaceAllMapped(RegExp(r'(.)\1+', unicode: true), (m) => m[1]!);
+
+String _mapChars(String s, Map<String, String> table) => s.runes.map((r) {
+  final ch = String.fromCharCode(r);
+  return table[ch] ?? ch;
+}).join();
+
+String _translit(String s) {
+  final out = StringBuffer();
+  var i = 0;
+  while (i < s.length) {
+    final hit = banTranslitToCyr
+        .where((p) => s.startsWith(p.$1, i))
+        .firstOrNull;
+    if (hit != null) {
+      out.write(hit.$2);
+      i += hit.$1.length;
+    } else {
+      out.write(s[i]);
+      i += 1;
+    }
+  }
+  return out.toString();
+}
+
+String _cutAllowed(String s, List<String> allow) =>
+    allow.fold(s, (acc, a) => acc.split(a).join('·'));
+
+({List<String> cyr, String lat}) _formsOf(String word) {
+  final base = _squeeze(_mapChars(word.toLowerCase(), banDiacritics));
+  final look = _squeeze(_mapChars(base, banLookalikeToCyr));
+  final tr = _squeeze(_translit(base));
+  final lat = _squeeze(_mapChars(base, banToLatin));
+  return (
+    cyr: [look, tr].map((f) => _cutAllowed(f, banCyrAllow)).toList(),
+    lat: _cutAllowed(lat, banLatinAllow),
+  );
+}
+
+/// Слова ника: по пробелам, «_» и смене регистра («ПетяСука» → «Петя», «Сука»).
+List<String> _nicknameWords(String nickname) => nickname
+    .replaceAllMapped(
+      RegExp(r'(\p{Ll})(\p{Lu})', unicode: true),
+      (m) => '${m[1]} ${m[2]}',
+    )
+    .split(RegExp(r'[\s_]+'))
+    .where((w) => w.isNotEmpty)
+    .toList();
+
+/// Мат, оскорбления, разжигание или политика — такой ник нельзя.
+bool isOffensiveNickname(String nickname) {
+  final words = _nicknameWords(nickname);
+  final all = _formsOf(words.join());
+  if (all.cyr.any((f) => banCyrAnywhere.any(f.contains))) return true;
+  if (banLatinAnywhere.any(all.lat.contains)) return true;
+  return words.any((w) {
+    final f = _formsOf(w);
+    return f.cyr.any(
+          (c) => banCyrWords.contains(c) || banCyrWordStart.any(c.startsWith),
+        ) ||
+        banLatinWords.contains(f.lat) ||
+        banLatinWordStart.any(f.lat.startsWith);
+  });
+}

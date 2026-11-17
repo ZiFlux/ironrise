@@ -18,6 +18,7 @@ import { CREATOR_ITEMS, creatorOpen } from '../game/start-look';
 import {
   NICKNAME_CHANGE_COINS,
   NicknameSchema,
+  isOffensiveNickname,
   isReservedNickname,
   nextNicknameChangeAt,
   nicknameHoldUntil,
@@ -224,6 +225,7 @@ export class EconomyService {
       const key = nicknameKey(input.nickname);
       if (input.nickname === p.nickname) return this.hero.state(userId, tx);
       if (isReservedNickname(input.nickname)) throw new BadRequestException('Nickname is reserved');
+      if (isOffensiveNickname(input.nickname)) throw new BadRequestException('Nickname is not allowed');
       const sameKey = key === p.nicknameKey;
       if (!sameKey) {
         const owner = await tx.profile.findUnique({ where: { nicknameKey: key }, select: { userId: true } });

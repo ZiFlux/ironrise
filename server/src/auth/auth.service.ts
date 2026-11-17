@@ -8,7 +8,7 @@ import { BODY_PARTS } from '../game/body-part';
 import { CREATOR_ITEMS } from '../game/start-look';
 import { GoalSchema, MAX_EXTRA_GOALS } from '../game/goals';
 import { MIN_TRAINING_DAYS } from '../game/schedule';
-import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
+import { NicknameSchema, isOffensiveNickname, isReservedNickname, nicknameKey } from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
 import { PrismaService } from '../prisma.service';
 import { bannedError } from './auth.guard';
@@ -76,6 +76,7 @@ export class AuthService {
     // У нового героя открыт редактор старта: можно всё, что в нём бесплатно.
     assertLookOwned(appearance, CREATOR_ITEMS);
     if (isReservedNickname(nickname)) throw new BadRequestException('Nickname is reserved');
+    if (isOffensiveNickname(nickname)) throw new BadRequestException('Nickname is not allowed');
     const key = nicknameKey(nickname);
     if (await this.db.user.findUnique({ where: { email }, select: { id: true } })) {
       throw new ConflictException('Email is taken');
