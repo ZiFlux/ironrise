@@ -18,6 +18,7 @@ import '../game/body_part.dart';
 import '../theme.dart';
 import '../game/aura.dart';
 import '../widgets/aura_flame.dart';
+import '../widgets/info_bubble.dart';
 
 /// Анимация боя и результат с советом. Исход уже посчитан, экран только проигрывает удары.
 class DuelBattleScreen extends ConsumerStatefulWidget {
@@ -175,7 +176,17 @@ class _DuelBattleScreenState extends ConsumerState<DuelBattleScreen> {
                               fontSize: 15,
                             ),
                           )
-                        : _HitLine(hit: last, duel: duel),
+                        : Tappable(
+                            semantics: 'Как посчитан удар',
+                            onTap: (c) => _showHitInfo(c, last, duel),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              child: _HitLine(hit: last, duel: duel),
+                            ),
+                          ),
                   ),
                 ),
                 Align(
@@ -242,18 +253,32 @@ class _FighterPanel extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        Text(
-          fighter.name,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-        ),
-        const SizedBox(height: 2),
-        Text(
-          'сила ${fighter.power}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+        Tappable(
+          semantics: 'Уровни бойца',
+          onTap: (c) => _showFighterInfo(c, fighter),
+          child: Column(
+            children: [
+              Text(
+                fighter.name,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                'сила ${fighter.power}',
+                textAlign: TextAlign.center,
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textMuted,
+                ),
+              ),
+            ],
+          ),
         ),
         const SizedBox(height: 8),
         ClipRRect(
@@ -692,4 +717,52 @@ class _FlashPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_FlashPainter old) => old.t != t;
+}
+
+/// Облако над панелью бойца (п. 127, 18): уровни частей тела и откуда сила.
+void _showFighterInfo(BuildContext anchor, Fighter fighter) {
+  final parts = fighter.levels.entries.where((e) => e.key != BodyPart.cardio);
+  final top = parts.reduce((a, b) => a.value >= b.value ? a : b).key;
+  showInfoBubble(
+    anchor,
+    title: '${fighter.name} · сила ${fighter.power}',
+    text:
+        '${[for (final e in fighter.levels.entries) '${e.key.label} ${e.value}'].join(' · ')}\n'
+        'Сила — сумма уровней и серия тренировок, с поправкой на баланс тела. '
+        'Чаще и больнее всего бьёт самой прокачанной частью: '
+        '${top.label.toLowerCase()}.',
+  );
+}
+
+/// Облако над строкой удара (п. 127, 18): из чего сложился урон.
+void _showHitInfo(BuildContext anchor, DuelHit hit, DuelResult duel) {
+  final fighter = hit.byAttacker ? duel.attacker : duel.defender;
+  final miss = (GameConfig.duelMissChance * 100).round();
+  final crit = (GameConfig.duelCritChance * 100).round();
+  final critX = GameConfig.duelCritMultiplier.toStringAsFixed(0);
+  final lines = <String>[
+    switch (hit.kind) {
+      HitKind.miss => 'Промах: так выходит в $miss % ударов, у всех одинаково.',
+      HitKind.skip => 'Пропуск хода из-за случайного события.',
+      HitKind.hit =>
+        'Урон ≈ сила / 20 с поправкой на уровень части тела '
+            '(${hit.part.label.toLowerCase()} ${fighter.levels[hit.part]}) '
+            'и разбросом ±15 %.',
+      HitKind.crit =>
+        'Крит (шанс $crit %): урон ×$critX. Основа — сила / 20 с поправкой на '
+            'уровень части тела (${hit.part.label.toLowerCase()} '
+            '${fighter.levels[hit.part]}).',
+    },
+    if (hit.boosted) 'Событие перед ударом: ×1,5.',
+    for (final a in hit.auras)
+      '${a.kind.label} (${a.attacker == hit.byAttacker ? 'у бьющего' : 'у соперника'}): '
+          '${a.kind.effect.split(': ').last}.',
+  ];
+  showInfoBubble(
+    anchor,
+    title: hit.kind == HitKind.miss || hit.kind == HitKind.skip
+        ? null
+        : '−${hit.damage} по части «${hit.part.label.toLowerCase()}»',
+    text: lines.join('\n'),
+  );
 }
