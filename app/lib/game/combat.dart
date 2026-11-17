@@ -2,6 +2,8 @@
 /// (server/src/game/combat.ts, docs/COMBAT.md). Считает сервер, здесь — подписи.
 library;
 
+import 'aura.dart';
+
 /// Действие шага. Порядок и имена — как в COMBAT_ACTIONS на сервере.
 enum CombatAction {
   body('В корпус', 'Обычный удар'),
@@ -51,7 +53,19 @@ class CombatStep {
     required this.hpD,
     this.eventId,
     this.eventOwnerIsAttacker = false,
+    this.auras = const [],
   });
+
+  /// Ауры, горящие на этом шаге: чья, какая и включилась ли сейчас.
+  final List<({bool attacker, AuraKind kind, bool start})> auras;
+
+  /// Аура бойца на этом шаге (null — не горит).
+  ({AuraKind kind, bool start})? auraOf({required bool attacker}) {
+    for (final m in auras) {
+      if (m.attacker == attacker) return (kind: m.kind, start: m.start);
+    }
+    return null;
+  }
 
   final int round;
   final int step;
@@ -81,6 +95,15 @@ class CombatStep {
     hpD: (j['hpD'] as num).toInt(),
     eventId: (j['event'] as Map?)?['id'] as String?,
     eventOwnerIsAttacker: (j['event'] as Map?)?['owner'] == 'attacker',
+    auras: [
+      for (final m in (j['auras'] as List? ?? const []))
+        if (AuraKind.values.asNameMap()[m['kind']] case final kind?)
+          (
+            attacker: m['owner'] == 'attacker',
+            kind: kind,
+            start: m['start'] == true,
+          ),
+    ],
   );
 }
 

@@ -7,6 +7,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
+import '../game/aura.dart';
 import '../game/combat.dart';
 import '../game/duel.dart';
 import '../game/duel_flavor.dart';
@@ -14,6 +15,7 @@ import '../net/api_client.dart';
 import '../state/fight_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/aura_flame.dart';
 import '../widgets/info_bubble.dart';
 import '../widgets/status_toast.dart';
 
@@ -139,6 +141,10 @@ class _FightScreenState extends ConsumerState<FightScreen> {
                         hp: hpA,
                         max: fight.powerA,
                         player: true,
+                        aura: playing
+                            ? step?.auraOf(attacker: true)?.kind
+                            : null,
+                        auraKey: step == null ? 0 : step.round * 10 + step.step,
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -149,6 +155,10 @@ class _FightScreenState extends ConsumerState<FightScreen> {
                         hp: hpD,
                         max: fight.powerD,
                         player: false,
+                        aura: playing
+                            ? step?.auraOf(attacker: false)?.kind
+                            : null,
+                        auraKey: step == null ? 0 : step.round * 10 + step.step,
                       ),
                     ),
                   ],
@@ -198,7 +208,13 @@ class _Side extends StatelessWidget {
     required this.hp,
     required this.max,
     required this.player,
+    this.aura,
+    this.auraKey = 0,
   });
+
+  /// Аура, горящая на показанном шаге: пламя вокруг героя.
+  final AuraKind? aura;
+  final int auraKey;
 
   final Fighter fighter;
   final AvatarLook look;
@@ -241,7 +257,15 @@ class _Side extends StatelessWidget {
           style: figureStyle(size: 13),
         ),
         Expanded(
-          child: player ? avatar : Transform.flip(flipX: true, child: avatar),
+          child: AuraHero(
+            // Длительная аура (ярость, стойкость) — одна анимация на весь срок.
+            key: ValueKey(
+              aura == null ? 'none' : (aura!.burst ? 'a$auraKey' : aura!.name),
+            ),
+            kind: aura,
+            burst: aura?.burst ?? false,
+            child: player ? avatar : Transform.flip(flipX: true, child: avatar),
+          ),
         ),
       ],
     );
@@ -268,6 +292,20 @@ class _StepLine extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
+        for (final (attacker, f) in [
+          (true, fight.attacker),
+          (false, fight.defender),
+        ])
+          if (step.auraOf(attacker: attacker) case (:final kind, start: true))
+            Text(
+              '${f.name}: ${kind.label}! ${kind.effect.split(': ').last}',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: kind.color,
+              ),
+            ),
         if (event != null)
           Text(
             event.phrase(who.name, female: who.isFemale),

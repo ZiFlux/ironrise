@@ -269,6 +269,11 @@ final routerProvider = Provider<GoRouter>((ref) {
 /// Вкладок в нижней панели: Герой, Тренировка, Дуэли, Рейтинг, Профиль.
 const _tabCount = 5;
 
+/// Корни вкладок: только на них свайп вбок листает вкладки. На вложенных экранах
+/// (бой, итог тренировки, настройки) жест мешал — палец, чуть съехав при нажатии
+/// кнопки, уводил на соседнюю вкладку, а начатый бой оставался незаконченным.
+const tabRoots = {'/', '/workout', '/duels', '/rating', '/profile'};
+
 /// Иконки и подписи вкладок — для подсказки, куда ведёт натяжение.
 const _tabs = [
   (LucideIcons.personStanding, 'Герой'),
@@ -323,6 +328,16 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
 
   void _pullStart(DragStartDetails d) {
     _snap.stop();
+    final path = GoRouter.of(context)
+        .routerDelegate
+        .currentConfiguration
+        .uri
+        .path;
+    if (!tabRoots.contains(path)) {
+      _pullFrom = null;
+      _pullCancelled = true;
+      return;
+    }
     _pullFrom = d.globalPosition;
     _pullCancelled = false;
     setState(() => _pull = Offset.zero);
@@ -341,6 +356,7 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
   }
 
   void _pullEnd(DragEndDetails _) {
+    if (_pullFrom == null) return;
     final shell = widget.shell;
     final width = MediaQuery.sizeOf(context).width;
     final next = shell.currentIndex + (_pull.dx < 0 ? 1 : -1);

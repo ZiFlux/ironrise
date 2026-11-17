@@ -36,6 +36,18 @@ class DuelsScreen extends ConsumerStatefulWidget {
 class _DuelsScreenState extends ConsumerState<DuelsScreen> {
   bool _friendsTab = false;
 
+  @override
+  void initState() {
+    super.initState();
+    // Начатый бой (ушли с экрана, закрыли приложение) — показать «Продолжить».
+    Future.microtask(() {
+      if (!mounted || !ref.read(accountProvider).signedIn) return;
+      if (ref.read(fightProvider) == null) {
+        ref.read(fightProvider.notifier).resume();
+      }
+    });
+  }
+
   /// Бой по раундам (docs/COMBAT.md): начать и открыть экран боя. Есть
   /// незаконченный — продолжить его.
   Future<void> _openFight(Future<FightView> Function() start) async {
@@ -93,6 +105,16 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
       header: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (ref.watch(fightProvider) case final f? when !f.finished)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: _ResumeFight(
+                rival: f.defender.name,
+                round: f.round,
+                rounds: f.rules.rounds,
+                onTap: () => context.go('/duels/fight'),
+              ),
+            ),
           // Сезон и аура — на виду: прогресс батлпаса и способность для боя.
           const _Perks(),
           const SizedBox(height: 4),
@@ -870,6 +892,51 @@ class _LadderLine extends StatelessWidget {
             ),
           ),
         ],
+      ),
+    );
+  }
+}
+
+/// Плашка начатого боя: продолжить с того раунда, где остановились.
+class _ResumeFight extends StatelessWidget {
+  const _ResumeFight({
+    required this.rival,
+    required this.round,
+    required this.rounds,
+    required this.onTap,
+  });
+
+  final String rival;
+  final int round;
+  final int rounds;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(12, 8, 8, 8),
+          child: Row(
+            children: [
+              Icon(LucideIcons.swords, size: 18, color: accent),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Бой с $rival не закончен · раунд ${round + 1} из $rounds',
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 13),
+                ),
+              ),
+              TextButton(onPressed: onTap, child: const Text('Продолжить')),
+            ],
+          ),
+        ),
       ),
     );
   }

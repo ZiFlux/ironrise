@@ -119,8 +119,10 @@ class FightNotifier extends Notifier<FightView?> {
       final j = await ref.read(apiProvider).get('/v1/fights/current');
       if (j['fightId'] == null) return null;
       return state = FightView.fromJson(j);
-    } on FormatException {
-      return null; // пустой ответ — боя нет
+    } on Object {
+      // Нет сети или пустой ответ — считаем, что боя нет; сервер всё равно
+      // не даст начать второй и подскажет доиграть.
+      return null;
     }
   }
 
