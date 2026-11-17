@@ -91,7 +91,7 @@ export const assertLookOwned = (look: Record<string, unknown>, owned: ReadonlySe
   if (unpaid.length) throw new BadRequestException(`Items are not owned: ${unpaid.join(', ')}`);
 };
 
-const lockProfile = (tx: Prisma.TransactionClient, userId: string) =>
+export const lockProfile = (tx: Prisma.TransactionClient, userId: string) =>
   tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
 
 /** Купленное и выданное; пока открыт редактор стартового образа — ещё и его вещи. */
@@ -339,7 +339,7 @@ export class EconomyService {
     const ladder = ladderTier(profile.botTier);
     const unlocked = bossUnlocked(ladder.tier, beaten);
     const fought = await this.db.duel.findMany({
-      where: { attackerId: userId, day, opponentKind: 'bot' },
+      where: { attackerId: userId, day, opponentKind: 'bot', finished: true },
       select: { opponentId: true, attackerWon: true, createdAt: true },
       orderBy: { createdAt: 'asc' },
     });
@@ -376,59 +376,87 @@ export class EconomyService {
   }
 
   /**
-   * Бой с ботом дня: исход, лог и монеты считает сервер. С тем же ботом — снова
-   * через duelCooldownHours; повторные бои за сутки дают duelRepeatCoinFactor монет.
+   * Проверки перед боем с ботом лестницы: бот своей ступени, босс открыт,
+   * перезарядка прошла. Возвращает снимки бойцов и контекст для наград.
+   */
+  async prepareBotFight(tx: Prisma.TransactionClient, userId: string, botId: string) {
+    const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
+    const day = localDay(new Date(), profile.timezone);
+    const hero = await this.hero.state(userId, tx);
+    // Драться можно только с ботами своей ступени лестницы; босс — после 3 побед.
+    const ladder = ladderTier(profile.botTier);
+    const beaten = readBeaten(profile.botBeaten);
+    const bot: Bot | undefined = [...ladder.bots, ladder.boss].find((b) => b.id === botId);
+    if (!bot) throw new BadRequestException('No such bot today');
+    if (isBossId(bot.id) && !bossUnlocked(ladder.tier, beaten)) throw new ForbiddenException('Boss is locked');
+    const earlier = await tx.duel.findMany({
+      where: { attackerId: userId, opponentId: botId, day },
+      select: { createdAt: true },
+      orderBy: { createdAt: 'desc' },
+    });
+    const last = earlier[0];
+    if (last) {
+      const next = new Date(last.createdAt.getTime() + C.duelCooldownHours * HOUR);
+      if (next > new Date()) {
+        throw new ConflictException({ message: 'Bot is on cooldown', nextFightAt: next.toISOString() });
+      }
+    }
+    const attacker = {
+      id: userId,
+      name: hero.nickname,
+      levels: hero.levels,
+      streakDays: hero.streakDays,
+      aura: await auraSnapshot(tx, userId),
+    };
+    return { day, bot, attacker, repeat: earlier.length > 0 };
+  }
+
+  /**
+   * Награды боя с ботом лестницы: первая победа — полные монеты и отметка, босс —
+   * ступень выше; повторные — 30 %. Очки сезона — только за первый бой с ботом за сутки.
+   */
+  async settleBotFight(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    args: { botId: string; won: boolean; repeat: boolean; duelId: string },
+  ) {
+    const profile = await tx.profile.findUniqueOrThrow({ where: { userId }, select: { botTier: true, botBeaten: true } });
+    const ladder = ladderTier(profile.botTier);
+    const beaten = readBeaten(profile.botBeaten);
+    const boss = isBossId(args.botId);
+    // Бот не своей ступени (ступень сменилась, пока шёл бой) — без отметки и подъёма.
+    const ofTier = args.botId.startsWith(`lad_${ladder.tier}_`);
+    const firstWin = args.won && ofTier && !beaten.includes(args.botId);
+    const coins = ladderCoins({ tier: ladder.tier, won: args.won, firstWin, boss });
+    let tierUp = false;
+    if (firstWin) {
+      tierUp = boss && ladder.tier < LADDER.length - 1;
+      await tx.profile.update({
+        where: { userId },
+        data: {
+          botBeaten: [...beaten, args.botId],
+          ...(tierUp ? { botTier: clampTier(ladder.tier + 1) } : {}),
+        },
+      });
+    }
+    if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: args.duelId } });
+    // Повторный бой за сутки очков сезона не даёт — иначе их фармят у одного бота.
+    if (!args.repeat) {
+      await addSeasonPoints(tx, userId, args.won ? SEASON_POINTS.duelWin : SEASON_POINTS.duelLoss);
+    }
+    return { coins, firstWin, boss, tierUp };
+  }
+
+  /**
+   * Автобой с ботом (версии приложения до боя по раундам): исход, лог и монеты
+   * считает сервер. С тем же ботом — снова через duelCooldownHours.
    */
   async fightBot(userId: string, botId: string) {
     return this.db.$transaction(async (tx) => {
       await lockProfile(tx, userId);
-      const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
-      const day = localDay(new Date(), profile.timezone);
-      const hero = await this.hero.state(userId, tx);
-      // Драться можно только с ботами своей ступени лестницы; босс — после 3 побед.
-      const ladder = ladderTier(profile.botTier);
-      const beaten = readBeaten(profile.botBeaten);
-      const bot: Bot | undefined = [...ladder.bots, ladder.boss].find((b) => b.id === botId);
-      if (!bot) throw new BadRequestException('No such bot today');
-      const boss = isBossId(bot.id);
-      if (boss && !bossUnlocked(ladder.tier, beaten)) throw new ForbiddenException('Boss is locked');
-      const earlier = await tx.duel.findMany({
-        where: { attackerId: userId, opponentId: botId, day },
-        select: { createdAt: true },
-        orderBy: { createdAt: 'desc' },
-      });
-      const last = earlier[0];
-      if (last) {
-        const next = new Date(last.createdAt.getTime() + C.duelCooldownHours * HOUR);
-        if (next > new Date()) {
-          throw new ConflictException({ message: 'Bot is on cooldown', nextFightAt: next.toISOString() });
-        }
-      }
-      const repeat = earlier.length > 0;
-
-      const attacker = {
-        id: userId,
-        name: hero.nickname,
-        levels: hero.levels,
-        streakDays: hero.streakDays,
-        aura: await auraSnapshot(tx, userId),
-      };
+      const { day, bot, attacker, repeat } = await this.prepareBotFight(tx, userId, botId);
       const seed = Math.floor(Math.random() * 2 ** 31);
       const result = simulateDuel(attacker, bot, seed);
-      // Первая победа над ботом — полная награда, повторные — 30 % (п. 88).
-      const firstWin = result.attackerWon && !beaten.includes(bot.id);
-      const coins = ladderCoins({ tier: ladder.tier, won: result.attackerWon, firstWin, boss });
-      let tierUp = false;
-      if (firstWin) {
-        tierUp = boss && ladder.tier < LADDER.length - 1;
-        await tx.profile.update({
-          where: { userId },
-          data: {
-            botBeaten: [...beaten, bot.id],
-            ...(tierUp ? { botTier: clampTier(ladder.tier + 1) } : {}),
-          },
-        });
-      }
       const duel = await tx.duel.create({
         data: {
           attackerId: userId,
@@ -442,24 +470,18 @@ export class EconomyService {
           powerD: result.powerD,
           log: result.log as unknown as Prisma.InputJsonValue,
           attackerWon: result.attackerWon,
-          coins,
+          coins: 0,
         },
       });
-      if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
-      // Повторный бой за сутки очков сезона не даёт — иначе их фармят у одного бота.
-      if (!repeat) {
-        await addSeasonPoints(tx, userId, result.attackerWon ? SEASON_POINTS.duelWin : SEASON_POINTS.duelLoss);
-      }
+      const reward = await this.settleBotFight(tx, userId, { botId: bot.id, won: result.attackerWon, repeat, duelId: duel.id });
+      await tx.duel.update({ where: { id: duel.id }, data: { coins: reward.coins } });
       return {
         duelId: duel.id,
         attacker,
         defender: bot,
         ...result,
-        coins,
+        ...reward,
         repeat,
-        firstWin,
-        boss,
-        tierUp,
         hero: await this.hero.state(userId, tx),
       };
     });

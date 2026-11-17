@@ -19,6 +19,8 @@ import { PushController } from './push/push.controller';
 import { PushService } from './push/push.service';
 import { SocialController } from './social/social.controller';
 import { SocialService } from './social/social.service';
+import { FightsController } from './fights/fights.controller';
+import { FightsService } from './fights/fights.service';
 import { WorkoutsController } from './workouts/workouts.controller';
 import { WorkoutsService } from './workouts/workouts.service';
 import { AntiCheatService } from './workouts/anti-cheat.service';
@@ -45,11 +47,11 @@ const jwtSecret = () => {
   ],
   controllers: [
     LogsController, LegalController, AdminController,
-    HealthController, AuthController, WorkoutsController, EconomyController, SocialController, PushController, NotificationsController, JointController,
+    HealthController, AuthController, WorkoutsController, EconomyController, SocialController, FightsController, PushController, NotificationsController, JointController,
     // Только на сервере разработки: выдача монет и прочие инструменты.
     ...(devToolsEnabled ? [DevController] : []),
   ],
-  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, AntiCheatService, EconomyService, SocialService, PushService, JointService, LogRetention],
+  providers: [PrismaService, AuthService, AuthGuard, HeroService, WorkoutsService, AntiCheatService, EconomyService, SocialService, FightsService, PushService, JointService, LogRetention],
 })
 export class AppModule implements NestModule {
   /** Ограничение частоты: перебор паролей и заваливание запросами (common/rate-limit.ts). */

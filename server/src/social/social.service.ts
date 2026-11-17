@@ -136,7 +136,7 @@ export class SocialService {
     });
     const day = await this.economy.today(userId);
     const fought = await this.db.duel.findMany({
-      where: { attackerId: userId, opponentKind: 'user', day },
+      where: { attackerId: userId, opponentKind: 'user', day, finished: true },
       select: { opponentId: true, attackerWon: true },
     });
     const results = Object.fromEntries(fought.map((f) => [f.opponentId, f.attackerWon]));
@@ -161,28 +161,50 @@ export class SocialService {
   }
 
   /**
-   * Дуэль с другом: друг может быть офлайн — бой идёт против снимка его героя.
-   * С каждым другом — раз в день, всего не больше FRIEND_DUELS_PER_DAY.
+   * Проверки перед боем с другом: дружба, раз в день с каждым, дневной лимит.
+   * Друг может быть офлайн — бой идёт против снимка его героя.
    */
+  async prepareFriendFight(tx: Prisma.TransactionClient, userId: string, friendId: string) {
+    const rel = await this.relation(userId, friendId, tx);
+    if (rel?.status !== 'accepted') throw new BadRequestException('Not friends');
+    const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
+    const day = localDay(new Date(), profile.timezone);
+    if (await tx.duel.findFirst({ where: { attackerId: userId, opponentId: friendId, day }, select: { id: true } })) {
+      throw new ConflictException('Already fought this friend today');
+    }
+    const today = await tx.duel.count({ where: { attackerId: userId, opponentKind: 'user', day } });
+    if (today >= FRIEND_DUELS_PER_DAY) throw new ConflictException('Daily friend duel limit reached');
+    const attacker = { ...snapshotOf(userId, await this.hero.state(userId, tx)), aura: await auraSnapshot(tx, userId) };
+    const defender = { ...snapshotOf(friendId, await this.hero.state(friendId, tx)), aura: await auraSnapshot(tx, friendId) };
+    return { day, attacker: attacker as FighterSnapshot & typeof attacker, defender: defender as FighterSnapshot & typeof defender };
+  }
+
+  /** Награда за бой с другом и пуш ему: напали и победили / ты отбился. */
+  async settleFriendFight(
+    tx: Prisma.TransactionClient,
+    userId: string,
+    args: { friendId: string; attackerName: string; won: boolean; duelId: string },
+  ) {
+    const coins = args.won ? C.duelWinCoins : C.duelLossCoins;
+    await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: args.duelId } });
+    this.push.notify(args.friendId, {
+      type: 'attacked',
+      title: args.won ? 'На тебя напали и победили' : 'Ты отбился!',
+      body: args.won
+        ? `${args.attackerName} одолел тебя в дуэли. Вызови в ответ`
+        : `${args.attackerName} напал, но твой герой выстоял`,
+      screen: 'duels',
+    });
+    return { coins };
+  }
+
+  /** Автобой с другом (версии приложения до боя по раундам). */
   fight(userId: string, friendId: string) {
     return this.db.$transaction(async (tx) => {
       await tx.$executeRaw`SELECT 1 FROM "Profile" WHERE "userId" = ${userId}::uuid FOR UPDATE`;
-      const rel = await this.relation(userId, friendId, tx);
-      if (rel?.status !== 'accepted') throw new BadRequestException('Not friends');
-
-      const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
-      const day = localDay(new Date(), profile.timezone);
-      if (await tx.duel.findFirst({ where: { attackerId: userId, opponentId: friendId, day }, select: { id: true } })) {
-        throw new ConflictException('Already fought this friend today');
-      }
-      const today = await tx.duel.count({ where: { attackerId: userId, opponentKind: 'user', day } });
-      if (today >= FRIEND_DUELS_PER_DAY) throw new ConflictException('Daily friend duel limit reached');
-
-      const attacker = { ...snapshotOf(userId, await this.hero.state(userId, tx)), aura: await auraSnapshot(tx, userId) };
-      const defender = { ...snapshotOf(friendId, await this.hero.state(friendId, tx)), aura: await auraSnapshot(tx, friendId) };
+      const { day, attacker, defender } = await this.prepareFriendFight(tx, userId, friendId);
       const seed = Math.floor(Math.random() * 2 ** 31);
-      const result = simulateDuel(attacker as FighterSnapshot, defender as FighterSnapshot, seed);
-      const coins = result.attackerWon ? C.duelWinCoins : C.duelLossCoins;
+      const result = simulateDuel(attacker, defender, seed);
       const duel = await tx.duel.create({
         data: {
           attackerId: userId,
@@ -196,18 +218,16 @@ export class SocialService {
           powerD: result.powerD,
           log: result.log as unknown as Prisma.InputJsonValue,
           attackerWon: result.attackerWon,
-          coins,
+          coins: 0,
         },
       });
-      await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: duel.id } });
-      this.push.notify(friendId, {
-        type: 'attacked',
-        title: result.attackerWon ? 'На тебя напали и победили' : 'Ты отбился!',
-        body: result.attackerWon
-          ? `${attacker.name} одолел тебя в дуэли. Вызови в ответ`
-          : `${attacker.name} напал, но твой герой выстоял`,
-        screen: 'duels',
+      const { coins } = await this.settleFriendFight(tx, userId, {
+        friendId,
+        attackerName: attacker.name,
+        won: result.attackerWon,
+        duelId: duel.id,
       });
+      await tx.duel.update({ where: { id: duel.id }, data: { coins } });
       return { duelId: duel.id, attacker, defender, ...result, coins, hero: await this.hero.state(userId, tx) };
     });
   }
@@ -216,7 +236,7 @@ export class SocialService {
   async attacksOnMe(userId: string) {
     const since = new Date(Date.now() - 7 * 86_400_000);
     const duels = await this.db.duel.findMany({
-      where: { opponentKind: 'user', opponentId: userId, createdAt: { gte: since } },
+      where: { opponentKind: 'user', opponentId: userId, createdAt: { gte: since }, finished: true },
       include: { attacker: { select: { profile: { select: { nickname: true } } } } },
       orderBy: { createdAt: 'desc' },
       take: 20,

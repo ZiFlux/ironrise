@@ -254,12 +254,17 @@ model Duel {
   attackerWon Boolean
   coins       Int
   createdAt   DateTime @default(now())
+  /// Бой по раундам (docs/COMBAT.md): false — идёт, state — состояние раунда (CombatState).
+  finished    Boolean  @default(true)
+  state       Json?
+  updatedAt   DateTime @default(now()) @updatedAt
 
   /// С ботом — снова через 5 часов, с другом — раз в день (проверяет сервис).
   @@index([attackerId, opponentId, day])
   @@index([attackerId, day])
   /// Лента «кто на тебя нападал».
   @@index([opponentKind, opponentId, createdAt])
+  @@index([attackerId, finished])
 }
 
 enum FriendshipStatus {
