@@ -35,6 +35,9 @@ class ExerciseLadder {
     'hammer_curl': 0.15,
     'triceps_pushdown': 0.3,
     'french_press': 0.25,
+    'hip_thrust': 0.8,
+    'sumo_squat': 0.3,
+    'lying_leg_curl': 0.4,
   };
 
   /// Женщинам те же ступени — при меньшей доле веса тела.

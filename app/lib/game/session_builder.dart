@@ -114,6 +114,15 @@ const _pullV = ['pull_up', 'negative_pull_up', 'lat_pulldown'];
 const _pullH = ['barbell_row', 'seated_cable_row', 'db_row'];
 const _press = ['overhead_press', 'db_shoulder_press'];
 const _abs = ['hanging_leg_raise', 'crunches', 'plank', 'dead_bug'];
+const _fly = ['pec_deck', 'cable_fly', 'db_fly'];
+
+/// Движения низа: по ним видно, что день тренирует ноги.
+const _lowerPatterns = {'squat', 'hinge', 'lunge'};
+
+/// Упражнения с меткой `f` (shared/exercises.json) — чаще выбирают девушки.
+/// По полу аватара: девушкам — небольшой приоритет и ягодичная изоляция в дни ног,
+/// остальным — только если другого варианта нет.
+bool _marked(Exercise e) => e.marker == 'f';
 
 const _fullBodyA = _DayTemplate('A', 'Всё тело А', [
   _Slot('squat', 1, _squat),
@@ -146,6 +155,7 @@ const _upper = _DayTemplate('U', 'Верх', [
   _Slot('biceps', 2),
   _Slot('triceps', 2),
   _Slot('rear_delts', 3),
+  _Slot('chest_fly', 3, _fly),
 ]);
 
 const _lower = _DayTemplate('L', 'Низ', [
@@ -175,6 +185,7 @@ const _splitChest = _DayTemplate('S2', 'Грудь, трицепс, предпл
   _Slot('push_h', 1, _bench),
   _Slot('push_h', 1, ['db_bench_press', 'machine_chest_press', 'push_up']),
   _Slot('triceps', 1),
+  _Slot('chest_fly', 2, _fly),
   _Slot('triceps', 2, ['french_press', 'triceps_pushdown', 'bench_dips']),
   _Slot('biceps', 2, ['hammer_curl']),
   _Slot('delts', 2),
@@ -252,6 +263,7 @@ class SessionBuilder {
     bool start = false,
     BodyPart? lagging,
     Goal? goal,
+    bool female = false,
   }) {
     // Путь цели (п. 117): «Старт» одинаков для всех — без него.
     final path = start || goal == null ? null : GoalPath.of(goal, level);
@@ -282,6 +294,7 @@ class SessionBuilder {
           t == _focus || _trains(t, lagging) ? lagging : null,
           bodyweightFirst: bodyweightFirst,
           maxExercises: maxExercises,
+          female: female,
         ),
     ];
     final sets = _distributeSets(
@@ -310,8 +323,10 @@ class SessionBuilder {
     BodyPart? lagging, {
     bool bodyweightFirst = false,
     int? maxExercises,
+    bool female = false,
   }) {
     var slots = [...t.slots];
+    if (female) slots = _femaleSlots(slots);
     if (lagging != null && lagging != BodyPart.cardio) {
       // В день отстающей части её движения — первыми и обязательными.
       final forPart = _partSlots[lagging] ?? const <_Slot>[];
@@ -327,6 +342,7 @@ class SessionBuilder {
         stepOf,
         used,
         bodyweightFirst: bodyweightFirst,
+        female: female,
       );
       if (e == null) continue;
       used.add(e.id);
@@ -337,6 +353,32 @@ class SessionBuilder {
     final kept = byPriority.take(maxExercises ?? level.exercises).toList()
       ..sort((a, b) => a.$2 - b.$2);
     return [for (final c in kept) (exercise: c.$3, compound: c.$4)];
+  }
+
+  /// Слоты дня для девушки: в ягодичных шарнирах первым — мост со штангой,
+  /// в дни ног после первого движения низа — ягодичная изоляция (приоритет 2,
+  /// раньше прочих необязательных), в конце — сведение ног.
+  static List<_Slot> _femaleSlots(List<_Slot> slots) {
+    final out = [
+      for (final s in slots)
+        s.pattern == 'hinge' && s.prefer.contains('glute_bridge')
+            ? _Slot(s.pattern, s.priority, ['hip_thrust', ...s.prefer])
+            : s,
+    ];
+    final firstLower = out.indexWhere(
+      (s) => _lowerPatterns.contains(s.pattern),
+    );
+    if (firstLower < 0) return out;
+    out.insert(
+      firstLower + 1,
+      const _Slot('glutes_iso', 2, [
+        'hip_abduction',
+        'cable_kickback',
+        'donkey_kick',
+      ]),
+    );
+    out.add(const _Slot('adductors', 3));
+    return out;
   }
 
   /// День тренирует эту часть тела: в нём есть её движения.
@@ -380,6 +422,7 @@ class SessionBuilder {
     int Function(String pattern) stepOf,
     Set<String> used, {
     bool bodyweightFirst = false,
+    bool female = false,
   }) {
     bool ok(Exercise e) => isAvailable(e.id, equipment) && !used.contains(e.id);
     final preferBodyweight =
@@ -412,7 +455,8 @@ class SessionBuilder {
                 (preferBodyweight
                     ? (e.usesWeight ? 5 : 0)
                     : (equipment == Equipment.gym && !e.usesWeight ? 5 : 0)) +
-                e.difficulty;
+                e.difficulty +
+                (_marked(e) ? (female ? -4 : 15) : 0);
             return rank(a) - rank(b);
           });
     return options.firstOrNull;

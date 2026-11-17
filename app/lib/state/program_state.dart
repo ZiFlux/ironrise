@@ -2,6 +2,7 @@ import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../avatar/avatar_look.dart';
 import '../game/body_part.dart';
 import '../game/exercise_ladder.dart';
 import '../game/program.dart';
@@ -96,6 +97,7 @@ class UserProgram {
     TrainingLevel level = TrainingLevel.novice,
     BodyPart? lagging,
     Goal? goal,
+    bool female = false,
   }) {
     final start = phaseFor(level) == ProgramPhase.start;
     return SessionBuilder.days(
@@ -108,6 +110,7 @@ class UserProgram {
       start: start,
       lagging: start ? null : lagging,
       goal: goal,
+      female: female,
     );
   }
 
@@ -127,6 +130,7 @@ class UserProgram {
     TrainingFormat format = TrainingFormat.custom,
     bool adjacent = false,
     Goal? goal,
+    bool female = false,
   }) {
     final all = days(
       sessionsPerWeek,
@@ -135,6 +139,7 @@ class UserProgram {
       goal: goal,
       level: level,
       lagging: lagging,
+      female: female,
     );
     final planned = Periodization.planned(
       level: level,
@@ -157,6 +162,7 @@ class UserProgram {
       avoid: avoidedZones(now),
       disliked: dislikedNow(now),
       equipment: equipment,
+      female: female,
     ).withVariant(variant);
   }
 
@@ -504,6 +510,8 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       format: hero?.format ?? TrainingFormat.custom,
       adjacent: hasAdjacentDays(hero?.loadDays ?? const []),
       goal: hero?.goal,
+      // Подбор упражнений — по полу аватара (метка `f` в базе упражнений).
+      female: hero?.look.sex == AvatarSex.female,
     );
 
 /// Уровень по входной тренировке (п. 116), а без неё — по анкете героя.

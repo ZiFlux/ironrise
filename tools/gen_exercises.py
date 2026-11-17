@@ -38,6 +38,7 @@ def check(data):
             assert MUSCLE_PART[m] in e['shares'], f"{e['id']}: мышца {m} вне частей тела упражнения"
         assert abs(sum(e['muscles'].values()) - 1) < 1e-6, f"доли мышц {e['id']}"
         assert e['difficulty'] in (1, 2, 3), e['id']
+        assert e.get('marker') in (None, 'f'), e['id']
         assert set(e.get('joints', [])) <= JOINTS, e['id']
     for e in data['warmup']:
         assert set(e['targets']) <= PARTS, e['id']
@@ -71,6 +72,8 @@ def dart(data):
             fields.append(f"defaultReps: {e['defaultReps']}")
         if e.get('joints'):
             fields.append('joints: {' + ', '.join(dstr(j) for j in e['joints']) + '}')
+        if e.get('marker'):
+            fields.append(f"marker: {dstr(e['marker'])}")
         out.append('  Exercise(' + ', '.join(fields) + '),')
     out += ['];', '', 'const generatedWarmups = <WarmupMove>[']
     for e in data['warmup']:

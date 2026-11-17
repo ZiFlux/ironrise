@@ -31,6 +31,7 @@ class Exercise {
     this.defaultWeight = 20,
     this.defaultReps = 10,
     this.joints = const {},
+    this.marker,
   });
 
   final String id;
@@ -48,6 +49,10 @@ class Exercise {
 
   /// Какие суставы нагружает (PainZone.name): при боли упражнение заменяется.
   final Set<String> joints;
+
+  /// Скрытая метка для подбора тренировок (shared/exercises.json): `f` — чаще
+  /// выбирают девушки. В интерфейсе не показывается.
+  final String? marker;
 
   /// Часть тела с наибольшей долей нагрузки.
   BodyPart get mainPart =>

@@ -107,6 +107,7 @@ class Wellbeing {
     required Set<String> excluded,
     required Set<String> inDay,
     required Equipment equipment,
+    bool female = false,
   }) {
     final target = original.difficulty < 2 ? original.difficulty : 2;
     final options = ExerciseCatalog.all
@@ -123,7 +124,9 @@ class Wellbeing {
     int rank(Exercise e) =>
         (e.pattern == original.pattern ? 0 : 1000) +
         (e.difficulty - target).abs() * 100 +
-        (e.usesWeight == original.usesWeight ? 0 : 10);
+        (e.usesWeight == original.usesWeight ? 0 : 10) +
+        // Упражнения с меткой `f` — без неё по полу аватара только в крайнем случае.
+        (e.marker == 'f' && !female ? 500 : 0);
     options.sort((x, y) => rank(x).compareTo(rank(y)));
     return options.firstOrNull?.id;
   }
@@ -136,6 +139,7 @@ class Wellbeing {
     bool boost = false,
     Set<String> disliked = const {},
     Equipment equipment = Equipment.gym,
+    bool female = false,
   }) {
     final painful = {for (final zone in avoid) ...loadedBy(zone)};
     final excluded = {...painful, ...disliked};
@@ -150,6 +154,7 @@ class Wellbeing {
           excluded: excluded,
           inDay: inDay,
           equipment: equipment,
+          female: female,
         );
         adjustments.add(
           PlanAdjustment(

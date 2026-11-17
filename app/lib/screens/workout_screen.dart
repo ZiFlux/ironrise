@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../avatar/avatar_look.dart';
 import '../game/set_sanity.dart';
 import '../game/goal_path.dart';
 import '../state/records_state.dart';
@@ -771,6 +772,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
       inWorkout: {for (final e in widget.session.entries) e.exercise.id},
       equipment: program.equipment,
       excluded: program.dislikedNow(DateTime.now()),
+      female: ref.read(heroProvider)?.look.sex == AvatarSex.female,
     );
     final choice = await showStruggleSheet(
       context,

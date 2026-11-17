@@ -24,6 +24,12 @@ const toFailureExercises = {
   'hammer_curl',
   'barbell_curl',
   'triceps_pushdown',
+  'pec_deck',
+  'cable_fly',
+  'hip_abduction',
+  'hip_adduction',
+  'cable_kickback',
+  'lying_leg_curl',
 };
 
 bool toFailureFor(TrainingLevel level, Exercise exercise) =>

@@ -30,6 +30,7 @@ List<Exercise> swapOptions(
   required Equipment equipment,
   Set<String> excluded = const {},
   int limit = 3,
+  bool female = false,
 }) {
   final scored = <(Exercise, double)>[];
   for (final e in ExerciseCatalog.all) {
@@ -48,7 +49,9 @@ List<Exercise> swapOptions(
     final score =
         overlap +
         (samePattern ? 0.15 : 0) +
-        (original.difficulty - e.difficulty) * 0.05;
+        (original.difficulty - e.difficulty) * 0.05 -
+        // Метка `f` без неё по полу аватара — в конец списка.
+        (e.marker == 'f' && !female ? 1 : 0);
     scored.add((e, score));
   }
   scored.sort((a, b) => b.$2.compareTo(a.$2));
