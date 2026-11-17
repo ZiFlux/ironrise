@@ -256,11 +256,9 @@ class _PerkCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Material(
-    color: Color.alphaBlend(color.withValues(alpha: 0.12), AppColors.surface),
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-      side: BorderSide(color: color.withValues(alpha: 0.7)),
-    ),
+    // Нейтральная поверхность: цвет несёт только иконка (сезон — награды, аура — её цвет).
+    color: AppColors.surface,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
     child: InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -281,7 +279,7 @@ class _PerkCard extends StatelessWidget {
                     overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 13,
-                      fontWeight: FontWeight.w600,
+                      fontWeight: FontWeight.w500,
                     ),
                   ),
                   Text(
@@ -459,74 +457,75 @@ class _FighterList extends StatelessWidget {
     final list = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        // Сила и счётчик боёв — одной строкой: место над списком у сезона и ауры.
-        Row(
-          children: [
-            Flexible(
-              child: Tappable(
-                radius: 8,
-                onTap: (c) => showInfoBubble(
-                  c,
-                  title: 'Твоя сила ${me.power}',
-                  text:
-                      'В бою здоровье равно силе. Сила растёт только от тренировок: '
-                      '10 за уровень части тела и 2 за день серии (до 30).',
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(LucideIcons.zap, size: 16, color: accent),
-                    const SizedBox(width: 6),
-                    Text(
-                      '${me.power}',
-                      style: figureStyle(size: 16, color: accent),
-                    ),
-                    const SizedBox(width: 6),
-                    const Flexible(
-                      child: Text(
-                        'твоя сила',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: AppColors.textMuted,
+        // Лестница: одна строка — ступень слева, сила справа (была строка силы
+        // со счётчиком боёв и строка ступени — две строки шапки на одно и то же).
+        if (ladder case final l?)
+          _LadderLine(ladder: l, power: me.power)
+        else
+          // Друзья: сила и счётчик боёв одной строкой.
+          Row(
+            children: [
+              Flexible(
+                child: Tappable(
+                  radius: 8,
+                  onTap: (c) => showInfoBubble(
+                    c,
+                    title: 'Твоя сила ${me.power}',
+                    text:
+                        'В бою здоровье равно силе. Сила растёт только от тренировок: '
+                        '10 за уровень части тела и 2 за день серии (до 30).',
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(LucideIcons.zap, size: 16, color: accent),
+                      const SizedBox(width: 6),
+                      Text(
+                        '${me.power}',
+                        style: figureStyle(size: 16, color: accent),
+                      ),
+                      const SizedBox(width: 6),
+                      const Flexible(
+                        child: Text(
+                          'твоя сила',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: AppColors.textMuted,
+                          ),
                         ),
                       ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Tappable(
-                radius: 8,
-                onTap: (c) => showInfoBubble(
-                  c,
-                  title: 'Бои на сегодня',
-                  text:
-                      '${repeatable ? 'С каждым ботом можно драться снова после перезарядки, повторный бой — половина монет.' : 'С каждым другом — один бой в день.'} '
-                      'Счётчик обнулится в полночь — ${_untilMidnight()}.',
-                ),
-                child: Text(
-                  counter,
-                  textAlign: TextAlign.end,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
+                    ],
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-        if (ladder case final l?) ...[
-          const SizedBox(height: 2),
-          _LadderLine(ladder: l),
-        ],
-        const SizedBox(height: 4),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Tappable(
+                  radius: 8,
+                  onTap: (c) => showInfoBubble(
+                    c,
+                    title: 'Бои на сегодня',
+                    text:
+                        '${repeatable ? 'С каждым ботом можно драться снова после перезарядки, повторный бой — половина монет.' : 'С каждым другом — один бой в день.'} '
+                        'Счётчик обнулится в полночь — ${_untilMidnight()}.',
+                  ),
+                  child: Text(
+                    counter,
+                    textAlign: TextAlign.end,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      fontSize: 13,
+                      color: AppColors.textSecondary,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        const SizedBox(height: 8),
         if (scrollable)
           Expanded(
             child: ListView.separated(
@@ -705,21 +704,30 @@ class _FighterCard extends StatelessWidget {
                                   color: AppColors.textMuted,
                                 ),
                               ],
+                              if (fighter.aura case final aura?) ...[
+                                const SizedBox(width: 6),
+                                Tooltip(
+                                  message:
+                                      'Аура: ${aura.label}, ур. ${fighter.auraLevel}',
+                                  child: Icon(
+                                    LucideIcons.flame,
+                                    size: 14,
+                                    color: aura.color,
+                                  ),
+                                ),
+                                Text(
+                                  '${fighter.auraLevel}',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: aura.color,
+                                  ),
+                                ),
+                              ],
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text.rich(
-                            TextSpan(
-                              text: 'сила ${fighter.power} · $_strength',
-                              children: [
-                                if (fighter.aura case final aura?)
-                                  TextSpan(
-                                    text:
-                                        ' · ${aura.label} ${fighter.auraLevel}',
-                                    style: TextStyle(color: aura.color),
-                                  ),
-                              ],
-                            ),
+                          Text(
+                            'сила ${fighter.power} · $_strength',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(
@@ -734,8 +742,8 @@ class _FighterCard extends StatelessWidget {
                 ),
               ),
             ),
-            // Четыре соперника — четыре одинаковые кнопки: лайм был бы везде,
-            // поэтому кнопка спокойная, а лайм остаётся за победой.
+            // Пять соперников — пять кнопок: залитые акцентом кричали бы все разом,
+            // поэтому «В бой» — мягкая заливка акцентом: видно, что это кнопка.
             if (locked)
               Center(
                 child: Tappable(
@@ -825,15 +833,24 @@ class _FightButton extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) => OutlinedButton(
-    onPressed: onTap,
-    style: OutlinedButton.styleFrom(
-      minimumSize: const Size(88, 40),
-      backgroundColor: AppColors.raised,
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-    ),
-    child: Text(label),
-  );
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return TextButton.icon(
+      onPressed: onTap,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(96, 44),
+        foregroundColor: accent,
+        backgroundColor: accent.withValues(alpha: 0.14),
+        padding: const EdgeInsets.symmetric(horizontal: 14),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+        // Шрифт — из темы (Inter): свой TextStyle без семейства уводил бы в Roboto.
+        textStyle: Theme.of(context).textTheme.labelLarge
+            ?.copyWith(fontSize: 15, fontWeight: FontWeight.w500),
+      ),
+      icon: const Icon(LucideIcons.swords, size: 16),
+      label: Text(label),
+    );
+  }
 }
 
 class _ResultTag extends StatelessWidget {
@@ -859,9 +876,12 @@ String _bots(int n) => n == 1 ? '1 бота' : '$n ботов';
 
 /// Строка лестницы над соперниками: ступень, название и сколько до босса.
 class _LadderLine extends StatelessWidget {
-  const _LadderLine({required this.ladder});
+  const _LadderLine({required this.ladder, required this.power});
 
   final BotLadder ladder;
+
+  /// Своя сила — справа: с ней сравниваются соперники ниже.
+  final int power;
 
   @override
   Widget build(BuildContext context) {
@@ -891,15 +911,57 @@ class _LadderLine extends StatelessWidget {
           ),
           const SizedBox(width: 6),
           Expanded(
-            child: Text(
-              'Ступень ${ladder.tier + 1}/${ladder.tiers} · ${ladder.name} · $progress',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                fontSize: 13,
-                color: AppColors.textSecondary,
-              ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ladder.name,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 15,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                Text(
+                  'Ступень ${ladder.tier + 1} из ${ladder.tiers} · $progress',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(width: 12),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    LucideIcons.zap,
+                    size: 14,
+                    color: Theme.of(context).colorScheme.secondary,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    '$power',
+                    style: figureStyle(
+                      size: 16,
+                      color: Theme.of(context).colorScheme.secondary,
+                    ),
+                  ),
+                ],
+              ),
+              const Text(
+                'твоя сила',
+                style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+              ),
+            ],
           ),
         ],
       ),

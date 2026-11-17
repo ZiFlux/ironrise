@@ -178,10 +178,10 @@ class _LeagueView extends StatelessWidget {
                           ),
                           const SizedBox(height: 4),
                           Text(
+                            // Правила подъёма и вылета — в листе лиг по нажатию на название.
                             'Тренировка +${GameConfig.leagueWorkoutPoints} · '
-                            'победа в дуэли +${GameConfig.leagueWinPoints}'
-                            '${trainedDays == null ? '' : '. У тебя: $trainedDays трен., $wins побед'}'
-                            '${tier == null ? '' : '\n${promoteTop == 1 ? 'Первое место' : 'Первые $promoteTop'}${minDaysToPromote > 1 ? ' (и $minDaysToPromote трен.)' : ''} — в лигу выше, последние $demoteBottom и неделя без тренировок — ниже'}',
+                            'победа +${GameConfig.leagueWinPoints}'
+                            '${trainedDays == null ? '' : ' · у тебя $trainedDays трен., $wins побед'}',
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textSecondary,
@@ -380,7 +380,8 @@ class _Row extends StatelessWidget {
                   ? LucideIcons.chevronsUp
                   : LucideIcons.chevronsDown,
               size: 16,
-              color: zone == _Zone.up ? accent : AppColors.textMuted,
+              // Подъём — хорошо (цвет успеха), вылет — приглушённо.
+              color: zone == _Zone.up ? AppColors.success : AppColors.textMuted,
             ),
             const SizedBox(width: 8),
           ],

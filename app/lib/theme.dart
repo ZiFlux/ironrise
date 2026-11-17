@@ -181,6 +181,25 @@ ThemeData buildTheme(AccentOption style) {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
     ),
+    // Переключатели «Лестница / Друзья»: выбранное — ступень поверхности и
+    // основной текст, без окраски из сгенерированной палитры (была мутно-коричневой).
+    segmentedButtonTheme: SegmentedButtonThemeData(
+      style: ButtonStyle(
+        backgroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.raised
+              : Colors.transparent,
+        ),
+        foregroundColor: WidgetStateProperty.resolveWith(
+          (s) => s.contains(WidgetState.selected)
+              ? AppColors.textPrimary
+              : AppColors.textSecondary,
+        ),
+        side: const WidgetStatePropertyAll(
+          BorderSide(color: AppColors.hairline),
+        ),
+      ),
+    ),
     inputDecorationTheme: InputDecorationTheme(
       filled: true,
       fillColor: AppColors.raised,

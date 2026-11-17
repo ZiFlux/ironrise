@@ -3,3 +3,6 @@
 Thumbs.db
 .idea/
 
+
+# Превью экранов из ui_layout_test (PREVIEW=true)
+app/test/preview/

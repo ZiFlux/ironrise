@@ -1405,9 +1405,8 @@ class _AddSetHint extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final color = more
-        ? AppColors.textMuted
-        : Theme.of(context).colorScheme.primary;
+    // Спокойный вторичный цвет: акцентом это читалось как ошибка.
+    final color = more ? AppColors.textMuted : AppColors.textSecondary;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -1419,9 +1418,7 @@ class _AddSetHint extends StatelessWidget {
             const SizedBox(width: 6),
             Flexible(
               child: Text(
-                more
-                    ? 'Нажми, чтобы добавить ещё подход'
-                    : 'Нажми, чтобы добавить подход',
+                more ? 'Добавить ещё подход' : 'Добавить подход',
                 style: TextStyle(fontSize: 13, color: color),
               ),
             ),

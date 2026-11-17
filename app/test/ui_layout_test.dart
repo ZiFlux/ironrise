@@ -4,11 +4,17 @@
 // на правило «без прокрутки» (на маленьком и с крупным шрифтом прокрутка допустима).
 //
 // Запуск: flutter test test/ui_layout_test.dart
+// Превью экранов с настоящими шрифтами (типичный экран, обычный шрифт) в test/preview/:
+//   flutter test test/ui_layout_test.dart --update-goldens --dart-define=PREVIEW=true
+import 'dart:io';
+
+import 'package:flutter/services.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart' show Override;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ironrise/widgets/screen_hint.dart';
 import 'package:ironrise/avatar/avatar_look.dart';
 import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/game/duel.dart';
@@ -321,6 +327,49 @@ class _Problem {
   String toString() => '• $where\n    $what';
 }
 
+/// Превью экранов для проверки дизайна глазами (не сравниваются в обычном прогоне).
+const _preview = bool.fromEnvironment('PREVIEW');
+
+Future<void> _loadFont(String family, List<String> files) async {
+  final l = FontLoader(family);
+  for (final f in files) {
+    final b = File(f).readAsBytesSync();
+    l.addFont(Future.value(ByteData.view(b.buffer)));
+  }
+  await l.load();
+}
+
+/// Настоящие шрифты для превью: Inter, Russo One, иконки Lucide и Material.
+Future<void> _loadPreviewFonts() async {
+  await _loadFont('Inter', [
+    'assets/fonts/Inter-Regular.ttf',
+    'assets/fonts/Inter-Medium.ttf',
+    'assets/fonts/Inter-SemiBold.ttf',
+  ]);
+  await _loadFont('Roboto', ['assets/fonts/Inter-Regular.ttf']);
+  await _loadFont('RussoOne', ['assets/fonts/RussoOne-Regular.ttf']);
+  final cache =
+      Platform.environment['PUB_CACHE'] ??
+      '${Platform.environment['LOCALAPPDATA']}/Pub/Cache';
+  final pkg =
+      Directory('$cache/hosted/pub.dev')
+          .listSync()
+          .whereType<Directory>()
+          .where((d) => d.path.contains('lucide_icons_flutter'))
+          .map((d) => d.path)
+          .toList()
+        ..sort();
+  final lucide = Directory('${pkg.last}/assets')
+      .listSync(recursive: true)
+      .whereType<File>()
+      .firstWhere((f) => f.path.endsWith('.ttf'))
+      .path;
+  await _loadFont('packages/lucide_icons_flutter/Lucide', [lucide]);
+  await _loadFont('MaterialIcons', [
+    '${Platform.environment['FLUTTER_ROOT']}/bin/cache/artifacts/material_fonts/materialicons-regular.otf',
+  ]);
+}
+
 Future<void> _audit(
   WidgetTester tester, {
   required bool signedIn,
@@ -346,6 +395,18 @@ Future<void> _audit(
                   'hero_v1': _hero().encode(),
                   // Без ответа на главной всплывает вопрос о пульсе — он проверяется отдельно.
                   'health_consent_v1': '{"granted":true}',
+                  // Превью — без обучающих подсказок поверх экрана.
+                  if (_preview) ...{
+                    for (final t in [
+                      'home',
+                      'workout',
+                      'duels',
+                      'rating',
+                      'profile',
+                    ])
+                      'guide_done_$t': true,
+                    for (final id in screenHints.keys) 'hint_seen_$id': true,
+                  },
                 },
         );
         final prefs = await SharedPreferences.getInstance();
@@ -393,6 +454,19 @@ Future<void> _audit(
             await tester.pump(const Duration(milliseconds: 600));
           }
 
+          if (_preview && scale == 1.0 && size == _typical) {
+            // Дать доиграть анимациям появления (карточки входят с задержкой).
+            for (var i = 0; i < 10; i++) {
+              await tester.pump(const Duration(milliseconds: 150));
+            }
+            final name =
+                '${signedIn ? 'acc' : 'off'}${path == '/' ? '_home' : path.replaceAll('/', '_')}';
+            await expectLater(
+              find.byType(IronRiseApp),
+              matchesGoldenFile('preview/$name.png'),
+            );
+          }
+
           // «Без прокрутки» — на обычном и большом телефоне с обычным шрифтом. На маленьком
           // экране и с крупным шрифтом прокрутка — запасной вариант вместо наложения (FitScreen).
           final strict = scale == 1.0 && _strictSizes.contains(size);
@@ -436,6 +510,7 @@ Future<void> _audit(
 }
 
 void main() {
+  if (_preview) setUpAll(_loadPreviewFonts);
   tearDown(() {
     debugPaintSizeEnabled = false;
   });
