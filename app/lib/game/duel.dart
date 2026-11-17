@@ -79,7 +79,11 @@ class DuelResult {
     required this.attackerWon,
     this.coins,
     this.repeat = false,
+    this.ladderNote,
   });
+
+  /// Лестница ботов (п. 88): «Босс повержен — новая ступень» или «Первая победа».
+  final String? ladderNote;
 
   final Fighter attacker;
   final Fighter defender;

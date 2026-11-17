@@ -102,9 +102,21 @@ List<Override> _serverFakes() {
     jointProvider.overrideWith(_NoJoint.new),
     serverBotsProvider.overrideWith(
       (ref) async => (
+        ladder: (
+          tier: 2,
+          tiers: 13,
+          name: 'Подвальная качалка',
+          bossId: 'boss',
+          bossUnlocked: false,
+          wins: 2,
+          winsToBoss: 3,
+          beaten: {'b0'},
+          nextName: 'Фитнес у дома',
+        ),
         bots: [
           for (var i = 0; i < 4; i++)
             _fighter('b$i', 'Железный Лёха $i', 5 + i),
+          _fighter('boss', 'Гоша-Протеин', 10),
         ],
         results: {'b0': true, 'b1': false},
         nextFightAt: <String, DateTime>{},

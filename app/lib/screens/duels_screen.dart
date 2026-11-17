@@ -88,7 +88,7 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
           const SizedBox(height: 4),
           SegmentedButton<bool>(
             segments: const [
-              ButtonSegment(value: false, label: Text('Боты дня')),
+              ButtonSegment(value: false, label: Text('Лестница')),
               ButtonSegment(value: true, label: Text('Друзья')),
             ],
             selected: {_friendsTab},
@@ -122,9 +122,10 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
                     fighters: d.bots,
                     results: d.results,
                     repeatable: true,
+                    ladder: d.ladder,
                     nextFightAt: d.nextFightAt,
                     counter: _botsCounter(d.fights.values),
-                    footer: _botsFooter,
+                    footer: d.ladder == null ? _botsFooter : _ladderFooter,
                     onFight: (bot) => _open(() => duels.fightOnServer(bot)),
                   ),
                   loading: () =>
@@ -139,6 +140,9 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
 /// «боёв сегодня: 5».
 String _botsCounter(Iterable<int> fights) =>
     'боёв сегодня: ${fights.fold(0, (a, b) => a + b)}';
+
+/// Коротко: правила лестницы — в облаке строки ступени.
+const _ladderFooter = '3 победы — босс, босс — ступень выше';
 
 final _botsFooter =
     'С ботом — раз в ${GameConfig.duelCooldown.inHours} ч, повтор за сутки — ½ монет. Новые — каждый день';
@@ -371,7 +375,11 @@ class _FighterList extends StatelessWidget {
     this.scrollable = false,
     this.repeatable = false,
     this.nextFightAt = const {},
+    this.ladder,
   });
+
+  /// Лестница ботов: ступень, босс и побеждённые (п. 88).
+  final BotLadder? ladder;
 
   final Fighter me;
   final List<Fighter> fighters;
@@ -401,6 +409,14 @@ class _FighterList extends StatelessWidget {
           repeatable: repeatable,
           nextFightAt: nextFightAt[f.id],
           onFight: () => onFight(f),
+          beaten: ladder?.beaten.contains(f.id) ?? false,
+          boss: ladder != null && f.id == ladder!.bossId,
+          locked:
+              ladder != null && f.id == ladder!.bossId && !ladder!.bossUnlocked,
+          compact: fighters.length > 4,
+          winsLeft: ladder == null
+              ? 0
+              : (ladder!.winsToBoss - ladder!.wins).clamp(0, 9),
         ),
       ),
     );
@@ -470,6 +486,10 @@ class _FighterList extends StatelessWidget {
             ),
           ],
         ),
+        if (ladder case final l?) ...[
+          const SizedBox(height: 2),
+          _LadderLine(ladder: l),
+        ],
         const SizedBox(height: 4),
         if (scrollable)
           Expanded(
@@ -486,7 +506,9 @@ class _FighterList extends StatelessWidget {
         else
           for (final (i, f) in fighters.indexed)
             FlexibleMin(
-              minHeight: MediaQuery.textScalerOf(context).scale(66),
+              // Лестница — 5 соперников (4 бота и босс): карточки ниже, чтобы влезли.
+              minHeight: MediaQuery.textScalerOf(context)
+                  .scale(fighters.length > 4 ? 44 : 66),
               child: Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: card(f, i),
@@ -524,7 +546,21 @@ class _FighterCard extends StatelessWidget {
     required this.onFight,
     this.repeatable = false,
     this.nextFightAt,
+    this.beaten = false,
+    this.boss = false,
+    this.locked = false,
+    this.winsLeft = 0,
+    this.compact = false,
   });
+
+  /// Узкая карточка: соперников больше четырёх.
+  final bool compact;
+
+  /// Лестница: уже побеждён (повтор — 30 % монет), босс ступени, босс ещё закрыт.
+  final bool beaten;
+  final bool boss;
+  final bool locked;
+  final int winsLeft;
 
   final Fighter fighter;
   final Fighter me;
@@ -574,33 +610,66 @@ class _FighterCard extends StatelessWidget {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    ConstrainedBox(
-                      constraints: const BoxConstraints(
-                        minWidth: 48,
-                        maxWidth: 88,
-                      ),
-                      child: AspectRatio(
-                        aspectRatio: 0.5,
+                    // Пять соперников (лестница) — узкая колонка без пропорции:
+                    // иначе высота аватара (2 × ширина) раздувает список.
+                    if (compact)
+                      SizedBox(
+                        width: 40,
                         child: AvatarView(
                           levels: fighter.levels,
                           look: fighter.lookOrStarter,
                         ),
+                      )
+                    else
+                      ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 48,
+                          maxWidth: 88,
+                        ),
+                        child: AspectRatio(
+                          aspectRatio: 0.5,
+                          child: AvatarView(
+                            levels: fighter.levels,
+                            look: fighter.lookOrStarter,
+                          ),
+                        ),
                       ),
-                    ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            fighter.name,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w500,
-                            ),
+                          Row(
+                            children: [
+                              if (boss) ...[
+                                Icon(
+                                  LucideIcons.crown,
+                                  size: 15,
+                                  color: Theme.of(context).colorScheme.primary,
+                                ),
+                                const SizedBox(width: 4),
+                              ],
+                              Flexible(
+                                child: Text(
+                                  fighter.name,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                              if (beaten) ...[
+                                const SizedBox(width: 4),
+                                const Icon(
+                                  LucideIcons.check,
+                                  size: 14,
+                                  color: AppColors.textMuted,
+                                ),
+                              ],
+                            ],
                           ),
                           const SizedBox(height: 2),
                           Text(
@@ -621,7 +690,28 @@ class _FighterCard extends StatelessWidget {
             ),
             // Четыре соперника — четыре одинаковые кнопки: лайм был бы везде,
             // поэтому кнопка спокойная, а лайм остаётся за победой.
-            if (result == null)
+            if (locked)
+              Center(
+                child: Tappable(
+                  radius: 8,
+                  onTap: (c) => showInfoBubble(
+                    c,
+                    title: 'Босс ступени',
+                    text:
+                        'Откроется, когда победишь ещё ${_bots(winsLeft)} этой ступени. '
+                        'Победа над боссом открывает следующую ступень.',
+                  ),
+                  child: const Padding(
+                    padding: EdgeInsets.all(8),
+                    child: Icon(
+                      LucideIcons.lock,
+                      size: 20,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ),
+              )
+            else if (result == null)
               Center(
                 child: _FightButton(label: 'В бой', onTap: onFight),
               )
@@ -632,8 +722,8 @@ class _FighterCard extends StatelessWidget {
                   children: [
                     _FightButton(label: 'Ещё бой', onTap: onFight),
                     const SizedBox(height: 1),
-                    const Text(
-                      '½ монет',
+                    Text(
+                      beaten ? '30 % монет' : '½ монет',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -714,6 +804,59 @@ class _ResultTag extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(fontSize: 14, color: color, fontWeight: FontWeight.w500),
+    );
+  }
+}
+
+/// «1 бота», «2 ботов».
+String _bots(int n) => n == 1 ? '1 бота' : '$n ботов';
+
+/// Строка лестницы над соперниками: ступень, название и сколько до босса.
+class _LadderLine extends StatelessWidget {
+  const _LadderLine({required this.ladder});
+
+  final BotLadder ladder;
+
+  @override
+  Widget build(BuildContext context) {
+    final left = (ladder.winsToBoss - ladder.wins).clamp(0, 9);
+    final progress = ladder.bossUnlocked
+        ? 'босс открыт'
+        : 'до босса — ${_bots(left)}';
+    final next = ladder.nextName == null ? '' : ' — «${ladder.nextName}»';
+    return Tappable(
+      radius: 8,
+      semantics: 'Лестница ботов',
+      onTap: (c) => showInfoBubble(
+        c,
+        title: 'Ступень ${ladder.tier + 1} из ${ladder.tiers}: ${ladder.name}',
+        text:
+            'Сначала у всех слабые соперники, выше — всё сильнее. Побей '
+            '${_bots(ladder.winsToBoss)} ступени — откроется босс, победа над ним '
+            'ведёт выше$next. Первая победа над ботом — полная награда, '
+            'повторные — 30 %. Сила растёт только от тренировок.',
+      ),
+      child: Row(
+        children: [
+          Icon(
+            LucideIcons.chartNoAxesColumnIncreasing,
+            size: 15,
+            color: Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              'Ступень ${ladder.tier + 1}/${ladder.tiers} · ${ladder.name} · $progress',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

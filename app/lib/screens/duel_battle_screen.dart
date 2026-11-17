@@ -504,6 +504,25 @@ class _ResultPanel extends StatelessWidget {
               '${duel.repeat ? '. Повторный бой за сутки — половина монет' : ''}',
               style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
+            if (duel.ladderNote case final note?) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(LucideIcons.trophy, size: 16, color: accent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
             const SizedBox(height: 10),
             _Breakdown(breakdown: DuelBreakdown(duel)),
             const SizedBox(height: 12),

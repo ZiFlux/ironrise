@@ -38,6 +38,13 @@ DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
   attackerWon: j['attackerWon'] as bool,
   coins: (j['coins'] as num?)?.toInt(),
   repeat: j['repeat'] == true,
+  ladderNote: j['tierUp'] == true
+      ? 'Босс повержен — открыта новая ступень лестницы'
+      : j['firstWin'] == true
+      ? (j['boss'] == true
+            ? 'Босс повержен'
+            : 'Первая победа над этим ботом — полная награда')
+      : null,
   hits: [
     for (final h in j['log'] as List)
       DuelHit(
@@ -63,7 +70,36 @@ DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(
   ],
 );
 
+/// Лестница ботов (п. 88): ступень, прогресс до босса, кто уже побеждён.
+typedef BotLadder = ({
+  int tier,
+  int tiers,
+  String name,
+  String bossId,
+  bool bossUnlocked,
+  int wins,
+  int winsToBoss,
+  Set<String> beaten,
+  String? nextName,
+});
+
+BotLadder? botLadderFromJson(Object? raw) {
+  if (raw is! Map) return null;
+  return (
+    tier: (raw['tier'] as num).toInt(),
+    tiers: (raw['tiers'] as num).toInt(),
+    name: raw['name'] as String,
+    bossId: raw['bossId'] as String,
+    bossUnlocked: raw['bossUnlocked'] == true,
+    wins: (raw['wins'] as num).toInt(),
+    winsToBoss: (raw['winsToBoss'] as num).toInt(),
+    beaten: {for (final id in raw['beaten'] as List? ?? const []) id as String},
+    nextName: raw['nextName'] as String?,
+  );
+}
+
 typedef ServerBots = ({
+  BotLadder? ladder,
   List<Fighter> bots,
   Map<String, bool> results,
 
@@ -77,6 +113,7 @@ typedef ServerBots = ({
 final serverBotsProvider = FutureProvider.autoDispose<ServerBots>((ref) async {
   final j = await ref.read(apiProvider).get('/v1/duels/bots');
   return (
+    ladder: botLadderFromJson(j['ladder']),
     bots: [
       for (final b in j['bots'] as List)
         fighterFromJson(Map<String, dynamic>.from(b as Map)),

@@ -6,10 +6,11 @@ import { EntryTestSchema, entryTestCoins } from '../game/entry-test';
 import { showcaseLock } from '../game/showcase';
 import { z } from 'zod';
 import { localDay } from '../common/day';
-import { Bot, botsForDay, fillLeague, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, MIN_LEAGUE_PLAYERS, mondayOf } from '../game/bots';
+import { Bot, fillLeague, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, MIN_LEAGUE_PLAYERS, mondayOf } from '../game/bots';
 import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, minTrainedDaysToPromote, promoteTopFor, settleWeek, TOP_TIER, WeekSettlement } from '../game/league';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
+import { BOSS_UNLOCK_WINS, LADDER, LADDER_BOTS, bossUnlocked, clampTier, isBossId, ladderCoins, ladderTier, readBeaten, tierWins } from '../game/bot-ladder';
 import { unpaidItems } from '../game/looks';
 import { MIN_TRAINING_DAYS, nextScheduleChangeAt } from '../game/schedule';
 import { premiumStatus } from '../game/premium';
@@ -330,7 +331,13 @@ export class EconomyService {
   /** Боты дня и итоги боёв с ними за сегодня. */
   async bots(userId: string) {
     const day = await this.today(userId);
-    const hero = await this.hero.state(userId);
+    const profile = await this.db.profile.findUniqueOrThrow({
+      where: { userId },
+      select: { botTier: true, botBeaten: true },
+    });
+    const beaten = readBeaten(profile.botBeaten);
+    const ladder = ladderTier(profile.botTier);
+    const unlocked = bossUnlocked(ladder.tier, beaten);
     const fought = await this.db.duel.findMany({
       where: { attackerId: userId, day, opponentKind: 'bot' },
       select: { opponentId: true, attackerWon: true, createdAt: true },
@@ -346,7 +353,26 @@ export class EconomyService {
       const next = new Date(f.createdAt.getTime() + C.duelCooldownHours * HOUR);
       if (next > new Date()) nextFightAt[f.opponentId] = next.toISOString();
     }
-    return { day, bots: botsForDay(hero, day), results, fights, nextFightAt };
+    return {
+      day,
+      // Боты ступени и босс последним (старые версии приложения покажут его обычным ботом).
+      bots: [...ladder.bots, ladder.boss],
+      results,
+      fights,
+      nextFightAt,
+      ladder: {
+        tier: ladder.tier,
+        tiers: LADDER.length,
+        name: ladder.name,
+        bossId: ladder.boss.id,
+        bossUnlocked: unlocked,
+        wins: tierWins(ladder.tier, beaten),
+        winsToBoss: BOSS_UNLOCK_WINS,
+        botsInTier: LADDER_BOTS,
+        beaten: beaten.filter((id) => id.startsWith(`lad_${ladder.tier}_`)),
+        nextName: LADDER[ladder.tier + 1]?.name ?? null,
+      },
+    };
   }
 
   /**
@@ -359,8 +385,13 @@ export class EconomyService {
       const profile = await tx.profile.findUniqueOrThrow({ where: { userId } });
       const day = localDay(new Date(), profile.timezone);
       const hero = await this.hero.state(userId, tx);
-      const bot: Bot | undefined = botsForDay(hero, day).find((b) => b.id === botId);
+      // Драться можно только с ботами своей ступени лестницы; босс — после 3 побед.
+      const ladder = ladderTier(profile.botTier);
+      const beaten = readBeaten(profile.botBeaten);
+      const bot: Bot | undefined = [...ladder.bots, ladder.boss].find((b) => b.id === botId);
       if (!bot) throw new BadRequestException('No such bot today');
+      const boss = isBossId(bot.id);
+      if (boss && !bossUnlocked(ladder.tier, beaten)) throw new ForbiddenException('Boss is locked');
       const earlier = await tx.duel.findMany({
         where: { attackerId: userId, opponentId: botId, day },
         select: { createdAt: true },
@@ -384,8 +415,20 @@ export class EconomyService {
       };
       const seed = Math.floor(Math.random() * 2 ** 31);
       const result = simulateDuel(attacker, bot, seed);
-      const base = result.attackerWon ? C.duelWinCoins : C.duelLossCoins;
-      const coins = repeat ? Math.round(base * C.duelRepeatCoinFactor) : base;
+      // Первая победа над ботом — полная награда, повторные — 30 % (п. 88).
+      const firstWin = result.attackerWon && !beaten.includes(bot.id);
+      const coins = ladderCoins({ tier: ladder.tier, won: result.attackerWon, firstWin, boss });
+      let tierUp = false;
+      if (firstWin) {
+        tierUp = boss && ladder.tier < LADDER.length - 1;
+        await tx.profile.update({
+          where: { userId },
+          data: {
+            botBeaten: [...beaten, bot.id],
+            ...(tierUp ? { botTier: clampTier(ladder.tier + 1) } : {}),
+          },
+        });
+      }
       const duel = await tx.duel.create({
         data: {
           attackerId: userId,
@@ -407,7 +450,18 @@ export class EconomyService {
       if (!repeat) {
         await addSeasonPoints(tx, userId, result.attackerWon ? SEASON_POINTS.duelWin : SEASON_POINTS.duelLoss);
       }
-      return { duelId: duel.id, attacker, defender: bot, ...result, coins, repeat, hero: await this.hero.state(userId, tx) };
+      return {
+        duelId: duel.id,
+        attacker,
+        defender: bot,
+        ...result,
+        coins,
+        repeat,
+        firstWin,
+        boss,
+        tierUp,
+        hero: await this.hero.state(userId, tx),
+      };
     });
   }
 
