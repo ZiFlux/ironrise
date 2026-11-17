@@ -72,8 +72,10 @@ void main() {
         await t.pump();
         await t.pump(const Duration(seconds: 2));
         final steps = find.textContaining('шагов');
-        // Взвешивание — квадрат «Вес» сбоку от героя, а не строка под ним.
-        final weigh = find.text('Вес');
+        // Взвешивание — кнопка в ряду «Сегодня» под героем («Вес» или «Взвеситься»).
+        final weigh = find.byWidgetPredicate(
+          (w) => w is Text && w.data == 'Вес',
+        );
         expect(steps, findsOneWidget);
         expect(weigh, findsOneWidget);
         final a = t.getRect(steps);
@@ -85,7 +87,7 @@ void main() {
         );
         // Ничего из блока активности не налезает на шаги.
         for (final other in [
-          find.text('Советы'),
+          find.textContaining('Советы'),
           find.byType(FilledButton),
         ]) {
           for (final e in other.evaluate()) {

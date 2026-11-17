@@ -52,7 +52,6 @@ class LevelPlate extends StatelessWidget {
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: AppColors.hairline),
           ),
           child: Column(
             children: [
@@ -192,81 +191,29 @@ class _PlatePainter extends CustomPainter {
       old.progress != progress || old.color != color;
 }
 
-const _flame = Color(0xFFFF8A3D);
-
-/// Тёплое пульсирующее свечение и огонёк над кольцом «горящей» части тела.
-class _HotGlow extends StatefulWidget {
+/// «Горящая» часть тела: огонёк цвета серии над кольцом. Без пульсации —
+/// зацикленное свечение отвлекало от героя (docs/REDESIGN.md).
+class _HotGlow extends StatelessWidget {
   const _HotGlow({required this.hot, required this.child});
 
   final bool hot;
   final Widget child;
 
   @override
-  State<_HotGlow> createState() => _HotGlowState();
-}
-
-class _HotGlowState extends State<_HotGlow>
-    with SingleTickerProviderStateMixin {
-  late final _anim = AnimationController(
-    vsync: this,
-    duration: const Duration(milliseconds: 1400),
-  );
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _sync();
-  }
-
-  @override
-  void didUpdateWidget(_HotGlow old) {
-    super.didUpdateWidget(old);
-    _sync();
-  }
-
-  void _sync() {
-    final still = MediaQuery.maybeDisableAnimationsOf(context) ?? false;
-    if (widget.hot && !still) {
-      if (!_anim.isAnimating) _anim.repeat(reverse: true);
-    } else {
-      _anim.stop();
-    }
-  }
-
-  @override
-  void dispose() {
-    _anim.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    if (!widget.hot) return widget.child;
+    if (!hot) return child;
     return Stack(
       clipBehavior: Clip.none,
       children: [
-        Positioned.fill(
-          child: AnimatedBuilder(
-            animation: _anim,
-            builder: (_, _) => DecoratedBox(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: _flame.withValues(alpha: 0.25 + 0.3 * _anim.value),
-                    blurRadius: 8 + 8 * _anim.value,
-                    spreadRadius: 0.5 + 1.5 * _anim.value,
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ),
-        Positioned.fill(child: widget.child),
-        const Positioned(
+        Positioned.fill(child: child),
+        Positioned(
           right: -5,
           top: -6,
-          child: Icon(LucideIcons.flame, size: 15, color: _flame),
+          child: Icon(
+            LucideIcons.flame,
+            size: 15,
+            color: Theme.of(context).colorScheme.tertiary,
+          ),
         ),
       ],
     );

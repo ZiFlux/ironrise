@@ -1,3 +1,5 @@
+import 'logo_mark.dart';
+
 import 'package:flutter/material.dart';
 
 import '../game/calendar.dart';
@@ -137,6 +139,9 @@ class _DayCell extends StatelessWidget {
   }
 }
 
+/// Отметка дня. Сделанный — залитый шестигранник, как печать знака IronRise;
+/// по плану — контур; пропуск — приглушённый контур с крестиком (не красный:
+/// красный в «Закате» путался с акцентом). Сегодня — светлый контур.
 class _Mark extends StatelessWidget {
   const _Mark({
     required this.kind,
@@ -151,74 +156,85 @@ class _Mark extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     const size = 28.0;
-    final ring = isToday
-        ? Border.all(color: AppColors.textPrimary, width: 1.5)
-        : null;
-    switch (kind) {
-      case DayKind.trained:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            color: accent,
-            shape: BoxShape.circle,
-            border: ring,
-          ),
-          child: const Icon(Icons.check, size: 16, color: AppColors.onAccent),
-        );
-      case DayKind.missed:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFFE5484D), width: 1.5),
-          ),
-          child: const Icon(Icons.close, size: 14, color: Color(0xFFE5484D)),
-        );
-      case DayKind.upcomingTraining:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            border:
-                ring ??
-                Border.all(color: accent.withValues(alpha: 0.6), width: 1.5),
-          ),
-          child: isToday
-              ? Center(
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                )
-              : null,
-        );
-      case DayKind.rest:
-      case DayKind.upcomingRest:
-      case DayKind.none:
-        return Container(
-          width: size,
-          height: size,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: kind == DayKind.rest ? AppColors.raised : null,
-            border: ring,
-          ),
-          child: kind == DayKind.none
-              ? null
-              : const Center(
-                  child: Text(
-                    '–',
-                    style: TextStyle(color: AppColors.textMuted, fontSize: 13),
-                  ),
+    final onAccent = Theme.of(context).colorScheme.onPrimary;
+    final (Color? fill, Color? stroke, Widget? inner) = switch (kind) {
+      DayKind.trained => (
+        accent,
+        isToday ? AppColors.textPrimary : null,
+        Icon(Icons.check, size: 15, color: onAccent),
+      ),
+      DayKind.missed => (
+        null,
+        AppColors.textMuted.withValues(alpha: 0.6),
+        const Icon(Icons.close, size: 13, color: AppColors.textMuted),
+      ),
+      DayKind.upcomingTraining => (
+        null,
+        isToday
+            ? AppColors.textPrimary
+            : AppColors.textMuted.withValues(alpha: 0.5),
+        isToday
+            ? Container(
+                width: 7,
+                height: 7,
+                decoration: BoxDecoration(
+                  color: accent,
+                  shape: BoxShape.circle,
                 ),
-        );
+              )
+            : null,
+      ),
+      DayKind.rest => (
+        AppColors.raised,
+        isToday ? AppColors.textPrimary : null,
+        const Text(
+          '–',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+      ),
+      DayKind.upcomingRest => (
+        null,
+        isToday ? AppColors.textPrimary : null,
+        const Text(
+          '–',
+          style: TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+      ),
+      DayKind.none => (null, null, null),
+    };
+    return SizedBox.square(
+      dimension: size,
+      child: CustomPaint(
+        painter: _HexPainter(fill: fill, stroke: stroke),
+        child: inner == null ? null : Center(child: inner),
+      ),
+    );
+  }
+}
+
+class _HexPainter extends CustomPainter {
+  const _HexPainter({this.fill, this.stroke});
+
+  final Color? fill;
+  final Color? stroke;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final hex = LogoPainter.hexagon(size.width / 64);
+    if (fill != null) canvas.drawPath(hex, Paint()..color = fill!);
+    if (stroke != null) {
+      canvas.drawPath(
+        hex,
+        Paint()
+          ..color = stroke!
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5
+          ..strokeJoin = StrokeJoin.round,
+      );
     }
   }
+
+  @override
+  bool shouldRepaint(_HexPainter old) =>
+      old.fill != fill || old.stroke != stroke;
 }

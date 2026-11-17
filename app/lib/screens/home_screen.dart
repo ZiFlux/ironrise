@@ -71,34 +71,28 @@ class HomeScreen extends ConsumerWidget {
                   minHeight: 130,
                   child: GuideTarget(
                     id: 'home.avatar',
-                    // Напоминания — квадратами сбоку, а не строками под героем:
-                    // аватар не сжимается от каждого нового напоминания.
-                    child: Stack(
-                      children: [
-                        Positioned.fill(
-                          child: Semantics(
-                            button: true,
-                            label: 'Открыть гардероб',
-                            child: GestureDetector(
-                              onTap: () => context.push('/wardrobe'),
-                              child: PosingAvatar(
-                                levels: hero.avatarLevels,
-                                look: hero.look,
-                                muscles: hero.muscles,
-                                focus: recentMuscles(
-                                  ref.watch(trainingLogProvider),
-                                  DateTime.now(),
-                                ),
-                                withLamp: true,
-                              ),
-                            ),
+                    // Герой — единственное яркое место экрана: за ним ничего не висит.
+                    child: Semantics(
+                      button: true,
+                      label: 'Открыть гардероб',
+                      child: GestureDetector(
+                        onTap: () => context.push('/wardrobe'),
+                        child: PosingAvatar(
+                          levels: hero.avatarLevels,
+                          look: hero.look,
+                          muscles: hero.muscles,
+                          focus: recentMuscles(
+                            ref.watch(trainingLogProvider),
+                            DateTime.now(),
                           ),
+                          withLamp: true,
                         ),
-                        const Positioned(top: 8, right: 0, child: _SideRail()),
-                      ],
+                      ),
                     ),
                   ),
                 ),
+                const _TodayRow(),
+                const SizedBox(height: 12),
                 FadeSlideIn(
                   index: 1,
                   child: GuideTarget(
@@ -148,10 +142,7 @@ class HomeScreen extends ConsumerWidget {
                           icon: const Icon(LucideIcons.heartPulse, size: 18),
                           label: const Text('День отдыха · лёгкое кардио'),
                         ),
-                        (_, true) when !isTrainingDay => const FilledButton(
-                          onPressed: null,
-                          child: Text('На сегодня всё — отдыхай'),
-                        ),
+                        (_, true) when !isTrainingDay => const _DayDone(),
                         (false, _) => FilledButton.icon(
                           onPressed: () {
                             ref
@@ -167,10 +158,7 @@ class HomeScreen extends ConsumerWidget {
                           icon: const Icon(LucideIcons.heartPulse, size: 18),
                           label: const Text('Силовая сделана · кардио'),
                         ),
-                        (true, true) => const FilledButton(
-                          onPressed: null,
-                          child: Text('На сегодня всё — отдыхай'),
-                        ),
+                        (true, true) => const _DayDone(),
                       },
                     ),
                   ),
@@ -218,7 +206,7 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final accent = Theme.of(context).colorScheme.primary;
+    final scheme = Theme.of(context).colorScheme;
     final streak = hero.currentStreak(DateTime.now());
     final signedIn = ref.watch(accountProvider).signedIn;
     final unread = signedIn
@@ -274,29 +262,28 @@ class _Header extends ConsumerWidget {
               ),
           ],
         ),
-        const SizedBox(height: 8),
+        const SizedBox(height: 12),
         Row(
           children: [
-            Flexible(
+            Expanded(
               child: _StatChip(
                 onTap: (_) => showStreakSheet(context),
                 icon: LucideIcons.flame,
-                iconColor: AppColors.textSecondary,
+                iconColor: scheme.tertiary,
+                label: streakLabel(streak),
                 value: AnimatedNumber(
                   value: streak,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: figureStyle(size: 20, color: scheme.tertiary),
                 ),
                 semantics: 'Серия $streak дней',
               ),
             ),
             const SizedBox(width: 8),
-            Flexible(
+            Expanded(
               child: _StatChip(
                 icon: LucideIcons.zap,
-                iconColor: accent,
+                iconColor: scheme.secondary,
+                label: 'сила',
                 onTap: (c) => showInfoBubble(
                   c,
                   title: 'Сила ${hero.power}',
@@ -309,22 +296,20 @@ class _Header extends ConsumerWidget {
                 ),
                 value: AnimatedNumber(
                   value: hero.power,
-                  style: figureStyle(size: 15, color: accent),
+                  style: figureStyle(size: 20, color: scheme.secondary),
                 ),
                 semantics: 'Сила ${hero.power}',
               ),
             ),
             const SizedBox(width: 8),
-            Flexible(
+            Expanded(
               child: _StatChip(
                 icon: LucideIcons.coins,
                 iconColor: AppColors.textSecondary,
+                label: 'монет',
                 value: AnimatedNumber(
                   value: hero.coins,
-                  style: const TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
+                  style: figureStyle(size: 20),
                 ),
                 semantics: 'Монеты ${hero.coins}, открыть магазин',
                 onTap: (_) => context.push('/shop'),
@@ -342,9 +327,13 @@ class _StatChip extends StatelessWidget {
     required this.icon,
     required this.iconColor,
     required this.value,
+    required this.label,
     required this.semantics,
     this.onTap,
   });
+
+  /// Что за число — подпись под ним («дн. серии», «сила», «монет»).
+  final String label;
 
   final IconData icon;
   final Color iconColor;
@@ -357,21 +346,30 @@ class _StatChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final chip = Container(
-      height: 36,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
+      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
       decoration: BoxDecoration(
         color: AppColors.surface,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: AppColors.hairline),
+        borderRadius: BorderRadius.circular(12),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, size: 16, color: iconColor),
-          const SizedBox(width: 6),
-          // Большие числа и крупный шрифт — уменьшаем, а не вылезаем за плашку.
-          Flexible(
-            child: FittedBox(fit: BoxFit.scaleDown, child: value),
+          Row(
+            children: [
+              Icon(icon, size: 16, color: iconColor),
+              const SizedBox(width: 6),
+              // Большие числа и крупный шрифт — уменьшаем, а не вылезаем за плашку.
+              Flexible(
+                child: FittedBox(fit: BoxFit.scaleDown, child: value),
+              ),
+            ],
+          ),
+          const SizedBox(height: 2),
+          Text(
+            label,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ],
       ),
@@ -607,10 +605,22 @@ class _ActivityLine extends ConsumerWidget {
   }
 }
 
-/// Колонка квадратных кнопок сбоку от героя: советы дня, взвешивание, входная
-/// тренировка. Точка — есть что сделать; подпись под квадратом — что это.
-class _SideRail extends ConsumerWidget {
-  const _SideRail();
+/// «1 день серии», «2 дня», «5 дней» — подпись под числом серии.
+String streakLabel(int n) {
+  final mod10 = n % 10;
+  final mod100 = n % 100;
+  if (mod10 == 1 && mod100 != 11) return 'день серии';
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return 'дня серии';
+  }
+  return 'дней серии';
+}
+
+/// Ряд «Сегодня» под героем: входная тренировка, советы дня, взвешивание.
+/// Что ждёт действия — с точкой и иконкой акцентом, остальное — тихо.
+/// Раньше это были квадраты за спиной героя (docs/REDESIGN.md).
+class _TodayRow extends ConsumerWidget {
+  const _TodayRow();
 
   /// Входная тренировка: первая не пройдена или пора повторить (и не отложено на сегодня).
   static ({bool first, bool retest}) entryDue(WidgetRef ref) {
@@ -635,52 +645,55 @@ class _SideRail extends ConsumerWidget {
       // При цели «похудеть» — раз в 2 дня (п. 117).
       every: weighInEveryFor(hero?.goal, hero?.extraGoals ?? const []),
     );
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (entry.first || entry.retest)
-          _RailButton(
-            icon: LucideIcons.clipboardCheck,
-            label: 'Тест',
-            hint: entry.first
-                ? 'Входная тренировка · 12 мин · +50 монет'
-                : 'Месяц прошёл — сравним, как ты вырос',
-            dot: true,
-            strong: true,
-            onTap: () => context.push('/entry-test'),
-          ),
-        if (daily != null)
-          _RailButton(
-            icon: LucideIcons.lightbulb,
-            label: 'Советы',
-            hint: daily.done
-                ? 'Советы дня: верно ${daily.correctCount} из ${daily.tips.length}'
-                : 'Советы дня: ${daily.answeredCount} из ${daily.tips.length}, до +${daily.maxCoins} монет',
-            dot: !daily.done,
-            onTap: () => context.push('/tip'),
-          ),
-        _RailButton(
-          icon: LucideIcons.scale,
-          label: 'Вес',
-          hint: weighDue
-              ? 'Пора взвеситься — и анализ тела на часах'
-              : 'Записать вес и состав тела',
-          dot: weighDue,
-          onTap: () => showWeighIn(context, ref),
+    final items = [
+      if (entry.first || entry.retest)
+        _TodayItem(
+          icon: LucideIcons.clipboardCheck,
+          label: 'Тест',
+          hint: entry.first
+              ? 'Входная тренировка · 12 мин · +50 монет'
+              : 'Месяц прошёл — сравним, как ты вырос',
+          due: true,
+          onTap: () => context.push('/entry-test'),
         ),
+      if (daily != null)
+        _TodayItem(
+          icon: LucideIcons.lightbulb,
+          label: 'Советы',
+          hint: daily.done
+              ? 'Советы дня: верно ${daily.correctCount} из ${daily.tips.length}'
+              : 'Советы дня: ${daily.answeredCount} из ${daily.tips.length}, до +${daily.maxCoins} монет',
+          due: !daily.done,
+          onTap: () => context.push('/tip'),
+        ),
+      _TodayItem(
+        icon: LucideIcons.scale,
+        label: 'Вес',
+        hint: weighDue
+            ? 'Пора взвеситься — и анализ тела на часах'
+            : 'Записать вес и состав тела',
+        due: weighDue,
+        onTap: () => showWeighIn(context, ref),
+      ),
+    ];
+    return Row(
+      children: [
+        for (final (i, item) in items.indexed) ...[
+          if (i > 0) const SizedBox(width: 8),
+          Expanded(child: item),
+        ],
       ],
     );
   }
 }
 
-class _RailButton extends StatelessWidget {
-  const _RailButton({
+class _TodayItem extends StatelessWidget {
+  const _TodayItem({
     required this.icon,
     required this.label,
     required this.hint,
     required this.onTap,
-    this.dot = false,
-    this.strong = false,
+    this.due = false,
   });
 
   final IconData icon;
@@ -690,88 +703,95 @@ class _RailButton extends StatelessWidget {
   final String hint;
   final VoidCallback onTap;
 
-  /// Есть что сделать — точка в углу и яркая иконка.
-  final bool dot;
-
-  /// Важное (входная тренировка) — рамка цветом акцента.
-  final bool strong;
+  /// Ждёт действия — точка и иконка цветом акцента.
+  final bool due;
 
   @override
   Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Tooltip(
-        message: hint,
-        child: Semantics(
-          button: true,
-          label: hint,
-          excludeSemantics: true,
-          child: Pressable(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Material(
-                  color: AppColors.surface,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(
-                      color: strong
-                          ? accent.withValues(alpha: 0.6)
-                          : AppColors.hairline,
-                    ),
-                  ),
-                  child: InkWell(
-                    onTap: onTap,
-                    borderRadius: BorderRadius.circular(12),
-                    child: SizedBox(
-                      width: 44,
-                      height: 44,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        children: [
-                          Center(
-                            child: Icon(
-                              icon,
-                              size: 20,
-                              color: dot ? accent : AppColors.textSecondary,
-                            ),
-                          ),
-                          if (dot)
-                            Positioned(
-                              right: 6,
-                              top: 6,
-                              child: Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: accent,
-                                  shape: BoxShape.circle,
-                                  border: Border.all(
-                                    color: AppColors.surface,
-                                    width: 1.5,
-                                  ),
-                                ),
-                              ),
-                            ),
-                        ],
+    return Tooltip(
+      message: hint,
+      child: Semantics(
+        button: true,
+        label: hint,
+        excludeSemantics: true,
+        child: Pressable(
+          child: Material(
+            color: AppColors.surface,
+            borderRadius: BorderRadius.circular(12),
+            child: InkWell(
+              onTap: onTap,
+              borderRadius: BorderRadius.circular(12),
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(minHeight: 44),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 10),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        icon,
+                        size: 16,
+                        color: due ? accent : AppColors.textSecondary,
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          label,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: due
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                      if (due) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: accent,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                 ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: const TextStyle(
-                    fontSize: 10,
-                    color: AppColors.textMuted,
-                  ),
-                ),
-              ],
+              ),
             ),
           ),
         ),
       ),
     );
   }
+}
+
+/// День закрыт: статус вместо выключенной серой кнопки (она читалась как «сломано»).
+class _DayDone extends StatelessWidget {
+  const _DayDone();
+
+  @override
+  Widget build(BuildContext context) => const SizedBox(
+    height: 48,
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(LucideIcons.circleCheck, size: 18, color: AppColors.success),
+        SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            'На сегодня всё — отдыхай',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(fontSize: 16, color: AppColors.textPrimary),
+          ),
+        ),
+      ],
+    ),
+  );
 }

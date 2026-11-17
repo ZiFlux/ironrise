@@ -122,6 +122,7 @@ void main() {
     ]);
     await _load('Roboto', ['assets/fonts/Inter-Regular.ttf']);
     await _load('Unbounded', ['assets/fonts/Unbounded-Medium.ttf']);
+    await _load('RussoOne', ['assets/fonts/RussoOne-Regular.ttf']);
     await _load('packages/lucide_icons_flutter/Lucide', [_lucideFont()]);
     // Стандартные иконки (стрелка «назад») — шрифт из Flutter SDK.
     await _load('MaterialIcons', [

@@ -153,10 +153,9 @@ ThemeData buildTheme(AccentOption style) {
       color: AppColors.surface,
       elevation: 0,
       margin: EdgeInsets.zero,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.hairline),
-      ),
+      // Без рамки (docs/REDESIGN.md): рамка у всего подряд стирала разницу между
+      // кнопкой и текстом. Глубина — ступенью поверхности над фоном.
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     filledButtonTheme: FilledButtonThemeData(
       style: FilledButton.styleFrom(
