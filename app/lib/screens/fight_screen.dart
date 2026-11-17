@@ -1,0 +1,590 @@
+import 'dart:async';
+
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
+import '../avatar/avatar_look.dart';
+import '../avatar/avatar_view.dart';
+import '../game/combat.dart';
+import '../game/duel.dart';
+import '../game/duel_flavor.dart';
+import '../net/api_client.dart';
+import '../state/fight_state.dart';
+import '../state/providers.dart';
+import '../theme.dart';
+import '../widgets/info_bubble.dart';
+import '../widgets/status_toast.dart';
+
+/// Бой по раундам (docs/COMBAT.md): перед раундом — цепочка из 5 действий,
+/// потом шаги проигрываются по очереди. Считает всё сервер.
+class FightScreen extends ConsumerStatefulWidget {
+  const FightScreen({super.key});
+
+  @override
+  ConsumerState<FightScreen> createState() => _FightScreenState();
+}
+
+class _FightScreenState extends ConsumerState<FightScreen> {
+  final List<CombatAction> _chain = [];
+  bool _sending = false;
+
+  /// Шаги раунда, которые проигрываются сейчас, и сколько уже показано.
+  List<CombatStep> _playing = const [];
+  int _shown = 0;
+  Timer? _timer;
+
+  static const _stepPause = Duration(milliseconds: 1100);
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _go() async {
+    if (_sending) return;
+    setState(() => _sending = true);
+    try {
+      final next = await ref
+          .read(fightProvider.notifier)
+          .playRound(List.of(_chain));
+      if (!mounted) return;
+      setState(() {
+        _chain.clear();
+        _playing = next.lastSteps;
+        _shown = 0;
+      });
+      _timer?.cancel();
+      _timer = Timer.periodic(_stepPause, (t) {
+        if (!mounted) return t.cancel();
+        if (_shown >= _playing.length) return t.cancel();
+        setState(() => _shown++);
+      });
+      setState(() => _shown = 1);
+    } on ApiException catch (e) {
+      if (mounted) showStatusError(e.message, network: e.isNetwork);
+    } finally {
+      if (mounted) setState(() => _sending = false);
+    }
+  }
+
+  void _skip() {
+    _timer?.cancel();
+    setState(() => _shown = _playing.length);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final fight = ref.watch(fightProvider);
+    final hero = ref.watch(heroProvider);
+    if (fight == null || hero == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Бой')),
+        body: Center(
+          child: TextButton(
+            onPressed: () => context.go('/duels'),
+            child: const Text('К дуэлям'),
+          ),
+        ),
+      );
+    }
+    final playing = _shown < _playing.length;
+    final step = _shown > 0 && _shown <= _playing.length
+        ? _playing[_shown - 1]
+        : null;
+    // Пока идёт показ — здоровье по показанному шагу, потом — итог раунда.
+    final hpA = playing && step != null ? step.hpA : fight.hpA;
+    final hpD = playing && step != null ? step.hpD : fight.hpD;
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          fight.finished
+              ? 'Бой окончен'
+              : 'Раунд ${fight.round + (playing ? 0 : 1)} из ${fight.rules.rounds}',
+        ),
+        leading: IconButton(
+          tooltip: 'К дуэлям',
+          onPressed: () => context.go('/duels'),
+          icon: const Icon(LucideIcons.arrowLeft),
+        ),
+        actions: [
+          IconButton(
+            tooltip: 'Кто кого бьёт',
+            onPressed: () => showInfoBubble(
+              context,
+              title: 'Кто кого бьёт',
+              text: combatMatchupText,
+            ),
+            icon: const Icon(LucideIcons.circleHelp, size: 20),
+          ),
+        ],
+      ),
+      body: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: _Side(
+                        fighter: fight.attacker,
+                        look: hero.look,
+                        hp: hpA,
+                        max: fight.powerA,
+                        player: true,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _Side(
+                        fighter: fight.defender,
+                        look: fight.defender.lookOrStarter,
+                        hp: hpD,
+                        max: fight.powerD,
+                        player: false,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              if (step != null && (playing || !fight.finished))
+                _StepLine(step: step, fight: fight),
+              const SizedBox(height: 8),
+              if (playing)
+                Align(
+                  child: TextButton(
+                    onPressed: _skip,
+                    child: const Text('Пропустить'),
+                  ),
+                )
+              else if (fight.finished)
+                _Result(
+                  fight: fight,
+                  onDone: () {
+                    ref.read(fightProvider.notifier).close();
+                    context.go('/duels');
+                  },
+                )
+              else
+                _Planner(
+                  rules: fight.rules,
+                  chain: _chain,
+                  sending: _sending,
+                  onAdd: (a) => setState(() => _chain.add(a)),
+                  onRemove: (i) => setState(() => _chain.removeAt(i)),
+                  onClear: () => setState(_chain.clear),
+                  onGo: _go,
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _Side extends StatelessWidget {
+  const _Side({
+    required this.fighter,
+    required this.look,
+    required this.hp,
+    required this.max,
+    required this.player,
+  });
+
+  final Fighter fighter;
+  final AvatarLook look;
+  final int hp;
+  final int max;
+  final bool player;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    final avatar = AvatarView(levels: fighter.levels, look: look);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          fighter.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+        ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: TweenAnimationBuilder<double>(
+            tween: Tween(end: max == 0 ? 0 : hp / max),
+            duration: const Duration(milliseconds: 350),
+            builder: (_, v, _) => LinearProgressIndicator(
+              value: v,
+              minHeight: 8,
+              color: player ? accent : const Color(0xFFE5484D),
+              backgroundColor: AppColors.raised,
+            ),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '$hp / $max',
+          textAlign: TextAlign.center,
+          style: figureStyle(size: 13),
+        ),
+        Expanded(
+          child: player ? avatar : Transform.flip(flipX: true, child: avatar),
+        ),
+      ],
+    );
+  }
+}
+
+/// Шаг: что сделал каждый и чем кончилось.
+class _StepLine extends StatelessWidget {
+  const _StepLine({required this.step, required this.fight});
+
+  final CombatStep step;
+  final FightView fight;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    String side(String act, String out, int dmg) {
+      final o = outcomeLabel(out);
+      return '${stepActionLabel(act)}${o.isEmpty ? '' : ' — $o'}${dmg > 0 ? ', −$dmg' : ''}';
+    }
+
+    final event = step.eventId == null ? null : duelEventById(step.eventId!);
+    final who = step.eventOwnerIsAttacker ? fight.attacker : fight.defender;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (event != null)
+          Text(
+            event.phrase(who.name, female: who.isFemale),
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              fontSize: 13,
+              color: AppColors.textSecondary,
+            ),
+          ),
+        Text(
+          'Шаг ${step.step + 1}',
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 2),
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                side(step.a, step.outA, step.toD),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: step.toD > 0 ? accent : AppColors.textPrimary,
+                ),
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                side(step.d, step.outD, step.toA),
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w500,
+                  color: step.toA > 0
+                      ? const Color(0xFFE5484D)
+                      : AppColors.textPrimary,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+IconData _icon(CombatAction a) => switch (a) {
+  CombatAction.body => LucideIcons.handFist,
+  CombatAction.legs => LucideIcons.footprints,
+  CombatAction.heavy => LucideIcons.hammer,
+  CombatAction.grab => LucideIcons.grab,
+  CombatAction.block => LucideIcons.shield,
+  CombatAction.evade => LucideIcons.undo2,
+};
+
+/// Выбор цепочки: 5 ячеек и 6 действий. Тап по действию — в первую пустую ячейку,
+/// тап по ячейке — убрать.
+class _Planner extends StatelessWidget {
+  const _Planner({
+    required this.rules,
+    required this.chain,
+    required this.sending,
+    required this.onAdd,
+    required this.onRemove,
+    required this.onClear,
+    required this.onGo,
+  });
+
+  final CombatRules rules;
+  final List<CombatAction> chain;
+  final bool sending;
+  final ValueChanged<CombatAction> onAdd;
+  final ValueChanged<int> onRemove;
+  final VoidCallback onClear;
+  final VoidCallback onGo;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(
+          'Твои ${rules.steps} действий на раунд — соперник выбирает свои одновременно',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          children: [
+            for (var i = 0; i < rules.steps; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Expanded(
+                child: _Slot(
+                  action: i < chain.length ? chain[i] : null,
+                  index: i,
+                  onTap: i < chain.length ? () => onRemove(i) : null,
+                ),
+              ),
+            ],
+          ],
+        ),
+        const SizedBox(height: 10),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          mainAxisSpacing: 8,
+          crossAxisSpacing: 8,
+          childAspectRatio: 2.2,
+          children: [
+            for (final a in CombatAction.values)
+              _ActionButton(
+                action: a,
+                enabled: !sending && rules.allows(chain, a),
+                onTap: () => onAdd(a),
+              ),
+          ],
+        ),
+        const SizedBox(height: 10),
+        Row(
+          children: [
+            Expanded(
+              child: TextButton(
+                onPressed: chain.isEmpty || sending ? null : onClear,
+                child: const Text(
+                  'Сбросить',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              flex: 2,
+              child: FilledButton.icon(
+                onPressed: chain.length == rules.steps && !sending
+                    ? onGo
+                    : null,
+                style: FilledButton.styleFrom(
+                  backgroundColor: accent,
+                  minimumSize: const Size(0, 44),
+                ),
+                icon: sending
+                    ? const SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
+                    : const Icon(LucideIcons.swords, size: 18),
+                label: const Text('В бой', maxLines: 1),
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+class _Slot extends StatelessWidget {
+  const _Slot({required this.action, required this.index, this.onTap});
+
+  final CombatAction? action;
+  final int index;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = action;
+    return Semantics(
+      button: onTap != null,
+      label: a == null
+          ? 'Шаг ${index + 1}, пусто'
+          : 'Шаг ${index + 1}: ${a.label}, убрать',
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Container(
+          height: MediaQuery.textScalerOf(context).scale(52),
+          decoration: BoxDecoration(
+            color: a == null ? Colors.transparent : AppColors.raised,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: AppColors.hairline, width: 1.5),
+          ),
+          child: a == null
+              ? Center(
+                  child: Text(
+                    '${index + 1}',
+                    style: const TextStyle(color: AppColors.textMuted),
+                  ),
+                )
+              : Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(_icon(a), size: 18),
+                    const SizedBox(height: 2),
+                    Text(
+                      a.label,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontSize: 10),
+                    ),
+                  ],
+                ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ActionButton extends StatelessWidget {
+  const _ActionButton({
+    required this.action,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final CombatAction action;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) => Tooltip(
+    message: action.hint,
+    child: OutlinedButton.icon(
+      onPressed: enabled ? onTap : null,
+      onLongPress: () =>
+          showInfoBubble(context, title: action.label, text: action.hint),
+      style: OutlinedButton.styleFrom(
+        backgroundColor: AppColors.raised,
+        padding: const EdgeInsets.symmetric(horizontal: 6),
+      ),
+      icon: Icon(_icon(action), size: 16),
+      label: Text(
+        action.label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: const TextStyle(fontSize: 13),
+      ),
+    ),
+  );
+}
+
+class _Result extends StatelessWidget {
+  const _Result({required this.fight, required this.onDone});
+
+  final FightView fight;
+  final VoidCallback onDone;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    final won = fight.won == true;
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    won ? 'Победа' : 'Поражение',
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w600,
+                      color: won ? accent : AppColors.textPrimary,
+                    ),
+                  ),
+                ),
+                const Icon(
+                  LucideIcons.coins,
+                  size: 16,
+                  color: AppColors.textSecondary,
+                ),
+                const SizedBox(width: 6),
+                Text('+${fight.coins ?? 0}', style: figureStyle(size: 17)),
+              ],
+            ),
+            if (fight.ladderNote case final note?) ...[
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Icon(LucideIcons.trophy, size: 16, color: accent),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      note,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: accent,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+            const SizedBox(height: 6),
+            Text(
+              won
+                  ? 'Сила решает, но и выбор помог. Сила растёт только от тренировок.'
+                  : 'Поражение ничего не отнимает. Попробуй другие цепочки — ИИ подстраивается под привычки — и тренируйся: сила главнее.',
+              style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+            ),
+            const SizedBox(height: 12),
+            FilledButton(onPressed: onDone, child: const Text('К дуэлям')),
+          ],
+        ),
+      ),
+    );
+  }
+}

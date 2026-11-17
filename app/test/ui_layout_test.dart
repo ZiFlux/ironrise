@@ -19,6 +19,8 @@ import 'package:ironrise/game/training_format.dart';
 import 'package:ironrise/game/workout.dart';
 import 'package:ironrise/main.dart';
 import 'package:ironrise/router.dart';
+import 'package:ironrise/game/combat.dart';
+import 'package:ironrise/state/fight_state.dart';
 import 'package:ironrise/state/account_state.dart';
 import 'package:ironrise/state/joint_state.dart';
 import 'package:ironrise/state/duel_state.dart';
@@ -281,6 +283,23 @@ Future<void> _prepare(ProviderContainer c, String path) async {
               finishedAt: DateTime.now(),
             ),
           );
+    case '/duels/fight':
+      c
+          .read(fightProvider.notifier)
+          .show(
+            FightView(
+              id: 'f',
+              friend: false,
+              attacker: _fighter('me', _longNick, 9),
+              defender: _fighter('b', 'Очень_Длинный_Ник_01', 9),
+              powerA: 560,
+              powerD: 560,
+              hpA: 300,
+              hpD: 420,
+              round: 2,
+              rules: const CombatRules(),
+            ),
+          );
     case '/duels/battle':
       c
           .read(currentDuelProvider.notifier)
@@ -468,6 +487,7 @@ void main() {
         '/',
         '/duels',
         '/duels/friends',
+        '/duels/fight',
         '/rating',
         '/season',
         '/duels/auras',

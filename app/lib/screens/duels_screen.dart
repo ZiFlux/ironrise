@@ -7,6 +7,7 @@ import '../avatar/avatar_view.dart';
 import '../game/duel.dart';
 import '../game/game_config.dart';
 import '../net/api_client.dart';
+import '../state/fight_state.dart';
 import '../state/account_state.dart';
 import '../state/aura_state.dart';
 import '../state/season_state.dart';
@@ -35,12 +36,22 @@ class DuelsScreen extends ConsumerStatefulWidget {
 class _DuelsScreenState extends ConsumerState<DuelsScreen> {
   bool _friendsTab = false;
 
-  Future<void> _open(Future<DuelResult?> Function() fight) async {
+  /// Бой по раундам (docs/COMBAT.md): начать и открыть экран боя. Есть
+  /// незаконченный — продолжить его.
+  Future<void> _openFight(Future<FightView> Function() start) async {
+    final fights = ref.read(fightProvider.notifier);
     try {
-      final r = await fight();
-      if (r != null && mounted) context.go('/duels/battle');
+      await start();
+      if (mounted) context.go('/duels/fight');
     } on ApiException catch (e) {
       if (!mounted) return;
+      if (e.status == 409 && e.message.startsWith('Finish the current fight')) {
+        if (await fights.resume() != null && mounted) {
+          showStatus('Сначала доиграй начатый бой');
+          context.go('/duels/fight');
+        }
+        return;
+      }
       showStatusError(e.message, network: e.isNetwork);
     }
   }
@@ -50,7 +61,6 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
     final hero = ref.watch(heroProvider);
     if (hero == null) return const SizedBox.shrink();
     final me = playerFighter(hero);
-    final duels = ref.read(duelProvider.notifier);
 
     if (!ref.watch(accountProvider).signedIn) {
       return const SignInGate(
@@ -108,7 +118,9 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
                       counter: 'осталось боёв: ${d.fightsLeft}',
                       footer: 'С каждым другом — один бой в день. Друг может быть не в сети',
                       scrollable: true,
-                      onFight: (f) => _open(() => duels.fightFriendOnServer(f)),
+                      onFight: (f) => _openFight(
+                        () => ref.read(fightProvider.notifier).startFriend(f),
+                      ),
                     ),
               loading: () => const Center(child: CircularProgressIndicator()),
               error: (e, _) =>
@@ -126,7 +138,9 @@ class _DuelsScreenState extends ConsumerState<DuelsScreen> {
                     nextFightAt: d.nextFightAt,
                     counter: _botsCounter(d.fights.values),
                     footer: d.ladder == null ? _botsFooter : _ladderFooter,
-                    onFight: (bot) => _open(() => duels.fightOnServer(bot)),
+                    onFight: (bot) => _openFight(
+                      () => ref.read(fightProvider.notifier).startBot(bot),
+                    ),
                   ),
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),

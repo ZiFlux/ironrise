@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'screens/fight_screen.dart';
 import 'screens/account_screen.dart';
 import 'screens/cardio_screen.dart';
 import 'screens/entry_test_screen.dart';
@@ -173,6 +174,10 @@ final routerProvider = Provider<GoRouter>((ref) {
                       id: 'battle',
                       child: DuelBattleScreen(),
                     ),
+                  ),
+                  GoRoute(
+                    path: 'fight',
+                    builder: (_, _) => const FightScreen(),
                   ),
                   GoRoute(
                     path: 'friends',
