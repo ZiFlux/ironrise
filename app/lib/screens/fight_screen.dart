@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -149,6 +150,10 @@ class _FightScreenState extends ConsumerState<FightScreen> {
                             ? step?.auraOf(attacker: true)?.kind
                             : null,
                         auraKey: step == null ? 0 : step.round * 10 + step.step,
+                        // Шаг для анимации: что сделал, сколько получил.
+                        act: playing ? step?.a : null,
+                        took: playing ? step?.toA ?? 0 : 0,
+                        crit: playing && step?.outD == 'crit',
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -163,6 +168,9 @@ class _FightScreenState extends ConsumerState<FightScreen> {
                             ? step?.auraOf(attacker: false)?.kind
                             : null,
                         auraKey: step == null ? 0 : step.round * 10 + step.step,
+                        act: playing ? step?.d : null,
+                        took: playing ? step?.toD ?? 0 : 0,
+                        crit: playing && step?.outA == 'crit',
                       ),
                     ),
                   ],
@@ -214,7 +222,16 @@ class _Side extends StatelessWidget {
     required this.player,
     this.aura,
     this.auraKey = 0,
+    this.act,
+    this.took = 0,
+    this.crit = false,
   });
+
+  /// Действие бойца на показанном шаге (значок над героем) и полученный урон
+  /// (встряска и «−9», крит — крупнее и красным).
+  final String? act;
+  final int took;
+  final bool crit;
 
   /// Аура, горящая на показанном шаге: пламя вокруг героя.
   final AuraKind? aura;
@@ -261,14 +278,41 @@ class _Side extends StatelessWidget {
           style: figureStyle(size: 13),
         ),
         Expanded(
-          child: AuraHero(
-            // Длительная аура (ярость, стойкость) — одна анимация на весь срок.
-            key: ValueKey(
-              aura == null ? 'none' : (aura!.burst ? 'a$auraKey' : aura!.name),
-            ),
-            kind: aura,
-            burst: aura?.burst ?? false,
-            child: player ? avatar : Transform.flip(flipX: true, child: avatar),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              _Shake(
+                trigger: took > 0 ? auraKey : null,
+                strength: crit ? 10 : 6,
+                child: AuraHero(
+                  // Длительная аура (ярость, стойкость) — одна анимация на весь срок.
+                  key: ValueKey(
+                    aura == null
+                        ? 'none'
+                        : (aura!.burst ? 'a$auraKey' : aura!.name),
+                  ),
+                  kind: aura,
+                  burst: aura?.burst ?? false,
+                  child: player
+                      ? avatar
+                      : Transform.flip(flipX: true, child: avatar),
+                ),
+              ),
+              if (CombatAction.byName(act) case final a?)
+                Align(
+                  alignment: Alignment.topCenter,
+                  child: _ActBadge(key: ValueKey('b$auraKey'), action: a),
+                ),
+              if (took > 0)
+                Align(
+                  alignment: const Alignment(0, -0.2),
+                  child: _DamagePop(
+                    key: ValueKey('d$auraKey'),
+                    damage: took,
+                    crit: crit,
+                  ),
+                ),
+            ],
           ),
         ),
       ],
@@ -629,4 +673,87 @@ class _Result extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Встряска при попадании: короткая, крит — сильнее.
+class _Shake extends StatelessWidget {
+  const _Shake({required this.trigger, required this.child, this.strength = 6});
+
+  final int? trigger;
+  final double strength;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (trigger == null) return child;
+    return TweenAnimationBuilder<double>(
+      key: ValueKey(trigger),
+      tween: Tween(begin: 0, end: 1),
+      duration: const Duration(milliseconds: 320),
+      builder: (_, t, c) => Transform.translate(
+        offset: Offset(math.sin(t * math.pi * 4) * strength * (1 - t), 0),
+        child: c,
+      ),
+      child: child,
+    );
+  }
+}
+
+/// Значок действия над бойцом: появляется и чуть подрастает.
+class _ActBadge extends StatelessWidget {
+  const _ActBadge({super.key, required this.action});
+
+  final CombatAction action;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0.6, end: 1),
+    duration: const Duration(milliseconds: 220),
+    curve: Curves.easeOutBack,
+    builder: (_, s, c) => Transform.scale(scale: s, child: c),
+    child: Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: AppColors.raised.withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppColors.hairline),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(_icon(action), size: 14),
+          const SizedBox(width: 4),
+          Text(action.label, style: const TextStyle(fontSize: 12)),
+        ],
+      ),
+    ),
+  );
+}
+
+/// «−9» вылетает вверх и тает; крит — крупнее и красным.
+class _DamagePop extends StatelessWidget {
+  const _DamagePop({super.key, required this.damage, required this.crit});
+
+  final int damage;
+  final bool crit;
+
+  @override
+  Widget build(BuildContext context) => TweenAnimationBuilder<double>(
+    tween: Tween(begin: 0, end: 1),
+    duration: const Duration(milliseconds: 900),
+    curve: Curves.easeOut,
+    builder: (_, t, c) => Transform.translate(
+      offset: Offset(0, -40 * t),
+      child: Opacity(opacity: (1 - t * t).clamp(0, 1), child: c),
+    ),
+    child: Text(
+      '−$damage',
+      style: TextStyle(
+        fontSize: crit ? 30 : 22,
+        fontWeight: FontWeight.w800,
+        color: crit ? const Color(0xFFFF4D4D) : AppColors.textPrimary,
+        shadows: const [Shadow(blurRadius: 6, color: Colors.black)],
+      ),
+    ),
+  );
 }
