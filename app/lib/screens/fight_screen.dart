@@ -14,6 +14,7 @@ import '../game/duel.dart';
 import '../game/duel_flavor.dart';
 import '../net/api_client.dart';
 import '../state/fight_state.dart';
+import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
 import '../widgets/aura_flame.dart';
@@ -64,13 +65,22 @@ class _FightScreenState extends ConsumerState<FightScreen> {
         if (!mounted) return t.cancel();
         if (_shown >= _playing.length) return t.cancel();
         setState(() => _shown++);
+        _flashIfAura();
       });
       setState(() => _shown = 1);
+      _flashIfAura();
     } on ApiException catch (e) {
       if (mounted) showStatusError(e.message, network: e.isNetwork);
     } finally {
       if (mounted) setState(() => _sending = false);
     }
+  }
+
+  /// Моя аура включилась на показанном шаге — вспышка и вибрация на часах (п. 83).
+  void _flashIfAura() {
+    if (_shown < 1 || _shown > _playing.length) return;
+    final mine = _playing[_shown - 1].auraOf(attacker: true);
+    if (mine != null && mine.start) flashAuraOnWatch(mine.kind.name);
   }
 
   void _skip() {

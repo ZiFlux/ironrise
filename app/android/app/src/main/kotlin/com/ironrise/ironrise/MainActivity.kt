@@ -29,6 +29,12 @@ class MainActivity : FlutterFragmentActivity() {
                     "stop" -> sendToWatch(PATH_STOP, result)
                     // Спросить версию приложения на часах: ответ придёт в WatchStream.
                     "hello" -> sendToWatch(PATH_HELLO, result)
+                    // Аура вспыхнула в дуэли (п. 83): старые часы путь пропустят.
+                    "auraFlash" -> sendToWatch(
+                        PATH_AURA_FLASH,
+                        result,
+                        (call.argument<String>("kind") ?: "").toByteArray(),
+                    )
                     else -> result.notImplemented()
                 }
             }
@@ -40,6 +46,7 @@ class MainActivity : FlutterFragmentActivity() {
                     today = call.argument<String>("today") ?: "",
                     level = call.argument<String>("level") ?: "",
                     aura = call.argument<String>("aura") ?: "",
+                    auraState = call.argument<String>("auraState") ?: "",
                 )
                 result.success(true)
             }
@@ -74,7 +81,7 @@ class MainActivity : FlutterFragmentActivity() {
      * Сводка для виджета и плитки на часах: серия, что сегодня, уровень героя.
      * Виджет читает её из SharedPreferences, часы получают через Data Layer.
      */
-    private fun publishSummary(streak: Int, today: String, level: String, aura: String) {
+    private fun publishSummary(streak: Int, today: String, level: String, aura: String, auraState: String) {
         getSharedPreferences(SummaryWidget.PREFS, MODE_PRIVATE).edit()
             .putInt("streak", streak)
             .putString("today", today)
@@ -88,6 +95,7 @@ class MainActivity : FlutterFragmentActivity() {
             // Надетая аура (id из AuraKind). Старые часы ключ не читают, новые
             // рисуют эффект, только если знают этот id.
             dataMap.putString("aura", aura)
+            dataMap.putString("auraState", auraState)
         }.asPutDataRequest().setUrgent()
         Wearable.getDataClient(applicationContext).putDataItem(request)
     }
@@ -126,11 +134,11 @@ class MainActivity : FlutterFragmentActivity() {
     }
 
     /** Команда приложению на часах. Отвечает true, если хоть одни часы на связи. */
-    private fun sendToWatch(path: String, result: MethodChannel.Result) {
+    private fun sendToWatch(path: String, result: MethodChannel.Result, body: ByteArray = ByteArray(0)) {
         val messages = Wearable.getMessageClient(applicationContext)
         Wearable.getNodeClient(applicationContext).connectedNodes
             .addOnSuccessListener { nodes ->
-                nodes.forEach { messages.sendMessage(it.id, path, ByteArray(0)) }
+                nodes.forEach { messages.sendMessage(it.id, path, body) }
                 result.success(nodes.isNotEmpty())
             }
             .addOnFailureListener { result.success(false) }
@@ -185,6 +193,7 @@ class MainActivity : FlutterFragmentActivity() {
         const val PATH_HELLO = "/ironrise/hello"
         const val PATH_VERSION = "/ironrise/version"
         const val PATH_CAPS = "/ironrise/caps"
+        const val PATH_AURA_FLASH = "/ironrise/aura_flash"
         const val CALENDAR_CHANNEL = "ironrise/calendar"
         const val SOUND_CHANNEL = "ironrise/sound"
         const val SUMMARY_CHANNEL = "ironrise/summary"

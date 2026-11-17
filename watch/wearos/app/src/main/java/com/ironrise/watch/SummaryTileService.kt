@@ -44,6 +44,15 @@ class SummaryTileService : TileService() {
             .addContent(LayoutElementBuilders.Spacer.Builder().setHeight(dp(8f)).build())
             .addContent(text(summary.today, 14f, PRIMARY))
             .addContent(text(summary.level, 12f, ACCENT))
+            .apply {
+                // Статус надетой ауры (п. 83): горит — её цветом, тухнет — приглушённо.
+                val aura = Auras.of(summary.aura)
+                when {
+                    aura == null || summary.auraState.isEmpty() -> Unit
+                    summary.auraState == "on" -> addContent(text("${aura.name} горит", 12f, aura.main))
+                    else -> addContent(text("${aura.name} тухнет — потренируй", 12f, MUTED))
+                }
+            }
             .build()
         val layout = LayoutElementBuilders.Layout.Builder()
             .setRoot(
@@ -95,7 +104,14 @@ class SummaryTileService : TileService() {
 
 /** Сводка от телефона: хранится на часах до следующего обновления. */
 /** [aura] — id надетой ауры с телефона; пусто — ауры нет (или телефон старый). */
-data class Summary(val streak: Int, val today: String, val level: String, val aura: String = "") {
+data class Summary(
+    val streak: Int,
+    val today: String,
+    val level: String,
+    val aura: String = "",
+    /** «on» — горит (тренировалась на неделе), «fading» — тухнет; пусто — не знаем. */
+    val auraState: String = "",
+) {
     companion object {
         const val PREFS = "summary"
 
@@ -106,6 +122,7 @@ data class Summary(val streak: Int, val today: String, val level: String, val au
                 today = p.getString("today", null) ?: "Открой IronRise на телефоне",
                 level = p.getString("level", null) ?: "",
                 aura = p.getString("aura", null) ?: "",
+                auraState = p.getString("auraState", null) ?: "",
             )
         }
 
@@ -115,6 +132,7 @@ data class Summary(val streak: Int, val today: String, val level: String, val au
                 .putString("today", summary.today)
                 .putString("level", summary.level)
                 .putString("aura", summary.aura)
+                .putString("auraState", summary.auraState)
                 .apply()
         }
     }

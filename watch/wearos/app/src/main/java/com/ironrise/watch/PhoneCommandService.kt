@@ -34,6 +34,8 @@ class PhoneCommandService : WearableListenerService() {
                     map.getString("today") ?: "",
                     map.getString("level") ?: "",
                     map.getString("aura") ?: "",
+                    // «on» — аура тренируется на этой неделе, «fading» — тухнет; старый телефон — пусто.
+                    map.getString("auraState") ?: "",
                 ),
             )
             TileService.getUpdater(this).requestUpdate(SummaryTileService::class.java)
@@ -44,6 +46,7 @@ class PhoneCommandService : WearableListenerService() {
         when (event.path) {
             PhoneLink.PATH_START -> startWorkout()
             PhoneLink.PATH_STOP -> if (WorkoutStore.state.value.active) WorkoutService.stop(this)
+            PhoneLink.PATH_AURA_FLASH -> AuraFlash.show(this, String(event.data))
             PhoneLink.PATH_HELLO -> runBlocking {
                 val link = PhoneLink(this@PhoneCommandService)
                 // Версия — как раньше (её ждут старые телефоны), возможности — отдельным

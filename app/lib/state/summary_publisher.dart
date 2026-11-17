@@ -46,6 +46,7 @@ final summaryPublisherProvider = Provider<void>((ref) {
   if (!Platform.isAndroid) return;
   Summary? last;
   String? lastAura;
+  String? lastAuraState;
   void publish() {
     final hero = ref.read(heroProvider);
     if (hero == null) return;
@@ -60,15 +61,22 @@ final summaryPublisherProvider = Provider<void>((ref) {
     final aura = ref.read(accountProvider).signedIn
         ? ref.read(auraProvider).value?.equipped?.name ?? ''
         : '';
-    if (s == last && aura == lastAura) return;
+    // «Горит / тухнет» (п. 83): тренировалась ли надетая аура на этой неделе.
+    final info = ref.read(auraProvider).value;
+    final auraState = aura.isEmpty || info == null
+        ? ''
+        : (info.sessionsThisWeek > 0 ? 'on' : 'fading');
+    if (s == last && aura == lastAura && auraState == lastAuraState) return;
     last = s;
     lastAura = aura;
+    lastAuraState = auraState;
     _summary
         .invokeMethod<bool>('publish', {
           'streak': s.streak,
           'today': s.today,
           'level': s.level,
           'aura': aura,
+          'auraState': auraState,
         })
         .catchError((_) => false);
   }

@@ -29,6 +29,17 @@ const _watchChannel = EventChannel('ironrise/watch');
 /// Команды приложению на часах: начать и закончить передачу пульса.
 const _watchControl = MethodChannel('ironrise/watch_control');
 
+/// Аура вспыхнула в дуэли — вибрация и вспышка на часах (п. 83). Нет часов — ничего.
+Future<void> flashAuraOnWatch(String kind) async {
+  try {
+    await _watchControl.invokeMethod<bool>('auraFlash', {'kind': kind});
+  } on PlatformException {
+    // Часов нет или нет Google Play Services.
+  } on MissingPluginException {
+    // Тесты и не Android.
+  }
+}
+
 /// Часы молчат дольше этого — считаем, что тренировка на них остановлена.
 const _watchSilenceLimit = Duration(seconds: 15);
 
