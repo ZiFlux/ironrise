@@ -52,6 +52,8 @@ export interface HeroState {
   muscles: MusclePoints;
   /** Дано ли согласие на данные о пульсе: без него пульс не принимается. */
   healthConsent: boolean;
+  /** Отдельное согласие на ответы о самочувствии (п. 81). */
+  wellbeingConsent: boolean;
 }
 
 @Injectable()
@@ -112,6 +114,7 @@ export class HeroService {
       startAppearance: profile.startAppearance,
       startLookUntil: profile.startLockedAt ? null : profile.startLookUntil,
       healthConsent: profile.healthConsentAt !== null,
+      wellbeingConsent: profile.wellbeingConsentAt !== null,
       muscles: (profile.musclePoints as MusclePoints | null) ?? (await this.backfillMuscles(userId, db)),
     };
   }

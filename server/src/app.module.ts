@@ -22,6 +22,7 @@ import { SocialService } from './social/social.service';
 import { FightsController } from './fights/fights.controller';
 import { FightsService } from './fights/fights.service';
 import { NickModerator } from './admin/nick-moderator.service';
+import { WellbeingController } from './wellbeing/wellbeing.controller';
 import { WorkoutsController } from './workouts/workouts.controller';
 import { WorkoutsService } from './workouts/workouts.service';
 import { AntiCheatService } from './workouts/anti-cheat.service';
@@ -48,7 +49,7 @@ const jwtSecret = () => {
   ],
   controllers: [
     LogsController, LegalController, AdminController,
-    HealthController, AuthController, WorkoutsController, EconomyController, SocialController, FightsController, PushController, NotificationsController, JointController,
+    HealthController, AuthController, WorkoutsController, EconomyController, SocialController, FightsController, WellbeingController, PushController, NotificationsController, JointController,
     // Только на сервере разработки: выдача монет и прочие инструменты.
     ...(devToolsEnabled ? [DevController] : []),
   ],

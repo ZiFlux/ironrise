@@ -46,6 +46,7 @@ model User {
   workouts      Workout[]
   entryTests    EntryTest[]
   suspicions    Suspicion[]
+  wellbeing     WellbeingReport[]
   xpEvents      XpEvent[]
   walletTx      WalletTx[]
   refreshTokens RefreshToken[]
@@ -101,6 +102,8 @@ model Profile {
   startLookUntil   DateTime  @default(dbgenerated("(now() + '14 days'::interval)"))
   /// Согласие на обработку данных о пульсе (152-ФЗ, ст. 10); null — нет согласия, пульс не принимается.
   healthConsentAt  DateTime?
+  /// Отдельное согласие на ответы о самочувствии и боли после тренировки (п. 81); null — не принимаем.
+  wellbeingConsentAt DateTime?
   /// Версия политики (дата), на которую дано или отозвано согласие.
   consentPolicy    String?
   /// Очки отдельных мышц (src/game/muscles.ts); null — ещё не посчитаны по истории тренировок.
@@ -469,4 +472,23 @@ model Suspicion {
   @@index([userId, createdAt])
   @@index([resolvedAt])
   @@index([createdAt])
+}
+
+/// Самочувствие после тренировки (п. 81): только с отдельным согласием, при отзыве удаляется.
+/// Хранится до публичной версии, затем обезличивается (политика конфиденциальности).
+model WellbeingReport {
+  id        String   @id @default(uuid()) @db.Uuid
+  userId    String   @db.Uuid
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+  /// easy | ok | hard | pain
+  feeling   String
+  /// PainZone: shoulder | elbowWrist | lowerBack | knee | other
+  zone      String?
+  /// PainKind: sharp | aching | muscle | click | numb
+  painKind  String?
+  /// Упражнения прошедшей тренировки (id) — чтобы видеть, после чего болит.
+  exercises Json     @default("[]")
+
+  @@index([userId, createdAt])
 }

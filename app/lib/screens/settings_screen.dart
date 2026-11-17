@@ -687,6 +687,8 @@ class _DataSection extends ConsumerWidget {
         children: [
           const HealthConsentTile(),
           const Divider(height: 1),
+          const WellbeingConsentTile(),
+          const Divider(height: 1),
           ListTile(
             onTap: () => context.push('/privacy'),
             leading: const Icon(

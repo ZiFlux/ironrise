@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import '../state/consent_state.dart';
+import '../state/wellbeing_consent.dart';
 import '../theme.dart';
 
 /// Текст согласия на пульс — один и тот же в онбординге, вопросе и настройках.
@@ -127,6 +128,32 @@ class HealthConsentTile extends ConsumerWidget {
         consent.allowsPulse
             ? 'Согласие дано: пульс проверяет тренировки'
             : 'Нет согласия: тренировки без проверки пульсом',
+        style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+      ),
+    );
+  }
+}
+
+/// Переключатель согласия на отправку ответов о самочувствии (п. 81).
+class WellbeingConsentTile extends ConsumerWidget {
+  const WellbeingConsentTile({super.key});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final granted = ref.watch(wellbeingConsentProvider) == true;
+    return SwitchListTile(
+      value: granted,
+      onChanged: (v) => ref.read(wellbeingConsentProvider.notifier).set(v),
+      secondary: const Icon(
+        LucideIcons.stethoscope,
+        size: 18,
+        color: AppColors.textSecondary,
+      ),
+      title: const Text('Ответы о самочувствии'),
+      subtitle: Text(
+        granted
+            ? 'Отправляются: помогают улучшать подбор упражнений'
+            : 'Только на телефоне. Отзыв удаляет отправленные',
         style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
       ),
     );

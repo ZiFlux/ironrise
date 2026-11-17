@@ -44,6 +44,7 @@ export const HELP = `Команды (ник или e-mail игрока — <кт
   season <кто> <±очки>           — очки сезона (награды выдадутся при следующем начислении)
   start-look <кто>               — снова открыть бесплатный выбор стартового образа на 14 дней
   history [N]                    — журнал действий администратора
+  wellbeing-stats [дни]          — сводка самочувствия после тренировок (п. 81), по умолчанию 30 дней
   nick-scan                      — ники, нарушающие список банвордов (shared/banwords.json)
   nick-moderate                  — заменить такие ники на нейтральные «Боец 1234», смена — бесплатно
   items                          — все id вещей по группам`;
@@ -59,6 +60,7 @@ export type Db = Pick<
   | 'xpEvent'
   | 'refreshToken'
   | 'adminAction'
+  | 'wellbeingReport'
   | 'workout'
   | 'duel'
   | 'suspicion'
@@ -344,6 +346,29 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
       await db.profile.update({ where: { userId: u.id }, data: { nickname, nicknameKey: key } });
       await log(db, 'nick', u.id, { from: u.profile.nickname, to: nickname });
       return card(db, nickname);
+    }
+
+    case 'wellbeing-stats': {
+      // Сводка самочувствия за N дней: ответы, зоны и виды боли, упражнения перед болью.
+      const days = who ? int(who, 'дни') : 30;
+      const rows = await db.wellbeingReport.findMany({
+        where: { createdAt: { gte: new Date(Date.now() - days * 86_400_000) } },
+        select: { feeling: true, zone: true, painKind: true, exercises: true },
+      });
+      const count = (xs: (string | null)[]) => {
+        const m = new Map<string, number>();
+        for (const x of xs) if (x) m.set(x, (m.get(x) ?? 0) + 1);
+        return [...m.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ') || '—';
+      };
+      const pain = rows.filter((r) => r.feeling === 'pain');
+      const ex = pain.flatMap((r) => (Array.isArray(r.exercises) ? (r.exercises as string[]) : []));
+      return [
+        `Ответов за ${days} дн.: ${rows.length}`,
+        `  самочувствие: ${count(rows.map((r) => r.feeling))}`,
+        `  где болит: ${count(pain.map((r) => r.zone))}`,
+        `  как болит: ${count(pain.map((r) => r.painKind))}`,
+        `  упражнения перед болью (топ): ${count(ex).split(', ').slice(0, 10).join(', ')}`,
+      ].join('\n');
     }
 
     case 'nick-scan': {

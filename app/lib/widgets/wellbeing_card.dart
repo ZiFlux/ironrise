@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../game/exercise_catalog.dart';
 import '../game/game_config.dart';
 import '../game/wellbeing.dart';
+import '../state/account_state.dart';
 import '../state/program_state.dart';
+import '../state/wellbeing_consent.dart';
 import '../theme.dart';
 
-/// «Как самочувствие?» после тренировки: одно касание, при «болит» — где.
+/// «Как самочувствие?» после тренировки: одно касание, при «болит» — где и как (п. 81).
 class WellbeingCard extends ConsumerStatefulWidget {
   const WellbeingCard({super.key, this.exerciseIds = const []});
 
@@ -20,13 +22,43 @@ class WellbeingCard extends ConsumerStatefulWidget {
 
 class _WellbeingCardState extends ConsumerState<WellbeingCard> {
   bool _askingWhere = false;
+  PainZone? _zone;
   WellbeingResponse? _response;
 
-  Future<void> _answer(Feeling feeling, {PainZone? zone}) async {
+  Future<void> _answer(
+    Feeling feeling, {
+    PainZone? zone,
+    PainKind? kind,
+  }) async {
     final response = await ref
         .read(programProvider.notifier)
-        .recordWellbeing(feeling, zone: zone);
+        .recordWellbeing(feeling, zone: zone, kind: kind);
     if (mounted) setState(() => _response = response);
+    // На сервер — только с отдельным согласием (п. 81).
+    await ref
+        .read(wellbeingConsentProvider.notifier)
+        .report(
+          feeling: feeling,
+          zone: zone,
+          kind: kind,
+          exercises: widget.exerciseIds,
+        );
+  }
+
+  /// Согласился отправлять — отправить и уже данный ответ.
+  Future<void> _consent(bool granted) async {
+    await ref.read(wellbeingConsentProvider.notifier).set(granted);
+    final r = _response;
+    if (granted && r != null) {
+      await ref
+          .read(wellbeingConsentProvider.notifier)
+          .report(
+            feeling: r.feeling,
+            zone: r.zone,
+            kind: r.kind,
+            exercises: widget.exerciseIds,
+          );
+    }
   }
 
   @override
@@ -66,7 +98,7 @@ class _WellbeingCardState extends ConsumerState<WellbeingCard> {
               ),
             ],
             const SizedBox(height: 12),
-            if (response != null)
+            if (response != null) ...[
               Text(
                 _reply(response),
                 style: const TextStyle(
@@ -74,12 +106,40 @@ class _WellbeingCardState extends ConsumerState<WellbeingCard> {
                   height: 1.4,
                   color: AppColors.textSecondary,
                 ),
+              ),
+              // Один раз спросить, можно ли отправлять ответы (данные о здоровье).
+              if (ref.watch(wellbeingConsentProvider) == null &&
+                  ref.watch(accountProvider).signedIn) ...[
+                const SizedBox(height: 12),
+                const Text(
+                  'Помочь улучшить подбор упражнений? Ответы о самочувствии и боли — '
+                  'данные о здоровье, отправляем их только с вашего согласия. '
+                  'Отозвать можно в настройках',
+                  style: TextStyle(fontSize: 12, color: AppColors.textMuted),
+                ),
+                const SizedBox(height: 8),
+                _Choices(
+                  options: [
+                    ('Отправлять', () => _consent(true)),
+                    ('Не надо', () => _consent(false)),
+                  ],
+                ),
+              ],
+            ] else if (_askingWhere && _zone != null)
+              _Choices(
+                options: [
+                  for (final k in PainKind.values)
+                    (
+                      k.label,
+                      () => _answer(Feeling.pain, zone: _zone, kind: k),
+                    ),
+                ],
               )
             else if (_askingWhere)
               _Choices(
                 options: [
                   for (final z in PainZone.values)
-                    (z.label, () => _answer(Feeling.pain, zone: z)),
+                    (z.label, () => setState(() => _zone = z)),
                 ],
               )
             else
@@ -115,11 +175,18 @@ class _WellbeingCardState extends ConsumerState<WellbeingCard> {
 
   static String _painReply(WellbeingResponse r) {
     final zone = r.zone ?? PainZone.other;
+    if (r.kind?.normal ?? false) {
+      return 'Это обычная мышечная усталость, план не меняем. Помогут сон, вода, '
+          'лёгкая разминка и растяжка. Если через 3–4 дня не проходит или болит сустав — '
+          'отметь это снова.';
+    }
     final changes = r.plan?.adjustments ?? const [];
     final plan = changes.isEmpty
         ? 'В следующей тренировке нагрузки на эту зону нет.'
         : 'На неделю бережём ${zone.label.toLowerCase()}: ${changes.map(_describe).join('; ')}.';
-    final doctor = r.repeatedPain
+    final doctor = (r.kind?.alarming ?? false)
+        ? ' ${r.kind == PainKind.numb ? 'Онемение' : 'Острая боль'} — повод показаться врачу до того, как нагружать эту зону снова.'
+        : r.repeatedPain
         ? ' Боль повторяется — покажитесь врачу, прежде чем нагружать эту зону снова.'
         : ' Если боль острая или не проходит за пару дней, покажитесь врачу.';
     return zone == PainZone.other ? 'Запомнили.$doctor' : '$plan$doctor';

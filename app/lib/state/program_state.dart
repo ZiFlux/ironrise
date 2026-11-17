@@ -277,10 +277,14 @@ class WellbeingResponse {
     this.boostNext = false,
     this.repeatedPain = false,
     this.plan,
+    this.kind,
   });
 
   final Feeling feeling;
   final PainZone? zone;
+
+  /// Как болит (п. 81); null — не спрашивали.
+  final PainKind? kind;
 
   /// Следующая тренировка будет облегчена.
   final bool easeNext;
@@ -418,6 +422,7 @@ class ProgramNotifier extends Notifier<UserProgram> {
   Future<WellbeingResponse> recordWellbeing(
     Feeling feeling, {
     PainZone? zone,
+    PainKind? kind,
   }) async {
     final now = DateTime.now();
     switch (feeling) {
@@ -455,6 +460,13 @@ class ProgramNotifier extends Notifier<UserProgram> {
           easeNext: ease,
           plan: ease ? planForHero(state, ref.read(heroProvider)) : null,
         );
+      case Feeling.pain when kind?.normal ?? false:
+        // Мышцы забиты — нормальная усталость: зону не бережём, план не меняем.
+        return WellbeingResponse(
+          feeling: Feeling.pain,
+          zone: zone ?? PainZone.other,
+          kind: kind,
+        );
       case Feeling.pain:
         final where = zone ?? PainZone.other;
         final repeated = state.painReports.any(
@@ -473,6 +485,7 @@ class ProgramNotifier extends Notifier<UserProgram> {
         return WellbeingResponse(
           feeling: Feeling.pain,
           zone: where,
+          kind: kind,
           repeatedPain: repeated,
           plan: planForHero(state, ref.read(heroProvider)),
         );
