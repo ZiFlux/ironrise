@@ -9,6 +9,7 @@ import { AURA_KINDS, AURA_LEVEL_SESSIONS, AuraKind, auraLevel, readAuras } from 
 import { LEAGUE_TIERS } from '../game/league';
 import { GameConfig } from '../game/config';
 import { NicknameSchema, isReservedNickname, nicknameKey } from '../game/nickname';
+import { moderateNicknames } from './nick-moderation';
 import { ACHIEVEMENT_ITEMS, AUTHOR_ITEMS, EXCLUSIVE_ITEMS, SHOP_PRICES, TESTER_ITEMS } from '../game/shop';
 import { STREAK_ITEMS, readBoosters } from '../game/streak-rewards';
 import { Prisma, PrismaClient } from '../generated/prisma/client';
@@ -43,6 +44,8 @@ export const HELP = `Команды (ник или e-mail игрока — <кт
   season <кто> <±очки>           — очки сезона (награды выдадутся при следующем начислении)
   start-look <кто>               — снова открыть бесплатный выбор стартового образа на 14 дней
   history [N]                    — журнал действий администратора
+  nick-scan                      — ники, нарушающие список банвордов (shared/banwords.json)
+  nick-moderate                  — заменить такие ники на нейтральные «Боец 1234», смена — бесплатно
   items                          — все id вещей по группам`;
 
 export type Db = Pick<
@@ -341,6 +344,20 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
       await db.profile.update({ where: { userId: u.id }, data: { nickname, nicknameKey: key } });
       await log(db, 'nick', u.id, { from: u.profile.nickname, to: nickname });
       return card(db, nickname);
+    }
+
+    case 'nick-scan': {
+      // Только показать ники, которые нарушают текущий список банвордов.
+      const list = await moderateNicknames(db, { apply: false });
+      return list.length ? list.map((v) => `${v.nickname}  (${v.userId})`).join('\n') : 'Нарушающих ников нет';
+    }
+
+    case 'nick-moderate': {
+      // Заменить нарушающие ники на нейтральные (без пуша — его шлёт сервер при своей проверке).
+      const list = await moderateNicknames(db, { apply: true });
+      return list.length
+        ? list.map((v) => `${v.nickname} → ${v.replacement}`).join('\n')
+        : 'Нарушающих ников нет';
     }
 
     case 'duels-reset': {

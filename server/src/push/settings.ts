@@ -10,6 +10,8 @@ export const NOTIFICATION_TYPES = [
   'training_reminder',
   /** Только админу: античит нашёл подозрительную тренировку (п. 113). */
   'admin_alert',
+  /** Аккаунт: ник заменён автомодератором и т. п. — не отключается. */
+  'account',
 ] as const;
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number];
 
@@ -29,6 +31,7 @@ export const SettingsSchema = z.object({
   /** «Скоро твоё время тренировки» — за час до привычного часа, в день по графику. */
   training_reminder: z.boolean().default(true),
   admin_alert: z.boolean().default(true),
+  account: z.boolean().default(true),
 });
 
 /** Привычный час тренировки: медиана часа начала последних тренировок. Нужно минимум 3. */

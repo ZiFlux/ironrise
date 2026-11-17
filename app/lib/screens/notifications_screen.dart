@@ -126,6 +126,7 @@ class _Tile extends StatelessWidget {
     'daily_tip': LucideIcons.lightbulb,
     'duels_refreshed': LucideIcons.swords,
     'training_reminder': LucideIcons.alarmClock,
+    'account': LucideIcons.user,
   };
 
   @override

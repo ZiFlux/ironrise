@@ -272,6 +272,7 @@ class AppNotification {
     'friends' => '/duels/friends',
     'duels' => '/duels',
     'tip' => '/tip',
+    'profile' => '/profile',
     _ => '/',
   };
 }

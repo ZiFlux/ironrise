@@ -17,7 +17,7 @@ export interface PushMessage {
   title: string;
   body: string;
   /** Куда вести по нажатию: friends | duels | home | tip. */
-  screen: 'friends' | 'duels' | 'home' | 'tip' | 'workout';
+  screen: 'friends' | 'duels' | 'home' | 'tip' | 'workout' | 'profile';
 }
 
 const REMINDER_EVERY_MS = 15 * 60_000;

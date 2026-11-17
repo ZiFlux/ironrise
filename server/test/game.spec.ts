@@ -229,6 +229,7 @@ describe('настройки уведомлений', () => {
     expect(parseSettings({})).toEqual({
       friend_request: true, friend_accepted: true, attacked: true, streak_risk: true, streakReminderHour: 19,
       daily_tip: true, duels_refreshed: true, morningHour: 9, training_reminder: true, admin_alert: true,
+      account: true,
     });
   });
 
