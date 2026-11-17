@@ -113,14 +113,18 @@ class _FightScreenState extends ConsumerState<FightScreen> {
           icon: const Icon(LucideIcons.arrowLeft),
         ),
         actions: [
-          IconButton(
-            tooltip: 'Кто кого бьёт',
-            onPressed: () => showInfoBubble(
-              context,
-              title: 'Кто кого бьёт',
-              text: combatMatchupText,
+          // Облако встаёт под нажатым элементом: нужен контекст самой кнопки,
+          // а не экрана (иначе оно уезжает за нижний край и не видно).
+          Builder(
+            builder: (button) => IconButton(
+              tooltip: 'Кто кого бьёт',
+              onPressed: () => showInfoBubble(
+                button,
+                title: 'Кто кого бьёт',
+                text: combatMatchupText,
+              ),
+              icon: const Icon(LucideIcons.circleHelp, size: 20),
             ),
-            icon: const Icon(LucideIcons.circleHelp, size: 20),
           ),
         ],
       ),
