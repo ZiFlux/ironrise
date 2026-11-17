@@ -6,6 +6,7 @@
  * Ступени рассчитаны на рост ~0,75 уровня части за силовую: при 3 тренировках в неделю
  * средний уровень ~10 через месяц и ~30 через 3–4 месяца.
  */
+import { AURA_KINDS, AuraKind } from './aura';
 import { BODY_PARTS } from './body-part';
 import { GameConfig as C } from './config';
 import { seededRandom } from './duel';
@@ -64,6 +65,22 @@ const levelsFor = (avg: number, rnd: () => number, lagging: boolean) => {
   return levels;
 };
 
+/** Уровень ауры ботов ступени: 1 внизу, 5 у вершины. */
+export const ladderAuraLevel = (tier: number) => Math.min(5, 1 + Math.floor(tier / 3));
+
+/**
+ * Ауры ботов (п. 79): со 2-й ступени — у двух сильных ботов, у босса — всегда.
+ * Своё зерно, чтобы не менять имена, образы и уровни уже знакомых ботов.
+ */
+const ladderAuras = (tier: number): { bots: (AuraKind | null)[]; boss: AuraKind | null } => {
+  const rnd = seededRandom(5000 + tier * 131);
+  const kind = () => AURA_KINDS[Math.floor(rnd() * AURA_KINDS.length)];
+  return {
+    bots: RATIOS.map((_, i) => (tier >= 1 && i >= 2 ? kind() : null)),
+    boss: tier >= 1 ? kind() : null,
+  };
+};
+
 /** Боты и босс ступени — одни и те же у всех игроков (зерно — номер ступени). */
 export const ladderTier = (tierIndex: number): { tier: number; name: string; bots: Bot[]; boss: Bot } => {
   const tier = clampTier(tierIndex);
@@ -79,6 +96,11 @@ export const ladderTier = (tierIndex: number): { tier: number; name: string; bot
     levels: levelsFor(t.level * ratio, rnd, i % 2 === 1),
     streakDays: Math.min(C.streakCap, tier * 2),
   }));
+  const auras = ladderAuras(tier);
+  bots.forEach((b, i) => {
+    const kind = auras.bots[i];
+    if (kind) b.aura = { kind, level: ladderAuraLevel(tier) };
+  });
   const boss: Bot = {
     id: ladderBossId(tier),
     name: t.boss.name,
@@ -86,6 +108,7 @@ export const ladderTier = (tierIndex: number): { tier: number; name: string; bot
     appearance: randomBotLook(t.boss.isFemale, rnd),
     levels: levelsFor(t.level * BOSS_RATIO, rnd, false),
     streakDays: Math.min(C.streakCap, tier * 3),
+    ...(auras.boss ? { aura: { kind: auras.boss, level: ladderAuraLevel(tier) } } : {}),
   };
   return { tier, name: t.name, bots, boss };
 };

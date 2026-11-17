@@ -30,6 +30,8 @@ Fighter fighterFromJson(Map<String, dynamic> j) => Fighter(
   streakDays: (j['streakDays'] as num).toInt(),
   isFemale: j['isFemale'] == true,
   look: _look(j['appearance']),
+  aura: AuraKind.values.asNameMap()[(j['aura'] as Map?)?['kind']],
+  auraLevel: ((j['aura'] as Map?)?['level'] as num?)?.toInt() ?? 0,
 );
 
 DuelResult duelFromJson(Map<String, dynamic> j) => DuelResult(

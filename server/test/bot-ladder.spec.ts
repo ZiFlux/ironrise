@@ -23,6 +23,15 @@ describe('лестница ботов (п. 88)', () => {
     }
   });
 
+  it('ауры: на первой ступени нет, со второй — у сильных ботов и босса, уровень растёт', () => {
+    expect(ladderTier(0).bots.every((b) => !b.aura)).toBe(true);
+    expect(ladderTier(0).boss.aura).toBeUndefined();
+    const t2 = ladderTier(2);
+    expect(t2.boss.aura?.level).toBeGreaterThanOrEqual(1);
+    expect(t2.bots.filter((b) => b.aura)).toHaveLength(2);
+    expect(ladderTier(12).boss.aura?.level).toBe(5);
+  });
+
   it('боты ступени одинаковы у всех и с уникальными id', () => {
     expect(ladderTier(3)).toEqual(ladderTier(3));
     const ids = ladderTier(5).bots.map((b) => b.id);

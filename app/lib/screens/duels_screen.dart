@@ -708,8 +708,18 @@ class _FighterCard extends StatelessWidget {
                             ],
                           ),
                           const SizedBox(height: 2),
-                          Text(
-                            'сила ${fighter.power} · $_strength',
+                          Text.rich(
+                            TextSpan(
+                              text: 'сила ${fighter.power} · $_strength',
+                              children: [
+                                if (fighter.aura case final aura?)
+                                  TextSpan(
+                                    text:
+                                        ' · ${aura.label} ${fighter.auraLevel}',
+                                    style: TextStyle(color: aura.color),
+                                  ),
+                              ],
+                            ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: const TextStyle(

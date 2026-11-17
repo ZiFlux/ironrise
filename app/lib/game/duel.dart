@@ -16,7 +16,13 @@ class Fighter {
     required this.streakDays,
     this.isFemale = false,
     this.look,
+    this.aura,
+    this.auraLevel = 0,
   });
+
+  /// Аура бойца в бою (у ботов лестницы со 2-й ступени, у друзей — своя).
+  final AuraKind? aura;
+  final int auraLevel;
 
   final String id;
   final String name;
