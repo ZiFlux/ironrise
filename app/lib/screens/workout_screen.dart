@@ -33,6 +33,8 @@ import '../state/training_log.dart';
 import '../theme.dart';
 import '../widgets/every_second.dart';
 import '../widgets/exercise_picker.dart';
+import '../widgets/struggle_sheet.dart';
+import '../game/exercise_swap.dart';
 import '../widgets/format.dart';
 import '../widgets/warmup_card.dart';
 import '../widgets/guide.dart';
@@ -760,6 +762,31 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     );
   }
 
+  /// «Не получается?» (п. 80): советы и замена прямо в тренировке.
+  Future<void> _struggle(int index) async {
+    final entry = widget.session.entries[index];
+    final program = ref.read(programProvider);
+    final options = swapOptions(
+      entry.exercise,
+      inWorkout: {for (final e in widget.session.entries) e.exercise.id},
+      equipment: program.equipment,
+      excluded: program.dislikedNow(DateTime.now()),
+    );
+    final choice = await showStruggleSheet(
+      context,
+      exercise: entry.exercise,
+      options: options,
+      hasSets: entry.sets.isNotEmpty,
+    );
+    if (choice == null || !mounted) return;
+    final programNotifier = ref.read(programProvider.notifier);
+    _workout.swapExercise(index, choice.to);
+    setState(() => _expanded = entry.sets.isEmpty ? index : index + 1);
+    if (choice.dislike && !program.disliked.containsKey(entry.exercise.id)) {
+      await programNotifier.toggleDislike(entry.exercise.id);
+    }
+  }
+
   Future<void> _addExercise() async {
     final hero = ref.read(heroProvider);
     final exercise = await showExercisePicker(
@@ -952,6 +979,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
                         onLog: (set) => _checkAndLog(i, set),
                         onUndo: () => _workout.undoLastSet(i),
                         onRemove: () => _workout.removeExercise(i),
+                        onStruggle: () => _struggle(i),
                         onSetInfo: (c, set) => _showSetInfo(c, i, set),
                         toFailure: toFailureFor(
                           trainingLevelOf(
@@ -1229,9 +1257,13 @@ class _ExerciseCard extends StatelessWidget {
     required this.onLog,
     required this.onUndo,
     required this.onRemove,
+    this.onStruggle,
     this.toFailure = false,
     this.onSetInfo,
   });
+
+  /// «Не получается?» — советы и замена (п. 80).
+  final VoidCallback? onStruggle;
 
   /// Нажатие на записанный подход — облако с пульсом и отдыхом (п. 127).
   final void Function(BuildContext context, int setIndex)? onSetInfo;
@@ -1294,6 +1326,23 @@ class _ExerciseCard extends StatelessWidget {
                         onLog: onLog,
                         onUndo: onUndo,
                       ),
+              ),
+            if (expanded && !entry.isFull && onStruggle != null)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: TextButton.icon(
+                  onPressed: onStruggle,
+                  style: TextButton.styleFrom(
+                    foregroundColor: AppColors.textMuted,
+                    padding: const EdgeInsets.symmetric(horizontal: 4),
+                    visualDensity: VisualDensity.compact,
+                  ),
+                  icon: const Icon(LucideIcons.lifeBuoy, size: 15),
+                  label: const Text(
+                    'Не получается?',
+                    style: TextStyle(fontSize: 13),
+                  ),
+                ),
               ),
           ],
         ),

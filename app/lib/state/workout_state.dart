@@ -123,6 +123,36 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
   void undoLastSet(int entryIndex) =>
       _updateEntry(entryIndex, (entry) => entry.withoutLastSet());
 
+  /// «Не получается» (п. 80): упражнение без подходов меняется на [to] с тем же
+  /// планом; если подходы уже были — они остаются, а [to] встаёт следом с
+  /// оставшимися подходами плана.
+  void swapExercise(int entryIndex, Exercise to) {
+    final session = state;
+    if (session == null) return;
+    if (session.entries.any((e) => e.exercise.id == to.id)) return;
+    final entries = [...session.entries];
+    final from = entries[entryIndex];
+    final plan = from.plan;
+    if (from.sets.isEmpty) {
+      entries[entryIndex] = ExerciseEntry(
+        exercise: to,
+        plan: plan?.copyWith(exerciseId: to.id),
+      );
+    } else {
+      final left = plan == null ? 0 : plan.sets - from.sets.length;
+      entries.insert(
+        entryIndex + 1,
+        ExerciseEntry(
+          exercise: to,
+          plan: plan != null && left > 0
+              ? plan.copyWith(exerciseId: to.id, sets: left)
+              : null,
+        ),
+      );
+    }
+    _save(session.copyWith(entries: entries));
+  }
+
   void removeExercise(int entryIndex) {
     final session = state;
     if (session == null) return;
