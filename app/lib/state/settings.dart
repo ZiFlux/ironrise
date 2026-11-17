@@ -9,7 +9,7 @@ class AccentNotifier extends Notifier<AccentOption> {
   @override
   AccentOption build() {
     final saved = ref.read(prefsProvider).getString(_accentKey);
-    return AccentOption.values.asNameMap()[saved] ?? AccentOption.lime;
+    return AccentOption.fromSaved(saved);
   }
 
   Future<void> select(AccentOption option) async {

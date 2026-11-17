@@ -1,31 +1,78 @@
 import 'package:flutter/material.dart';
 
-/// Нейтральная графитовая шкала. Цвет несут акцент, аватар и данные, а не фон.
+/// Тёплая графитовая шкала стиля «Закат» (docs/REDESIGN.md) — общая для всех стилей:
+/// стили меняют только акценты. Цвет несут акцент, аватар и данные, а не фон.
 class AppColors {
   const AppColors._();
 
-  static const deepest = Color(0xFF0F0F10);
-  static const background = Color(0xFF141415);
-  static const surface = Color(0xFF19191B);
-  static const raised = Color(0xFF232325);
-  static const textPrimary = Color(0xFFEDEDED);
-  static const textSecondary = Color(0xFFA1A1A6);
-  static const textMuted = Color(0xFF85858B);
-  static const onAccent = Color(0xFF111111);
-  static const hairline = Color(0x14EDEDED); // основной текст, 8%
+  static const deepest = Color(0xFF0C0809);
+  static const background = Color(0xFF120D10);
+  static const surface = Color(0xFF1E171A);
+  static const raised = Color(0xFF2A2025);
+  static const textPrimary = Color(0xFFF3EAEC);
+  static const textSecondary = Color(0xFFBFB0B5);
+  static const textMuted = Color(0xFF9F8F95);
+  static const onAccent = Color(0xFF220806);
+  static const hairline = Color(0x14F3EAEC); // основной текст, 8%
+
+  /// Успех и пульс — одинаковые во всех стилях.
+  static const success = Color(0xFF3CC6B4);
 }
 
-/// Цвет интерфейса, который пользователь выбирает в профиле.
+/// Стиль интерфейса (Настройки → «Стиль»): цвет кнопок, «магии» (ауры, уровни, сила)
+/// и серии. «Закат» — основной; «Кузня» и «Аметист» — на выбор.
 enum AccentOption {
-  lime('Лайм', Color(0xFFC6FF3D)),
-  ember('Раскалённый', Color(0xFFFF7A3D)),
-  ice('Лёд', Color(0xFF3DDCFF)),
-  violet('Сирень', Color(0xFFB79CFF));
+  sunset(
+    'Закат',
+    'Коралловые кнопки, сиреневая магия',
+    Color(0xFFFF6B5A),
+    Color(0xFF220806),
+    Color(0xFFB48CFF),
+    Color(0xFFFFB547),
+  ),
+  forge(
+    'Кузня',
+    'Раскалённые кнопки, фиолетовая магия',
+    Color(0xFFFF7A1A),
+    Color(0xFF1A0B00),
+    Color(0xFFA285FF),
+    Color(0xFFFF9E3D),
+  ),
+  amethyst(
+    'Аметист',
+    'Фиолетовые кнопки, огненная серия',
+    Color(0xFFA285FF),
+    Color(0xFF120A2A),
+    Color(0xFFC9B6FF),
+    Color(0xFFFF8A3D),
+  );
 
-  const AccentOption(this.label, this.color);
+  const AccentOption(
+    this.label,
+    this.hint,
+    this.color,
+    this.onColor,
+    this.magic,
+    this.streak,
+  );
 
   final String label;
+  final String hint;
+
+  /// Главные кнопки и выбранное.
   final Color color;
+  final Color onColor;
+
+  /// Ауры, уровни, сила (colorScheme.secondary).
+  final Color magic;
+
+  /// Серия и огонь (colorScheme.tertiary).
+  final Color streak;
+
+  /// Сохранённый стиль; прежние акценты (лайм, лёд и др., до 17.11.2026) —
+  /// на основной «Закат»: «Кузню» и «Аметист» выбирают сами.
+  static AccentOption fromSaved(String? name) =>
+      values.asNameMap()[name] ?? sunset;
 }
 
 class AppMotion {
@@ -36,14 +83,17 @@ class AppMotion {
   static const enter = Duration(milliseconds: 400);
 }
 
-/// Крупные цифры (сила, уровни, опыт) набираются Unbounded.
+/// Шрифт заголовков и крупных цифр (стиль «Закат»).
+const displayFont = 'RussoOne';
+
+/// Крупные цифры (сила, уровни, опыт) набираются Russo One.
 TextStyle figureStyle({
   double size = 17,
   Color color = AppColors.textPrimary,
 }) => TextStyle(
-  fontFamily: 'Unbounded',
+  fontFamily: displayFont,
   fontSize: size,
-  fontWeight: FontWeight.w500,
+  fontWeight: FontWeight.w400,
   color: color,
   height: 1,
   fontFeatures: const [FontFeature.tabularFigures()],
@@ -51,14 +101,17 @@ TextStyle figureStyle({
 
 const _inter = 'Inter';
 
-ThemeData buildTheme(Color accent) {
+ThemeData buildTheme(AccentOption style) {
+  final accent = style.color;
   final scheme =
       ColorScheme.fromSeed(
         seedColor: accent,
         brightness: Brightness.dark,
       ).copyWith(
         primary: accent,
-        onPrimary: AppColors.onAccent,
+        onPrimary: style.onColor,
+        secondary: style.magic,
+        tertiary: style.streak,
         surface: AppColors.surface,
         onSurface: AppColors.textPrimary,
         surfaceContainerHighest: AppColors.raised,

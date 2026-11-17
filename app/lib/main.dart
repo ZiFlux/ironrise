@@ -42,7 +42,7 @@ class IronRiseApp extends ConsumerWidget {
     return MaterialApp.router(
       title: 'IronRise',
       debugShowCheckedModeBanner: false,
-      theme: buildTheme(accent.color),
+      theme: buildTheme(accent),
       // Метка DEV: отладочную сборку не перепутать с бетой.
       // Слой плашек статуса (widgets/status_toast.dart) — поверх всех экранов.
       builder: (context, child) {

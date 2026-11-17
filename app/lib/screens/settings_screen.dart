@@ -115,7 +115,7 @@ class SettingsScreen extends ConsumerWidget {
           const _SectionLabel('Пульсовые зоны'),
           _HeartZones(hero: hero),
           const SizedBox(height: 24),
-          const _SectionLabel('Цвет интерфейса'),
+          const _SectionLabel('Стиль'),
           const _AccentPicker(),
           const SizedBox(height: 12),
           Align(
@@ -496,13 +496,21 @@ class _AccentSwatch extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 20,
-                  height: 20,
-                  decoration: BoxDecoration(
-                    color: option.color,
-                    shape: BoxShape.circle,
-                  ),
+                // Два цвета стиля: кнопки и магия (ауры, уровни, сила).
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (final c in [option.color, option.magic])
+                      Container(
+                        width: 18,
+                        height: 18,
+                        margin: const EdgeInsets.symmetric(horizontal: 2),
+                        decoration: BoxDecoration(
+                          color: c,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                  ],
                 ),
                 const SizedBox(height: 6),
                 Text(option.label, style: const TextStyle(fontSize: 12)),

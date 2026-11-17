@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.5.6+15
+version: 1.6.0+16
 
 environment:
   sdk: ^3.13.7
@@ -81,10 +81,10 @@ flutter:
           weight: 500
         - asset: assets/fonts/Inter-SemiBold.ttf
           weight: 600
-    - family: Unbounded
+    # Заголовки и крупные цифры (стиль «Закат», docs/REDESIGN.md). OFL, кириллица.
+    - family: RussoOne
       fonts:
-        - asset: assets/fonts/Unbounded-Medium.ttf
-          weight: 500
+        - asset: assets/fonts/RussoOne-Regular.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:
@@ -122,6 +122,6 @@ flutter_launcher_icons:
   android: true
   ios: false
   image_path: "assets/icon/icon.png"
-  adaptive_icon_background: "#0F0F10"
+  adaptive_icon_background: "#120D10"
   adaptive_icon_foreground: "assets/icon/foreground.png"
   min_sdk_android: 26
