@@ -48,13 +48,16 @@ class AvatarPainter extends CustomPainter {
       ..scale(scale);
 
     _paintFloorShadow(canvas);
+    // Как у человека в анфас: плечо (бицепс, трицепс) — за корпусом, край
+    // груди и широчайших поверх; предплечье и кисть — перед корпусом и
+    // одеждой (кулаки на поясе, руки перед телом в позах); дельта сверху
+    // закрывает стык плеча с грудью.
+    _paintUpperArms(canvas);
     _inStance(canvas, () {
       _paintTorso(canvas);
       _paintRelief(canvas);
       _paintClothes(canvas);
     });
-    // Руки — поверх корпуса и одежды: в позах и переходах рука перед телом,
-    // а не «проглядывает» кусками сквозь футболку.
     _paintArms(canvas);
     _paintShoulders(canvas);
     _paintHead(canvas);
@@ -120,9 +123,43 @@ class AvatarPainter extends CustomPainter {
     }
   }
 
+  /// Станции руки до локтя (плечо) и от локтя (предплечье) — с нахлёстом
+  /// у локтя, чтобы стык не просвечивал.
+  List<(double, double)> get _upperStations =>
+      frame.armStations.where((st) => st.$1 <= 0.52).toList()
+        ..add((0.6, frame.elbowWidth * 0.98));
+
+  List<(double, double)> get _foreStations => [
+    (0.44, frame.elbowWidth * 0.98),
+    ...frame.armStations.where((st) => st.$1 > 0.52),
+  ];
+
+  void _paintUpperArms(Canvas canvas) {
+    for (final arm in [frame.rightArm, frame.leftArm]) {
+      _fillSkin(canvas, arm.outline(_upperStations));
+    }
+    // Рельеф плеча — тут же, под корпусом: на груди его не видно.
+    final style = _ReliefStyle.of(look);
+    final depth = min(
+      0.9,
+      (0.08 + 0.4 * min(1.0, frame.upperArm)) * style.strength,
+    );
+    _paintShine(canvas, layers.armLines, style, depth);
+    canvas.drawPath(
+      layers.armLines,
+      style.paint(style.color.withValues(alpha: depth)),
+    );
+  }
+
   void _paintArms(Canvas canvas) {
     for (final arm in [frame.rightArm, frame.leftArm]) {
-      _fillSkin(canvas, arm.outline(frame.armStations));
+      // Предплечье продолжает плечо: обводка — только снаружи плеча,
+      // без дуги над локтем.
+      _fillSkin(
+        canvas,
+        arm.outline(_foreStations),
+        outlineOutside: arm.outline(_upperStations),
+      );
     }
     for (final band in layers.wristbands) {
       _fillSolid(canvas, band, look.accessoryColor);
@@ -144,8 +181,9 @@ class AvatarPainter extends CustomPainter {
       final hand = arm.hand(frame.wristWidth, look.isFemale ? 18 : 20);
       canvas
         ..drawPath(hand, handPaint)
-        ..drawPath(hand, _shadePaint(hand))
-        ..drawPath(hand, _outline);
+        ..drawPath(hand, _shadePaint(hand));
+      // Без «манжеты» на запястье: обводка кисти — снаружи предплечья.
+      _strokeOutside(canvas, hand, arm.outline(_foreStations));
     }
   }
 
@@ -204,7 +242,6 @@ class AvatarPainter extends CustomPainter {
     final style = _ReliefStyle.of(look);
     for (final (path, opacity) in [
       (layers.deltLines, 0.04 + 0.2 * min(1.0, frame.delts)),
-      (layers.armLines, 0.08 + 0.4 * min(1.0, frame.upperArm)),
     ]) {
       final depth = min(0.9, opacity * style.strength);
       _paintShine(canvas, path, style, depth);
@@ -604,7 +641,22 @@ class AvatarPainter extends CustomPainter {
     avatarCanvasHeight,
   );
 
-  void _fillSkin(Canvas canvas, Path path) {
+  /// Обводка формы только там, где она не лежит на [other].
+  void _strokeOutside(Canvas canvas, Path path, Path other) {
+    canvas
+      ..save()
+      ..clipPath(
+        Path.combine(
+          PathOperation.difference,
+          Path()..addRect(const Rect.fromLTWH(-100, -100, 400, 600)),
+          other,
+        ),
+      )
+      ..drawPath(path, _outline)
+      ..restore();
+  }
+
+  void _fillSkin(Canvas canvas, Path path, {Path? outlineOutside}) {
     final skin = Paint()
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
@@ -613,8 +665,10 @@ class AvatarPainter extends CustomPainter {
       ).createShader(_figureBounds);
     canvas
       ..drawPath(path, skin)
-      ..drawPath(path, _shadePaint(path))
-      ..drawPath(path, _outline);
+      ..drawPath(path, _shadePaint(path));
+    outlineOutside == null
+        ? canvas.drawPath(path, _outline)
+        : _strokeOutside(canvas, path, outlineOutside);
   }
 
   /// Тонкая тёмная обводка: силуэт читается на тёмном фоне, руки — поверх
