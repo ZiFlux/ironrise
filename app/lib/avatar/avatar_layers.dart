@@ -97,7 +97,8 @@ class AvatarLayers {
   /// Верх по телу: контур тела (с дельтами), обрезанный по крою вещи, —
   /// горловина, лямки, длина. Сидит на любой фигуре и в любой позе: тянется
   /// по широчайшим, не рвётся на плечах и не открывает «дыр» у подмышек.
-  /// Рукава — в той же фигуре, без шва. Оверсайз ещё и свободнее тела.
+  /// Рукава — отдельно (sleeves): их рисуют поверх рук, чтобы рука в позе
+  /// была перед корпусом, а плечо — в рукаве. Оверсайз свободнее тела.
   Path? get fittedTop {
     final cut = top;
     if (cut == null) return null;
@@ -115,7 +116,7 @@ class AvatarLayers {
     final region = Path.combine(
       PathOperation.union,
       cut,
-      Path()..addRect(Rect.fromLTRB(-50, sleeved ? 90 : 116, 250, hem)),
+      Path()..addRect(Rect.fromLTRB(-50, sleeved ? 76 : 116, 250, hem)),
     );
     var body = _f.bodyOutline;
     if (sleeved) {
@@ -129,9 +130,6 @@ class AvatarLayers {
     }
     if (look.top == TopKind.oversize) {
       fitted = Path.combine(PathOperation.union, fitted, cut);
-    }
-    for (final sleeve in sleeves) {
-      fitted = Path.combine(PathOperation.union, fitted, sleeve);
     }
     return fitted;
   }
@@ -148,6 +146,19 @@ class AvatarLayers {
     return [
       for (var row = 0; row < 7; row++)
         for (var col = -3; col <= 3; col++)
+          (
+            Offset(100 + col * 11.0 + (row.isOdd ? 5.5 : 0), 74 + row * 17.0),
+            (row + col) % 3,
+          ),
+    ];
+  }
+
+  /// Горошек на рукавах — та же сетка, шире по бокам (рукава в позах высоко).
+  List<(Offset, int)> get sleeveDots {
+    if (look.top != TopKind.clownSuit) return const [];
+    return [
+      for (var row = -3; row < 9; row++)
+        for (var col = -9; col <= 9; col++)
           (
             Offset(100 + col * 11.0 + (row.isOdd ? 5.5 : 0), 74 + row * 17.0),
             (row + col) % 3,

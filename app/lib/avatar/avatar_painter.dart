@@ -48,12 +48,15 @@ class AvatarPainter extends CustomPainter {
       ..scale(scale);
 
     _paintFloorShadow(canvas);
-    _paintArms(canvas);
     _inStance(canvas, () {
       _paintTorso(canvas);
       _paintRelief(canvas);
       _paintClothes(canvas);
     });
+    // Руки — поверх корпуса и одежды: в позах и переходах рука перед телом,
+    // а не «проглядывает» кусками сквозь футболку.
+    _paintArms(canvas);
+    _paintShoulders(canvas);
     _paintHead(canvas);
 
     canvas.restore();
@@ -147,22 +150,108 @@ class AvatarPainter extends CustomPainter {
 
   void _paintTorso(Canvas canvas) {
     _fillSkin(canvas, frame.bodyOutline);
+    _paintNeck(canvas);
+  }
+
+  /// Шея — с телом, под одеждой: её основание у трапеций прячется под ворот.
+  void _paintNeck(Canvas canvas) {
+    final n = frame.neck;
+    // Верх шеи — внутри головы и не шире подбородка на этой высоте:
+    // иначе углы среза торчат по бокам челюсти.
+    const top = 46.0;
+    final topHalf = min(n * 0.8, frame.headHalfWidthAt(top) * 0.85);
+    final neck = Path()
+      ..moveTo(100 - topHalf, top)
+      ..lineTo(100 + topHalf, top)
+      // Книзу ровно, у основания расходится в трапеции.
+      ..cubicTo(100 + n * 0.86, 58, 100 + n * 1.2, 64, 100 + frame.trapX, 71)
+      ..lineTo(100 - frame.trapX, 71)
+      ..cubicTo(100 - n * 1.2, 64, 100 - n * 0.86, 58, 100 - topHalf, top)
+      ..close();
+    canvas.drawPath(
+      neck,
+      Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [look.skin.lit, look.skin.shade],
+        ).createShader(_figureBounds),
+    );
+    canvas
+      ..save()
+      ..clipPath(neck)
+      // Тень от головы под подбородком.
+      ..drawOval(
+        Rect.fromCenter(
+          center: const Offset(100, 45.5),
+          width: frame.headRx * 1.4,
+          height: 6,
+        ),
+        Paint()
+          ..color = look.skin.shade.withValues(alpha: 0.4)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+      )
+      ..restore();
+  }
+
+  /// Плечи поверх рук: дельты, рельеф руки и рукава футболки.
+  void _paintShoulders(Canvas canvas) {
     for (final arm in [frame.rightArm, frame.leftArm]) {
       _fillDelt(canvas, frame.deltCap(arm), arm);
     }
+    final style = _ReliefStyle.of(look);
+    for (final (path, opacity) in [
+      (layers.deltLines, 0.04 + 0.2 * min(1.0, frame.delts)),
+      (layers.armLines, 0.08 + 0.4 * min(1.0, frame.upperArm)),
+    ]) {
+      final depth = min(0.9, opacity * style.strength);
+      _paintShine(canvas, path, style, depth);
+      canvas.drawPath(path, style.paint(style.color.withValues(alpha: depth)));
+    }
+    final sleeves = layers.sleeves;
+    if (sleeves.isEmpty) return;
+    final color = _topColor;
+    for (final sleeve in sleeves) {
+      canvas.drawPath(
+        sleeve,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeJoin = StrokeJoin.round
+          ..color = color,
+      );
+      // Без тёмной кромки по краям: рукав — продолжение футболки, не «пузырь».
+      canvas
+        ..drawPath(sleeve, Paint()..color = color)
+        ..drawPath(sleeve, _fallPaint(sleeve));
+      if (look.top == TopKind.clownSuit) {
+        canvas
+          ..save()
+          ..clipPath(sleeve);
+        for (final (at, c) in layers.sleeveDots) {
+          canvas.drawCircle(at, 4.2, Paint()..color = _clownDots[c]);
+        }
+        canvas.restore();
+      }
+    }
   }
+
+  Color get _topColor => switch (look.top) {
+    TopKind.betaTee => _beta,
+    TopKind.clownSuit => _clownYellow,
+    TopKind.creatorTee => _creatorBlack,
+    _ => look.topColor,
+  };
 
   /// У героини мягкие тени в тон кожи, у героя резкие тёмные линии со светлой гранью.
   void _paintRelief(Canvas canvas) {
     final style = _ReliefStyle.of(look);
+    _paintPecs(canvas);
     final lines = <(Path, double)>[
       // Рост мышц бывает больше 1 (перекачанные) — рельеф всё равно не чернее обычного.
       (layers.chestLines, 0.12 + 0.45 * min(1.0, frame.chest)),
       (layers.absLines, 0.05 + 0.45 * min(1.0, frame.core)),
       (layers.quadLines, 0.05 + 0.4 * min(1.0, frame.thighs)),
-      // Дельта — часть плеча, а не отдельный шар: граница едва намечена.
-      (layers.deltLines, 0.04 + 0.2 * min(1.0, frame.delts)),
-      (layers.armLines, 0.08 + 0.4 * min(1.0, frame.upperArm)),
     ];
     for (final (path, opacity) in lines) {
       final depth = min(0.9, opacity * style.strength);
@@ -170,6 +259,82 @@ class AvatarPainter extends CustomPainter {
       canvas.drawPath(path, style.paint(style.color.withValues(alpha: depth)));
     }
     _paintKnees(canvas);
+  }
+
+  /// Грудные объёмом: блик на верхней части, тень под нижним краем, борозда
+  /// грудины, ключицы и складка к подмышке. Ярче с ростом грудных.
+  void _paintPecs(Canvas canvas) {
+    final lat = frame.lat;
+    final chest = min(1.0, frame.chest);
+    final f = look.isFemale;
+    final shade = Color.lerp(look.skin.shade, Colors.black, 0.3)!;
+    Paint soft(Color c, double a, double blur) => Paint()
+      ..color = c.withValues(alpha: a)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+    Paint groove(Color c, double a, double w, double blur) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round
+      ..color = c.withValues(alpha: a)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+    final sag = frame.chest * 8;
+    for (final s in const [-1.0, 1.0]) {
+      // Блик на верхней (ключичной) части — сторона к свету ярче.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(100 + s * lat * 0.44, f ? 104 : 98),
+          width: lat * 0.62,
+          height: f ? 12 : 11 + chest * 3,
+        ),
+        soft(Colors.white, (s < 0 ? 0.13 : 0.07) + chest * 0.06, 3),
+      );
+      // Тень под нижним краем: объём «полки» грудной.
+      final edgeY = f ? 119.0 : 115 + sag * 0.5;
+      canvas.drawPath(
+        Path()
+          ..moveTo(100 + s * 2, edgeY + 1)
+          ..quadraticBezierTo(
+            100 + s * lat * 0.42,
+            edgeY + (f ? 13 : 7) + sag * 0.5,
+            100 + s * lat * 0.86,
+            f ? 116 : 111,
+          ),
+        groove(shade, (f ? 0.22 : 0.18) + chest * 0.22, f ? 5 : 4.5, 3),
+      );
+      // Складка к подмышке: грудная уходит под дельту.
+      canvas.drawPath(
+        Path()
+          ..moveTo(100 + s * lat * 0.86, f ? 116 : 111)
+          ..quadraticBezierTo(
+            100 + s * lat * 0.98,
+            100,
+            100 + s * (frame.shoulder - frame.deltSize * 0.6),
+            88,
+          ),
+        groove(shade, 0.1 + chest * 0.2, 2.6, 1.6),
+      );
+      // Ключица — тонкий блик.
+      canvas.drawPath(
+        Path()
+          ..moveTo(100 + s * (frame.neck + 1), 73)
+          ..quadraticBezierTo(
+            100 + s * lat * 0.45,
+            75,
+            100 + s * (frame.shoulder - frame.deltSize * 0.5),
+            79,
+          ),
+        groove(Colors.white, 0.14, 1.6, 1),
+      );
+    }
+    if (!f) {
+      // Борозда грудины между грудными.
+      canvas.drawPath(
+        Path()
+          ..moveTo(100, 84)
+          ..lineTo(100, 114 + sag * 0.5),
+        groove(shade, 0.12 + chest * 0.25, 2.4, 1.4),
+      );
+    }
   }
 
   /// Колени: блик на чашечке и мягкая тень под ней — нога не «палка».
@@ -249,12 +414,7 @@ class AvatarPainter extends CustomPainter {
           ..color = look.accessoryColor,
       );
     }
-    final topColor = switch (look.top) {
-      TopKind.betaTee => _beta,
-      TopKind.clownSuit => _clownYellow,
-      TopKind.creatorTee => _creatorBlack,
-      _ => look.topColor,
-    };
+    final topColor = _topColor;
     final top = layers.fittedTop;
     if (top != null) {
       // Ткань чуть шире кожи: обводка тем же цветом «надувает» вещь на 1 px.
@@ -323,43 +483,6 @@ class AvatarPainter extends CustomPainter {
   }
 
   void _paintHead(Canvas canvas) {
-    final n = frame.neck;
-    // Верх шеи — внутри головы и не шире подбородка на этой высоте:
-    // иначе углы среза торчат по бокам челюсти.
-    const top = 46.0;
-    final topHalf = min(n * 0.8, frame.headHalfWidthAt(top) * 0.85);
-    final neck = Path()
-      ..moveTo(100 - topHalf, top)
-      ..lineTo(100 + topHalf, top)
-      // Книзу ровно, у основания расходится в трапеции.
-      ..cubicTo(100 + n * 0.86, 58, 100 + n * 1.2, 64, 100 + frame.trapX, 71)
-      ..lineTo(100 - frame.trapX, 71)
-      ..cubicTo(100 - n * 1.2, 64, 100 - n * 0.86, 58, 100 - topHalf, top)
-      ..close();
-    canvas.drawPath(
-      neck,
-      Paint()
-        ..shader = LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [look.skin.lit, look.skin.shade],
-        ).createShader(_figureBounds),
-    );
-    canvas
-      ..save()
-      ..clipPath(neck)
-      // Тень от головы под подбородком.
-      ..drawOval(
-        Rect.fromCenter(
-          center: const Offset(100, 45.5),
-          width: frame.headRx * 1.4,
-          height: 6,
-        ),
-        Paint()
-          ..color = look.skin.shade.withValues(alpha: 0.4)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
-      )
-      ..restore();
     // Шарф — поверх шеи, иначе шея «проходит» сквозь обмотку.
     if (layers.scarf case (final wrap, final tail)) {
       _fillCloth(canvas, tail, _scarfDark);
