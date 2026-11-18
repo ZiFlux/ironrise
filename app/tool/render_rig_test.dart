@@ -10,7 +10,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ironrise/avatar/avatar_look.dart';
+import 'package:ironrise/avatar/body_frame.dart';
+import 'package:ironrise/avatar/rig/body.dart';
+import 'package:ironrise/avatar/rig/body_painter.dart';
 import 'package:ironrise/avatar/rig/skeleton.dart';
+import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/avatar/rig/skeleton_painter.dart';
 
 const _out = String.fromEnvironment('OUT');
@@ -114,6 +119,41 @@ void main() {
             't = $t',
             draw(RigPose.blend(RigPoses.relaxed, RigPoses.doubleBiceps, t)),
           ),
+      ]);
+    }
+
+    // Этап 2.2: тело на костях — уровни, телосложение, позы.
+    for (final (s, sex, p) in [
+      ('m', AvatarSex.male, Proportions.male),
+      ('f', AvatarSex.female, Proportions.female),
+    ]) {
+      final rest = RestSkeleton(p);
+      Widget body(
+        RigPose pose, {
+        num level = 10,
+        BodyBuild build = BodyBuild.average,
+        bool bones = false,
+      }) => CustomPaint(
+        painter: RigBodyPainter(
+          RigBody(
+            PosedSkeleton(rest, pose),
+            BodyFrame({for (final b in BodyPart.values) b: level}, sex, build),
+          ),
+          SkinTone.tan,
+          bones: bones,
+        ),
+      );
+      await sheet(tester, '${s}_тело_уровни.png', [
+        ('кости', body(RigPoses.relaxed, level: 1, bones: true)),
+        for (final l in [1, 10, 25, 60])
+          ('уровень $l', body(RigPoses.relaxed, level: l)),
+      ]);
+      await sheet(tester, '${s}_тело_сложение.png', [
+        for (final b in BodyBuild.values)
+          (b.label, body(RigPoses.relaxed, level: 1, build: b)),
+      ]);
+      await sheet(tester, '${s}_тело_позы.png', [
+        for (final (label, pose) in poses) (label, body(pose, level: 25)),
       ]);
     }
   });
