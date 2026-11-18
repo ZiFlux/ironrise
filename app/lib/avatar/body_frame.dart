@@ -223,24 +223,24 @@ class BodyFrame {
       (pose == AvatarPose.latSpread ? poseT * 3 : 0);
   late final double waist = max(
     // Даже у худых талия не «осиная»: не уже этого минимума.
-    _pick(19, 16.5),
-    _pick(26, 21) -
-        cardio * 4 -
-        core +
+    _pick(19, 20),
+    _pick(26, 24.5) -
+        cardio * _pick(4, 2.5) -
+        core * _pick(1, 0.6) +
         chest * _pick(1, 0) +
         fat * _pick(15, 11),
   );
-  late final double ribs = _lerp(lat, waist, 0.6);
+  late final double ribs = _lerp(lat, waist, isFemale ? 0.5 : 0.6);
   late final double hip =
       _pick(26, 31) + glutes * _pick(2, 4) + fat * _pick(9, 10);
-  late final double thigh = _pick(25, 30) + thighs * _pick(9, 6) + fat * 7;
+  late final double thigh = _pick(26, 32) + thighs * _pick(9, 6) + fat * 7;
   late final double knee = max(
-    _pick(17, 16) + legs * 2 + fat * 4,
+    _pick(18.5, 18.5) + legs * 2 + fat * 4,
     // Колено не уже икры на 1,5 и не глубже бедра на 9 — нога ровная, без перехвата.
     min(calf - 1.5, thigh - 9),
   );
-  late final double calf = _pick(18, 17) + calves * _pick(6, 4) + fat * 5;
-  late final double ankle = _pick(10, 9) + max(fat, 0.0) * 2;
+  late final double calf = _pick(20, 20.5) + calves * _pick(6, 4.5) + fat * 5;
+  late final double ankle = _pick(10.5, 10) + max(fat, 0.0) * 2;
   late final double shin = _lerp(calf, ankle, 0.6);
   late final double waistband = _lerp(waist, hip, 0.7);
   late final double trapX = _lerp(neck, shoulder, 0.5);

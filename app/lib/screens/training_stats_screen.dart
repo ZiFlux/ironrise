@@ -51,7 +51,10 @@ class TrainingStatsScreen extends ConsumerWidget {
                     ('Всего', '${stats.workouts}'),
                     ('За месяц', '${stats.inLastDays(30, now)}'),
                     ('Подходов', '${records.sets}'),
-                    ('Поднято', '${(stats.volume / 1000).toStringAsFixed(1)} т'),
+                    (
+                      'Поднято',
+                      '${(stats.volume / 1000).toStringAsFixed(1)} т',
+                    ),
                   ],
                 ),
                 if (ref.watch(heroProvider) case final hero?)

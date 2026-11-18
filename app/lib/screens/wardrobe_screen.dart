@@ -159,7 +159,9 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  for (final slot in ShopSlot.values.where((s) => s.onAvatar))
+                  for (final slot in ShopSlot.values.where(
+                    (s) => s.shownFor(look.sex),
+                  ))
                     if (!shop || slot != ShopSlot.skin)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),

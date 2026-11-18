@@ -48,6 +48,8 @@ class AvatarPainter extends CustomPainter {
       ..scale(scale);
 
     _paintFloorShadow(canvas);
+    // Причёска — только у героини (герой без волос).
+    if (look.isFemale) _fillSolid(canvas, layers.hairBack, look.hairColor);
     // Как у человека в анфас: плечо (бицепс, трицепс) — за корпусом, край
     // груди и широчайших поверх; предплечье и кисть — перед корпусом и
     // одеждой (кулаки на поясе, руки перед телом в позах); дельта сверху
@@ -557,6 +559,7 @@ class AvatarPainter extends CustomPainter {
           ).createShader(head.getBounds()),
       )
       ..drawPath(head, _outline);
+    if (look.isFemale) _fillSolid(canvas, layers.hairFront, look.hairColor);
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
     for (final (tuft, color) in layers.wigTufts) {

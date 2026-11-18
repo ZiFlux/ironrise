@@ -521,9 +521,7 @@ class _StartLookCard extends StatelessWidget {
         .ceil();
     return Material(
       color: AppColors.surface,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () => context.push('/profile/start-look'),
@@ -624,7 +622,9 @@ class _Menu extends ConsumerWidget {
           (
             LucideIcons.shoppingBag,
             'Магазин',
-            premium ? 'Одежда, аксессуары · премиум' : 'Одежда, аксессуары, премиум',
+            premium
+                ? 'Одежда, аксессуары · премиум'
+                : 'Одежда, аксессуары, премиум',
             '/shop',
             false,
           ),
@@ -1161,9 +1161,9 @@ class _PartLevelRow extends StatelessWidget {
                                     child: Icon(
                                       LucideIcons.flame,
                                       size: 14,
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.tertiary,
+                                      color: Theme.of(context)
+                                          .colorScheme
+                                          .tertiary,
                                     ),
                                   ),
                                 ),
