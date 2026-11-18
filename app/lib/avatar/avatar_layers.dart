@@ -39,15 +39,7 @@ class AvatarLayers {
       Offset(_f.hip + 1.4, 206),
       const Offset(0, 208),
     ]),
-    TopKind.vneck => Path.combine(
-      PathOperation.difference,
-      _teePath,
-      Path()
-        ..moveTo(100 - _f.neck - 2.5, 62)
-        ..lineTo(100 + _f.neck + 2.5, 62)
-        ..lineTo(100, 100)
-        ..close(),
-    ),
+    TopKind.vneck => Path.combine(PathOperation.difference, _teePath, _vCut),
     TopKind.oversize => mirroredPath([
       const Offset(0, 72),
       Offset(_f.neck + 2, 63),
@@ -90,9 +82,65 @@ class AvatarLayers {
   ]);
 
   /// Рукава футболки повторяют дельту и доходят до середины бицепса.
+  /// Дельта под рукавом целиком — край рукава не обнажает плечо.
   List<Path> get sleeves => look.top.teeCut
-      ? [_sleeveOf(_f.rightArm), _sleeveOf(_f.leftArm)]
+      ? [
+          for (final arm in [_f.rightArm, _f.leftArm])
+            Path.combine(
+              PathOperation.union,
+              _sleeveOf(arm),
+              _f.deltCap(arm, grow: 1.4),
+            ),
+        ]
       : const [];
+
+  /// Верх по телу: контур тела (с дельтами), обрезанный по крою вещи, —
+  /// горловина, лямки, длина. Сидит на любой фигуре и в любой позе: тянется
+  /// по широчайшим, не рвётся на плечах и не открывает «дыр» у подмышек.
+  /// Рукава — в той же фигуре, без шва. Оверсайз ещё и свободнее тела.
+  Path? get fittedTop {
+    final cut = top;
+    if (cut == null) return null;
+    final hem = switch (look.top) {
+      TopKind.bra => 142.0,
+      TopKind.crop => 148.0,
+      TopKind.oversize => 224.0,
+      TopKind.tank => 207.0,
+      _ => 209.0,
+    };
+    // Ниже подмышек крой — во всю ширину тела: края задаёт само тело.
+    // У футболок — от уровня плеч (рука поднята — подмышка всё равно в ткани),
+    // у маек и топов — от подмышек: плечи открыты.
+    final sleeved = look.top.teeCut;
+    final region = Path.combine(
+      PathOperation.union,
+      cut,
+      Path()..addRect(Rect.fromLTRB(-50, sleeved ? 90 : 116, 250, hem)),
+    );
+    var body = _f.bodyOutline;
+    if (sleeved) {
+      for (final arm in [_f.rightArm, _f.leftArm]) {
+        body = Path.combine(PathOperation.union, body, _f.deltCap(arm));
+      }
+    }
+    var fitted = Path.combine(PathOperation.intersect, region, body);
+    if (look.top == TopKind.vneck) {
+      fitted = Path.combine(PathOperation.difference, fitted, _vCut);
+    }
+    if (look.top == TopKind.oversize) {
+      fitted = Path.combine(PathOperation.union, fitted, cut);
+    }
+    for (final sleeve in sleeves) {
+      fitted = Path.combine(PathOperation.union, fitted, sleeve);
+    }
+    return fitted;
+  }
+
+  Path get _vCut => Path()
+    ..moveTo(100 - _f.neck - 2.5, 62)
+    ..lineTo(100 + _f.neck + 2.5, 62)
+    ..lineTo(100, 100)
+    ..close();
 
   /// Горошек костюма клоуна: кружки по сетке (обрезаются по костюму при рисовании).
   List<(Offset, int)> get clownDots {
@@ -784,26 +832,29 @@ class AvatarLayers {
     final sag = _f.chest * 8;
     if (look.isFemale) {
       return Path()
-        ..moveTo(100 - lat * 0.78, 119)
-        ..quadraticBezierTo(100 - lat * 0.42, 135 + sag * 0.4, 97, 124)
-        ..moveTo(100 + lat * 0.78, 119)
-        ..quadraticBezierTo(100 + lat * 0.42, 135 + sag * 0.4, 103, 124);
+        ..moveTo(100 - lat * 0.78, 114)
+        ..quadraticBezierTo(100 - lat * 0.42, 130 + sag * 0.4, 97, 119)
+        ..moveTo(100 + lat * 0.78, 114)
+        ..quadraticBezierTo(100 + lat * 0.42, 130 + sag * 0.4, 103, 119);
     }
     return Path()
-      ..moveTo(100 - lat * 0.86, 117)
-      ..quadraticBezierTo(100 - lat * 0.4, 125 + sag, 100, 120 + sag * 0.5)
-      ..quadraticBezierTo(100 + lat * 0.4, 125 + sag, 100 + lat * 0.86, 117);
+      ..moveTo(100 - lat * 0.86, 111)
+      ..quadraticBezierTo(100 - lat * 0.4, 120 + sag, 100, 115 + sag * 0.5)
+      ..quadraticBezierTo(100 + lat * 0.4, 120 + sag, 100 + lat * 0.86, 111);
   }
 
+  /// Пресс по всему корпусу: от грудных до пояса, четыре ряда кубиков —
+  /// верхние шире (у рёбер), нижние уже (к талии).
   Path get absLines {
-    final half = _f.waist * 0.42;
     final path = Path()
-      ..moveTo(100, 138)
-      ..lineTo(100, 186);
-    for (final y in const [150.0, 164.0, 178.0]) {
+      ..moveTo(100, 124)
+      ..lineTo(100, 190);
+    const rows = [134.0, 149.0, 164.0, 179.0];
+    for (final (i, y) in rows.indexed) {
+      final half = _lerp(_f.ribs * 0.46, _f.waist * 0.4, i / (rows.length - 1));
       path
         ..moveTo(100 - half, y)
-        ..quadraticBezierTo(100, y + 2, 100 + half, y);
+        ..quadraticBezierTo(100, y + 2.2, 100 + half, y);
     }
     return path;
   }

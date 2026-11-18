@@ -48,7 +48,6 @@ class AvatarPainter extends CustomPainter {
       ..scale(scale);
 
     _paintFloorShadow(canvas);
-    _fillSolid(canvas, layers.hairBack, look.hairColor);
     _paintArms(canvas);
     _inStance(canvas, () {
       _paintTorso(canvas);
@@ -256,10 +255,18 @@ class AvatarPainter extends CustomPainter {
       TopKind.creatorTee => _creatorBlack,
       _ => look.topColor,
     };
-    final top = layers.top;
-    if (top != null) _fillCloth(canvas, top, topColor, withFall: true);
-    for (final sleeve in layers.sleeves) {
-      _fillCloth(canvas, sleeve, topColor, withFall: true);
+    final top = layers.fittedTop;
+    if (top != null) {
+      // Ткань чуть шире кожи: обводка тем же цветом «надувает» вещь на 1 px.
+      canvas.drawPath(
+        top,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeJoin = StrokeJoin.round
+          ..color = topColor,
+      );
+      _fillCloth(canvas, top, topColor, withFall: true);
     }
     if (look.top == TopKind.betaTee) {
       _paintEmblem(canvas, layers.chestEmblem);
@@ -275,17 +282,9 @@ class AvatarPainter extends CustomPainter {
       );
     }
     if (top != null && look.top == TopKind.clownSuit) {
-      final suit = Path.combine(
-        PathOperation.union,
-        top,
-        layers.sleeves.fold(
-          Path(),
-          (a, b) => Path.combine(PathOperation.union, a, b),
-        ),
-      );
       canvas
         ..save()
-        ..clipPath(suit);
+        ..clipPath(top);
       for (final (at, color) in layers.clownDots) {
         canvas.drawCircle(at, 4.2, Paint()..color = _clownDots[color]);
       }
@@ -378,7 +377,6 @@ class AvatarPainter extends CustomPainter {
     );
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
-    _fillSolid(canvas, layers.hairFront, look.hairColor);
     for (final (tuft, color) in layers.wigTufts) {
       _fillSolid(canvas, tuft, _rainbow[color]);
     }

@@ -30,7 +30,7 @@ class WardrobeScreen extends ConsumerStatefulWidget {
 }
 
 class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
-  ShopSlot _slot = ShopSlot.hair;
+  ShopSlot _slot = ShopSlot.top;
   AvatarLook? _preview;
 
   static bool _same(AvatarLook a, AvatarLook b) =>
@@ -159,7 +159,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 scrollDirection: Axis.horizontal,
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 children: [
-                  for (final slot in ShopSlot.values)
+                  for (final slot in ShopSlot.values.where((s) => s.onAvatar))
                     if (!shop || slot != ShopSlot.skin)
                       Padding(
                         padding: const EdgeInsets.only(right: 8),

@@ -14,7 +14,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 void main() {
   for (final scale in [1.0, 1.15, 1.3]) {
     for (final (slot, item) in [
-      ('Цвет волос', 'Огненные'),
+      // «Цвет волос» скрыт, пока герой без причёски.
       ('Цвет низа', 'Угли'),
       ('Цвет обуви', 'Пламя'),
       ('Цвет верха', 'Пламя'),
