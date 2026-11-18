@@ -14,6 +14,7 @@ import 'package:ironrise/avatar/avatar_look.dart';
 import 'package:ironrise/avatar/body_frame.dart';
 import 'package:ironrise/avatar/rig/body.dart';
 import 'package:ironrise/avatar/rig/body_painter.dart';
+import 'package:ironrise/avatar/rig/rig_painter.dart';
 import 'package:ironrise/avatar/rig/skeleton.dart';
 import 'package:ironrise/game/body_part.dart';
 import 'package:ironrise/avatar/rig/skeleton_painter.dart';
@@ -133,16 +134,18 @@ void main() {
         num level = 10,
         BodyBuild build = BodyBuild.average,
         bool bones = false,
-      }) => CustomPaint(
-        painter: RigBodyPainter(
-          RigBody(
-            PosedSkeleton(rest, pose),
-            BodyFrame({for (final b in BodyPart.values) b: level}, sex, build),
-          ),
-          SkinTone.tan,
-          bones: bones,
-        ),
-      );
+      }) {
+        final body = RigBody(
+          PosedSkeleton(rest, pose),
+          BodyFrame({for (final b in BodyPart.values) b: level}, sex, build),
+        );
+        return CustomPaint(
+          painter: bones
+              ? RigBodyPainter(body, SkinTone.tan, bones: true)
+              : RigPainter(body, SkinTone.tan, accent: const Color(0xFFFF6B4A)),
+        );
+      }
+
       await sheet(tester, '${s}_тело_уровни.png', [
         ('кости', body(RigPoses.relaxed, level: 1, bones: true)),
         for (final l in [1, 10, 25, 60])
