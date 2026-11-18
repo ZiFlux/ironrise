@@ -591,7 +591,7 @@ class _FighterCard extends StatelessWidget {
   /// Узкая карточка: соперников больше четырёх.
   final bool compact;
 
-  /// Лестница: уже побеждён (повтор — 30 % монет), босс ступени, босс ещё закрыт.
+  /// Лестница: уже побеждён (повтор — 20 % монет), босс ступени, босс ещё закрыт.
   final bool beaten;
   final bool boss;
   final bool locked;
@@ -777,7 +777,7 @@ class _FighterCard extends StatelessWidget {
                     _FightButton(label: 'Ещё бой', onTap: onFight),
                     const SizedBox(height: 1),
                     Text(
-                      beaten ? '30 % монет' : '½ монет',
+                      beaten ? '20 % монет' : '½ монет',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,
@@ -918,7 +918,7 @@ class _LadderLine extends StatelessWidget {
             'Сначала у всех слабые соперники, выше — всё сильнее. Побей '
             '${_bots(ladder.winsToBoss)} ступени — откроется босс, победа над ним '
             'ведёт выше$next. Первая победа над ботом — полная награда, '
-            'повторные — 30 %. Сила растёт только от тренировок.',
+            'повторные — 20 %. Сила растёт только от тренировок.',
       ),
       child: Row(
         children: [

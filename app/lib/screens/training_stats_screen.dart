@@ -51,9 +51,12 @@ class TrainingStatsScreen extends ConsumerWidget {
                     ('Всего', '${stats.workouts}'),
                     ('За месяц', '${stats.inLastDays(30, now)}'),
                     ('Подходов', '${records.sets}'),
+                    // От 100 т — без десятых: «128 т» помещается в плитку.
                     (
                       'Поднято',
-                      '${(stats.volume / 1000).toStringAsFixed(1)} т',
+                      stats.volume >= 100000
+                          ? '${(stats.volume / 1000).round()} т'
+                          : '${(stats.volume / 1000).toStringAsFixed(1)} т',
                     ),
                   ],
                 ),
@@ -143,7 +146,16 @@ class _Tiles extends StatelessWidget {
               padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
               child: Column(
                 children: [
-                  Text(value, style: figureStyle(size: 20)),
+                  // Число в одну строку: длинное («94.8 т») ужимается, а не
+                  // переносится.
+                  FittedBox(
+                    fit: BoxFit.scaleDown,
+                    child: Text(
+                      value,
+                      maxLines: 1,
+                      style: figureStyle(size: 20),
+                    ),
+                  ),
                   const SizedBox(height: 2),
                   Text(
                     label,
