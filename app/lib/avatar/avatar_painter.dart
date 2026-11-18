@@ -301,6 +301,103 @@ class AvatarPainter extends CustomPainter {
       canvas.drawPath(path, style.paint(style.color.withValues(alpha: depth)));
     }
     _paintKnees(canvas);
+    _paintLegMuscles(canvas);
+  }
+
+  /// Квадрицепсы и икры: мягкие борозды и блики, сильнее с прокачкой.
+  /// Квадрицепс — «размах» наружной мышцы, «капля» над коленом изнутри,
+  /// блик на прямой мышце; икра — две головки (наружная выше, внутренняя
+  /// ниже), тень под ними к ахиллу, блик на кости голени.
+  void _paintLegMuscles(Canvas canvas) {
+    final q = min(1.0, frame.thighs);
+    final c = min(1.0, frame.calves);
+    final f = look.isFemale;
+    final k = f ? 0.7 : 1.0;
+    final shade = Color.lerp(look.skin.shade, Colors.black, f ? 0.25 : 0.4)!;
+    Paint groove(double a, double w) => Paint()
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = w
+      ..strokeCap = StrokeCap.round
+      ..color = shade.withValues(alpha: a * k)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.4);
+    Paint gloss(double a) => Paint()
+      ..color = Colors.white.withValues(alpha: a * k)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.4);
+    final thigh = frame.thigh, knee = frame.knee, calf = frame.calf;
+    final ankle = frame.ankle;
+    // Рельеф — только на ноге: размытые края не выходят на фон.
+    canvas
+      ..save()
+      ..clipPath(frame.bodyOutline);
+    for (final sd in const [-1.0, 1.0]) {
+      double x(double d) => 100 + sd * d;
+      // Квадрицепс: блик на прямой мышце бедра.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x((thigh + 5) / 2 + 1), 246),
+          width: 7 + q * 3,
+          height: 30,
+        ),
+        gloss(0.07 + q * 0.09),
+      );
+      // «Размах» наружной широкой мышцы — борозда с внешней стороны.
+      canvas.drawPath(
+        Path()
+          ..moveTo(x(thigh * 0.8), 230)
+          ..quadraticBezierTo(x(thigh * 0.86), 258, x(knee * 0.86), 283),
+        groove(0.12 + q * 0.3, 2.6),
+      );
+      // «Капля» над коленом изнутри: тень по её нижнему краю.
+      canvas.drawPath(
+        Path()
+          ..moveTo(x(7), 262)
+          ..quadraticBezierTo(x(5 + knee * 0.2), 280, x(knee * 0.42 + 2), 284),
+        groove(0.1 + q * 0.32, 3),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x(9), 272),
+          width: 5 + q * 2,
+          height: 12,
+        ),
+        gloss(0.05 + q * 0.08),
+      );
+      // Икра: блик на наружной головке, она выше и круглее.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: Offset(x(calf * 0.7), 314),
+          width: 6 + c * 2,
+          height: 20,
+        ),
+        gloss(0.08 + c * 0.1),
+      );
+      // Нижний край головок — переход в ахилл: внутренняя ниже наружной.
+      canvas.drawPath(
+        Path()
+          ..moveTo(x(calf * 0.95), 326)
+          ..quadraticBezierTo(x(calf * 0.75), 337, x(calf * 0.58), 338),
+        groove(0.1 + c * 0.32, 2.6),
+      );
+      canvas.drawPath(
+        Path()
+          ..moveTo(x(calf * 0.4 + 1), 332)
+          ..quadraticBezierTo(x(calf * 0.48), 343, x(calf * 0.62), 345),
+        groove(0.08 + c * 0.28, 2.4),
+      );
+      // Блик на кости голени — к щиколотке.
+      canvas.drawPath(
+        Path()
+          ..moveTo(x(calf * 0.55), 300)
+          ..quadraticBezierTo(x(calf * 0.5), 335, x(ankle * 0.7 + 2), 362),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round
+          ..color = Colors.white.withValues(alpha: 0.08 * k)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1.2),
+      );
+    }
+    canvas.restore();
   }
 
   /// Грудные объёмом: блик на верхней части, тень под нижним краем, борозда
