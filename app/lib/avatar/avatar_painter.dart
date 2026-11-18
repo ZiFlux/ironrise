@@ -618,7 +618,7 @@ class AvatarPainter extends CustomPainter {
     final betaBottom = look.bottom == BottomKind.betaJoggers;
     _fillCloth(
       canvas,
-      layers.bottom,
+      layers.fittedBottom,
       betaBottom ? _betaDark : look.bottomColor,
     );
     if (layers.cargoPockets case final pockets?) {

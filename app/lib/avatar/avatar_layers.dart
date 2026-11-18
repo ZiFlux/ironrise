@@ -231,6 +231,21 @@ class AvatarLayers {
     arm.at(-0.04, _f.deltSize * 0.4 + 1.2),
   ]);
 
+  /// Низ по телу: своя форма вещи плюс тело от пояса до края штанин —
+  /// нога закрыта целиком при любой фигуре (раньше по внутренней стороне
+  /// голени проступала кожа); свободные вещи сохраняют свой силуэт.
+  Path get fittedBottom {
+    final own = bottom;
+    final r = own.getBounds();
+    final band = Path()
+      ..addRect(Rect.fromLTRB(-50, r.top + 1.5, 250, r.bottom - 1));
+    return Path.combine(
+      PathOperation.union,
+      own,
+      Path.combine(PathOperation.intersect, band, _f.bodyOutline),
+    );
+  }
+
   Path get bottom => switch (look.bottom) {
     BottomKind.shorts => mirroredPath([
       const Offset(0, 190),
