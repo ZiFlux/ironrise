@@ -784,15 +784,15 @@ class AvatarLayers {
     final sag = _f.chest * 8;
     if (look.isFemale) {
       return Path()
-        ..moveTo(100 - lat * 0.78, 126)
-        ..quadraticBezierTo(100 - lat * 0.42, 142 + sag * 0.4, 97, 131)
-        ..moveTo(100 + lat * 0.78, 126)
-        ..quadraticBezierTo(100 + lat * 0.42, 142 + sag * 0.4, 103, 131);
+        ..moveTo(100 - lat * 0.78, 119)
+        ..quadraticBezierTo(100 - lat * 0.42, 135 + sag * 0.4, 97, 124)
+        ..moveTo(100 + lat * 0.78, 119)
+        ..quadraticBezierTo(100 + lat * 0.42, 135 + sag * 0.4, 103, 124);
     }
     return Path()
-      ..moveTo(100 - lat * 0.86, 124)
-      ..quadraticBezierTo(100 - lat * 0.4, 132 + sag, 100, 127 + sag * 0.5)
-      ..quadraticBezierTo(100 + lat * 0.4, 132 + sag, 100 + lat * 0.86, 124);
+      ..moveTo(100 - lat * 0.86, 117)
+      ..quadraticBezierTo(100 - lat * 0.4, 125 + sag, 100, 120 + sag * 0.5)
+      ..quadraticBezierTo(100 + lat * 0.4, 125 + sag, 100 + lat * 0.86, 117);
   }
 
   Path get absLines {

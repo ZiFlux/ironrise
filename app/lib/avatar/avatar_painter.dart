@@ -325,13 +325,17 @@ class AvatarPainter extends CustomPainter {
 
   void _paintHead(Canvas canvas) {
     final n = frame.neck;
+    // Верх шеи — внутри головы и не шире подбородка на этой высоте:
+    // иначе углы среза торчат по бокам челюсти.
+    const top = 46.0;
+    final topHalf = min(n * 0.8, frame.headHalfWidthAt(top) * 0.85);
     final neck = Path()
-      ..moveTo(100 - n * 0.86, 44)
-      ..lineTo(100 + n * 0.86, 44)
-      // Книзу расходится в трапеции — без «воротника» на стыке с телом.
-      ..cubicTo(100 + n * 0.9, 58, 100 + n * 1.2, 64, 100 + frame.trapX, 71)
+      ..moveTo(100 - topHalf, top)
+      ..lineTo(100 + topHalf, top)
+      // Книзу ровно, у основания расходится в трапеции.
+      ..cubicTo(100 + n * 0.86, 58, 100 + n * 1.2, 64, 100 + frame.trapX, 71)
       ..lineTo(100 - frame.trapX, 71)
-      ..cubicTo(100 - n * 1.2, 64, 100 - n * 0.9, 58, 100 - n * 0.86, 44)
+      ..cubicTo(100 - n * 1.2, 64, 100 - n * 0.86, 58, 100 - topHalf, top)
       ..close();
     canvas.drawPath(
       neck,
@@ -372,7 +376,6 @@ class AvatarPainter extends CustomPainter {
         ),
       ),
     );
-    _paintFace(canvas);
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
     _fillSolid(canvas, layers.hairFront, look.hairColor);
@@ -395,101 +398,6 @@ class AvatarPainter extends CustomPainter {
       _fillSolid(canvas, band, _capColor);
       _fillSolid(canvas, cups, look.accessoryColor);
     }
-  }
-
-  /// Минимальные черты лица: надбровья, глаза, нос, рот, тень скулы.
-  /// Мягко, в тон кожи — характер без мультяшности.
-  void _paintFace(Canvas canvas) {
-    final c = BodyFrame.headCenter;
-    final f = look.isFemale;
-    final shade = look.skin.shade;
-    final deep = Color.lerp(shade, Colors.black, 0.55)!;
-    Paint soft(Color color, double alpha, double blur) => Paint()
-      ..color = color.withValues(alpha: alpha)
-      ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
-    canvas
-      ..save()
-      ..clipPath(
-        Path()..addOval(
-          Rect.fromCenter(
-            center: c,
-            width: frame.headRx * 2,
-            height: frame.headRy * 2,
-          ),
-        ),
-      );
-    for (final s in const [-1.0, 1.0]) {
-      // Глазница и надбровье.
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: c + Offset(s * 5.8, -1.2),
-          width: 8,
-          height: 4.2,
-        ),
-        soft(shade, 0.55, 1.4),
-      );
-      // Глаз.
-      canvas.drawOval(
-        Rect.fromCenter(
-          center: c + Offset(s * 5.6, -0.4),
-          width: f ? 4 : 3.6,
-          height: f ? 1.9 : 1.5,
-        ),
-        Paint()..color = deep.withValues(alpha: 0.9),
-      );
-      canvas.drawCircle(
-        c + Offset(s * 5.6 - 0.6, -0.8),
-        0.45,
-        Paint()..color = Colors.white.withValues(alpha: 0.7),
-      );
-      if (f) {
-        // Ресницы — короткий штрих сверху.
-        canvas.drawLine(
-          c + Offset(s * 3.8, -1.3),
-          c + Offset(s * 7.6, -1.5),
-          Paint()
-            ..color = deep
-            ..strokeWidth = 0.7
-            ..strokeCap = StrokeCap.round,
-        );
-      }
-    }
-    // Нос: тень справа и под кончиком.
-    canvas.drawPath(
-      Path()
-        ..moveTo(c.dx + 0.6, c.dy + 0.5)
-        ..quadraticBezierTo(c.dx + 2, c.dy + 4.5, c.dx + 1.2, c.dy + 6.4),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.3
-        ..color = shade.withValues(alpha: 0.55)
-        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 0.7),
-    );
-    canvas.drawOval(
-      Rect.fromCenter(center: c + const Offset(0, 7), width: 4.6, height: 1.6),
-      soft(shade, 0.5, 0.8),
-    );
-    // Рот.
-    canvas.drawPath(
-      Path()
-        ..moveTo(c.dx - 3, c.dy + 11.2)
-        ..quadraticBezierTo(c.dx, c.dy + 11.9, c.dx + 3, c.dy + 11.2),
-      Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = f ? 1.2 : 0.9
-        ..strokeCap = StrokeCap.round
-        ..color = (f ? const Color(0xFF8E4A4A) : deep).withValues(alpha: 0.7),
-    );
-    // Скула и челюсть в тени со стороны от света.
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: c + Offset(frame.headRx * 0.7, 9),
-        width: frame.headRx * 0.6,
-        height: 14,
-      ),
-      soft(shade, 0.35, 2.4),
-    );
-    canvas.restore();
   }
 
   // Цвета аксессуаров: у каждой вещи свой, кроме акцентных деталей.

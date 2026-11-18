@@ -341,8 +341,9 @@ class BodyFrame {
 
   /// Контур тела без рук. Плечо сужено: стык с рукой закрывает дельта.
   Path get bodyOutline => mirroredPath([
-    Offset(neck - 0.5, 48),
-    Offset(neck, 62),
+    // Верх шеи у тела — уже подбородка, иначе углы торчат под челюстью.
+    Offset(min(neck * 0.78, headHalfWidthAt(47) * 0.85), 47),
+    Offset(neck * 0.9, 58),
     Offset(trapX, 70),
     Offset(shoulder - deltSize * 0.5, 77),
     Offset(shoulder - deltSize * 0.08, 86),
