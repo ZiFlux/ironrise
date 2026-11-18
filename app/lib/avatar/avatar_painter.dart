@@ -128,16 +128,37 @@ class AvatarPainter extends CustomPainter {
   /// у локтя, чтобы стык не просвечивал.
   List<(double, double)> get _upperStations =>
       frame.armStations.where((st) => st.$1 <= 0.52).toList()
-        ..add((0.6, frame.elbowWidth * 0.98));
+        ..add((0.54, frame.elbowWidth * 0.98));
 
   List<(double, double)> get _foreStations => [
     (0.44, frame.elbowWidth * 0.98),
     ...frame.armStations.where((st) => st.$1 > 0.52),
   ];
 
+  /// Предплечье с суставом локтя — круг по ширине локтя: на прямой руке не
+  /// виден, на согнутой даёт гладкий изгиб вместо угла-зазубрины.
+  Path _forearmPath(ArmGeometry arm) => Path.combine(
+    PathOperation.union,
+    arm.outline(_foreStations),
+    Path()..addOval(
+      Rect.fromCircle(center: arm.elbow, radius: frame.elbowWidth * 1.02),
+    ),
+  );
+
   void _paintUpperArms(Canvas canvas) {
     for (final arm in [frame.rightArm, frame.leftArm]) {
-      _fillSkin(canvas, arm.outline(_upperStations));
+      // Край плеча у локтя закрывает предплечье — там его обводка не нужна.
+      _fillSkin(
+        canvas,
+        arm.outline(_upperStations),
+        outlineOutside: Path.combine(
+          PathOperation.union,
+          _forearmPath(arm),
+          Path()..addOval(
+            Rect.fromCircle(center: arm.elbow, radius: frame.elbowWidth * 1.35),
+          ),
+        ),
+      );
     }
     // Рельеф плеча — тут же, под корпусом: на груди его не видно.
     final style = _ReliefStyle.of(look);
@@ -156,11 +177,17 @@ class AvatarPainter extends CustomPainter {
     for (final arm in [frame.rightArm, frame.leftArm]) {
       // Предплечье продолжает плечо: обводка — только снаружи плеча,
       // без дуги над локтем.
-      _fillSkin(
-        canvas,
-        arm.outline(_foreStations),
-        outlineOutside: arm.outline(_upperStations),
+      final fore = _forearmPath(arm);
+      // У локтя обводку предплечья не рисуем: там сходятся контуры плеча
+      // и сустава, и их обрывки давали «закорючку».
+      final hidden = Path.combine(
+        PathOperation.union,
+        arm.outline(_upperStations),
+        Path()..addOval(
+          Rect.fromCircle(center: arm.elbow, radius: frame.elbowWidth * 1.35),
+        ),
       );
+      _fillSkin(canvas, fore, outlineOutside: hidden);
     }
     for (final band in layers.wristbands) {
       _fillSolid(canvas, band, look.accessoryColor);

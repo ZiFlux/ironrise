@@ -271,7 +271,7 @@ class BodyFrame {
   late final double wristWidth = _pick(4.6, 3.9);
 
   // Голова крупнее (~8 голов роста вместо 9,5): герой читается на телефоне.
-  late final double headRx = _pick(18, 17);
+  late final double headRx = _pick(18, 16.2);
   late final double headRy = _pick(22, 21);
   static const headCenter = Offset(_centerX, 30);
 
@@ -403,12 +403,14 @@ class BodyFrame {
     final half = isFemale
         ? const [
             Offset(0.6, -0.93),
-            Offset(0.9, -0.62),
-            Offset(1.0, -0.2),
-            Offset(0.96, 0.14),
-            Offset(0.84, 0.48),
-            Offset(0.6, 0.8),
-            Offset(0.3, 0.97),
+            Offset(0.9, -0.64),
+            Offset(1.0, -0.26),
+            // Скулы выше, дальше — плавно к узкому подбородку.
+            Offset(0.97, 0.04),
+            Offset(0.84, 0.38),
+            Offset(0.6, 0.7),
+            Offset(0.32, 0.9),
+            Offset(0.13, 0.98),
           ]
         : const [
             Offset(0.62, -0.92),
@@ -426,7 +428,7 @@ class BodyFrame {
     return smoothClosedPath([
       p(0, -1),
       for (final o in half) p(o.dx, o.dy),
-      p(0, isFemale ? 1.0 : 1.03),
+      p(0, isFemale ? 0.99 : 1.03),
       for (final o in half.reversed) p(-o.dx, o.dy),
     ]);
   }

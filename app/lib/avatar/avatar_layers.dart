@@ -417,14 +417,16 @@ class AvatarLayers {
       arm.at(0.88, -w - 1.1),
       arm.at(0.8, -w - 1.2),
     ]);
-    final center = arm.at(0.84, 0);
-    final face = Path()
-      ..addRRect(
-        RRect.fromRectAndRadius(
-          Rect.fromCenter(center: center, width: w * 2 + 2.6, height: 7),
-          const Radius.circular(2.4),
-        ),
-      );
+    // Корпус — по оси предплечья (раньше прямоугольник по экрану: в позах
+    // часы оставались «параллельны полу»).
+    final face = smoothClosedPath([
+      arm.at(0.808, w + 0.9),
+      arm.at(0.84, w + 1.45),
+      arm.at(0.872, w + 0.9),
+      arm.at(0.872, -w - 0.9),
+      arm.at(0.84, -w - 1.45),
+      arm.at(0.808, -w - 0.9),
+    ]);
     return (strap, face);
   }
 
