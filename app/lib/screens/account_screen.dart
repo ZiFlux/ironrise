@@ -144,9 +144,6 @@ class _SignedIn extends ConsumerWidget {
           onPressed: () => _deleteAccount(context, ref),
           child: const Text('Удалить аккаунт'),
         ),
-        const SizedBox(height: 16),
-        // Адрес туннеля беты меняется при перезапуске — вход при этом сохраняется.
-        _ServerUrlRow(url: ref.watch(serverUrlProvider)),
       ],
     );
   }
@@ -186,6 +183,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
   final _password = TextEditingController();
   late bool _register = !widget.login;
   bool _busy = false;
+  bool _showPassword = false;
   String? _error;
 
   @override
@@ -239,40 +237,26 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
   @override
   Widget build(BuildContext context) {
     final pending = widget.account.pending;
+    final accent = Theme.of(context).colorScheme.primary;
+    // Регистрация и вход — одна форма; переключение ссылкой под кнопкой,
+    // как привыкли в других приложениях, а не переключателем сверху.
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
-        SegmentedButton<bool>(
-          segments: const [
-            ButtonSegment(value: true, label: Text('Регистрация')),
-            ButtonSegment(value: false, label: Text('Вход')),
-          ],
-          selected: {_register},
-          showSelectedIcon: false,
-          onSelectionChanged: (s) => setState(() {
-            _register = s.first;
-            _error = null;
-          }),
+        Text(
+          _register ? 'Сохрани героя' : 'С возвращением',
+          style: const TextStyle(fontFamily: displayFont, fontSize: 26),
+        ),
+        const SizedBox(height: 6),
+        Text(
+          _register
+              ? 'Аккаунт за минуту — только e-mail и пароль'
+              : 'Опыт и серия загрузятся с сервера',
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         if (_register) ...[
           const SizedBox(height: 16),
-          for (final (icon, text) in signUpPerks)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Icon(
-                    icon,
-                    size: 16,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(text, style: const TextStyle(fontSize: 13)),
-                  ),
-                ],
-              ),
-            ),
+          SignUpPerksGrid(perks: signUpPerks.take(4).toList()),
         ],
         const SizedBox(height: 20),
         // Поля — одна группа автозаполнения, без подсказок и автозамены:
@@ -287,12 +271,15 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
                 autocorrect: false,
                 enableSuggestions: false,
                 autofillHints: const [AutofillHints.email],
-                decoration: const InputDecoration(hintText: 'E-mail'),
+                decoration: const InputDecoration(
+                  hintText: 'E-mail',
+                  prefixIcon: Icon(LucideIcons.mail, size: 18),
+                ),
               ),
               const SizedBox(height: 12),
               TextField(
                 controller: _password,
-                obscureText: true,
+                obscureText: !_showPassword,
                 keyboardType: TextInputType.visiblePassword,
                 textInputAction: TextInputAction.done,
                 autocorrect: false,
@@ -304,6 +291,16 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
                 ],
                 decoration: InputDecoration(
                   hintText: _register ? 'Пароль, от 8 символов' : 'Пароль',
+                  prefixIcon: const Icon(LucideIcons.lock, size: 18),
+                  suffixIcon: IconButton(
+                    tooltip: _showPassword ? 'Скрыть пароль' : 'Показать пароль',
+                    onPressed: () =>
+                        setState(() => _showPassword = !_showPassword),
+                    icon: Icon(
+                      _showPassword ? LucideIcons.eyeOff : LucideIcons.eye,
+                      size: 18,
+                    ),
+                  ),
                 ),
                 onSubmitted: (_) => _submit(),
               ),
@@ -313,9 +310,25 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
         // Ошибка формы или причина, по которой сессия закрылась (например, блокировка).
         if ((_error ?? widget.account.error) case final error?) ...[
           const SizedBox(height: 12),
-          Text(
-            error,
-            style: const TextStyle(color: Color(0xFFE5484D), fontSize: 13),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Icon(
+                LucideIcons.circleAlert,
+                size: 16,
+                color: Color(0xFFE5484D),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  error,
+                  style: const TextStyle(
+                    color: Color(0xFFE5484D),
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
         const SizedBox(height: 20),
@@ -328,77 +341,37 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
                 )
               : Text(_register ? 'Создать аккаунт' : 'Войти'),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 8),
+        Wrap(
+          alignment: WrapAlignment.center,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          children: [
+            Text(
+              _register ? 'Уже есть аккаунт?' : 'Ещё нет аккаунта?',
+              style: const TextStyle(color: AppColors.textSecondary),
+            ),
+            TextButton(
+              onPressed: () => setState(() {
+                _register = !_register;
+                _error = null;
+              }),
+              style: TextButton.styleFrom(foregroundColor: accent),
+              child: Text(_register ? 'Войти' : 'Создать'),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
         Text(
           _register
               ? 'Герой сохранится на сервере и будет доступен с другого телефона.'
                     '${pending > 0 ? ' Тренировки с этого телефона ($pending) сервер пересчитает и перенесёт' : ''}'
-              : 'Опыт и серия загрузятся с сервера и заменят данные на этом телефоне',
-          style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+              : 'Данные на этом телефоне заменятся данными с сервера',
+          textAlign: TextAlign.center,
+          style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
-        const SizedBox(height: 8),
-        _ServerUrlRow(url: ref.watch(serverUrlProvider)),
       ],
     );
   }
-}
-
-/// Адрес сервера. Для беты с туннелем он меняется — его присылает организатор.
-class _ServerUrlRow extends ConsumerWidget {
-  const _ServerUrlRow({required this.url});
-
-  final String url;
-
-  Future<void> _edit(BuildContext context, WidgetRef ref) async {
-    final controller = TextEditingController(text: url);
-    final value = await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: AppColors.surface,
-        title: const Text('Адрес сервера'),
-        content: TextField(
-          controller: controller,
-          autofocus: true,
-          keyboardType: TextInputType.url,
-          decoration: const InputDecoration(
-            hintText: 'https://….trycloudflare.com',
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, controller.text),
-            child: const Text('Сохранить'),
-          ),
-        ],
-      ),
-    );
-    if (value != null && value.trim().isNotEmpty) {
-      await ref.read(serverUrlProvider.notifier).set(value);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) => InkWell(
-    onTap: () => _edit(context, ref),
-    child: Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          Expanded(
-            child: Text(
-              'Сервер: $url',
-              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
-            ),
-          ),
-          const Icon(LucideIcons.pencil, size: 14, color: AppColors.textMuted),
-        ],
-      ),
-    ),
-  );
 }
 
 /// Удаление необратимо, поэтому просим пароль ещё раз.

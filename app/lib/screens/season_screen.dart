@@ -239,7 +239,7 @@ class _TierRow extends ConsumerWidget {
       decoration: BoxDecoration(
         color: current ? AppColors.raised : AppColors.surface,
         borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: current ? accent : AppColors.hairline),
+        border: Border.all(color: current ? accent : Colors.transparent),
       ),
       child: Row(
         children: [

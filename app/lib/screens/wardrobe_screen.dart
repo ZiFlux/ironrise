@@ -312,7 +312,7 @@ class _ItemTile extends StatelessWidget {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: worn ? accent : AppColors.hairline,
+              color: worn ? accent : Colors.transparent,
               width: worn ? 1.5 : 1,
             ),
           ),

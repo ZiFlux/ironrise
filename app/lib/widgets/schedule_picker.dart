@@ -28,7 +28,7 @@ class ChoiceTile extends StatelessWidget {
         color: selected ? AppColors.raised : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: selected ? accent : AppColors.hairline),
+          side: BorderSide(color: selected ? accent : Colors.transparent),
         ),
         child: ListTile(
           onTap: onTap,

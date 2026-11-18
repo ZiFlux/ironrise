@@ -9,11 +9,11 @@ import '../theme.dart';
 final signUpPerks = <(IconData, String)>[
   (
     LucideIcons.coins,
-    '+${GameConfig.welcomeCoins} монет сразу после регистрации',
+    '+${GameConfig.welcomeCoins} монет за регистрацию',
   ),
   (
     LucideIcons.cloudCheck,
-    'Прогресс на сервере: не пропадёт при смене телефона',
+    'Прогресс не пропадёт при смене телефона',
   ),
   (LucideIcons.swords, 'Дуэли с друзьями, а не только с ботами'),
   (
@@ -24,7 +24,56 @@ final signUpPerks = <(IconData, String)>[
   (LucideIcons.bell, 'Уведомления: заявки, нападения, серия под угрозой'),
 ];
 
-/// Заметное приглашение создать аккаунт.
+/// Выгоды аккаунта плитками по две в ряд: иконка цветом стиля и короткий текст.
+class SignUpPerksGrid extends StatelessWidget {
+  const SignUpPerksGrid({super.key, required this.perks});
+
+  final List<(IconData, String)> perks;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    Widget tile((IconData, String) p) => Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: AppColors.raised,
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(p.$1, size: 18, color: accent),
+          const SizedBox(height: 8),
+          Text(p.$2, style: const TextStyle(fontSize: 13, height: 1.3)),
+        ],
+      ),
+    );
+    return Column(
+      children: [
+        for (var i = 0; i < perks.length; i += 2) ...[
+          if (i > 0) const SizedBox(height: 8),
+          IntrinsicHeight(
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Expanded(child: tile(perks[i])),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: i + 1 < perks.length
+                      ? tile(perks[i + 1])
+                      : const SizedBox(),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+/// Заметное приглашение создать аккаунт: заголовок, выгоды плитками,
+/// «Создать» и «У меня уже есть аккаунт».
 class SignUpCard extends StatelessWidget {
   const SignUpCard({super.key, this.compact = false});
 
@@ -33,50 +82,38 @@ class SignUpCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final accent = Theme.of(context).colorScheme.primary;
-    final perks = compact ? signUpPerks.take(2) : signUpPerks;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: AppColors.hairline),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          Row(
-            children: [
-              Icon(LucideIcons.gift, size: 20, color: accent),
-              const SizedBox(width: 8),
-              const Expanded(
-                child: Text(
-                  'Создай аккаунт',
-                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w500),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          for (final (icon, text) in perks)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 6),
-              child: Row(
-                children: [
-                  Icon(icon, size: 16, color: AppColors.textSecondary),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(text, style: const TextStyle(fontSize: 13)),
-                  ),
-                ],
-              ),
+    final perks = (compact ? signUpPerks.take(2) : signUpPerks.take(4))
+        .toList();
+    return Card(
+      margin: EdgeInsets.zero,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const Text(
+              'Сохрани героя',
+              style: TextStyle(fontFamily: displayFont, fontSize: 20),
             ),
-          const SizedBox(height: 6),
-          FilledButton(
-            onPressed: () => context.push('/profile/account'),
-            child: const Text('Создать за минуту'),
-          ),
-        ],
+            const SizedBox(height: 4),
+            const Text(
+              'Сейчас прогресс только на этом телефоне',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            SignUpPerksGrid(perks: perks),
+            const SizedBox(height: 12),
+            FilledButton(
+              onPressed: () => context.push('/profile/account'),
+              child: const Text('Создать аккаунт'),
+            ),
+            if (!compact)
+              TextButton(
+                onPressed: () => context.push('/profile/account?login=1'),
+                child: const Text('У меня уже есть аккаунт'),
+              ),
+          ],
+        ),
       ),
     );
   }

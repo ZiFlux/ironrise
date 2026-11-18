@@ -50,74 +50,95 @@ class SettingsScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+        // Порядок: аккаунт → герой → тренировки → пульс → вид → сообщество →
+        // данные. Связанное — в одной карточке, а не россыпью переключателей.
         children: [
+          const _AccountCard(),
+          const SizedBox(height: 24),
+          const _SectionLabel('Герой'),
           _HeroInfo(hero: hero),
           const SizedBox(height: 24),
-          // Сначала подключения — их ищут чаще всего; юридическое — в самом низу.
-          const _SectionLabel('Подключения'),
+          const _SectionLabel('Тренировки'),
           Card(
+            clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                _NavTile(
-                  icon: LucideIcons.cloud,
-                  title: 'Аккаунт и синхронизация',
-                  subtitle: _accountLine(ref.watch(accountProvider)),
-                  path: '/profile/account',
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 14, 16, 4),
+                  child: Align(
+                    alignment: Alignment.centerLeft,
+                    child: Text(
+                      'Где тренируешься',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textSecondary,
+                      ),
+                    ),
+                  ),
+                ),
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 4, 16, 14),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: _EquipmentPicker(),
+                  ),
                 ),
                 const Divider(height: 1),
-                _NavTile(
-                  icon: LucideIcons.watch,
-                  title: 'Часы и телефон',
-                  subtitle: devicesSummary(ref),
-                  path: '/profile/devices',
+                const _RestTile(),
+                // Средним — попробовать ритм опытных: силовые и разгрузочные.
+                if (trainingLevelOf(hero, ref.watch(programProvider)) ==
+                    TrainingLevel.intermediate) ...[
+                  const Divider(height: 1),
+                  SwitchListTile(
+                    title: const Text('Ритм опытных'),
+                    subtitle: const Text(
+                      'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    value: ref.watch(programProvider).rhythmTrial,
+                    onChanged: (on) =>
+                        ref.read(programProvider.notifier).setRhythmTrial(on),
+                  ),
+                ],
+                const Divider(height: 1),
+                // Тренировки в календарь телефона — он синхронизируется на часы.
+                SwitchListTile(
+                  title: const Text('Тренировки в календарь'),
+                  subtitle: const Text(
+                    'Событие с временем начала и конца — видно и на часах',
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  ),
+                  value: ref.watch(calendarExportProvider),
+                  onChanged: (on) async {
+                    final ok = await ref
+                        .read(calendarExportProvider.notifier)
+                        .setEnabled(on);
+                    if (!ok) showStatusError('Нужен доступ к календарю');
+                  },
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionLabel('Сообщество'),
-          const BetaChannelTile(),
-          const SizedBox(height: 24),
-          const _SectionLabel('Где тренируешься'),
-          const _EquipmentPicker(),
-          // Средним — попробовать ритм опытных: силовые и разгрузочные.
-          if (trainingLevelOf(hero, ref.watch(programProvider)) ==
-              TrainingLevel.intermediate) ...[
-            const SizedBox(height: 8),
-            SwitchListTile(
-              contentPadding: EdgeInsets.zero,
-              title: const Text('Ритм опытных'),
-              subtitle: const Text(
-                'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя',
-              ),
-              value: ref.watch(programProvider).rhythmTrial,
-              onChanged: (on) =>
-                  ref.read(programProvider.notifier).setRhythmTrial(on),
+          const _SectionLabel('Пульс'),
+          Card(
+            clipBehavior: Clip.antiAlias,
+            child: _NavTile(
+              icon: LucideIcons.watch,
+              title: 'Часы и телефон',
+              subtitle: devicesSummary(ref),
+              path: '/profile/devices',
             ),
-          ],
-          const _RestTile(),
-          // Тренировки в календарь телефона — он синхронизируется на часы.
-          SwitchListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Тренировки в календарь'),
-            subtitle: const Text(
-              'Событие с временем начала и конца — видно и на часах',
-            ),
-            value: ref.watch(calendarExportProvider),
-            onChanged: (on) async {
-              final ok = await ref
-                  .read(calendarExportProvider.notifier)
-                  .setEnabled(on);
-              if (!ok) showStatusError('Нужен доступ к календарю');
-            },
           ),
-          const SizedBox(height: 24),
-          const _SectionLabel('Пульсовые зоны'),
+          const SizedBox(height: 8),
           _HeartZones(hero: hero),
           const SizedBox(height: 24),
-          const _SectionLabel('Стиль'),
+          const _SectionLabel('Внешний вид'),
           const _AccentPicker(),
-          const SizedBox(height: 12),
+          const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerLeft,
             child: TextButton.icon(
@@ -135,7 +156,10 @@ class SettingsScreen extends ConsumerWidget {
               label: const Text('Показать подсказки снова'),
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 16),
+          const _SectionLabel('Сообщество'),
+          const BetaChannelTile(),
+          const SizedBox(height: 24),
           const _SectionLabel('Данные и конфиденциальность'),
           const _DataSection(),
           const SizedBox(height: 8),
@@ -491,7 +515,7 @@ class _AccentSwatch extends StatelessWidget {
         color: selected ? AppColors.raised : AppColors.surface,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
-          side: BorderSide(color: selected ? option.color : AppColors.hairline),
+          side: BorderSide(color: selected ? option.color : Colors.transparent),
         ),
         child: InkWell(
           onTap: onTap,
@@ -834,6 +858,69 @@ class _LogsToggleState extends State<_LogsToggle> {
 }
 
 /// «почта · синхр. в 14:05» или «почта · автосинхр. выключена».
+/// Аккаунт — первым: со входом это почта и синхронизация, без него —
+/// приглашение с кнопкой, а не серая строка «не подключён» в списке.
+class _AccountCard extends ConsumerWidget {
+  const _AccountCard();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final account = ref.watch(accountProvider);
+    final accent = Theme.of(context).colorScheme.primary;
+    if (account.signedIn) {
+      return Card(
+        clipBehavior: Clip.antiAlias,
+        child: _NavTile(
+          icon: LucideIcons.circleUser,
+          title: 'Аккаунт',
+          subtitle: _accountLine(account),
+          path: '/profile/account',
+        ),
+      );
+    }
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(16, 14, 12, 14),
+        child: Row(
+          children: [
+            Icon(LucideIcons.cloudOff, size: 20, color: accent),
+            const SizedBox(width: 12),
+            const Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text('Аккаунт не создан', style: TextStyle(fontSize: 15)),
+                  SizedBox(height: 2),
+                  Text(
+                    'Прогресс только на этом телефоне',
+                    style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            // Крупный шрифт — кнопка ужимается, а не выталкивает текст за край.
+            Flexible(
+              child: FilledButton(
+                style: FilledButton.styleFrom(
+                  minimumSize: const Size(0, 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                ),
+                onPressed: () => context.push('/profile/account'),
+                child: const Text(
+                  'Создать',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 String _accountLine(AccountState a) {
   if (!a.signedIn) return 'Не подключён — данные только на телефоне';
   final synced = a.lastSyncedAt;
@@ -857,7 +944,6 @@ class _RestTile extends ConsumerWidget {
     ref.watch(heroProvider);
     final current = restOf(ref);
     return ListTile(
-      contentPadding: EdgeInsets.zero,
       title: const Text('Отдых между подходами'),
       subtitle: Text(
         own == null

@@ -154,38 +154,16 @@ class AccountState {
   );
 }
 
-/// Адрес сервера беты: его сохраняем даже при удалении данных.
+/// Ключ, под которым раньше хранился введённый тестером адрес сервера.
 const serverUrlKey = 'server_url';
 
-/// Адрес сервера: введённый в приложении или заданный при сборке.
-/// Адрес быстрого туннеля Cloudflare — так работала бета до переезда на VPS.
-bool isRetiredTunnelUrl(String url) =>
-    Uri.tryParse(url)?.host.endsWith('.trycloudflare.com') ?? false;
-
-class ServerUrlNotifier extends Notifier<String> {
-  @override
-  String build() {
-    final prefs = ref.read(prefsProvider);
-    final saved = prefs.getString(serverUrlKey);
-    // Бета переехала с временного туннеля на постоянный сервер: старый адрес
-    // туннеля больше не работает, поэтому забываем его без участия тестера.
-    if (saved != null && isRetiredTunnelUrl(saved)) {
-      prefs.remove(serverUrlKey);
-      return apiBaseUrl;
-    }
-    return saved ?? apiBaseUrl;
-  }
-
-  Future<void> set(String input) async {
-    final url = normalizeServerUrl(input);
-    await ref.read(prefsProvider).setString(serverUrlKey, url);
-    state = url;
-  }
-}
-
-final serverUrlProvider = NotifierProvider<ServerUrlNotifier, String>(
-  ServerUrlNotifier.new,
-);
+/// Адрес сервера задаётся только при сборке (--dart-define, см. apiBaseUrl).
+/// Свой адрес в приложении больше не вводится: иначе вход и токен могли бы
+/// уйти на чужой сервер. Сохранённый прежде адрес стираем.
+final serverUrlProvider = Provider<String>((ref) {
+  ref.read(prefsProvider).remove(serverUrlKey);
+  return apiBaseUrl;
+});
 
 /// Один токен-стор на всё приложение: смена адреса не теряет вход.
 final _tokenStore = TokenStore();

@@ -178,7 +178,7 @@ class _AuraCard extends ConsumerWidget {
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(14),
         side: BorderSide(
-          color: equipped ? kind.color : AppColors.hairline,
+          color: equipped ? kind.color : Colors.transparent,
           width: equipped ? 2 : 1,
         ),
       ),

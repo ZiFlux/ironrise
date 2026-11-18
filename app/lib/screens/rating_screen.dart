@@ -534,7 +534,6 @@ class _LastWeekBanner extends StatelessWidget {
       decoration: BoxDecoration(
         color: AppColors.surface,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: AppColors.hairline),
       ),
       child: Row(
         children: [

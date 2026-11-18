@@ -362,7 +362,7 @@ class _OptionTile extends StatelessWidget {
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? accent : AppColors.hairline,
+              color: selected ? accent : Colors.transparent,
               width: selected ? 1.5 : 1,
             ),
           ),

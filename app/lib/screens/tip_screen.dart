@@ -257,7 +257,7 @@ class _Option extends StatelessWidget {
     final border = switch (state) {
       _OptionState.correct => accent,
       _OptionState.wrong => AppColors.textMuted,
-      _ => AppColors.hairline,
+      _ => Colors.transparent,
     };
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),

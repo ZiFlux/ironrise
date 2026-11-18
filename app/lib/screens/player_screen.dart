@@ -523,7 +523,6 @@ class _StartLookCard extends StatelessWidget {
       color: AppColors.surface,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: const BorderSide(color: AppColors.hairline),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
@@ -568,110 +567,165 @@ class _StartLookCard extends StatelessWidget {
 }
 
 /// Разделы профиля: аккаунт, друзья, совместная тренировка, гардероб, настройки.
+/// Пункт меню: иконка, название, строка состояния, путь; locked — нужен аккаунт.
+typedef _MenuItem = (IconData, String, String, String, bool);
+
+/// Меню профиля группами: друзья — награды и вещи — аккаунт и настройки.
+/// Без аккаунта сетевые пункты с замком, а не с «Нужен аккаунт» в каждой строке.
 class _Menu extends ConsumerWidget {
   const _Menu();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final account = ref.watch(accountProvider);
+    final off = !account.signedIn;
     final joint = ref.watch(jointProvider).value;
-    final items = [
+    final bonus = '+${(GameConfig.jointBonus * 100).round()}% опыта';
+    final premium = ref.watch(heroProvider)?.premium.active ?? false;
+    final groups = <(String, List<_MenuItem>)>[
       (
-        LucideIcons.circleUser,
-        'Аккаунт',
-        account.signedIn
-            ? account.email!
-            : 'Не создан — прогресс только на телефоне',
-        '/profile/account',
-      ),
-      (
-        LucideIcons.watch,
-        'Часы и телефон',
-        devicesSummary(ref),
-        '/profile/devices',
-      ),
-      (
-        LucideIcons.sparkles,
-        'Сезон и батлпас',
-        account.signedIn
-            ? 'Очки за тренировки и дуэли — награды по уровням'
-            : 'Нужен аккаунт',
-        '/season',
-      ),
-      (
-        LucideIcons.users,
-        'Друзья',
-        account.signedIn
-            ? 'Заявки, поиск по нику, кто нападал'
-            : 'Нужен аккаунт',
-        '/profile/friends',
-      ),
-      (
-        feedIcon,
-        'Лента друзей',
-        account.signedIn
-            ? 'Уровни, серии и возвращения друзей'
-            : 'Нужен аккаунт',
-        '/feed',
-      ),
-      (
-        LucideIcons.handshake,
-        'Тренировка вместе',
-        joint?.bonusActive ?? false
-            ? 'Идёт: +${(GameConfig.jointBonus * 100).round()}% опыта'
-            : '+${(GameConfig.jointBonus * 100).round()}% опыта, если рядом друзья',
-        '/workout/joint',
-      ),
-      (
-        LucideIcons.shoppingBag,
-        'Магазин',
-        (ref.watch(heroProvider)?.premium.active ?? false)
-            ? 'Одежда, аксессуары · премиум активен'
-            : 'Одежда, аксессуары, премиум',
-        '/shop',
-      ),
-      (
-        LucideIcons.shirt,
-        'Инвентарь',
-        'Ваши вещи — надеть и сменить образ',
-        '/wardrobe',
-      ),
-      (
-        LucideIcons.settings,
-        'Настройки',
-        'График, часы, пульс, данные',
-        '/profile/settings',
-      ),
-    ];
-    return Card(
-      margin: EdgeInsets.zero,
-      child: Column(
-        children: [
-          for (final (i, (icon, title, subtitle, path)) in items.indexed) ...[
-            if (i > 0) const Divider(height: 1, indent: 56),
-            ListTile(
-              // Вложенные экраны — с возвратом назад, сюда же (п. 135).
-              onTap: () => context.push(path),
-              leading: Icon(icon, size: 20),
-              title: Text(title),
-              subtitle: Text(
-                subtitle,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMuted,
-                ),
-              ),
-              trailing: const Icon(
-                LucideIcons.chevronRight,
-                size: 18,
-                color: AppColors.textMuted,
-              ),
-            ),
-          ],
+        'Вместе',
+        [
+          (
+            LucideIcons.users,
+            'Друзья',
+            'Заявки, поиск по нику, кто нападал',
+            '/profile/friends',
+            off,
+          ),
+          (
+            feedIcon,
+            'Лента друзей',
+            'Уровни, серии и возвращения друзей',
+            '/feed',
+            off,
+          ),
+          (
+            LucideIcons.handshake,
+            'Тренировка вместе',
+            joint?.bonusActive ?? false
+                ? 'Идёт: $bonus'
+                : '$bonus, если рядом друзья',
+            '/workout/joint',
+            false,
+          ),
         ],
       ),
+      (
+        'Награды и вещи',
+        [
+          (
+            LucideIcons.sparkles,
+            'Сезон',
+            'Очки за тренировки и дуэли — награды по уровням',
+            '/season',
+            off,
+          ),
+          (
+            LucideIcons.shoppingBag,
+            'Магазин',
+            premium ? 'Одежда, аксессуары · премиум' : 'Одежда, аксессуары, премиум',
+            '/shop',
+            false,
+          ),
+          (
+            LucideIcons.shirt,
+            'Инвентарь',
+            'Твои вещи — надеть и сменить образ',
+            '/wardrobe',
+            false,
+          ),
+        ],
+      ),
+      (
+        'Аккаунт и настройки',
+        [
+          if (account.signedIn)
+            (
+              LucideIcons.circleUser,
+              'Аккаунт',
+              account.email!,
+              '/profile/account',
+              false,
+            ),
+          (
+            LucideIcons.watch,
+            'Часы и телефон',
+            devicesSummary(ref),
+            '/profile/devices',
+            false,
+          ),
+          (
+            LucideIcons.settings,
+            'Настройки',
+            'График, пульс, стиль, данные',
+            '/profile/settings',
+            false,
+          ),
+        ],
+      ),
+    ];
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        for (final (g, (title, items)) in groups.indexed) ...[
+          Padding(
+            padding: EdgeInsets.fromLTRB(4, g == 0 ? 0 : 20, 4, 8),
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+          ),
+          Card(
+            margin: EdgeInsets.zero,
+            clipBehavior: Clip.antiAlias,
+            child: Column(
+              children: [
+                for (final (i, (icon, label, subtitle, path, locked))
+                    in items.indexed) ...[
+                  if (i > 0) const Divider(height: 1, indent: 56),
+                  ListTile(
+                    // Вложенные экраны — с возвратом назад, сюда же (п. 135).
+                    onTap: () => context.push(path),
+                    leading: Icon(
+                      icon,
+                      size: 20,
+                      color: locked
+                          ? AppColors.textMuted
+                          : Theme.of(context).colorScheme.primary,
+                    ),
+                    title: Text(
+                      label,
+                      style: TextStyle(
+                        color: locked
+                            ? AppColors.textSecondary
+                            : AppColors.textPrimary,
+                      ),
+                    ),
+                    subtitle: Text(
+                      locked ? 'С аккаунтом' : subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                    trailing: Icon(
+                      locked ? LucideIcons.lock : LucideIcons.chevronRight,
+                      size: locked ? 16 : 18,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 }
@@ -716,7 +770,6 @@ class _Stats extends StatelessWidget {
                   decoration: BoxDecoration(
                     color: AppColors.surface,
                     borderRadius: BorderRadius.circular(12),
-                    border: Border.all(color: AppColors.hairline),
                   ),
                   child: Column(
                     children: [
@@ -934,7 +987,6 @@ class _MuscleSection extends StatelessWidget {
               decoration: BoxDecoration(
                 color: AppColors.surface,
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: AppColors.hairline),
               ),
               child: Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
