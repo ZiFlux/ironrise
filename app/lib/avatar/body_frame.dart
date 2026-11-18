@@ -90,13 +90,17 @@ class ArmGeometry {
     final d = _fore;
     final n = Offset(-d.dy, d.dx);
     Offset p(double along, double across) => wrist + d * along + n * across;
+    // Большой палец — со стороны тела, у основания ладони.
     return smoothClosedPath([
       p(-1.5, wristHalf + 0.3),
-      p(length * 0.4, wristHalf + 1.9),
-      p(length * 0.78, wristHalf + 1.3),
-      p(length, 0),
-      p(length * 0.78, -wristHalf - 1.3),
-      p(length * 0.4, -wristHalf - 1.9),
+      p(length * 0.22, wristHalf + 2.4),
+      p(length * 0.42, wristHalf + 3.1),
+      p(length * 0.55, wristHalf + 1.6),
+      p(length * 0.8, wristHalf + 1.2),
+      p(length, 0.3),
+      p(length * 0.92, -wristHalf - 0.6),
+      p(length * 0.62, -wristHalf - 1.7),
+      p(length * 0.3, -wristHalf - 1.6),
       p(-1.5, -wristHalf - 0.3),
     ]);
   }
@@ -364,17 +368,25 @@ class BodyFrame {
     const Offset(1.5, 228),
   ]);
 
-  /// Дельта: округлый колпак на верхушке руки. grow расширяет его под рукав.
-  Path deltCap(ArmGeometry arm, {double grow = 0}) => smoothClosedPath([
-    arm.at(-0.07, -(deltSize * 0.15 + grow)),
-    arm.at(-0.01, -(deltSize * 0.9 + grow)),
-    arm.at(0.09, -(deltSize * 1.14 + grow)),
-    arm.at(0.19, -(deltSize * 0.92 + grow)),
-    arm.at(0.27, -(deltSize * 0.3 + grow)),
-    arm.at(0.2, deltSize * 0.3 + grow),
-    arm.at(0.08, deltSize * 0.6 + grow),
-    arm.at(-0.03, deltSize * 0.42 + grow),
-  ]);
+  /// Дельта: каплевидная мышца на верхушке руки — округлая сверху, книзу
+  /// сходит клином в контур плеча (раньше обрывалась круглым краем — «шар»).
+  /// grow расширяет её под рукав.
+  Path deltCap(ArmGeometry arm, {double grow = 0}) {
+    // Ширина руки снаружи там, где дельта сливается с плечом.
+    final armAt = _lerp(deltWidth * 0.92, bicepWidth, 0.25);
+    return smoothClosedPath([
+      arm.at(-0.07, -(deltSize * 0.15 + grow)),
+      arm.at(-0.01, -(deltSize * 0.86 + grow)),
+      arm.at(0.08, -(deltSize * 1.08 + grow)),
+      arm.at(0.18, -(max(deltSize * 0.9, armAt * 1.04) + grow)),
+      arm.at(0.27, -(armAt * 1.02 + grow)),
+      arm.at(0.34, -(armAt * 0.98 + grow)),
+      arm.at(0.34, -(armAt * 0.6)),
+      arm.at(0.24, deltSize * 0.1 + grow),
+      arm.at(0.1, deltSize * 0.55 + grow),
+      arm.at(-0.03, deltSize * 0.42 + grow),
+    ]);
+  }
 
   double headHalfWidthAt(double y) =>
       headRx * sqrt(max(0, 1 - pow((y - headCenter.dy) / headRy, 2)));
