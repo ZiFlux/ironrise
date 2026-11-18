@@ -2,7 +2,19 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 
+import 'package:lucide_icons_flutter/lucide_icons.dart';
+
 import '../game/aura.dart';
+
+/// Иконка ауры по смыслу: ярость — пламя, стойкость — щит, скорость — молния,
+/// фокус — глаз. Общий знак «аур» (без конкретной) — волшебная палочка.
+IconData auraIcon(AuraKind? kind) => switch (kind) {
+  AuraKind.fury => LucideIcons.flame,
+  AuraKind.guard => LucideIcons.shield,
+  AuraKind.haste => LucideIcons.zap,
+  AuraKind.focus => LucideIcons.eye,
+  null => LucideIcons.wandSparkles,
+};
 
 /// Герой с аурой: часть эффекта за фигурой (пламя, свечение, туман), часть —
 /// поверх (молнии, кромка щита, руны). [burst] — разовая аура: вспыхивает ярче.
@@ -12,11 +24,16 @@ class AuraHero extends StatelessWidget {
     required this.child,
     required this.kind,
     this.burst = false,
+    this.level = 1,
   });
 
   final Widget child;
   final AuraKind? kind;
   final bool burst;
+
+  /// Уровень ауры 1–5: чем выше, тем богаче эффект (больше пламени, рун, молний,
+  /// искры и кольца на старших уровнях).
+  final int level;
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +42,9 @@ class AuraHero extends StatelessWidget {
     return Stack(
       fit: StackFit.expand,
       children: [
-        AuraFlame(kind: k, burst: burst),
+        AuraFlame(kind: k, burst: burst, level: level),
         child,
-        AuraFlame(kind: k, burst: burst, front: true),
+        AuraFlame(kind: k, burst: burst, level: level, front: true),
       ],
     );
   }
@@ -42,11 +59,13 @@ class AuraFlame extends StatefulWidget {
     required this.kind,
     this.burst = false,
     this.front = false,
+    this.level = 1,
   });
 
   final AuraKind kind;
   final bool burst;
   final bool front;
+  final int level;
 
   @override
   State<AuraFlame> createState() => _AuraFlameState();
@@ -80,6 +99,7 @@ class _AuraFlameState extends State<AuraFlame>
             // Вспышка: первые 0,4 с ярче, дальше ровно горит до конца хода.
             flare: widget.burst ? (1 - age / 0.4).clamp(0.0, 1.0) : 0,
             front: widget.front,
+            level: widget.level.clamp(1, 5),
           ),
         );
       },
@@ -93,6 +113,7 @@ class _AuraPainter extends CustomPainter {
     required this.t,
     required this.flare,
     required this.front,
+    this.level = 1,
   });
 
   final AuraKind kind;
@@ -100,19 +121,43 @@ class _AuraPainter extends CustomPainter {
   final double flare;
   final bool front;
 
-  double get _pulse => 0.82 + 0.18 * sin(t * 2 * pi) + 0.35 * flare;
+  /// 1–5: насыщенность эффекта и новые слои на старших уровнях.
+  final int level;
+
+  /// Яркость растёт с уровнем: 1-й — сдержанно, 5-й — в полную силу.
+  double get _lv => 0.7 + 0.075 * level;
+
+  double get _pulse => (0.82 + 0.18 * sin(t * 2 * pi) + 0.35 * flare) * _lv;
 
   @override
   void paint(Canvas canvas, Size size) {
     switch (kind) {
       case AuraKind.fury:
         if (!front) _flames(canvas, size);
+        // 5-й уровень: искры летят вверх перед героем.
+        if (front && level >= 5) _motes(canvas, size, rise: true, count: 14);
       case AuraKind.guard:
-        front ? _shieldRim(canvas, size) : _glow(canvas, size, 0.22);
+        if (front) {
+          _shieldRim(canvas, size);
+          if (level >= 5) _motes(canvas, size, rise: false, count: 10);
+        } else {
+          _glow(canvas, size, 0.22);
+          if (level >= 5) _groundRing(canvas, size);
+        }
       case AuraKind.haste:
-        front ? _lightning(canvas, size) : _glow(canvas, size, 0.4);
+        if (front) {
+          _lightning(canvas, size);
+        } else {
+          _glow(canvas, size, 0.4);
+          if (level >= 5) _speedLines(canvas, size);
+        }
       case AuraKind.focus:
-        front ? _runes(canvas, size) : _mist(canvas, size);
+        if (front) {
+          _runes(canvas, size);
+          if (level >= 5) _motes(canvas, size, rise: true, count: 10);
+        } else {
+          _mist(canvas, size);
+        }
     }
   }
 
@@ -153,7 +198,9 @@ class _AuraPainter extends CustomPainter {
     final cx = size.width / 2;
     final h = size.height;
     final strength = _pulse.clamp(0.0, 1.0);
-    for (final (dx, from, len, phase) in _tongues) {
+    // 1-й уровень — 5 языков, каждый следующий добавляет пару, до всех 9.
+    final tongues = _tongues.take((3 + 2 * level).clamp(5, _tongues.length));
+    for (final (dx, from, len, phase) in tongues) {
       final wave = sin((t * 2 + phase) * 2 * pi);
       final x = cx + dx * size.width;
       final base = h * (0.99 - from);
@@ -195,6 +242,28 @@ class _AuraPainter extends CustomPainter {
             stops: const [0, 0.18, 0.55, 1],
           ).createShader(rect),
       );
+      // 4-й уровень и выше: белое раскалённое ядро внутри языка.
+      if (level >= 4) {
+        final core = Rect.fromLTRB(
+          x - w * 0.4,
+          top + (base - top) * 0.3,
+          x + w * 0.4,
+          base,
+        );
+        canvas.drawOval(
+          core,
+          Paint()
+            ..shader = LinearGradient(
+              begin: Alignment.bottomCenter,
+              end: Alignment.topCenter,
+              colors: [
+                Colors.white.withValues(alpha: 0),
+                Colors.white.withValues(alpha: 0.45 * strength),
+                kind.glow.withValues(alpha: 0),
+              ],
+            ).createShader(core),
+        );
+      }
     }
   }
 
@@ -220,31 +289,67 @@ class _AuraPainter extends CustomPainter {
           stops: const [0.75, 1],
         ).createShader(rect),
     );
-    // Соты внутри купола медленно плывут вниз.
-    canvas.save();
-    canvas.clipPath(dome);
-    final hexPaint = Paint()
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 1
-      ..color = kind.glow.withValues(alpha: 0.14 * p);
-    final r = size.width * 0.13;
-    final dy = r * sqrt(3);
-    for (var row = -2; row * dy < size.height + dy; row++) {
-      for (var col = -1; col * r * 1.5 < size.width + r; col++) {
-        final c = Offset(
-          col * r * 1.5,
-          row * dy + (col.isOdd ? dy / 2 : 0) + t * dy,
-        );
-        final hex = Path();
-        for (var i = 0; i < 6; i++) {
-          final a = pi / 3 * i;
-          final v = c + Offset(cos(a), sin(a)) * r;
-          i == 0 ? hex.moveTo(v.dx, v.dy) : hex.lineTo(v.dx, v.dy);
+    // Соты внутри купола медленно плывут вниз — со 2-го уровня.
+    if (level >= 2) {
+      canvas.save();
+      canvas.clipPath(dome);
+      final hexPaint = Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1
+        ..color = kind.glow.withValues(alpha: 0.14 * p);
+      final r = size.width * 0.13;
+      final dy = r * sqrt(3);
+      for (var row = -2; row * dy < size.height + dy; row++) {
+        for (var col = -1; col * r * 1.5 < size.width + r; col++) {
+          final c = Offset(
+            col * r * 1.5,
+            row * dy + (col.isOdd ? dy / 2 : 0) + t * dy,
+          );
+          final hex = Path();
+          for (var i = 0; i < 6; i++) {
+            final a = pi / 3 * i;
+            final v = c + Offset(cos(a), sin(a)) * r;
+            i == 0 ? hex.moveTo(v.dx, v.dy) : hex.lineTo(v.dx, v.dy);
+          }
+          canvas.drawPath(hex..close(), hexPaint);
         }
-        canvas.drawPath(hex..close(), hexPaint);
+      }
+      canvas.restore();
+    }
+    // 3-й уровень: вторая, внутренняя кромка.
+    if (level >= 3) {
+      canvas.drawOval(
+        rect.deflate(size.width * 0.04),
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2
+          ..color = kind.glow.withValues(alpha: 0.35 * p),
+      );
+    }
+    // 4-й уровень: огни бегут по краю купола.
+    if (level >= 4) {
+      for (var i = 0; i < 3; i++) {
+        final a = t * 2 * pi + i * 2 * pi / 3;
+        final o = Offset(
+          rect.center.dx + cos(a) * rect.width / 2,
+          rect.center.dy + sin(a) * rect.height / 2,
+        );
+        canvas.drawCircle(
+          o,
+          size.width * 0.06,
+          Paint()
+            ..shader =
+                RadialGradient(
+                  colors: [
+                    Colors.white.withValues(alpha: 0.9 * p),
+                    kind.glow.withValues(alpha: 0),
+                  ],
+                ).createShader(
+                  Rect.fromCircle(center: o, radius: size.width * 0.06),
+                ),
+        );
       }
     }
-    canvas.restore();
     // Яркая кромка.
     canvas.drawPath(
       dome,
@@ -265,7 +370,8 @@ class _AuraPainter extends CustomPainter {
       ..style = PaintingStyle.stroke
       ..strokeCap = StrokeCap.round
       ..strokeJoin = StrokeJoin.round;
-    final count = 4 + (flare > 0 ? 3 : 0);
+    final count = 1 + level + (flare > 0 ? 3 : 0);
+    final thick = level >= 4 ? 1.4 : 1.0;
     for (var b = 0; b < count; b++) {
       final side = b.isEven ? -1 : 1;
       final x0 = size.width * (0.5 + side * (0.24 + rnd.nextDouble() * 0.18));
@@ -283,15 +389,23 @@ class _AuraPainter extends CustomPainter {
       canvas.drawPath(
         path,
         bolt
-          ..strokeWidth = 5
+          ..strokeWidth = 5 * thick
           ..color = kind.color.withValues(alpha: 0.4),
       );
       canvas.drawPath(
         path,
         bolt
-          ..strokeWidth = 1.8
+          ..strokeWidth = 1.8 * thick
           ..color = kind.glow.withValues(alpha: 0.95),
       );
+      // 4-й уровень: искра на конце молнии.
+      if (level >= 4) {
+        canvas.drawCircle(
+          p,
+          size.width * 0.025,
+          Paint()..color = Colors.white.withValues(alpha: 0.9),
+        );
+      }
     }
   }
 
@@ -378,8 +492,36 @@ class _AuraPainter extends CustomPainter {
     final c = Offset(size.width / 2, size.height * 0.48);
     final rx = size.width * 0.42;
     final ry = size.height * 0.16;
-    for (var i = 0; i < 6; i++) {
-      final a = t * 2 * pi + i * 2 * pi / 6;
+    // 1-й уровень — 4 руны, каждый следующий добавляет по одной (до 8).
+    final runes = 3 + level;
+    _runeRing(canvas, size, c, rx, ry, runes, t);
+    // 4-й уровень: второе кольцо рун ниже и навстречу первому.
+    if (level >= 4) {
+      _runeRing(
+        canvas,
+        size,
+        c + Offset(0, size.height * 0.2),
+        rx * 0.8,
+        ry * 0.8,
+        runes - 2,
+        -t,
+      );
+    }
+    if (level < 2) return;
+    _eye(canvas, size);
+  }
+
+  void _runeRing(
+    Canvas canvas,
+    Size size,
+    Offset c,
+    double rx,
+    double ry,
+    int n,
+    double t,
+  ) {
+    for (var i = 0; i < n; i++) {
+      final a = t * 2 * pi + i * 2 * pi / n;
       // Руны кружат по эллипсу; дальние — тусклее.
       final depth = (sin(a) + 1) / 2;
       final p = c + Offset(cos(a) * rx, sin(a) * ry);
@@ -406,7 +548,10 @@ class _AuraPainter extends CustomPainter {
           ..color = kind.glow.withValues(alpha: 0.35 + 0.6 * depth),
       );
     }
-    // «Глаз» над головой — знак фокуса.
+  }
+
+  /// «Глаз» над головой — знак фокуса (со 2-го уровня).
+  void _eye(Canvas canvas, Size size) {
     final eye = Offset(size.width / 2, size.height * 0.03 + 6);
     final ew = size.width * 0.11;
     final eyePath = Path()
@@ -424,7 +569,69 @@ class _AuraPainter extends CustomPainter {
     canvas.drawCircle(eye, ew * 0.25, Paint()..color = kind.glow);
   }
 
+  // ---------- Старшие уровни: искры, кольцо у ног, линии скорости ----------
+
+  /// Частицы: [rise] — летят вверх (искры, светлячки), иначе мерцают на месте.
+  void _motes(
+    Canvas canvas,
+    Size size, {
+    required bool rise,
+    required int count,
+  }) {
+    for (var i = 0; i < count; i++) {
+      final seed = i * 0.6180339;
+      final phase = (t + seed) % 1;
+      final x = size.width * (0.2 + 0.6 * ((seed * 7.13) % 1));
+      final y = rise
+          ? size.height * (0.95 - 0.9 * phase)
+          : size.height * (0.15 + 0.7 * ((seed * 3.7) % 1));
+      final fade = rise
+          ? sin(phase * pi)
+          : (0.5 + 0.5 * sin((t + seed) * 2 * pi));
+      final r = size.width * (0.008 + 0.01 * ((seed * 5.3) % 1));
+      canvas.drawCircle(
+        Offset(x + sin((phase + seed) * 2 * pi) * size.width * 0.02, y),
+        r,
+        Paint()..color = kind.glow.withValues(alpha: 0.9 * fade),
+      );
+    }
+  }
+
+  /// Светящееся кольцо у ног (стойкость, 5-й уровень).
+  void _groundRing(Canvas canvas, Size size) {
+    final rect = Rect.fromCenter(
+      center: Offset(size.width / 2, size.height * 0.97),
+      width: size.width * (0.7 + 0.05 * sin(t * 2 * pi)),
+      height: size.height * 0.06,
+    );
+    canvas.drawOval(
+      rect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..color = kind.glow.withValues(alpha: 0.7 * _pulse.clamp(0.0, 1.0)),
+    );
+  }
+
+  /// Линии скорости за героем (скорость, 5-й уровень).
+  void _speedLines(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..strokeWidth = 1.5;
+    for (var i = 0; i < 8; i++) {
+      final y = size.height * (0.1 + 0.1 * i);
+      final shift = ((t * 2 + i * 0.37) % 1);
+      final len = size.width * (0.15 + 0.1 * ((i * 0.53) % 1));
+      final x = size.width * (1.1 - 1.2 * shift);
+      paint.color = kind.glow.withValues(alpha: 0.5 * sin(shift * pi));
+      canvas.drawLine(Offset(x, y), Offset(x + len, y), paint);
+    }
+  }
+
   @override
   bool shouldRepaint(_AuraPainter old) =>
-      old.t != t || old.kind != kind || old.flare != flare;
+      old.t != t ||
+      old.kind != kind ||
+      old.flare != flare ||
+      old.level != level;
 }

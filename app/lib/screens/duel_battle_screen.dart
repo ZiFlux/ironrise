@@ -311,6 +311,7 @@ class _FighterPanel extends StatelessWidget {
                   key: ValueKey('aura${aura?.from}'),
                   kind: aura?.kind,
                   burst: aura?.burst ?? false,
+                  level: fighter.auraLevel,
                   child: isPlayer
                       ? avatar
                       : Transform.flip(flipX: true, child: avatar),

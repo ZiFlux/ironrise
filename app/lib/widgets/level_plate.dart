@@ -47,7 +47,7 @@ class LevelPlate extends StatelessWidget {
         behavior: HitTestBehavior.opaque,
         child: Container(
           padding: compact
-              ? const EdgeInsets.fromLTRB(0, 8, 0, 6)
+              ? const EdgeInsets.fromLTRB(0, 6, 0, 4)
               : const EdgeInsets.fromLTRB(0, 12, 0, 10),
           decoration: BoxDecoration(
             color: AppColors.surface,
@@ -56,7 +56,7 @@ class LevelPlate extends StatelessWidget {
           child: Column(
             children: [
               SizedBox.square(
-                dimension: compact ? 40 : 56,
+                dimension: compact ? 34 : 56,
                 child: _HotGlow(
                   hot: hot,
                   child: TweenAnimationBuilder<double>(
@@ -72,7 +72,7 @@ class LevelPlate extends StatelessWidget {
                         child: Text(
                           '$level',
                           style: compact
-                              ? figureStyle(size: 15)
+                              ? figureStyle(size: 13)
                               : figureStyle(),
                         ),
                       ),
@@ -80,7 +80,7 @@ class LevelPlate extends StatelessWidget {
                   ),
                 ),
               ),
-              SizedBox(height: compact ? 4 : 6),
+              SizedBox(height: compact ? 2 : 6),
               Text(
                 part.label,
                 maxLines: 1,

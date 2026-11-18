@@ -30,7 +30,7 @@ class WeekStrip extends StatelessWidget {
     );
     return Card(
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         child: Row(
           children: [
             for (final d in days)
@@ -126,13 +126,9 @@ class _DayCell extends StatelessWidget {
               fontWeight: day.isToday ? FontWeight.w600 : FontWeight.w400,
             ),
           ),
-          const SizedBox(height: 6),
-          _Mark(kind: day.kind, accent: accent, isToday: day.isToday),
           const SizedBox(height: 4),
-          Text(
-            '${day.date.day}',
-            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
-          ),
+          // Число месяца — в облаке по нажатию: место отдано герою.
+          _Mark(kind: day.kind, accent: accent, isToday: day.isToday),
         ],
       ),
     );
@@ -155,7 +151,7 @@ class _Mark extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const size = 28.0;
+    const size = 24.0;
     final onAccent = Theme.of(context).colorScheme.onPrimary;
     final (Color? fill, Color? stroke, Widget? inner) = switch (kind) {
       DayKind.trained => (

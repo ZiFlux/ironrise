@@ -15,6 +15,7 @@ import '../state/duel_state.dart';
 import '../state/providers.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../widgets/aura_flame.dart';
 import '../widgets/sign_in_gate.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/motion.dart';
@@ -223,7 +224,7 @@ class _Perks extends ConsumerWidget {
           Expanded(
             child: _PerkCard(
               color: aura?.color ?? const Color(0xFFFF5A1F),
-              icon: LucideIcons.flame,
+              icon: auraIcon(aura),
               title: aura == null ? 'Ауры' : 'Аура: ${aura.label}',
               subtitle: aura == null
                   ? 'Способность в бою — открой'
@@ -710,7 +711,7 @@ class _FighterCard extends StatelessWidget {
                                   message:
                                       'Аура: ${aura.label}, ур. ${fighter.auraLevel}',
                                   child: Icon(
-                                    LucideIcons.flame,
+                                    auraIcon(aura),
                                     size: 14,
                                     color: aura.color,
                                   ),

@@ -303,6 +303,7 @@ class _Side extends StatelessWidget {
                   ),
                   kind: aura,
                   burst: aura?.burst ?? false,
+                  level: fighter.auraLevel,
                   child: player
                       ? avatar
                       : Transform.flip(flipX: true, child: avatar),

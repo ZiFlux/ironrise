@@ -241,12 +241,14 @@ void main() {
       }
       // 8. Ауры (кадр анимации).
       for (final k in AuraKind.values) {
-        await shot(
-          tester,
-          '20_ауры/${s}_${k.name}.png',
-          AuraHero(kind: k, child: avatar(base, level: 18)),
-          frames: 12,
-        );
+        for (final lv in [1, 3, 5]) {
+          await shot(
+            tester,
+            '20_ауры/${s}_${k.name}_ур$lv.png',
+            AuraHero(kind: k, level: lv, child: avatar(base, level: 18)),
+            frames: 12,
+          );
+        }
       }
       // 9. Главный экран: герой под лампой.
       await shot(

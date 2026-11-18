@@ -67,32 +67,48 @@ class HomeScreen extends ConsumerWidget {
                     child: _Header(hero: hero),
                   ),
                 ),
+                // Герой — главная фишка: около 60 % экрана. Показатели — колонкой
+                // слева, дела дня — кнопками справа, как экран персонажа в игре.
                 FlexibleMin(
-                  minHeight: 130,
+                  minHeight: 220,
                   child: GuideTarget(
                     id: 'home.avatar',
-                    // Герой — единственное яркое место экрана: за ним ничего не висит.
-                    child: Semantics(
-                      button: true,
-                      label: 'Открыть гардероб',
-                      child: GestureDetector(
-                        onTap: () => context.push('/wardrobe'),
-                        child: PosingAvatar(
-                          levels: hero.avatarLevels,
-                          look: hero.look,
-                          muscles: hero.muscles,
-                          focus: recentMuscles(
-                            ref.watch(trainingLogProvider),
-                            DateTime.now(),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: Semantics(
+                            button: true,
+                            label: 'Открыть гардероб',
+                            child: GestureDetector(
+                              onTap: () => context.push('/wardrobe'),
+                              child: PosingAvatar(
+                                levels: hero.avatarLevels,
+                                look: hero.look,
+                                muscles: hero.muscles,
+                                focus: recentMuscles(
+                                  ref.watch(trainingLogProvider),
+                                  DateTime.now(),
+                                ),
+                                withLamp: true,
+                              ),
+                            ),
                           ),
-                          withLamp: true,
                         ),
-                      ),
+                        Positioned(
+                          left: 0,
+                          top: 8,
+                          child: FadeSlideIn(child: _HeroStats(hero: hero)),
+                        ),
+                        const Positioned(
+                          right: 0,
+                          top: 8,
+                          child: FadeSlideIn(index: 1, child: _TodayRow()),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-                const _TodayRow(),
-                const SizedBox(height: 12),
+                const SizedBox(height: 8),
                 FadeSlideIn(
                   index: 1,
                   child: GuideTarget(
@@ -103,7 +119,6 @@ class HomeScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const _ActivityLine(),
                 const SizedBox(height: 8),
                 // В день отдыха по графику силовую не предлагаем — только кардио.
                 if (recommendation != null &&
@@ -206,117 +221,121 @@ class _Header extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final scheme = Theme.of(context).colorScheme;
-    final streak = hero.currentStreak(DateTime.now());
     final signedIn = ref.watch(accountProvider).signedIn;
     final unread = signedIn
         ? ref.watch(notificationsProvider).value?.unread ?? 0
         : 0;
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
+    return Row(
       children: [
-        Row(
-          children: [
-            Expanded(
-              child: InkWell(
-                onTap: () => context.go('/profile'),
-                borderRadius: BorderRadius.circular(8),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      formatToday(DateTime.now()),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 13,
-                        color: AppColors.textMuted,
-                      ),
-                    ),
-                    const SizedBox(height: 2),
-                    Text(
-                      hero.nickname,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
+        Expanded(
+          child: InkWell(
+            onTap: () => context.go('/profile'),
+            borderRadius: BorderRadius.circular(8),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4),
+              child: Text(
+                hero.nickname,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ),
-            const ShopButton(),
-            if (signedIn)
-              IconButton(
-                tooltip: unread > 0
-                    ? 'Уведомления: $unread новых'
-                    : 'Уведомления',
-                onPressed: () => context.push('/notifications'),
-                icon: Badge(
-                  isLabelVisible: unread > 0,
-                  label: Text('$unread'),
-                  child: const Icon(LucideIcons.bell, size: 22),
-                ),
-              ),
-          ],
+          ),
         ),
-        const SizedBox(height: 12),
-        Row(
-          children: [
-            Expanded(
-              child: _StatChip(
-                onTap: (_) => showStreakSheet(context),
-                icon: LucideIcons.flame,
-                iconColor: scheme.tertiary,
-                label: streakLabel(streak),
-                value: AnimatedNumber(
-                  value: streak,
-                  style: figureStyle(size: 20, color: scheme.tertiary),
-                ),
-                semantics: 'Серия $streak дней',
-              ),
+        const ShopButton(),
+        if (signedIn)
+          IconButton(
+            tooltip: unread > 0 ? 'Уведомления: $unread новых' : 'Уведомления',
+            onPressed: () => context.push('/notifications'),
+            icon: Badge(
+              isLabelVisible: unread > 0,
+              label: Text('$unread'),
+              child: const Icon(LucideIcons.bell, size: 22),
             ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _StatChip(
-                icon: LucideIcons.zap,
-                iconColor: scheme.secondary,
-                label: 'сила',
-                onTap: (c) => showInfoBubble(
-                  c,
-                  title: 'Сила ${hero.power}',
-                  text:
-                      'Растёт только от тренировок: 10 за каждый уровень частей тела '
-                      'и 2 за день серии (до 30). Ровное развитие даёт +5%, сильный '
-                      'перекос — −10%. Сила решает в дуэлях и лиге.',
-                  actionLabel: 'Уровни частей тела',
-                  onAction: () => context.go('/profile'),
-                ),
-                value: AnimatedNumber(
-                  value: hero.power,
-                  style: figureStyle(size: 20, color: scheme.secondary),
-                ),
-                semantics: 'Сила ${hero.power}',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _StatChip(
-                icon: LucideIcons.coins,
-                iconColor: AppColors.textSecondary,
-                label: 'монет',
-                value: AnimatedNumber(
-                  value: hero.coins,
-                  style: figureStyle(size: 20),
-                ),
-                semantics: 'Монеты ${hero.coins}, открыть магазин',
-                onTap: (_) => context.push('/shop'),
-              ),
-            ),
-          ],
+          ),
+      ],
+    );
+  }
+}
+
+/// Показатели героя колонкой слева от него: серия, сила, монеты и шаги.
+/// Без плашек — тихо, чтобы не спорить с героем; каждое нажимается.
+class _HeroStats extends ConsumerWidget {
+  const _HeroStats({required this.hero});
+
+  final HeroProfile hero;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final scheme = Theme.of(context).colorScheme;
+    final streak = hero.currentStreak(DateTime.now());
+    final health = ref.watch(healthProvider);
+    final steps = health.connected ? health.stepsToday : null;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _StatChip(
+          onTap: (_) => showStreakSheet(context),
+          icon: LucideIcons.flame,
+          iconColor: scheme.tertiary,
+          label: streakLabel(streak),
+          value: AnimatedNumber(
+            value: streak,
+            style: figureStyle(size: 20, color: scheme.tertiary),
+          ),
+          semantics: 'Серия $streak дней',
         ),
+        _StatChip(
+          icon: LucideIcons.zap,
+          iconColor: scheme.secondary,
+          label: 'сила',
+          onTap: (c) => showInfoBubble(
+            c,
+            title: 'Сила ${hero.power}',
+            text:
+                'Растёт только от тренировок: 10 за каждый уровень частей тела '
+                'и 2 за день серии (до 30). Ровное развитие даёт +5%, сильный '
+                'перекос — −10%. Сила решает в дуэлях и лиге.',
+            actionLabel: 'Уровни частей тела',
+            onAction: () => context.go('/profile'),
+          ),
+          value: AnimatedNumber(
+            value: hero.power,
+            style: figureStyle(size: 20, color: scheme.secondary),
+          ),
+          semantics: 'Сила ${hero.power}',
+        ),
+        _StatChip(
+          icon: LucideIcons.coins,
+          iconColor: AppColors.textSecondary,
+          label: 'монет',
+          value: AnimatedNumber(
+            value: hero.coins,
+            style: figureStyle(size: 20),
+          ),
+          semantics: 'Монеты ${hero.coins}, открыть магазин',
+          onTap: (_) => context.push('/shop'),
+        ),
+        if (steps != null)
+          _StatChip(
+            icon: LucideIcons.footprints,
+            iconColor: AppColors.textSecondary,
+            label: 'шагов',
+            value: Text(formatThousands(steps), style: figureStyle(size: 16)),
+            semantics: '${formatThousands(steps)} шагов сегодня',
+            onTap: (c) => showInfoBubble(
+              c,
+              title: 'Шаги за сегодня',
+              text:
+                  'Берутся из Health Connect (часы или телефон). В день отдыха '
+                  'вечером шаги дают опыт кардио: 3 опыта за каждую тысячу, до 30.',
+              actionLabel: 'Устройства',
+              onAction: () => context.push('/profile/devices'),
+            ),
+          ),
       ],
     );
   }
@@ -345,30 +364,21 @@ class _StatChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final chip = Container(
-      padding: const EdgeInsets.fromLTRB(12, 8, 12, 8),
-      decoration: BoxDecoration(
-        color: AppColors.surface,
-        borderRadius: BorderRadius.circular(12),
-      ),
+    final chip = Padding(
+      padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               Icon(icon, size: 16, color: iconColor),
               const SizedBox(width: 6),
-              // Большие числа и крупный шрифт — уменьшаем, а не вылезаем за плашку.
-              Flexible(
-                child: FittedBox(fit: BoxFit.scaleDown, child: value),
-              ),
+              value,
             ],
           ),
-          const SizedBox(height: 2),
           Text(
             label,
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
             style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ],
@@ -554,57 +564,6 @@ const _monthsGenitive = [
 String formatToday(DateTime date) =>
     '${_weekdays[date.weekday - 1]}, ${date.day} ${_monthsGenitive[date.month - 1]}';
 
-/// Шаги и расстояние за сегодня с часов (Health Connect). Без подключения — пусто.
-class _ActivityLine extends ConsumerWidget {
-  const _ActivityLine();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final health = ref.watch(healthProvider);
-    final steps = health.stepsToday;
-    if (!health.connected || steps == null) return const SizedBox.shrink();
-    final km = ((health.metersToday ?? 0) / 1000)
-        .toStringAsFixed(1)
-        .replaceAll('.', ',');
-    return Padding(
-      padding: const EdgeInsets.only(top: 6),
-      child: Tappable(
-        onTap: (c) => showInfoBubble(
-          c,
-          title: 'Шаги за сегодня',
-          text:
-              'Берутся из Health Connect (часы или телефон). В день отдыха '
-              'вечером шаги дают опыт кардио: 3 опыта за каждую тысячу, до 30.',
-          actionLabel: 'Устройства',
-          onAction: () => context.push('/profile/devices'),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(
-              LucideIcons.footprints,
-              size: 14,
-              color: AppColors.textMuted,
-            ),
-            const SizedBox(width: 6),
-            Flexible(
-              child: Text(
-                '${formatThousands(steps)} шагов · $km км сегодня',
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: AppColors.textSecondary,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
 /// «1 день серии», «2 дня», «5 дней» — подпись под числом серии.
 String streakLabel(int n) {
   final mod10 = n % 10;
@@ -676,11 +635,12 @@ class _TodayRow extends ConsumerWidget {
         onTap: () => showWeighIn(context, ref),
       ),
     ];
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         for (final (i, item) in items.indexed) ...[
-          if (i > 0) const SizedBox(width: 8),
-          Expanded(child: item),
+          if (i > 0) const SizedBox(height: 12),
+          item,
         ],
       ],
     );
@@ -716,61 +676,56 @@ class _TodayItem extends StatelessWidget {
         label: hint,
         excludeSemantics: true,
         child: Pressable(
-          child: Stack(
-            clipBehavior: Clip.none,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Material(
-                color: AppColors.surface,
-                borderRadius: BorderRadius.circular(12),
-                child: InkWell(
-                  onTap: onTap,
-                  borderRadius: BorderRadius.circular(12),
-                  child: ConstrainedBox(
-                    constraints: const BoxConstraints(minHeight: 44),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            icon,
-                            size: 16,
-                            color: due ? accent : AppColors.textSecondary,
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              label,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: due
-                                    ? AppColors.textPrimary
-                                    : AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Material(
+                    color: AppColors.surface,
+                    shape: const CircleBorder(),
+                    child: InkWell(
+                      onTap: onTap,
+                      customBorder: const CircleBorder(),
+                      child: SizedBox.square(
+                        dimension: 48,
+                        child: Icon(
+                          icon,
+                          size: 20,
+                          color: due ? accent : AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   ),
+                  // Ждёт действия — точка в углу, как значок.
+                  if (due)
+                    Positioned(
+                      top: 2,
+                      right: 2,
+                      child: Container(
+                        width: 10,
+                        height: 10,
+                        decoration: BoxDecoration(
+                          color: accent,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: AppColors.background,
+                            width: 2,
+                          ),
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  fontSize: 12,
+                  color: due ? AppColors.textPrimary : AppColors.textMuted,
                 ),
               ),
-              // Ждёт действия — точка в углу, как значок: не отнимает места у подписи.
-              if (due)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    width: 7,
-                    height: 7,
-                    decoration: BoxDecoration(
-                      color: accent,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
             ],
           ),
         ),

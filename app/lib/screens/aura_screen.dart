@@ -32,7 +32,7 @@ class AuraScreen extends ConsumerWidget {
     if (!ref.watch(accountProvider).signedIn) {
       return const SignInGate(
         title: 'Ауры',
-        icon: LucideIcons.flame,
+        icon: LucideIcons.wandSparkles,
         text:
             'Аура вспыхивает в дуэли один раз за бой: ярость, стойкость, скорость '
             'или фокус. Прокачивается особыми тренировками дважды в неделю.',
@@ -174,6 +174,7 @@ class _AuraCard extends ConsumerWidget {
                   if (hero != null)
                     AuraHero(
                       kind: open ? kind : null,
+                      level: progress.level,
                       child: AvatarView(
                         levels: hero.avatarLevels,
                         look: hero.look,
@@ -189,7 +190,7 @@ class _AuraCard extends ConsumerWidget {
                 children: [
                   Row(
                     children: [
-                      Icon(LucideIcons.flame, size: 16, color: kind.color),
+                      Icon(auraIcon(kind), size: 16, color: kind.color),
                       const SizedBox(width: 6),
                       Flexible(
                         child: Text(
@@ -476,6 +477,15 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                         kind: started && _holdUntil == null && !step!.rest
                             ? kind
                             : null,
+                        level:
+                            ref
+                                .watch(auraProvider)
+                                .value
+                                ?.auras
+                                .where((a) => a.kind == kind)
+                                .firstOrNull
+                                ?.level ??
+                            1,
                         child: AvatarView(
                           levels: hero.avatarLevels,
                           look: hero.look,
