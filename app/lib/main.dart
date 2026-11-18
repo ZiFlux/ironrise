@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'net/app_log.dart';
 import 'net/push.dart';
 import 'env.dart';
+import 'l10n/tr.dart';
 import 'router.dart';
 import 'screens/ban_screen.dart';
 import 'widgets/status_toast.dart';
@@ -36,6 +38,8 @@ class IronRiseApp extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final accent = ref.watch(accentProvider);
+    // Язык: из настроек или системный. Смена пересобирает весь интерфейс.
+    final language = ref.watch(effectiveLanguageProvider);
     AppLog.startUploading(() => ref.read(apiProvider));
     // Виджет на телефоне и плитка на часах — свежая сводка при каждом изменении.
     ref.watch(summaryPublisherProvider);
@@ -43,6 +47,9 @@ class IronRiseApp extends ConsumerWidget {
       title: 'IronRise',
       debugShowCheckedModeBanner: false,
       theme: buildTheme(accent),
+      locale: language.locale,
+      supportedLocales: [for (final l in AppLanguage.values) l.locale],
+      localizationsDelegates: GlobalMaterialLocalizations.delegates,
       // Метка DEV: отладочную сборку не перепутать с бетой.
       // Слой плашек статуса (widgets/status_toast.dart) — поверх всех экранов.
       builder: (context, child) {
@@ -50,7 +57,11 @@ class IronRiseApp extends ConsumerWidget {
         final banned = ref.watch(banProvider) != null;
         final app = Stack(
           children: [
-            banned ? const BanGate() : child!,
+            // Ключ по языку — все экраны пересоздаются с новыми текстами.
+            KeyedSubtree(
+              key: ValueKey(language),
+              child: banned ? const BanGate() : child!,
+            ),
             Overlay(key: statusOverlayKey),
           ],
         );

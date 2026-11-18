@@ -1,3 +1,5 @@
+import '../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -32,18 +34,19 @@ class WatchWizard extends ConsumerWidget {
                 children: [
                   Icon(LucideIcons.radar, size: 20, color: accent),
                   const SizedBox(width: 10),
-                  const Expanded(
+                  Expanded(
                     child: Text(
-                      'Найти мои часы',
+                      tr('Найти мои часы'),
                       style: TextStyle(fontFamily: displayFont, fontSize: 18),
                     ),
                   ),
                 ],
               ),
               const SizedBox(height: 6),
-              const Text(
-                'Посмотрим, какие часы уже подключены к телефону, и подскажем, '
-                'как получить с них пульс',
+              Text(
+                tr(
+                  'Посмотрим, какие часы уже подключены к телефону, и подскажем, как получить с них пульс',
+                ),
                 style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
               ),
               const SizedBox(height: 12),
@@ -55,7 +58,7 @@ class WatchWizard extends ConsumerWidget {
                         child: CircularProgressIndicator(strokeWidth: 2),
                       )
                     : const Icon(LucideIcons.search, size: 18),
-                label: Text(d.searching ? 'Ищем…' : 'Найти'),
+                label: Text(d.searching ? tr('Ищем…') : tr('Найти')),
               ),
             ],
           ),
@@ -71,17 +74,19 @@ class WatchWizard extends ConsumerWidget {
             Expanded(
               child: Text(
                 d.watches.isEmpty
-                    ? 'Часов рядом не нашли'
+                    ? tr('Часов рядом не нашли')
                     : d.watches.length == 1
-                    ? 'Нашли часы'
-                    : 'Нашли ${d.watches.length} устройства',
+                    ? tr('Нашли часы')
+                    : tr('Нашли {length} устройства', {
+                        'length': d.watches.length,
+                      }),
                 style: const TextStyle(fontFamily: displayFont, fontSize: 18),
               ),
             ),
             TextButton.icon(
               onPressed: d.searching ? null : notifier.search,
               icon: const Icon(LucideIcons.refreshCw, size: 16),
-              label: const Text('Ещё раз'),
+              label: Text(tr('Ещё раз')),
             ),
           ],
         ),
@@ -96,12 +101,21 @@ class WatchWizard extends ConsumerWidget {
               padding: const EdgeInsets.all(16),
               child: Text(
                 [
-                  'Включите Bluetooth на часах и проверьте, что они подключены '
-                      'к телефону в своём приложении.',
+                  tr(
+                    'Включите Bluetooth на часах и проверьте, что они подключены к телефону в своём приложении.',
+                  ),
                   if (d.brandsByApp.isNotEmpty)
-                    'Есть приложение для ${d.brandsByApp.map((id) => watchGuideById(id)?.brand ?? id).join(', ')} — '
-                        'инструкция ниже, в «Датчик пульса».',
-                  'Нет часов — подойдёт нагрудный датчик или Health Connect.',
+                    tr(
+                      'Есть приложение для {p1} — инструкция ниже, в «Датчик пульса».',
+                      {
+                        'p1': d.brandsByApp
+                            .map((id) => watchGuideById(id)?.brand ?? id)
+                            .join(', '),
+                      },
+                    ),
+                  tr(
+                    'Нет часов — подойдёт нагрудный датчик или Health Connect.',
+                  ),
                 ].join(' '),
                 style: const TextStyle(
                   fontSize: 13,
@@ -121,15 +135,17 @@ class WatchWizard extends ConsumerWidget {
                 color: AppColors.textMuted,
               ),
               const SizedBox(width: 8),
-              const Expanded(
+              Expanded(
                 child: Text(
-                  'Без разрешения «Устройства поблизости» видны только часы Wear OS',
+                  tr(
+                    'Без разрешения «Устройства поблизости» видны только часы Wear OS',
+                  ),
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                 ),
               ),
               TextButton(
                 onPressed: notifier.search,
-                child: const Text('Разрешить'),
+                child: Text(tr('Разрешить')),
               ),
             ],
           ),
@@ -159,20 +175,23 @@ class _FoundWatch extends ConsumerWidget {
             : hr.source == PulseSource.bluetooth);
 
     final (String status, bool ok) = switch (watch) {
-      _ when live => ('Передаёт пульс: ${hr.bpm ?? '—'} уд/мин', true),
+      _ when live => (
+        tr('Передаёт пульс: {p1} уд/мин', {'p1': hr.bpm ?? '—'}),
+        true,
+      ),
       DetectedWatch(isWearOs: true) when discovery.watchApp => (
-        'IronRise на часах стоит — пульс пойдёт сам с началом тренировки',
+        tr('IronRise на часах стоит — пульс пойдёт сам с началом тренировки'),
         true,
       ),
       DetectedWatch(isWearOs: true) => (
-        'Поставьте IronRise на часы — пульс будет идти сам',
+        tr('Поставьте IronRise на часы — пульс будет идти сам'),
         false,
       ),
       _ when guide?.live ?? false => (
-        'Включите на часах трансляцию пульса — и мы подключимся',
+        tr('Включите на часах трансляцию пульса — и мы подключимся'),
         false,
       ),
-      _ => ('Пульс придёт через Health Connect после тренировки', false),
+      _ => (tr('Пульс придёт через Health Connect после тренировки'), false),
     };
 
     return Card(
@@ -263,18 +282,22 @@ class _FoundWatch extends ConsumerWidget {
                     final opened = await notifier.installOnWatch(watch);
                     showStatus(
                       opened
-                          ? 'На часах открылся магазин — нажмите «Установить»'
-                          : 'Не получилось. Откройте Play Маркет на часах и найдите IronRise',
+                          ? tr(
+                              'На часах открылся магазин — нажмите «Установить»',
+                            )
+                          : tr(
+                              'Не получилось. Откройте Play Маркет на часах и найдите IronRise',
+                            ),
                       kind: opened ? StatusKind.success : StatusKind.info,
                       duration: const Duration(seconds: 5),
                     );
                   },
                   icon: const Icon(LucideIcons.download, size: 18),
-                  label: const Text('Поставить на часы'),
+                  label: Text(tr('Поставить на часы')),
                 ),
                 TextButton(
                   onPressed: () => context.push('/profile/health'),
-                  child: const Text('Без приложения — через Health Connect'),
+                  child: Text(tr('Без приложения — через Health Connect')),
                 ),
               ] else if (guide?.live ?? false)
                 FilledButton.icon(
@@ -288,14 +311,16 @@ class _FoundWatch extends ConsumerWidget {
                         )
                       : const Icon(LucideIcons.radio, size: 18),
                   label: Text(
-                    waiting ? 'Ждём сигнал от часов…' : 'Включил — подключить',
+                    waiting
+                        ? tr('Ждём сигнал от часов…')
+                        : tr('Включил — подключить'),
                   ),
                 )
               else
                 FilledButton.icon(
                   onPressed: () => context.push('/profile/health'),
                   icon: const Icon(LucideIcons.activity, size: 18),
-                  label: const Text('Подключить Health Connect'),
+                  label: Text(tr('Подключить Health Connect')),
                 ),
             ],
           ],

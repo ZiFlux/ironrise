@@ -1,3 +1,5 @@
+import '../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -9,19 +11,20 @@ import '../theme.dart';
 final signUpPerks = <(IconData, String)>[
   (
     LucideIcons.coins,
-    '+${GameConfig.welcomeCoins} монет за регистрацию',
+    tr('+{welcomeCoins} монет за регистрацию', {
+      'welcomeCoins': GameConfig.welcomeCoins,
+    }),
   ),
-  (
-    LucideIcons.cloudCheck,
-    'Прогресс не пропадёт при смене телефона',
-  ),
-  (LucideIcons.swords, 'Дуэли с друзьями, а не только с ботами'),
+  (LucideIcons.cloudCheck, tr('Прогресс не пропадёт при смене телефона')),
+  (LucideIcons.swords, tr('Дуэли с друзьями, а не только с ботами')),
   (
     LucideIcons.users,
-    'Тренировка вместе: +${(GameConfig.jointBonus * 100).round()}% опыта',
+    tr('Тренировка вместе: +{p1}% опыта', {
+      'p1': (GameConfig.jointBonus * 100).round(),
+    }),
   ),
-  (LucideIcons.trophy, 'Лига с живыми игроками и рейтинг друзей'),
-  (LucideIcons.bell, 'Уведомления: заявки, нападения, серия под угрозой'),
+  (LucideIcons.trophy, tr('Лига с живыми игроками и рейтинг друзей')),
+  (LucideIcons.bell, tr('Уведомления: заявки, нападения, серия под угрозой')),
 ];
 
 /// Выгоды аккаунта плитками по две в ряд: иконка цветом стиля и короткий текст.
@@ -91,13 +94,13 @@ class SignUpCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            const Text(
-              'Сохрани героя',
+            Text(
+              tr('Сохрани героя'),
               style: TextStyle(fontFamily: displayFont, fontSize: 20),
             ),
             const SizedBox(height: 4),
-            const Text(
-              'Сейчас прогресс только на этом телефоне',
+            Text(
+              tr('Сейчас прогресс только на этом телефоне'),
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
             const SizedBox(height: 12),
@@ -105,12 +108,12 @@ class SignUpCard extends StatelessWidget {
             const SizedBox(height: 12),
             FilledButton(
               onPressed: () => context.push('/profile/account'),
-              child: const Text('Создать аккаунт'),
+              child: Text(tr('Создать аккаунт')),
             ),
             if (!compact)
               TextButton(
                 onPressed: () => context.push('/profile/account?login=1'),
-                child: const Text('У меня уже есть аккаунт'),
+                child: Text(tr('У меня уже есть аккаунт')),
               ),
           ],
         ),

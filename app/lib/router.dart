@@ -1,11 +1,12 @@
 import 'dart:io';
 
-import 'state/watch_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import 'l10n/tr.dart';
+import 'state/watch_discovery.dart';
 import 'screens/fight_screen.dart';
 import 'screens/account_screen.dart';
 import 'screens/cardio_screen.dart';
@@ -278,6 +279,7 @@ const _tabCount = 5;
 const tabRoots = {'/', '/workout', '/duels', '/rating', '/profile'};
 
 /// Иконки и подписи вкладок — для подсказки, куда ведёт натяжение.
+// Подписи переводятся при показе: tr(_tabs[i].$2).
 const _tabs = [
   (LucideIcons.personStanding, 'Герой'),
   (LucideIcons.dumbbell, 'Тренировка'),
@@ -320,8 +322,8 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
           .newWatchToSuggest();
       if (watch == null || !mounted) return;
       showStatus(
-        'Нашли «${watch.name}» — подключить пульс?',
-        actionLabel: 'Да',
+        tr('Нашли «{name}» — подключить пульс?', {'name': watch.name}),
+        actionLabel: tr('Да'),
         onAction: () => ref.read(routerProvider).push('/profile/devices'),
         duration: const Duration(seconds: 8),
       );
@@ -440,7 +442,7 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
     final account = ref.read(accountProvider.notifier);
     if (!ref.read(accountProvider).signedIn) {
       showStatus(
-        'Синхронизация — с аккаунтом. Войди в профиле',
+        tr('Синхронизация — с аккаунтом. Войди в профиле'),
         kind: StatusKind.info,
       );
       return;
@@ -458,7 +460,7 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
     if (!mounted) return;
     final error = ref.read(accountProvider).error;
     if (error == null) {
-      showStatus('Синхронизировано', kind: StatusKind.success);
+      showStatus(tr('Синхронизировано'), kind: StatusKind.success);
     } else {
       showStatusError(
         error,
@@ -505,26 +507,26 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
             // Вкладка всегда открывается с главного экрана, а не с последнего вложенного.
             shell.goBranch(i, initialLocation: true),
         destinations: [
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(LucideIcons.personStanding),
-            label: 'Герой',
+            label: tr('Герой'),
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(LucideIcons.dumbbell),
-            label: 'Тренировка',
+            label: tr('Тренировка'),
           ),
           // Без аккаунта — с замком: дуэли и рейтинг после регистрации.
           NavigationDestination(
             icon: _Locked(locked: !signedIn, icon: LucideIcons.swords),
-            label: 'Дуэли',
+            label: tr('Дуэли'),
           ),
           NavigationDestination(
             icon: _Locked(locked: !signedIn, icon: LucideIcons.trophy),
-            label: 'Рейтинг',
+            label: tr('Рейтинг'),
           ),
-          const NavigationDestination(
+          NavigationDestination(
             icon: Icon(LucideIcons.circleUser),
-            label: 'Профиль',
+            label: tr('Профиль'),
           ),
         ],
       ),
@@ -610,7 +612,7 @@ class _PullFrame extends StatelessWidget {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          _tabs[target].$2,
+                          tr(_tabs[target].$2),
                           style: TextStyle(
                             fontSize: 11,
                             color: ready

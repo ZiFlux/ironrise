@@ -1,3 +1,5 @@
+import '../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -22,7 +24,7 @@ class AccountScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final account = ref.watch(accountProvider);
     return Scaffold(
-      appBar: AppBar(title: const Text('Аккаунт')),
+      appBar: AppBar(title: Text(tr('Аккаунт'))),
       body: account.signedIn
           ? _SignedIn(account: account)
           : _SignInForm(account: account, login: login),
@@ -40,12 +42,16 @@ class _SignedIn extends ConsumerWidget {
     final notifier = ref.read(accountProvider.notifier);
     final synced = account.lastSyncedAt;
     final status = account.syncing
-        ? 'Синхронизация…'
+        ? tr('Синхронизация…')
         : account.error ??
               (synced == null
-                  ? 'Ещё не синхронизировано'
-                  : 'Синхронизировано ${syncedWhen(synced)}'
-                        '${account.lastReason == null ? '' : ' · ${account.lastReason!.label}'}');
+                  ? tr('Ещё не синхронизировано')
+                  : tr('Синхронизировано {p1}{p2}', {
+                      'p1': syncedWhen(synced),
+                      'p2': account.lastReason == null
+                          ? ''
+                          : ' · ${account.lastReason!.label}',
+                    }));
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
@@ -87,7 +93,9 @@ class _SignedIn extends ConsumerWidget {
                 if (account.pending > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Ждут отправки: ${account.pending}',
+                    tr('Ждут отправки: {pending}', {
+                      'pending': account.pending,
+                    }),
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textMuted,
@@ -97,7 +105,10 @@ class _SignedIn extends ConsumerWidget {
                 if (account.rejected > 0) ...[
                   const SizedBox(height: 4),
                   Text(
-                    'Сервер не принял: ${account.rejected}. Опыт за них не начислен',
+                    tr(
+                      'Сервер не принял: {rejected}. Опыт за них не начислен',
+                      {'rejected': account.rejected},
+                    ),
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textMuted,
@@ -109,9 +120,10 @@ class _SignedIn extends ConsumerWidget {
           ),
         ),
         const SizedBox(height: 12),
-        const Text(
-          'Опыт, серию, монеты, покупки и дуэли считает сервер: '
-          'после синхронизации они берутся оттуда',
+        Text(
+          tr(
+            'Опыт, серию, монеты, покупки и дуэли считает сервер: после синхронизации они берутся оттуда',
+          ),
           style: TextStyle(fontSize: 13, color: AppColors.textMuted),
         ),
         const SizedBox(height: 16),
@@ -119,14 +131,16 @@ class _SignedIn extends ConsumerWidget {
           child: SwitchListTile(
             value: account.autoSync,
             onChanged: notifier.setAutoSync,
-            title: const Text('Автосинхронизация'),
+            title: Text(tr('Автосинхронизация')),
             subtitle: Text(
               account.autoSync
-                  ? 'При входе, после тренировок и покупок, каждые '
-                        '${autoSyncEvery.inMinutes} минут, пока приложение открыто, '
-                        'и при сворачивании'
-                  : 'Выключена: тренировки отправляются при входе, '
-                        'остальное — кнопкой ниже',
+                  ? tr(
+                      'При входе, после тренировок и покупок, каждые {inMinutes} минут, пока приложение открыто, и при сворачивании',
+                      {'inMinutes': autoSyncEvery.inMinutes},
+                    )
+                  : tr(
+                      'Выключена: тренировки отправляются при входе, остальное — кнопкой ниже',
+                    ),
               style: const TextStyle(fontSize: 13),
             ),
           ),
@@ -135,14 +149,14 @@ class _SignedIn extends ConsumerWidget {
         FilledButton.icon(
           onPressed: account.syncing ? null : notifier.sync,
           icon: const Icon(LucideIcons.refreshCw, size: 18),
-          label: const Text('Синхронизировать'),
+          label: Text(tr('Синхронизировать')),
         ),
         const SizedBox(height: 8),
-        OutlinedButton(onPressed: notifier.logout, child: const Text('Выйти')),
+        OutlinedButton(onPressed: notifier.logout, child: Text(tr('Выйти'))),
         const SizedBox(height: 8),
         TextButton(
           onPressed: () => _deleteAccount(context, ref),
-          child: const Text('Удалить аккаунт'),
+          child: Text(tr('Удалить аккаунт')),
         ),
       ],
     );
@@ -160,7 +174,7 @@ class _SignedIn extends ConsumerWidget {
     } on ApiException catch (e) {
       if (!context.mounted) return;
       showStatusError(
-        e.status == 401 ? 'Неверный пароль' : e.message,
+        e.status == 401 ? tr('Неверный пароль') : e.message,
         network: e.isNetwork,
       );
     }
@@ -197,9 +211,9 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
     final email = _email.text.trim();
     final password = _password.text;
     final problem = !email.contains('@')
-        ? 'Проверьте e-mail'
+        ? tr('Проверьте e-mail')
         : _register && password.length < 8
-        ? 'Пароль — не меньше 8 символов'
+        ? tr('Пароль — не меньше 8 символов')
         : null;
     if (problem != null) {
       setState(() => _error = problem);
@@ -217,15 +231,20 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
     } on ApiException catch (e) {
       setState(
         () => _error = switch (e.status) {
-          0 => 'Сервер недоступен. Проверьте сеть',
-          401 => 'Неверный e-mail или пароль',
-          403 when e.isBanned => 'Аккаунт заблокирован: ${e.banReason}',
-          409 when e.message == 'Email is taken' =>
+          0 => tr('Сервер недоступен. Проверьте сеть'),
+          401 => tr('Неверный e-mail или пароль'),
+          403 when e.isBanned => tr('Аккаунт заблокирован: {banReason}', {
+            'banReason': e.banReason,
+          }),
+          409 when e.message == 'Email is taken' => tr(
             'Этот e-mail уже зарегистрирован',
-          409 || 400 when nicknameServerError(e.message) != null =>
-            '${nicknameServerError(e.message)}. Сменить ник: Профиль → Настройки',
-          409 => 'Такой e-mail или ник уже заняты',
-          400 => 'Сервер не принял данные: $e',
+          ),
+          409 || 400 when nicknameServerError(e.message) != null => tr(
+            '{p1}. Сменить ник: Профиль → Настройки',
+            {'p1': nicknameServerError(e.message)},
+          ),
+          409 => tr('Такой e-mail или ник уже заняты'),
+          400 => tr('Сервер не принял данные: {e}', {'e': e}),
           _ => e.message,
         },
       );
@@ -244,14 +263,14 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
       children: [
         Text(
-          _register ? 'Сохрани героя' : 'С возвращением',
+          _register ? tr('Сохрани героя') : tr('С возвращением'),
           style: const TextStyle(fontFamily: displayFont, fontSize: 26),
         ),
         const SizedBox(height: 6),
         Text(
           _register
-              ? 'Аккаунт за минуту — только e-mail и пароль'
-              : 'Опыт и серия загрузятся с сервера',
+              ? tr('Аккаунт за минуту — только e-mail и пароль')
+              : tr('Опыт и серия загрузятся с сервера'),
           style: const TextStyle(color: AppColors.textSecondary),
         ),
         if (_register) ...[
@@ -290,10 +309,14 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
                       : AutofillHints.password,
                 ],
                 decoration: InputDecoration(
-                  hintText: _register ? 'Пароль, от 8 символов' : 'Пароль',
+                  hintText: _register
+                      ? tr('Пароль, от 8 символов')
+                      : tr('Пароль'),
                   prefixIcon: const Icon(LucideIcons.lock, size: 18),
                   suffixIcon: IconButton(
-                    tooltip: _showPassword ? 'Скрыть пароль' : 'Показать пароль',
+                    tooltip: _showPassword
+                        ? tr('Скрыть пароль')
+                        : tr('Показать пароль'),
                     onPressed: () =>
                         setState(() => _showPassword = !_showPassword),
                     icon: Icon(
@@ -339,7 +362,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
                   dimension: 20,
                   child: CircularProgressIndicator(strokeWidth: 2),
                 )
-              : Text(_register ? 'Создать аккаунт' : 'Войти'),
+              : Text(_register ? tr('Создать аккаунт') : tr('Войти')),
         ),
         const SizedBox(height: 8),
         Wrap(
@@ -347,7 +370,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
             Text(
-              _register ? 'Уже есть аккаунт?' : 'Ещё нет аккаунта?',
+              _register ? tr('Уже есть аккаунт?') : tr('Ещё нет аккаунта?'),
               style: const TextStyle(color: AppColors.textSecondary),
             ),
             TextButton(
@@ -356,16 +379,25 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
                 _error = null;
               }),
               style: TextButton.styleFrom(foregroundColor: accent),
-              child: Text(_register ? 'Войти' : 'Создать'),
+              child: Text(_register ? tr('Войти') : tr('Создать')),
             ),
           ],
         ),
         const SizedBox(height: 8),
         Text(
           _register
-              ? 'Герой сохранится на сервере и будет доступен с другого телефона.'
-                    '${pending > 0 ? ' Тренировки с этого телефона ($pending) сервер пересчитает и перенесёт' : ''}'
-              : 'Данные на этом телефоне заменятся данными с сервера',
+              ? tr(
+                  'Герой сохранится на сервере и будет доступен с другого телефона.{p1}',
+                  {
+                    'p1': pending > 0
+                        ? tr(
+                            ' Тренировки с этого телефона ({pending}) сервер пересчитает и перенесёт',
+                            {'pending': pending},
+                          )
+                        : '',
+                  },
+                )
+              : tr('Данные на этом телефоне заменятся данными с сервера'),
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
@@ -395,21 +427,22 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
   Widget build(BuildContext context) {
     return AlertDialog(
       backgroundColor: AppColors.surface,
-      title: const Text('Удалить аккаунт'),
+      title: Text(tr('Удалить аккаунт')),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'Аккаунт, герой, тренировки, пульс, друзья и покупки удалятся с сервера и телефона. '
-            'Вернуть их не получится',
+          Text(
+            tr(
+              'Аккаунт, герой, тренировки, пульс, друзья и покупки удалятся с сервера и телефона. Вернуть их не получится',
+            ),
           ),
           const SizedBox(height: 16),
           TextField(
             controller: _password,
             obscureText: true,
             autofocus: true,
-            decoration: const InputDecoration(labelText: 'Пароль'),
+            decoration: InputDecoration(labelText: tr('Пароль')),
             onChanged: (_) => setState(() {}),
           ),
         ],
@@ -417,13 +450,13 @@ class _DeleteAccountDialogState extends State<_DeleteAccountDialog> {
       actions: [
         TextButton(
           onPressed: () => Navigator.pop(context),
-          child: const Text('Отмена'),
+          child: Text(tr('Отмена')),
         ),
         TextButton(
           onPressed: _password.text.isEmpty
               ? null
               : () => Navigator.pop(context, _password.text),
-          child: const Text('Удалить навсегда'),
+          child: Text(tr('Удалить навсегда')),
         ),
       ],
     );
@@ -441,8 +474,8 @@ String syncedWhen(DateTime t) {
     now.day,
   ).difference(DateTime(t.year, t.month, t.day)).inDays;
   return switch (days) {
-    0 => 'в $hm',
-    1 => 'вчера в $hm',
-    _ => '${formatDate(t)} в $hm',
+    0 => tr('в {hm}', {'hm': hm}),
+    1 => tr('вчера в {hm}', {'hm': hm}),
+    _ => tr('{p1} в {hm}', {'p1': formatDate(t), 'hm': hm}),
   };
 }

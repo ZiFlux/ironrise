@@ -24,6 +24,7 @@ import '../state/settings.dart';
 import '../state/tips_state.dart';
 import '../state/server_game.dart';
 import '../theme.dart';
+import '../l10n/tr.dart';
 import '../widgets/beta_channel.dart';
 import '../widgets/consent_prompt.dart';
 import '../widgets/goals_picker.dart';
@@ -47,7 +48,7 @@ class SettingsScreen extends ConsumerWidget {
     if (hero == null) return const SizedBox.shrink();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Настройки')),
+      appBar: AppBar(title: Text(tr('Настройки'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         // Порядок: аккаунт → герой → тренировки → пульс → вид → сообщество →
@@ -55,20 +56,20 @@ class SettingsScreen extends ConsumerWidget {
         children: [
           const _AccountCard(),
           const SizedBox(height: 24),
-          const _SectionLabel('Герой'),
+          _SectionLabel(tr('Герой')),
           _HeroInfo(hero: hero),
           const SizedBox(height: 24),
-          const _SectionLabel('Тренировки'),
+          _SectionLabel(tr('Тренировки')),
           Card(
             clipBehavior: Clip.antiAlias,
             child: Column(
               children: [
-                const Padding(
+                Padding(
                   padding: EdgeInsets.fromLTRB(16, 14, 16, 4),
                   child: Align(
                     alignment: Alignment.centerLeft,
                     child: Text(
-                      'Где тренируешься',
+                      tr('Где тренируешься'),
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textSecondary,
@@ -90,9 +91,11 @@ class SettingsScreen extends ConsumerWidget {
                     TrainingLevel.intermediate) ...[
                   const Divider(height: 1),
                   SwitchListTile(
-                    title: const Text('Ритм опытных'),
-                    subtitle: const Text(
-                      'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя',
+                    title: Text(tr('Ритм опытных')),
+                    subtitle: Text(
+                      tr(
+                        'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя',
+                      ),
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,
@@ -106,9 +109,9 @@ class SettingsScreen extends ConsumerWidget {
                 const Divider(height: 1),
                 // Тренировки в календарь телефона — он синхронизируется на часы.
                 SwitchListTile(
-                  title: const Text('Тренировки в календарь'),
-                  subtitle: const Text(
-                    'Событие с временем начала и конца — видно и на часах',
+                  title: Text(tr('Тренировки в календарь')),
+                  subtitle: Text(
+                    tr('Событие с временем начала и конца — видно и на часах'),
                     style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
                   value: ref.watch(calendarExportProvider),
@@ -116,19 +119,19 @@ class SettingsScreen extends ConsumerWidget {
                     final ok = await ref
                         .read(calendarExportProvider.notifier)
                         .setEnabled(on);
-                    if (!ok) showStatusError('Нужен доступ к календарю');
+                    if (!ok) showStatusError(tr('Нужен доступ к календарю'));
                   },
                 ),
               ],
             ),
           ),
           const SizedBox(height: 24),
-          const _SectionLabel('Пульс'),
+          _SectionLabel(tr('Пульс')),
           Card(
             clipBehavior: Clip.antiAlias,
             child: _NavTile(
               icon: LucideIcons.watch,
-              title: 'Часы и телефон',
+              title: tr('Часы и телефон'),
               subtitle: devicesSummary(ref),
               path: '/profile/devices',
             ),
@@ -136,8 +139,10 @@ class SettingsScreen extends ConsumerWidget {
           const SizedBox(height: 8),
           _HeartZones(hero: hero),
           const SizedBox(height: 24),
-          const _SectionLabel('Внешний вид'),
+          _SectionLabel(tr('Внешний вид')),
           const _AccentPicker(),
+          const SizedBox(height: 8),
+          const _LanguageTile(),
           const SizedBox(height: 4),
           Align(
             alignment: Alignment.centerLeft,
@@ -147,26 +152,26 @@ class SettingsScreen extends ConsumerWidget {
                 await TabGuide.resetAll(ref);
                 if (context.mounted) {
                   showStatus(
-                    'Подсказки снова появятся на экранах',
+                    tr('Подсказки снова появятся на экранах'),
                     kind: StatusKind.success,
                   );
                 }
               },
               icon: const Icon(LucideIcons.lightbulb, size: 18),
-              label: const Text('Показать подсказки снова'),
+              label: Text(tr('Показать подсказки снова')),
             ),
           ),
           const SizedBox(height: 16),
-          const _SectionLabel('Сообщество'),
+          _SectionLabel(tr('Сообщество')),
           const BetaChannelTile(),
           const SizedBox(height: 24),
-          const _SectionLabel('Данные и конфиденциальность'),
+          _SectionLabel(tr('Данные и конфиденциальность')),
           const _DataSection(),
           const SizedBox(height: 8),
           const _LogsToggle(),
           if (kDebugMode) ...[
             const SizedBox(height: 32),
-            const _SectionLabel('Режим разработчика'),
+            _SectionLabel(tr('Режим разработчика')),
             _DebugTools(hero: hero),
           ],
         ].indexed.map((e) => FadeSlideIn(index: e.$1, child: e.$2)).toList(),
@@ -200,25 +205,27 @@ class _HeroInfo extends StatelessWidget {
     final body = hero.body;
     final bodyText = [
       if (body.sex != null) body.sex!.label,
-      if (body.heightCm != null) '${body.heightCm} см',
-      if (body.weightKg != null) '${formatWeight(body.weightKg!)} кг',
+      if (body.heightCm != null)
+        tr('{heightCm} см', {'heightCm': body.heightCm}),
+      if (body.weightKg != null)
+        tr('{p1} кг', {'p1': formatWeight(body.weightKg!)}),
     ].join(', ');
     // Формат и дни меняются на отдельном экране (раз в неделю).
     void schedule() => context.push('/profile/settings/schedule');
     final rows = <(String, String, VoidCallback?)>[
-      ('Ник', hero.nickname, () => showNicknameDialog(context)),
+      (tr('Ник'), hero.nickname, () => showNicknameDialog(context)),
       (
-        hero.extraGoals.isEmpty ? 'Цель' : 'Цели',
+        hero.extraGoals.isEmpty ? tr('Цель') : tr('Цели'),
         [hero.goal, ...hero.extraGoals].map((g) => g.label).join(', '),
         () => showGoalsSheet(context),
       ),
-      ('Формат', hero.format.label, schedule),
+      (tr('Формат'), hero.format.label, schedule),
       (
-        'Дни',
+        tr('Дни'),
         hero.trainingDays.map((d) => weekdayShort[d]).join(' '),
         schedule,
       ),
-      ('Комплекция', bodyText.isEmpty ? 'не указана' : bodyText, null),
+      (tr('Комплекция'), bodyText.isEmpty ? tr('не указана') : bodyText, null),
     ];
     return Card(
       child: Column(
@@ -305,20 +312,20 @@ class _HeartZones extends ConsumerWidget {
           inputFormatters: [FilteringTextInputFormatter.digitsOnly],
           decoration: InputDecoration(
             hintText: hint,
-            helperText: 'от $min до $max',
+            helperText: tr('от {min} до {max}', {'min': min, 'max': max}),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Отмена'),
+            child: Text(tr('Отмена')),
           ),
           TextButton(
             onPressed: () {
               final v = int.tryParse(controller.text);
               if (v != null && v >= min && v <= max) Navigator.pop(context, v);
             },
-            child: const Text('Сохранить'),
+            child: Text(tr('Сохранить')),
           ),
         ],
       ),
@@ -336,7 +343,7 @@ class _HeartZones extends ConsumerWidget {
       context: context,
       builder: (context) => SimpleDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Опыт тренировок'),
+        title: Text(tr('Опыт тренировок')),
         children: [
           for (final e in Experience.values)
             SimpleDialogOption(
@@ -394,13 +401,13 @@ class _HeartZones extends ConsumerWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           row(
-            'Возраст',
-            body.age == null ? 'не указан' : '${body.age}',
+            tr('Возраст'),
+            body.age == null ? tr('не указан') : '${body.age}',
             () => _edit(
               context,
               ref,
-              title: 'Возраст',
-              hint: 'лет',
+              title: tr('Возраст'),
+              hint: tr('лет'),
               current: body.age,
               min: 18,
               max: 90,
@@ -408,15 +415,17 @@ class _HeartZones extends ConsumerWidget {
             ),
           ),
           row(
-            'Пульс покоя',
+            tr('Пульс покоя'),
             body.restingHeartRate == null
-                ? 'не указан'
-                : '${body.restingHeartRate} уд/мин',
+                ? tr('не указан')
+                : tr('{restingHeartRate} уд/мин', {
+                    'restingHeartRate': body.restingHeartRate,
+                  }),
             () => _edit(
               context,
               ref,
-              title: 'Пульс покоя',
-              hint: 'утром, лёжа, уд/мин',
+              title: tr('Пульс покоя'),
+              hint: tr('утром, лёжа, уд/мин'),
               current: body.restingHeartRate,
               min: 35,
               max: 110,
@@ -425,18 +434,18 @@ class _HeartZones extends ConsumerWidget {
           ),
           // Опыт и самопроверка задают уровень: сколько упражнений и насколько сложных.
           row(
-            'Опыт тренировок',
-            body.experience?.label ?? 'не указан',
+            tr('Опыт тренировок'),
+            body.experience?.label ?? tr('не указан'),
             () => _pickExperience(context, ref, body),
           ),
           row(
-            'Отжиманий за подход',
-            body.pushUps == null ? 'не указано' : '${body.pushUps}',
+            tr('Отжиманий за подход'),
+            body.pushUps == null ? tr('не указано') : '${body.pushUps}',
             () => _edit(
               context,
               ref,
-              title: 'Отжиманий за подход',
-              hint: 'сколько раз подряд',
+              title: tr('Отжиманий за подход'),
+              hint: tr('сколько раз подряд'),
               current: body.pushUps,
               min: 0,
               max: 150,
@@ -444,13 +453,13 @@ class _HeartZones extends ConsumerWidget {
             ),
           ),
           row(
-            'Подтягиваний за подход',
-            body.pullUps == null ? 'не указано' : '${body.pullUps}',
+            tr('Подтягиваний за подход'),
+            body.pullUps == null ? tr('не указано') : '${body.pullUps}',
             () => _edit(
               context,
               ref,
-              title: 'Подтягиваний за подход',
-              hint: 'сколько раз подряд',
+              title: tr('Подтягиваний за подход'),
+              hint: tr('сколько раз подряд'),
               current: body.pullUps,
               min: 0,
               max: 60,
@@ -460,8 +469,16 @@ class _HeartZones extends ConsumerWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
             child: Text(
-              'Макс. пульс ${hero.maxHeartRate}, зона 2 для кардио — от $zone уд/мин'
-              '${body.age == null || body.restingHeartRate == null ? '. Пока по средним значениям' : ''}',
+              tr(
+                'Макс. пульс {maxHeartRate}, зона 2 для кардио — от {zone} уд/мин{p3}',
+                {
+                  'maxHeartRate': hero.maxHeartRate,
+                  'zone': zone,
+                  'p3': body.age == null || body.restingHeartRate == null
+                      ? tr('. Пока по средним значениям')
+                      : '',
+                },
+              ),
               style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
           ),
@@ -565,7 +582,7 @@ class _DebugTools extends ConsumerWidget {
   ) async {
     if (!ref.read(accountProvider).signedIn) {
       showStatus(
-        'Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»',
+        tr('Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»'),
       );
       return;
     }
@@ -573,13 +590,13 @@ class _DebugTools extends ConsumerWidget {
       await ref.read(apiProvider).post('/v1/dev/league', {'shift': shift});
       ref.invalidate(serverLeagueProvider);
       showStatus(
-        'Готово: откройте вкладку «Рейтинг»',
+        tr('Готово: откройте вкладку «Рейтинг»'),
         kind: StatusKind.success,
       );
     } on ApiException catch (e) {
       showStatusError(
         e.status == 404
-            ? 'Это доступно только на сервере разработки'
+            ? tr('Это доступно только на сервере разработки')
             : e.message,
         network: e.isNetwork,
       );
@@ -598,7 +615,9 @@ class _DebugTools extends ConsumerWidget {
     } on ApiException catch (e) {
       if (!context.mounted) return;
       showStatusError(
-        e.status == 404 ? 'На этом сервере выдача монет выключена' : e.message,
+        e.status == 404
+            ? tr('На этом сервере выдача монет выключена')
+            : e.message,
         network: e.isNetwork,
       );
     }
@@ -631,35 +650,35 @@ class _DebugTools extends ConsumerWidget {
               ),
             ActionChip(
               avatar: const Icon(LucideIcons.flame, size: 16),
-              label: const Text('Серия +5'),
+              label: Text(tr('Серия +5')),
               onPressed: () => notifier.debugSetStreak(hero.streakDays + 5),
             ),
             ActionChip(
               avatar: const Icon(LucideIcons.coins, size: 16),
-              label: const Text('Монеты +1000'),
+              label: Text(tr('Монеты +1000')),
               onPressed: () => _grantCoins(context, ref),
             ),
             ActionChip(
               avatar: const Icon(LucideIcons.chevronsUp, size: 16),
-              label: const Text('Лига выше'),
+              label: Text(tr('Лига выше')),
               onPressed: () => _shiftLeague(context, ref, 1),
             ),
             ActionChip(
               avatar: const Icon(LucideIcons.chevronsDown, size: 16),
-              label: const Text('Лига ниже'),
+              label: Text(tr('Лига ниже')),
               onPressed: () => _shiftLeague(context, ref, -1),
             ),
             ActionChip(
               avatar: const Icon(LucideIcons.lightbulb, size: 16),
-              label: const Text('Новый совет дня'),
+              label: Text(tr('Новый совет дня')),
               onPressed: () => ref.read(tipsProvider.notifier).debugNext(),
             ),
             ActionChip(
               avatar: const Icon(LucideIcons.layers, size: 16),
               label: Text(
                 ref.watch(programProvider).phase == ProgramPhase.start
-                    ? 'Фаза «База»'
-                    : 'Фаза «Старт»',
+                    ? tr('Фаза «База»')
+                    : tr('Фаза «Старт»'),
               ),
               onPressed: () =>
                   ref.read(programProvider.notifier).debugTogglePhase(),
@@ -672,7 +691,7 @@ class _DebugTools extends ConsumerWidget {
             await notifier.reset();
             if (context.mounted) context.go('/onboarding');
           },
-          child: const Text('Удалить героя и пройти онбординг заново'),
+          child: Text(tr('Удалить героя и пройти онбординг заново')),
         ),
       ],
     );
@@ -733,7 +752,7 @@ class _DataSection extends ConsumerWidget {
               size: 18,
               color: AppColors.textSecondary,
             ),
-            title: const Text('Политика конфиденциальности'),
+            title: Text(tr('Политика конфиденциальности')),
             trailing: const Icon(
               LucideIcons.chevronRight,
               size: 18,
@@ -745,14 +764,16 @@ class _DataSection extends ConsumerWidget {
             onTap: () => showLicensePage(
               context: context,
               applicationName: 'IronRise',
-              applicationLegalese: 'IronRise использует открытые библиотеки на условиях их лицензий',
+              applicationLegalese: tr(
+                'IronRise использует открытые библиотеки на условиях их лицензий',
+              ),
             ),
             leading: const Icon(
               LucideIcons.scrollText,
               size: 18,
               color: AppColors.textSecondary,
             ),
-            title: const Text('Лицензии открытых библиотек'),
+            title: Text(tr('Лицензии открытых библиотек')),
             trailing: const Icon(
               LucideIcons.chevronRight,
               size: 18,
@@ -769,11 +790,11 @@ class _DataSection extends ConsumerWidget {
               size: 18,
               color: AppColors.textSecondary,
             ),
-            title: const Text('Удалить мои данные'),
+            title: Text(tr('Удалить мои данные')),
             subtitle: Text(
               signedIn
-                  ? 'Через удаление аккаунта'
-                  : 'Герой, тренировки и настройки на телефоне',
+                  ? tr('Через удаление аккаунта')
+                  : tr('Герой, тренировки и настройки на телефоне'),
               style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
             ),
           ),
@@ -787,18 +808,20 @@ class _DataSection extends ConsumerWidget {
       context: context,
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.surface,
-        title: const Text('Удалить все данные'),
-        content: const Text(
-          'Герой, уровни, тренировки и покупки исчезнут с телефона. Вернуть их не получится',
+        title: Text(tr('Удалить все данные')),
+        content: Text(
+          tr(
+            'Герой, уровни, тренировки и покупки исчезнут с телефона. Вернуть их не получится',
+          ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Отмена'),
+            child: Text(tr('Отмена')),
           ),
           TextButton(
             onPressed: () => Navigator.pop(context, true),
-            child: const Text('Удалить'),
+            child: Text(tr('Удалить')),
           ),
         ],
       ),
@@ -847,10 +870,11 @@ class _LogsToggleState extends State<_LogsToggle> {
         setState(() => _on = v);
         await AppLog.setEnabled(v);
       },
-      title: const Text('Отправлять отчёты об ошибках'),
-      subtitle: const Text(
-        'Технический журнал приложения: ошибки и сбои связи. Помогает быстро чинить баги, '
-        'тренировки и пульс в него не попадают',
+      title: Text(tr('Отправлять отчёты об ошибках')),
+      subtitle: Text(
+        tr(
+          'Технический журнал приложения: ошибки и сбои связи. Помогает быстро чинить баги, тренировки и пульс в него не попадают',
+        ),
         style: TextStyle(color: AppColors.textMuted, fontSize: 13),
       ),
     ),
@@ -872,7 +896,7 @@ class _AccountCard extends ConsumerWidget {
         clipBehavior: Clip.antiAlias,
         child: _NavTile(
           icon: LucideIcons.circleUser,
-          title: 'Аккаунт',
+          title: tr('Аккаунт'),
           subtitle: _accountLine(account),
           path: '/profile/account',
         ),
@@ -885,14 +909,14 @@ class _AccountCard extends ConsumerWidget {
           children: [
             Icon(LucideIcons.cloudOff, size: 20, color: accent),
             const SizedBox(width: 12),
-            const Expanded(
+            Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text('Аккаунт не создан', style: TextStyle(fontSize: 15)),
+                  Text(tr('Аккаунт не создан'), style: TextStyle(fontSize: 15)),
                   SizedBox(height: 2),
                   Text(
-                    'Прогресс только на этом телефоне',
+                    tr('Прогресс только на этом телефоне'),
                     style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),
                 ],
@@ -907,8 +931,8 @@ class _AccountCard extends ConsumerWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                 ),
                 onPressed: () => context.push('/profile/account'),
-                child: const Text(
-                  'Создать',
+                child: Text(
+                  tr('Создать'),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -922,15 +946,15 @@ class _AccountCard extends ConsumerWidget {
 }
 
 String _accountLine(AccountState a) {
-  if (!a.signedIn) return 'Не подключён — данные только на телефоне';
+  if (!a.signedIn) return tr('Не подключён — данные только на телефоне');
   final synced = a.lastSyncedAt;
   final sync = a.syncing
-      ? 'синхронизация…'
+      ? tr('синхронизация…')
       : !a.autoSync
-      ? 'автосинхронизация выключена'
+      ? tr('автосинхронизация выключена')
       : synced == null
-      ? 'ещё не синхронизировано'
-      : 'синхр. ${syncedWhen(synced)}';
+      ? tr('ещё не синхронизировано')
+      : tr('синхр. {p1}', {'p1': syncedWhen(synced)});
   return '${a.email} · $sync';
 }
 
@@ -944,11 +968,11 @@ class _RestTile extends ConsumerWidget {
     ref.watch(heroProvider);
     final current = restOf(ref);
     return ListTile(
-      title: const Text('Отдых между подходами'),
+      title: Text(tr('Отдых между подходами')),
       subtitle: Text(
         own == null
-            ? 'По цели — ${restLabel(current)}'
-            : 'Свой — ${restLabel(current)}',
+            ? tr('По цели — {p1}', {'p1': restLabel(current)})
+            : tr('Свой — {p1}', {'p1': restLabel(current)}),
         style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
       ),
       trailing: const Icon(
@@ -963,10 +987,12 @@ class _RestTile extends ConsumerWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Padding(
+              Padding(
                 padding: EdgeInsets.fromLTRB(20, 16, 20, 4),
                 child: Text(
-                  'Таймер отдыха после подхода. Пульс ещё высокий — приложение подскажет подождать',
+                  tr(
+                    'Таймер отдыха после подхода. Пульс ещё высокий — приложение подскажет подождать',
+                  ),
                   style: TextStyle(color: AppColors.textMuted, fontSize: 13),
                 ),
               ),
@@ -974,7 +1000,11 @@ class _RestTile extends ConsumerWidget {
                 ListTile(
                   title: Text(
                     choice == null
-                        ? 'По цели (${restLabel(restFor(ref.read(heroProvider)?.goal))})'
+                        ? tr('По цели ({p1})', {
+                            'p1': restLabel(
+                              restFor(ref.read(heroProvider)?.goal),
+                            ),
+                          })
                         : restLabel(Duration(seconds: choice)),
                   ),
                   trailing: choice == own
@@ -990,6 +1020,66 @@ class _RestTile extends ConsumerWidget {
                   },
                 ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Язык интерфейса: как в системе или выбранный.
+class _LanguageTile extends ConsumerWidget {
+  const _LanguageTile();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final chosen = ref.watch(languageProvider);
+    final options = <(AppLanguage?, String)>[
+      (null, tr('Как в системе ({p1})', {'p1': systemLanguage().label})),
+      for (final l in AppLanguage.values) (l, l.label),
+    ];
+    return Card(
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        leading: const Icon(
+          LucideIcons.languages,
+          size: 18,
+          color: AppColors.textSecondary,
+        ),
+        title: Text(tr('Язык')),
+        subtitle: Text(
+          options.firstWhere((o) => o.$1 == chosen).$2,
+          style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
+        ),
+        trailing: const Icon(
+          LucideIcons.chevronRight,
+          size: 18,
+          color: AppColors.textMuted,
+        ),
+        onTap: () => showModalBottomSheet<void>(
+          context: context,
+          backgroundColor: AppColors.surface,
+          builder: (sheet) => SafeArea(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                for (final (lang, label) in options)
+                  ListTile(
+                    title: Text(label),
+                    trailing: lang == chosen
+                        ? Icon(
+                            LucideIcons.check,
+                            size: 18,
+                            color: Theme.of(sheet).colorScheme.primary,
+                          )
+                        : null,
+                    onTap: () {
+                      Navigator.pop(sheet);
+                      ref.read(languageProvider.notifier).select(lang);
+                    },
+                  ),
+              ],
+            ),
           ),
         ),
       ),

@@ -1,3 +1,5 @@
+import '../l10n/tr.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -20,11 +22,11 @@ String devicesSummary(WidgetRef ref) {
   final pulse = ref.watch(heartRateProvider);
   final health = ref.watch(healthProvider).connected;
   if (pulse.isConnected && pulse.source == PulseSource.watch) {
-    return 'Часы передают пульс';
+    return tr('Часы передают пульс');
   }
-  if (pulse.isConnected) return 'Датчик пульса подключён';
-  if (health) return 'Health Connect подключён';
-  return 'Ничего не подключено — опыт без часов ×0,5';
+  if (pulse.isConnected) return tr('Датчик пульса подключён');
+  if (health) return tr('Health Connect подключён');
+  return tr('Ничего не подключено — опыт без часов ×0,5');
 }
 
 /// Телефон и часы в одном месте: приложение на часах, Health Connect
@@ -51,7 +53,7 @@ class DevicesScreen extends ConsumerWidget {
         watchVersion != appVersion;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Часы и телефон')),
+      appBar: AppBar(title: Text(tr('Часы и телефон'))),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
@@ -60,54 +62,65 @@ class DevicesScreen extends ConsumerWidget {
           // Сначала мастер: сам находит часы и ведёт к пульсу (п. 152).
           const WatchWizard(),
           const SizedBox(height: 24),
-          const Padding(
+          Padding(
             padding: EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
-              'Все способы',
+              tr('Все способы'),
               style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
             ),
           ),
           _DeviceCard(
             icon: LucideIcons.watch,
-            title: 'IronRise на часах',
+            title: tr('IronRise на часах'),
             status: watchLive
-                ? 'Передаёт пульс: ${pulse.bpm ?? '—'} уд/мин'
-                : 'Wear OS: Galaxy Watch и другие',
+                ? tr('Передаёт пульс: {p1} уд/мин', {'p1': pulse.bpm ?? '—'})
+                : tr('Wear OS: Galaxy Watch и другие'),
             ok: watchLive,
             text: [
-              'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, '
-                  'часы сами начнут передавать пульс — ничего нажимать не нужно.',
-              if (watchVersion != null) 'На часах версия $watchVersion.',
+              tr(
+                'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, часы сами начнут передавать пульс — ничего нажимать не нужно.',
+              ),
+              if (watchVersion != null)
+                tr('На часах версия {watchVersion}.', {
+                  'watchVersion': watchVersion,
+                }),
               if (differs && (caps?.protocol ?? 1) < watchProtocol)
-                'Пульс работает. Обновите IronRise на часах — появятся эффекты аур.'
+                tr(
+                  'Пульс работает. Обновите IronRise на часах — появятся эффекты аур.',
+                )
               else if (differs)
-                'На телефоне $appVersion — всё совместимо.',
+                tr('На телефоне {appVersion} — всё совместимо.', {
+                  'appVersion': appVersion,
+                }),
             ].join(' '),
           ),
           const SizedBox(height: 12),
           _DeviceCard(
             icon: LucideIcons.activity,
             title: 'Health Connect',
-            status: health.connected ? 'Подключён' : 'Не подключён',
+            status: health.connected ? tr('Подключён') : tr('Не подключён'),
             ok: health.connected,
-            text:
-                'Шаги, кардио и пульс из Samsung Health и других часов. '
-                'Пульс подтягивается и после тренировки.',
-            action: health.connected ? 'Открыть' : 'Подключить',
+            text: tr(
+              'Шаги, кардио и пульс из Samsung Health и других часов. Пульс подтягивается и после тренировки.',
+            ),
+            action: health.connected ? tr('Открыть') : tr('Подключить'),
             onTap: () => context.push('/profile/health'),
           ),
           const SizedBox(height: 12),
           _DeviceCard(
             icon: LucideIcons.heartPulse,
-            title: 'Датчик пульса по Bluetooth',
+            title: tr('Датчик пульса по Bluetooth'),
             status: bleLive
-                ? '${pulse.sensorName ?? 'Датчик'}: ${pulse.bpm ?? '—'} уд/мин'
-                : 'Нагрудный датчик или часы в режиме трансляции',
+                ? tr('{p1}: {p2} уд/мин', {
+                    'p1': pulse.sensorName ?? tr('Датчик'),
+                    'p2': pulse.bpm ?? '—',
+                  })
+                : tr('Нагрудный датчик или часы в режиме трансляции'),
             ok: bleLive,
-            text:
-                'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, '
-                'Polar, COROS, Amazfit и нагрудные датчики — инструкция для вашей модели внутри.',
-            action: bleLive ? 'Открыть' : 'Найти датчик',
+            text: tr(
+              'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, Polar, COROS, Amazfit и нагрудные датчики — инструкция для вашей модели внутри.',
+            ),
+            action: bleLive ? tr('Открыть') : tr('Найти датчик'),
             onTap: () => context.push('/profile/heart-rate'),
           ),
         ],
@@ -137,9 +150,12 @@ class _Intro extends StatelessWidget {
         Expanded(
           child: Text(
             tester
-                ? 'Пульс подтверждает тренировки. У вас, как у бета-тестера, '
-                      'тренировки без часов засчитываются полностью'
-                : 'Пульс подтверждает тренировки: без часов опыт засчитывается ×0,5',
+                ? tr(
+                    'Пульс подтверждает тренировки. У вас, как у бета-тестера, тренировки без часов засчитываются полностью',
+                  )
+                : tr(
+                    'Пульс подтверждает тренировки: без часов опыт засчитывается ×0,5',
+                  ),
             style: const TextStyle(
               fontSize: 14,
               color: AppColors.textSecondary,

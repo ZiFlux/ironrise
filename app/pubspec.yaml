@@ -16,7 +16,7 @@ publish_to: 'none' # Remove this line if you wish to publish to pub.dev
 # https://developer.apple.com/library/archive/documentation/General/Reference/InfoPlistKeyReference/Articles/CoreFoundationKeys.html
 # In Windows, build-name is used as the major, minor, and patch parts
 # of the product and file versions while build-number is used as the build suffix.
-version: 1.6.7+23
+version: 1.6.8+24
 
 environment:
   sdk: ^3.13.7
@@ -29,6 +29,9 @@ environment:
 # versions available, run `flutter pub outdated`.
 dependencies:
   flutter:
+    sdk: flutter
+  # Подписи системных виджетов (кнопки диалогов, календарь) на языке приложения.
+  flutter_localizations:
     sdk: flutter
 
   # The following adds the Cupertino Icons font to your application.
@@ -71,8 +74,8 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
-  # РЁСЂРёС„С‚С‹ РІ РїСЂРёР»РѕР¶РµРЅРёРё, Р° РЅРµ СЃ СЃРµСЂРІРµСЂР° Google: РѕРґРёРЅР°РєРѕРІС‹Рµ РІРµР·РґРµ Рё Р±РµР· СЃРµС‚Рё
-  # РїСЂРё РїРµСЂРІРѕРј Р·Р°РїСѓСЃРєРµ. Р›РёС†РµРЅР·РёСЏ OFL вЂ” assets/fonts/OFL-*.txt.
+  # Шрифты в приложении, а не с сервера Google: одинаковые везде и без сети
+  # при первом запуске. Лицензия OFL — assets/fonts/OFL-*.txt.
   fonts:
     - family: Inter
       fonts:
@@ -117,7 +120,7 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-# РРєРѕРЅРєР° РїСЂРёР»РѕР¶РµРЅРёСЏ: Р±Р»РёРЅ СЃ IR. РСЃС…РѕРґРЅРёРєРё РІ assets/icon, РїРµСЂРµСЃРѕР±СЂР°С‚СЊ: dart run flutter_launcher_icons
+# Иконка приложения: блин с IR. Исходники в assets/icon, пересобрать: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
   ios: false
