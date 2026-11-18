@@ -379,21 +379,26 @@ class _ItemTile extends StatelessWidget {
                   ),
                 )
               else
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      item.premium ? LucideIcons.crown : LucideIcons.coins,
-                      size: 12,
-                      color: item.premium ? _gold : AppColors.textSecondary,
-                    ),
-                    const SizedBox(width: 3),
-                    Text(
-                      '${item.price}',
-                      style: figureStyle(size: 12)
-                          .copyWith(color: locked ? AppColors.textMuted : null),
-                    ),
-                  ],
+                // Цена трёхзначная — при крупном шрифте ужимается, а не вылезает.
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        item.premium ? LucideIcons.crown : LucideIcons.coins,
+                        size: 12,
+                        color: item.premium ? _gold : AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${item.price}',
+                        style: figureStyle(
+                          size: 12,
+                        ).copyWith(color: locked ? AppColors.textMuted : null),
+                      ),
+                    ],
+                  ),
                 ),
             ],
           ),
