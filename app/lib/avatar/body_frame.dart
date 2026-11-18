@@ -271,8 +271,11 @@ class BodyFrame {
   late final double wristWidth = _pick(4.6, 3.9);
 
   // Голова крупнее (~8 голов роста вместо 9,5): герой читается на телефоне.
-  late final double headRx = _pick(18, 16.2);
-  late final double headRy = _pick(22, 21);
+  // Голова вытянутая и узкая; шире — у крупного телосложения и с
+  // прокачанными трапециями, уже — у худощавого.
+  late final double headRx =
+      _pick(16.4, 15.2) * (1 + fat * 0.07) + min(traps, 1.0) * 0.6;
+  late final double headRy = _pick(23, 22);
   static const headCenter = Offset(_centerX, 30);
 
   ArmGeometry _armFor(int side) {
