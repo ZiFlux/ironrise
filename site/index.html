@@ -1,214 +1,264 @@
 <!doctype html>
-<html lang="ru">
+<html lang="ru" data-type="software" data-radius="soft" data-buttons="solid" data-motion="on">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>IronRise — фитнес-RPG</title>
-  <meta name="description" content="Фитнес-RPG: тренируйся с часами — твой герой растёт вместе с тобой. Программы под уровень, проверка по пульсу, дуэли, лиги и сезоны.">
-  <meta property="og:title" content="IronRise — фитнес-RPG">
-  <meta property="og:description" content="Тренируйся с часами — твой герой растёт вместе с тобой.">
-  <meta property="og:image" content="img/home.png">
-  <link rel="icon" href="img/icon.png">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Unbounded:wght@500;700&display=swap" rel="stylesheet">
-  <style>
-    :root {
-      --bg: #0f0f10;
-      --surface: #19191b;
-      --raised: #232325;
-      --text: #ededed;
-      --text-2: #a1a1a6;
-      --muted: #85858b;
-      --accent: #c6ff3d;
-      --on-accent: #111;
-      --line: rgba(237, 237, 237, .08);
-      --radius: 16px;
-    }
-    * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-    body {
-      margin: 0;
-      background: var(--bg);
-      color: var(--text);
-      font: 16px/1.6 Inter, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-      -webkit-font-smoothing: antialiased;
-    }
-    a { color: var(--accent); }
-    .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
-    h1, h2, h3 { font-family: Unbounded, Inter, sans-serif; line-height: 1.15; margin: 0; }
-
-    header { position: sticky; top: 0; z-index: 10; background: rgba(15, 15, 16, .85); backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
-    header .wrap { display: flex; align-items: center; gap: 12px; height: 60px; }
-    .brand { display: flex; align-items: center; gap: 10px; font-family: Unbounded, sans-serif; font-weight: 700; color: var(--text); text-decoration: none; }
-    .brand img { width: 32px; height: 32px; border-radius: 8px; }
-    nav { margin-left: auto; display: flex; gap: 20px; }
-    nav a { color: var(--text-2); text-decoration: none; font-size: 14px; }
-    nav a:hover { color: var(--text); }
-    @media (max-width: 640px) { nav { display: none; } }
-
-    .btn { display: inline-flex; align-items: center; gap: 8px; padding: 14px 22px; border-radius: 999px; font-weight: 600; text-decoration: none; transition: transform .15s; }
-    .btn:hover { transform: translateY(-1px); }
-    .btn-primary { background: var(--accent); color: var(--on-accent); }
-    .btn-ghost { border: 1px solid var(--line); color: var(--text); }
-
-    .hero { padding: 64px 0 40px; display: grid; grid-template-columns: 1.1fr .9fr; gap: 40px; align-items: center; }
-    .hero h1 { font-size: clamp(34px, 6vw, 56px); }
-    .hero h1 span { color: var(--accent); }
-    .hero p { color: var(--text-2); font-size: 18px; margin: 20px 0 28px; max-width: 520px; }
-    .hero .actions { display: flex; flex-wrap: wrap; gap: 12px; }
-    .hero .note { color: var(--muted); font-size: 13px; margin-top: 14px; }
-    .phone { justify-self: center; width: min(300px, 80vw); border-radius: 32px; border: 1px solid var(--line); box-shadow: 0 30px 80px rgba(198, 255, 61, .12); }
-    @media (max-width: 820px) { .hero { grid-template-columns: 1fr; padding-top: 40px; } }
-
-    section { padding: 56px 0; border-top: 1px solid var(--line); }
-    section h2 { font-size: clamp(24px, 4vw, 34px); margin-bottom: 8px; }
-    section .lead { color: var(--text-2); margin: 0 0 28px; max-width: 640px; }
-
-    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    @media (max-width: 820px) { .grid { grid-template-columns: 1fr 1fr; } }
-    @media (max-width: 520px) { .grid { grid-template-columns: 1fr; } }
-    .card { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px; }
-    .card .ico { font-size: 26px; }
-    .card h3 { font-size: 17px; margin: 10px 0 6px; font-family: Inter, sans-serif; font-weight: 600; }
-    .card p { margin: 0; color: var(--text-2); font-size: 15px; }
-
-    .steps { counter-reset: s; display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
-    @media (max-width: 820px) { .steps { grid-template-columns: 1fr; } }
-    .step { background: var(--surface); border-radius: var(--radius); padding: 20px; border: 1px solid var(--line); }
-    .step::before { counter-increment: s; content: counter(s); display: inline-grid; place-items: center; width: 32px; height: 32px; border-radius: 50%; background: var(--accent); color: var(--on-accent); font-weight: 700; margin-bottom: 10px; }
-    .step p { margin: 0; color: var(--text-2); }
-
-    .shots { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
-    .shots figure { margin: 0; flex: 0 0 220px; scroll-snap-align: start; }
-    .shots img { width: 100%; border-radius: 20px; border: 1px solid var(--line); display: block; }
-    .shots figcaption { color: var(--muted); font-size: 13px; margin-top: 8px; text-align: center; }
-
-    .faq details { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 0 18px; margin-bottom: 10px; }
-    .faq summary { cursor: pointer; padding: 16px 0; font-weight: 600; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
-    .faq summary::-webkit-details-marker { display: none; }
-    .faq summary::after { content: "+"; color: var(--accent); font-size: 20px; line-height: 1; }
-    .faq details[open] summary::after { content: "−"; }
-    .faq details p { margin: 0 0 16px; color: var(--text-2); }
-
-    .road { display: grid; gap: 12px; }
-    .road .step { display: grid; grid-template-columns: 120px 1fr; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px 20px; }
-    .road .when { color: var(--accent); font-weight: 700; }
-    .road .done .when { color: var(--text-2); }
-    .road h3 { margin: 0 0 4px; font-size: 17px; }
-    .road p { margin: 0; color: var(--text-2); }
-    @media (max-width: 520px) { .road .step { grid-template-columns: 1fr; gap: 4px; } }
-    .cta { text-align: center; }
-    .cta p { color: var(--text-2); margin: 12px 0 24px; }
-
-    footer { border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--muted); font-size: 14px; }
-    footer .wrap { display: flex; flex-wrap: wrap; gap: 16px; justify-content: space-between; }
-    footer a { color: var(--text-2); }
-  </style>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="page-type" content="software">
+<meta name="site-kind" content="software">
+<title>IronRise — фитнес-RPG: герой растёт от твоих тренировок</title>
+<meta name="description" content="Каждый подход качает свою мышцу героя, пульс с часов подтверждает тренировку. Бои с выбором действий, лестница боссов, лиги и сезоны. Бесплатно, Android.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="IronRise — фитнес-RPG">
+<meta property="og:description" content="Тренируйся — твой герой растёт, сражается и побеждает.">
+<meta property="og:image" content="share.jpg">
+<meta name="theme-color" content="#120D10">
+<link rel="icon" href="img/icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Mona+Sans:wdth,wght@75..125,400..600&family=Geist+Mono:wght@400..500&family=Russo+One&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/system.css">
+<link rel="stylesheet" href="assets/ui/cards.css">
+<link rel="stylesheet" href="assets/motion/motion.css">
+<link rel="stylesheet" href="assets/backgrounds/backgrounds.css">
+<link rel="stylesheet" href="assets/layout/layout.css">
+<link rel="stylesheet" href="assets/icons/icon.css">
+<style>
+:root {
+  --p-bg: #120d10; --p-surface: #1e171a; --p-ink: #f3eaec; --p-muted: #b9a9ae;
+  --p-accent: #ff6b4a; --p-accent-ink: #120d10; --p-action: #ff6b4a; --p-action-ink: #120d10;
+  --p-inv-bg: #f3eaec; --p-inv-surface: #e1d8da; --p-inv-ink: #120d10; --p-inv-muted: #5d5659;
+  --p-inv-accent: #120d10; --p-inv-accent-ink: #f3eaec; --p-inv-action: #120d10; --p-inv-action-ink: #f3eaec;
+  --font-display: "Mona Sans", system-ui, sans-serif;
+  --font-text: "Mona Sans", system-ui, sans-serif;
+  --font-mono: "Geist Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --display-weight: 500;
+  --display-tracking: -0.03em;
+  --display-tracking-xl: -0.04em;
+  --display-stretch: 104%;
+  --ly-scale: 0.96;
+}
+</style>
+<script>document.documentElement.classList.add('m-enter');setTimeout(()=>document.documentElement.classList.add('m-enter-done'),700)</script>
+<script src="assets/backgrounds/backgrounds.js"></script>
+<script>document.documentElement.classList.add('mo-js');setTimeout(()=>document.documentElement.classList.add('mo-safe'),2500)</script>
+<link rel="modulepreload" href="assets/moments/moments.js">
+<link rel="modulepreload" href="assets/moments/lib.js">
+<link rel="modulepreload" href="assets/moments/counter-rolls/moment.js">
+<link rel="stylesheet" href="assets/moments/counter-rolls/moment.css">
+<!-- page CSS: the phone frame round the app's own screens, and the brand wordmark (Russo One — the app's display face) -->
+<style>
+  .nav__logo .brand, .closing .brand { font-family: "Russo One", var(--font-display); letter-spacing: 0; font-weight: 400; }
+  .device { position: relative; aspect-ratio: 720 / 1560; height: 100%; margin-inline: auto;
+    padding: 9px; border-radius: 38px; background: #0a0809; border: 1px solid #3a2c31; }
+  .device img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 30px; }
+  .stage-phone { height: 660px; display: flex; justify-content: center; align-items: center;
+    background: var(--surface); border-radius: var(--r-lg); padding: 28px 0; }
+  .ground-surface .stage-phone { background: var(--bg); }
+  .phones .stat { display: grid; gap: var(--s-4); }
+  .phones .stat .stage-phone { height: 470px; }
+  .phones .stat p { margin: 0; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: var(--s-5); }
+  .chip { padding: 10px 14px; border-radius: 999px; background: var(--bg); font-size: var(--t-small); }
+  .rows .rows__name small { display: block; font-weight: 400; color: var(--muted); font-size: var(--t-small); margin-top: 4px; }
+  .hero__media.hero__media--phone { display: flex; justify-content: center; align-items: center; background: var(--surface); padding: 32px 0; }
+  @media (max-width: 1023px) {
+    .stage-phone { height: 520px; margin-top: var(--s-7); }
+    .phones .stat .stage-phone { height: 380px; margin-top: 0; }
+  }
+  @media (max-width: 639px) {
+    .hero__media.hero__media--phone { padding: 12px 0; height: 300px; }
+    .hero__media--phone .device { height: 276px; }
+    .stage-phone { height: auto; padding: 20px 0; }
+    .stage-phone .device { height: auto; width: min(76vw, 330px); }
+    .phones .stat:nth-child(n+2) .stage-phone { display: none; }
+  }
+</style>
 </head>
 <body>
-  <header>
-    <div class="wrap">
-      <a class="brand" href="#"><img src="img/icon.png" alt="">IronRise</a>
-      <nav>
-        <a href="#features">Возможности</a>
-        <a href="#how">Как это работает</a>
-        <a href="#roadmap">Что дальше</a>
-        <a href="#faq">Вопросы</a>
-      </nav>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <div class="hero">
-      <div>
-        <h1>Тренируйся —<br>твой <span>герой</span> растёт</h1>
-        <p>IronRise — фитнес-RPG. Программа под твой уровень, проверка тренировок по пульсу с часов, дуэли, лиги и сезоны. Каждая мышца героя растёт от твоих настоящих упражнений.</p>
-        <div class="actions">
-          <a class="btn btn-primary" href="#beta">Стать бета-тестером</a>
-          <a class="btn btn-ghost" href="#features">Что внутри</a>
+<!-- type: software
+     deal: hero split, nav nav-centre, close close-type, footer footer-statement, rhythm surface-pairs, buttons solid, mark stack, grounds none
+     palette: the client's own («Закат» from the app: graphite ground, coral accent) via start.mjs brand; type mona
+     moments: counter-rolls (#ladder: 13 ступеней, 4 ауры, 6 лиг — числа из приложения) -->
+<header class="nav nav--centre">
+  <div class="wrap nav__bar">
+    <a class="skip-link" href="#top">К содержанию</a>
+    <a class="nav__logo" href="#top"><span class="mark" data-mark="stack" aria-hidden="true"></span><span class="brand">IronRise</span></a>
+    <nav class="nav__links" aria-label="Главное">
+      <div class="nav__item">
+        <a class="nav__link" href="#train">Возможности <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
+        <div class="nav__menu">
+          <div class="wrap grid">
+            <div class="menu-col span-3">
+              <p class="t-label">Тренировки</p>
+              <a href="#train">План по силам<span>Входная тренировка и прогрессия</span></a>
+              <a href="#progress">Прогресс<span>Нагрузка на каждую мышцу</span></a>
+            </div>
+            <div class="menu-col span-3">
+              <p class="t-label">Игра</p>
+              <a href="#fight">Бои<span>Шесть действий в раунде</span></a>
+              <a href="#ladder">Лестница и лиги<span>Боссы, ауры, сезоны</span></a>
+            </div>
+          </div>
         </div>
-        <div class="note">Android 8+ · часы Wear OS — по желанию · 18+</div>
       </div>
-      <img class="phone" src="img/home.png" alt="Главный экран IronRise: герой, неделя тренировок, уровни частей тела">
+      <div class="nav__item"><a class="nav__link" href="#fight">Бои</a></div>
+      <div class="nav__item"><a class="nav__link" href="#progress">Часы</a></div>
+      <div class="nav__item"><a class="nav__link" href="#roadmap">Что нового</a></div>
+      <div class="nav__item"><a class="nav__link" href="#faq">Вопросы</a></div>
+    </nav>
+    <div class="nav__actions">
+      <a class="btn btn--primary" href="#join">Вступить в бету</a>
     </div>
-
-    <section id="features">
-      <h2>Возможности</h2>
-      <p class="lead">Серьёзные тренировки внутри — игра снаружи.</p>
-      <div class="grid">
-        <div class="card"><div class="ico">🏋️</div><h3>Программа под тебя</h3><p>От 6 базовых упражнений для новичка до 8 сложных для опытного. Подходы разложены так, чтобы каждая мышца получила недельную норму.</p></div>
-        <div class="card"><div class="ico">❤️</div><h3>Честно по пульсу</h3><p>Часы Wear OS или датчик передают пульс, сервер сверяет его с подходами. Настоящая тренировка — полный опыт.</p></div>
-        <div class="card"><div class="ico">📈</div><h3>Анализ и прогноз</h3><p>Нагрузка на мышцы за неделю, плато, прогноз результатов на месяц и три. Вес и состав тела с часов.</p></div>
-        <div class="card"><div class="ico">⚔️</div><h3>Дуэли и ауры</h3><p>Бои с ботами и друзьями решает сила героя. Ауры — ярость, стойкость, скорость и фокус — прокачиваются особыми тренировками.</p></div>
-        <div class="card"><div class="ico">🏆</div><h3>Лиги и сезоны</h3><p>Недельные лиги с живыми игроками, сезоны по 8 недель и батлпас: 30 уровней наград и сезонная одежда.</p></div>
-        <div class="card"><div class="ico">🧢</div><h3>Стиль героя</h3><p>Оверсайз, шаровары, карго, маллет, вульфкат, цепи и банданы. Монеты — только за тренировки, силу не купить.</p></div>
+    <button class="nav__toggle" type="button" aria-expanded="false" aria-label="Меню"><svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M2 5h14M2 13h14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg></button>
+  </div>
+</header>
+<main id="top">
+  <section class="hero hero--split" data-enter aria-labelledby="hero-h">
+    <div class="wrap"><div class="hero-text grid hero__grid">
+      <div class="hero__text span-5">
+        <p class="hero__kicker"><span class="dot" aria-hidden="true"></span>Версия 1.6 · бесплатно · Android</p>
+        <h1 id="hero-h">Фитнес-RPG, где растёт твой герой</h1>
+        <p class="hero__lead">Каждый подход качает свою мышцу героя. Пульс с часов подтверждает тренировку: настоящая даёт полный опыт, без часов — половину.</p>
+        <div class="btn-row"><a class="btn btn--primary" href="#join">Вступить в бету</a><a class="btn btn--secondary" href="#train">Посмотреть тренировку</a></div>
       </div>
-    </section>
-
-    <section id="how">
-      <h2>Как это работает</h2>
-      <p class="lead">Три шага — и герой начинает расти.</p>
-      <div class="steps">
-        <div class="step"><p>Создай героя, укажи опыт и график — приложение соберёт программу под твой уровень.</p></div>
-        <div class="step"><p>Тренируйся по плану: записывай подходы, а часы передают пульс и подтверждают тренировку.</p></div>
-        <div class="step"><p>Смотри, как растёт герой, бери уровни сезона и побеждай в дуэлях и лигах.</p></div>
+      <div class="hero__media hero__media--phone span-6 start-7">
+        <div class="device"><img src="img/app/hero.jpg" alt="Главный экран IronRise: герой в майке, серия 24 дня, сила 1222, уровни шести частей тела" fetchpriority="high"></div>
       </div>
-    </section>
+    </div></div>
+  </section>
 
-    <section>
-      <h2>Экраны</h2>
-      <p class="lead">Так выглядит IronRise на телефоне.</p>
-      <div class="shots">
-        <figure><img src="img/home.png" alt="Главный экран" loading="lazy"><figcaption>Герой и неделя</figcaption></figure>
-        <figure><img src="img/workout.png" alt="Тренировка" loading="lazy"><figcaption>План тренировки</figcaption></figure>
-        <figure><img src="img/stats.png" alt="Статистика" loading="lazy"><figcaption>Анализ и прогноз</figcaption></figure>
-        <figure><img src="img/shop.png" alt="Магазин" loading="lazy"><figcaption>Стиль героя</figcaption></figure>
+  <section class="section" id="train" style="--hm: 2" aria-labelledby="train-h">
+    <div class="wrap grid">
+      <div class="span-6">
+        <div class="section-head">
+          <h2 id="train-h">Тренировка по плану. <span class="muted">Упражнения, веса и отдых уже подставлены.</span></h2>
+        </div>
+        <ul class="rows">
+          <li><span class="rows__name">Входная тренировка<small>Десять минут дома — и план по твоим силам</small></span></li>
+          <li><span class="rows__name">Двойная прогрессия<small>Вес растёт, когда готов, и откатывается, если тяжело</small></span></li>
+          <li><span class="rows__name">«Не получается?»<small>Техника и замена упражнения прямо в подходе</small></span></li>
+          <li><span class="rows__name">Зал, гантели или без инвентаря<small>Цель, стиль и любые 2–6 дней в неделю</small></span></li>
+        </ul>
       </div>
-    </section>
-
-    <section id="roadmap">
-      <h2>Что нового и что дальше</h2>
-      <p class="lead">Сейчас — версия 1.6. Обновления выходят каждые 1–2 недели.</p>
-      <div class="road">
-        <div class="step done"><div class="when">Ноябрь</div><div><h3>Версии 1.2–1.3 — уже вышли</h3><p>Входная тренировка и план по силам, несколько целей и свой путь у каждой, любой стиль и любые дни тренировок без перегрузки мышц, формат «Минимум» с днями восстановления, тренировки без интернета, инструкции для часов Huawei, Garmin, Polar, COROS и Amazfit, честный античит.</p></div></div>
-        <div class="step done"><div class="when">Ноябрь</div><div><h3>Версия 1.4 — вышла</h3><p>Шесть лиг и просмотр чужих, сезон 2 «Закалка» с 28 декабря, графики прогресса. Почти всё на экранах нажимается и объясняет себя. Ауры оцениваются по твоему личному пульсу и показывают технику каждого движения, а на часах горят вокруг пульса. Часы работают с любой версией приложения.</p></div></div>
-        <div class="step done"><div class="when">Ноябрь</div><div><h3>Версия 1.5 — вышла</h3><p>Лестница ботов: 13 ступеней от турника во дворе до Вершины, на каждой — босс. Кнопка «Не получается?» с техникой и заменой упражнения прямо в тренировке. Новые упражнения в зале — бабочка, разведение и сведение ног, ягодичный мост со штангой и другие. Новый экран друзей, фильтр ников.</p></div></div>
-        <div class="step done"><div class="when">Ноябрь</div><div><h3>Версия 1.6 — вышла</h3><p>Бой с выбором действий: в каждом раунде сам выбираешь удары, блоки и захваты. Новый стиль «Закат» (и ещё два на выбор), понятный интерфейс, герой крупнее на главной и прорисован заново — объём, мышцы, одежда садится по фигуре в любой позе. Ауры растут уровнями, мастер сам находит часы и подсказывает, как получить пульс. Английский язык.</p></div></div>
-        <div class="step"><div class="when">Декабрь</div><div><h3>Сезон 2 и полировка</h3><p>28 декабря стартует сезон 2 «Закалка». До него — доводка по отзывам бета-тестеров: баланс монет и боёв, анимации героя.</p></div></div>
-        <div class="step"><div class="when">Январь</div><div><h3>Публичный запуск</h3><p>19–20 января — IronRise для всех в RuStore. До этого — полировка по отзывам бета-тестеров.</p></div></div>
-        <div class="step"><div class="when">После</div><div><h3>Дальше</h3><p>Премиум с пробным месяцем, новый облик героя и анимации, ЛФК и сон, команды и Google Play.</p></div></div>
+      <div class="span-6 start-7">
+        <div class="stage-phone"><div class="device"><img src="img/app/workout.jpg" alt="Экран тренировки: разминка, приседания со штангой 30 кг на 8 повторов, жим лёжа, тяга в наклоне" loading="lazy"></div></div>
       </div>
-    </section>
+    </div>
+  </section>
 
-    <section id="faq" class="faq">
-      <h2>Частые вопросы</h2>
-      <p class="lead">Если не нашёл ответ — напиши нам.</p>
-      <details><summary>Нужны ли часы?</summary><p>Нет, тренироваться можно и без них. С часами Wear OS или датчиком пульса тренировка подтверждается и даёт полный опыт, без них — примерно половину. Тренировки аур засчитываются только с пульсом.</p></details>
-      <details><summary>Какие часы подходят?</summary><p>Galaxy Watch и другие часы на Wear OS 3 и новее — через наше приложение для часов. Остальные — через Health Connect, если их приложение пишет туда пульс. Подойдёт и Bluetooth-датчик пульса.</p></details>
-      <details><summary>Я никогда не тренировался. Мне подойдёт?</summary><p>Да. Новичок начинает с фазы «Старт»: 6 простых упражнений по 2 подхода, акцент на технике. Сложность растёт вместе с результатами.</p></details>
-      <details><summary>Можно тренироваться дома?</summary><p>Да. Выбери «Дома с гантелями» — программа подберёт упражнения без тренажёров.</p></details>
-      <details><summary>Почему тренировка дала мало опыта?</summary><p>Скорее всего, не было пульса или он не совпал с подходами. Ещё есть дневной потолок: одна силовая и одно кардио в день.</p></details>
-      <details><summary>Что такое ауры?</summary><p>Способность для дуэлей, срабатывает один раз за бой. Открываются через неделю тренировок с пульсом: так мы узнаём твой обычный пульс и оцениваем тренировку ауры честно, по тебе. Прокачиваются короткими тренировками по 8–10 минут — не чаще раза в день и двух раз в неделю.</p></details>
-      <details><summary>Что такое сезон и батлпас?</summary><p>Сезон длится 8 недель. За тренировки, дуэли и советы идут очки, за уровни — монеты, бустеры и сезонная одежда. С премиумом открывается вторая дорожка наград.</p></details>
-      <details><summary>Что такое лестница ботов?</summary><p>Бои с ботами по ступеням: сначала у всех слабые соперники, выше — всё сильнее. Победи трёх ботов ступени — откроется босс, победи босса — ступень выше. Первая победа над ботом даёт полную награду.</p></details>
-      <details><summary>Можно ли купить силу?</summary><p>Нет. За монеты и премиум — только внешний вид и удобства. Сила героя растёт только от тренировок.</p></details>
-      <details><summary>Что будет с моими данными о здоровье?</summary><p>Пульс и состав тела используются только с твоего отдельного согласия. Большая часть данных хранится на телефоне, на сервер уходит только нужное. Аккаунт и данные можно удалить в настройках.</p></details>
-      <details><summary>Нужен ли аккаунт?</summary><p>Тренироваться можно без него. Аккаунт нужен для дуэлей, лиг, сезона, друзей и чтобы прогресс не потерялся при смене телефона.</p></details>
-    </section>
+  <section class="section ground-surface" id="fight" style="--hm: 2" aria-labelledby="fight-h">
+    <div class="wrap grid">
+      <div class="span-6">
+        <div class="section-head">
+          <h2 id="fight-h">Бой с выбором действий. <span class="muted">Соперник выбирает одновременно с тобой.</span></h2>
+          <p>Пять действий на раунд из шести. Главное — сила героя, а при близких силах побеждает тот, кто угадал соперника.</p>
+        </div>
+        <p class="t-card">В корпус · По ногам · Мощный удар · Захват · Блок · Отход</p>
+      </div>
+      <div class="span-6 start-7">
+        <div class="stage-phone"><div class="device"><img src="img/app/fight.jpg" alt="Бой с боссом «Тренер Михалыч»: полоски здоровья, шесть кнопок действий и «В бой»" loading="lazy"></div></div>
+      </div>
+    </div>
+  </section>
 
-    <section id="beta" class="cta">
-      <h2>Стань бета-тестером</h2>
-      <p>IronRise сейчас в закрытой бете. Вступай в Telegram-канал — там новости, свежие сборки для телефона и часов и обратная связь.</p>
-      <a class="btn btn-primary" href="https://t.me/IronRiseApp" target="_blank" rel="noopener">Вступить в канал</a>
-      <a class="btn btn-ghost" href="mailto:y.shatov@internet.ru">Написать на почту</a>
-    </section>
-  </main>
-
-  <footer>
+  <section class="section ground-surface" id="ladder" aria-labelledby="ladder-h">
     <div class="wrap">
-      <span>© 2026 IronRise</span>
-      <span><a href="https://api.ironrise.ru/privacy">Политика конфиденциальности</a></span>
+      <div class="section-head">
+        <h2 id="ladder-h">Лестница, ауры и лиги. <span class="muted">Каждую неделю есть за что бороться.</span></h2>
+      </div>
+      <div class="grid phones" data-moment="counter-rolls">
+        <div class="stat span-4"><p class="t-stat">13</p><p class="t-small muted">ступеней лестницы, на каждой босс</p>
+          <div class="stage-phone"><div class="device"><img src="img/app/ladder.jpg" alt="Лестница: ступень «Школьный стадион», четыре бота и босс" loading="lazy"></div></div></div>
+        <div class="stat span-4"><p class="t-stat">4</p><p class="t-small muted">ауры для боя, у каждой пять уровней</p>
+          <div class="stage-phone"><div class="device"><img src="img/app/auras.jpg" alt="Ауры: ярость, стойкость и скорость с уровнями" loading="lazy"></div></div></div>
+        <div class="stat span-4"><p class="t-stat">6</p><p class="t-small muted">лиг — от Бронзовой до Чемпионской</p>
+          <div class="stage-phone"><div class="device"><img src="img/app/league.jpg" alt="Золотая лига: восемь игроков и очки за неделю" loading="lazy"></div></div></div>
+      </div>
     </div>
-  </footer>
+  </section>
+
+  <section class="section" id="progress" style="--hm: 2" aria-labelledby="progress-h">
+    <div class="wrap grid">
+      <div class="span-6">
+        <div class="section-head">
+          <h2 id="progress-h">Пульс с часов, прогресс в цифрах. <span class="muted">Мастер сам найдёт твои часы.</span></h2>
+        </div>
+        <ul class="rows">
+          <li><span class="rows__name">Galaxy Watch и Wear OS<small>Приложение IronRise на часах</small></span></li>
+          <li><span class="rows__name">Huawei, Garmin, Polar, COROS, Amazfit<small>Трансляция пульса по Bluetooth</small></span></li>
+          <li><span class="rows__name">Xiaomi и другие<small>Через Health Connect</small></span></li>
+          <li><span class="rows__name">Анализ на телефоне<small>Подходы на каждую мышцу против нормы, прогноз весов</small></span></li>
+        </ul>
+      </div>
+      <div class="span-6 start-7">
+        <div class="stage-phone"><div class="device"><img src="img/app/stats.jpg" alt="Статистика: 21 тренировка, 378 подходов, итог недели и нагрузка по мышцам" loading="lazy"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section ground-surface" id="roadmap" style="--hm: 2" aria-labelledby="roadmap-h">
+    <div class="wrap grid">
+      <div class="span-6">
+        <div class="section-head">
+          <h2 id="roadmap-h">Что нового и что дальше. <span class="muted">Обновления — каждые одну-две недели.</span></h2>
+        </div>
+        <ul class="rows">
+          <li><span class="rows__name">Версия 1.6 — вышла<small>Бой с выбором действий, новый облик героя и стиль, мастер часов, язык в настройках</small></span></li>
+          <li><span class="rows__name">Версии 1.2–1.5<small>Входная тренировка, цели и любые дни, лиги и сезоны, лестница с боссами</small></span></li>
+          <li><span class="rows__name">28 декабря<small>Сезон 2 «Закалка»: новая одежда и награды</small></span></li>
+          <li><span class="rows__name">19–20 января<small>IronRise для всех в RuStore</small></span></li>
+        </ul>
+      </div>
+      <div class="span-6 start-7">
+        <div class="stage-phone"><div class="device"><img src="img/app/season.jpg" alt="Сезон 2 «Закалка»: уровень 12 из 30 и награды по уровням" loading="lazy"></div></div>
+      </div>
+    </div>
+  </section>
+  <section class="section" id="faq" aria-labelledby="faq-h">
+    <div class="wrap grid">
+      <div class="span-5">
+        <div class="section-head">
+          <h2 id="faq-h">Вопросы. <span class="muted">Коротко о главном перед стартом.</span></h2>
+          <a class="link" href="mailto:y.shatov@internet.ru">Написать разработчику</a>
+        </div>
+      </div>
+      <div class="span-6 start-7 faq">
+        <div class="faq__item"><h3>Нужны ли часы?</h3><p>Нет. С часами или нагрудным датчиком тренировка подтверждается и даёт полный опыт, без них — примерно половину.</p></div>
+        <div class="faq__item"><h3>Мне подойдёт, если я не тренировался?</h3><p>Да. Входная тренировка покажет уровень, новичок начнёт с фазы «Старт»: 6 простых упражнений, акцент на технике.</p></div>
+        <div class="faq__item"><h3>Можно ли купить силу?</h3><p>Нет. Сила растёт только от тренировок. Монеты — за тренировки и бои, тратятся на одежду и причёски.</p></div>
+        <div class="faq__item"><h3>Что с данными о здоровье?</h3><p>Пульс используется только с отдельного согласия. Анализ считается на телефоне, аккаунт и данные удаляются в настройках.</p></div>
+        <div class="faq__item"><h3>Нужен ли аккаунт?</h3><p>Тренироваться можно без него. Аккаунт нужен для дуэлей с друзьями, лиг, сезона и чтобы прогресс не потерялся.</p></div>
+      </div>
+    </div>
+  </section>
+</main>
+<footer class="footer closing footer--statement" id="contact" aria-labelledby="close-h">
+  <div class="wrap">
+    <div class="closing__cta close--type">
+      <div class="section-head">
+        <h2 id="close-h">Вступить в бету IronRise</h2>
+        <p>Свежие сборки для телефона и часов и связь с разработчиком — в Telegram-канале.</p>
+      </div>
+      <a class="btn btn--primary btn--xl btn--wide" id="join" href="https://t.me/IronRiseApp" target="_blank" rel="noopener">Вступить в бету<svg class="m-arrow" viewBox="0 0 12 12" aria-hidden="true"><path class="m-arrow__stem" d="M1 6h8"/><path class="m-arrow__head" d="M4.5 2.5 8 6l-3.5 3.5"/></svg></a>
+    </div>
+    <div class="closing__links">
+      <div class="grid">
+        <div class="span-6 stack-4">
+          <a class="nav__logo" href="#top"><span class="mark" data-mark="stack" aria-hidden="true"></span><span class="brand">IronRise</span></a>
+          <p class="footer__lede">Фитнес-RPG: тренируйся — герой растёт.</p>
+        </div>
+        <div class="span-2 footer__col"><h3>Тренировки</h3><ul><li><a href="#train">План</a></li><li><a href="#progress">Прогресс</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Игра</h3><ul><li><a href="#fight">Бои</a></li><li><a href="#ladder">Лиги</a></li></ul></div>
+        <div class="span-2 footer__col"><h3>Помощь</h3><ul><li><a href="#roadmap">Что нового</a></li><li><a href="#faq">Вопросы</a></li><li><a href="mailto:y.shatov@internet.ru">Почта</a></li></ul></div>
+      </div>
+      <div class="footer__legal">
+        <span>&copy; 2026 IronRise &nbsp; <a href="https://api.ironrise.ru/privacy">Политика конфиденциальности</a></span>
+      </div>
+    </div>
+  </div>
+</footer>
+<script type="module" src="assets/system.js"></script>
+<script type="module" src="assets/motion/motion.js"></script>
+<script type="module" src="assets/layout/layout.js"></script>
 </body>
 </html>

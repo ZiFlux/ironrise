@@ -58,8 +58,11 @@ Invoke-Step 'копирование скриптов' { scp deploy/setup-server.
 # Сначала копия во временную папку: если scp оборвётся, живой сайт не пострадает.
 # Чистим содержимое, а не саму папку: Caddy смонтировал её и иначе видел бы удалённую.
 Invoke-Step 'папка для сайта' { ssh $Server 'rm -rf /opt/ironrise/site.new && mkdir -p /opt/ironrise/site.new /opt/ironrise/site' }
-Invoke-Step 'scp сайта' { scp -r ../site/. "${Server}:/opt/ironrise/site.new/" }
-Invoke-Step 'замена сайта' { ssh $Server 'find /opt/ironrise/site -mindepth 1 -delete && cp -a /opt/ironrise/site.new/. /opt/ironrise/site/ && rm -rf /opt/ironrise/site.new' }
+# Архивом и без служебного: проверки вёрстки (.taste-skill — профиль браузера, отчёты) и снимки.
+Invoke-Step 'архив сайта' { tar -C ../site --exclude=./.taste-skill --exclude=./shots --exclude=./.gitignore -czf site.tar.gz . }
+Invoke-Step 'scp сайта' { scp site.tar.gz "${Server}:/opt/ironrise/site.new/" }
+Invoke-Step 'замена сайта' { ssh $Server 'cd /opt/ironrise/site.new && tar -xzf site.tar.gz && rm site.tar.gz && find /opt/ironrise/site -mindepth 1 -delete && cp -a /opt/ironrise/site.new/. /opt/ironrise/site/ && rm -rf /opt/ironrise/site.new' }
+Remove-Item site.tar.gz
 Remove-Item release.tar.gz
 $firebase = Test-Path secrets/firebase.json
 if ($firebase) { Invoke-Step 'scp firebase' { scp secrets/firebase.json "${Server}:/opt/ironrise/secrets/firebase.json" } }
