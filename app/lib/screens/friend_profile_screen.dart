@@ -128,6 +128,9 @@ class _Body extends StatelessWidget {
               iconId: p.showcase.icon,
               background: p.showcase.background,
               size: 64,
+              look: p.look,
+              levels: p.levels,
+              name: p.nickname,
             ),
             const SizedBox(width: 14),
             Expanded(

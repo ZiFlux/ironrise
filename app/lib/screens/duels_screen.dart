@@ -23,7 +23,6 @@ import '../widgets/status_toast.dart';
 import '../widgets/guide.dart';
 import '../widgets/info_bubble.dart';
 import '../widgets/fighter_compare.dart';
-import '../game/game_config.dart';
 
 /// Дуэли (экран 9). С аккаунтом — боты дня и друзья через сервер,
 /// без аккаунта — локальные боты.
@@ -753,7 +752,7 @@ class _FighterCard extends StatelessWidget {
                     c,
                     title: 'Босс ступени',
                     text:
-                        'Откроется, когда победишь ещё ${_bots(winsLeft)} этой ступени. '
+                        'Откроется после ещё ${_wins(winsLeft)} на этой ступени. '
                         'Победа над боссом открывает следующую ступень.',
                   ),
                   child: const Padding(
@@ -873,7 +872,25 @@ class _ResultTag extends StatelessWidget {
 }
 
 /// «1 бота», «2 ботов».
-String _bots(int n) => n == 1 ? '1 бота' : '$n ботов';
+/// «1 победа», «2 победы», «5 побед».
+String _winsNom(int n) {
+  final m10 = n % 10, m100 = n % 100;
+  if (m10 == 1 && m100 != 11) return '$n победа';
+  if (m10 >= 2 && m10 <= 4 && (m100 < 12 || m100 > 14)) return '$n победы';
+  return '$n побед';
+}
+
+/// «после ещё 1 победы», «2 побед» — родительный падеж.
+String _wins(int n) {
+  final m10 = n % 10, m100 = n % 100;
+  return m10 == 1 && m100 != 11 ? '$n победы' : '$n побед';
+}
+
+/// «3 ботов» (побей … ботов) — винительный для одушевлённых.
+String _bots(int n) {
+  final m10 = n % 10, m100 = n % 100;
+  return m10 == 1 && m100 != 11 ? '$n бота' : '$n ботов';
+}
 
 /// Строка лестницы над соперниками: ступень, название и сколько до босса.
 class _LadderLine extends StatelessWidget {
@@ -889,7 +906,7 @@ class _LadderLine extends StatelessWidget {
     final left = (ladder.winsToBoss - ladder.wins).clamp(0, 9);
     final progress = ladder.bossUnlocked
         ? 'босс открыт'
-        : 'до босса — ${_bots(left)}';
+        : 'до босса — ${_winsNom(left)}';
     final next = ladder.nextName == null ? '' : ' — «${ladder.nextName}»';
     return Tappable(
       radius: 8,

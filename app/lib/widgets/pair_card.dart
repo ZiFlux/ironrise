@@ -114,6 +114,7 @@ class PairCard extends ConsumerWidget {
             iconId: pair.showcase.icon,
             background: pair.showcase.background,
             size: 40,
+            name: pair.nickname,
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -146,6 +147,7 @@ class PairCard extends ConsumerWidget {
                 iconId: pair.showcase.icon,
                 background: pair.showcase.background,
                 size: 40,
+                name: pair.nickname,
               ),
               const SizedBox(width: 12),
               Expanded(

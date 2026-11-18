@@ -195,6 +195,7 @@ class _FeedRowState extends ConsumerState<_FeedRow> {
             iconId: item.showcase.icon,
             background: item.showcase.background,
             size: 40,
+            name: item.nickname,
           ),
           const SizedBox(width: 12),
           Expanded(
