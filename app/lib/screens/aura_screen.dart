@@ -45,12 +45,28 @@ class AuraScreen extends ConsumerWidget {
         data: (a) => ListView(
           padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
           children: [
-            Text(
-              'Аура срабатывает в дуэли один раз: когда здоровья меньше 65 % '
-              'или осталось 3 раунда. Тренировок ауры на этой неделе: '
-              '${a.sessionsThisWeek} из ${a.perWeek}, не чаще раза в день — '
-              'отдельно от основных. Засчитываются с пульсом с часов или датчика.',
-              style: const TextStyle(color: AppColors.textSecondary),
+            // Главное — сколько тренировок ауры осталось на неделе; правила ниже мельче.
+            Row(
+              children: [
+                Text(
+                  '${a.sessionsThisWeek} из ${a.perWeek}',
+                  style: figureStyle(size: 20),
+                ),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'тренировок ауры на этой неделе',
+                    style: TextStyle(color: AppColors.textSecondary),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 6),
+            const Text(
+              'Вспыхивает раз за бой — при здоровье ниже 65 % или за 3 раунда '
+              'до конца. Тренировка — не чаще раза в день, с пульсом с часов '
+              'или датчика.',
+              style: TextStyle(fontSize: 13, color: AppColors.textMuted),
             ),
             const SizedBox(height: 16),
             if (!a.ready) ...[_LockedCard(info: a), const SizedBox(height: 12)],
@@ -133,6 +149,11 @@ class _LockedCard extends StatelessWidget {
     );
   }
 }
+
+final _compact = ButtonStyle(
+  minimumSize: const WidgetStatePropertyAll(Size(0, 40)),
+  padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 4)),
+);
 
 class _AuraCard extends ConsumerWidget {
   const _AuraCard({
@@ -232,23 +253,40 @@ class _AuraCard extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 4,
+                  // Две кнопки в ряд, ниже обычных — карточка не растягивается.
+                  Row(
                     children: [
-                      FilledButton.tonal(
-                        onPressed: canTrain
-                            ? () => context.push('/duels/auras/${kind.name}')
-                            : null,
-                        child: Text(canTrain ? 'Тренировка' : limitLabel),
-                      ),
-                      if (open)
-                        OutlinedButton(
-                          onPressed: () => ref
-                              .read(auraProvider.notifier)
-                              .equip(equipped ? null : kind),
-                          child: Text(equipped ? 'Снять' : 'Выбрать'),
+                      Expanded(
+                        flex: 3,
+                        child: FilledButton.tonal(
+                          style: _compact,
+                          onPressed: canTrain
+                              ? () => context.push('/duels/auras/${kind.name}')
+                              : null,
+                          child: Text(
+                            canTrain ? 'Тренировка' : limitLabel,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
+                      ),
+                      if (open) ...[
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: OutlinedButton(
+                            style: _compact,
+                            onPressed: () => ref
+                                .read(auraProvider.notifier)
+                                .equip(equipped ? null : kind),
+                            child: Text(
+                              equipped ? 'Снять' : 'Выбрать',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ],

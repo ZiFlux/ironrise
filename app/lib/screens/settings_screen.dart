@@ -47,7 +47,7 @@ class SettingsScreen extends ConsumerWidget {
     if (hero == null) return const SizedBox.shrink();
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Настройки и конфиденциальность')),
+      appBar: AppBar(title: const Text('Настройки')),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
         children: [
@@ -209,7 +209,12 @@ class _HeroInfo extends StatelessWidget {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: Row(
                     children: [
-                      Flexible(
+                      // Подпись — не шире 40% строки; значение прижато вправо,
+                      // а не к подписи (Flexible делил место поровну).
+                      ConstrainedBox(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.sizeOf(context).width * 0.4,
+                        ),
                         child: Text(
                           label,
                           maxLines: 2,

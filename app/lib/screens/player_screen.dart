@@ -24,9 +24,9 @@ import '../state/training_log.dart';
 import '../widgets/body_part_sheet.dart';
 import '../widgets/info_bubble.dart';
 import '../widgets/streak_sheet.dart';
-import '../widgets/level_plate.dart';
 import '../game/hero_milestones.dart';
 import '../widgets/status_toast.dart';
+import '../game/progression.dart';
 import '../theme.dart';
 import '../widgets/format.dart';
 import '../widgets/shop_entry.dart';
@@ -193,29 +193,23 @@ class _Showcase extends ConsumerWidget {
                 ),
         ),
         const SizedBox(height: 12),
-        // Значки силы: огонёк у того, что качается чаще всего.
-        for (final row in [
-          BodyPart.values.take(3),
-          BodyPart.values.skip(3),
-        ]) ...[
-          Row(
+        // Уровни частей тела списком: опыт до следующего уровня, отстающая и
+        // «горящая» части. Кольца есть на главной — здесь подробнее, а не повтор.
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
             children: [
-              for (final (i, part) in row.indexed) ...[
-                if (i > 0) const SizedBox(width: 8),
-                Expanded(
-                  child: LevelPlate(
-                    part: part,
-                    xp: hero.xp[part]!,
-                    lagging: hero.lagging.contains(part),
-                    hot: hot.contains(part),
-                    onTap: () => showBodyPartSheet(context, part),
-                  ),
+              for (final part in BodyPart.values)
+                _PartLevelRow(
+                  part: part,
+                  xp: hero.xp[part]!,
+                  lagging: hero.lagging.contains(part),
+                  hot: hot.contains(part),
+                  onTap: () => showBodyPartSheet(context, part),
                 ),
-              ],
             ],
           ),
-          const SizedBox(height: 8),
-        ],
+        ),
         const SizedBox(height: 20),
         _Stats(hero: hero, records: records),
         const SizedBox(height: 24),
@@ -1056,6 +1050,115 @@ class _MuscleRow extends StatelessWidget {
                 textAlign: TextAlign.right,
                 style: TextStyle(fontSize: 13, color: color),
               ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Строка уровня части тела: цвет части, уровень, полоса и опыт до следующего.
+class _PartLevelRow extends StatelessWidget {
+  const _PartLevelRow({
+    required this.part,
+    required this.xp,
+    required this.lagging,
+    required this.hot,
+    required this.onTap,
+  });
+
+  final BodyPart part;
+  final int xp;
+  final bool lagging;
+  final bool hot;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final level = Progression.levelFromXp(xp);
+    final into = xp % GameConfig.xpPerLevel;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        child: Row(
+          children: [
+            SizedBox(
+              width: 32,
+              child: Text('$level', style: figureStyle(size: 18)),
+            ),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Одна гибкая подпись (часть, огонёк, «отстаёт») — при крупном
+                  // шрифте переносится, а не вылезает за край.
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            text: part.label,
+                            children: [
+                              if (hot)
+                                WidgetSpan(
+                                  alignment: PlaceholderAlignment.middle,
+                                  child: Padding(
+                                    padding: const EdgeInsets.only(left: 6),
+                                    child: Icon(
+                                      LucideIcons.flame,
+                                      size: 14,
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.tertiary,
+                                    ),
+                                  ),
+                                ),
+                              if (lagging)
+                                const TextSpan(
+                                  text: '  отстаёт',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: AppColors.textMuted,
+                                  ),
+                                ),
+                            ],
+                          ),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontSize: 15),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '$into / ${GameConfig.xpPerLevel}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.textMuted,
+                          fontFeatures: [FontFeature.tabularFigures()],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(3),
+                    child: LinearProgressIndicator(
+                      value: into / GameConfig.xpPerLevel,
+                      minHeight: 6,
+                      color: part.color,
+                      backgroundColor: AppColors.raised,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 8),
+            const Icon(
+              LucideIcons.chevronRight,
+              size: 16,
+              color: AppColors.textMuted,
             ),
           ],
         ),

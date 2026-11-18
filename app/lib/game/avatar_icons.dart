@@ -133,8 +133,8 @@ class AvatarBadge extends StatelessWidget {
     final look = this.look;
     Widget face;
     if (look != null) {
-      // Голова и плечи: холст аватара 200×400, показываем верх 120×120 по центру.
-      final scale = inner / 120;
+      // Голова и плечи: холст аватара 200×400, показываем верх 84×84 по центру.
+      final scale = inner / 84;
       face = ClipOval(
         child: SizedBox.square(
           dimension: inner,
@@ -142,8 +142,8 @@ class AvatarBadge extends StatelessWidget {
             clipBehavior: Clip.hardEdge,
             children: [
               Positioned(
-                left: -40 * scale,
-                top: -2 * scale,
+                left: -58 * scale,
+                top: -4 * scale,
                 width: 200 * scale,
                 height: 400 * scale,
                 child: AvatarView(

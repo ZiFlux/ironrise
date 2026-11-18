@@ -31,6 +31,8 @@ import '../state/joint_state.dart';
 import '../state/providers.dart';
 import '../state/workout_state.dart';
 import '../state/training_log.dart';
+import '../state/aura_state.dart';
+import '../widgets/aura_flame.dart';
 import '../theme.dart';
 import '../widgets/every_second.dart';
 import '../widgets/exercise_picker.dart';
@@ -247,16 +249,22 @@ class _StartView extends ConsumerWidget {
         actions: [
           GuideTarget(
             id: 'workout.stats',
-            child: IconButton(
-              tooltip: 'Статистика',
+            child: TextButton.icon(
               onPressed: () => context.push('/workout/stats'),
-              icon: const Icon(LucideIcons.chartColumn, size: 20),
+              style: TextButton.styleFrom(
+                foregroundColor: AppColors.textSecondary,
+              ),
+              icon: const Icon(LucideIcons.chartColumn, size: 18),
+              label: const Text('Итоги'),
             ),
           ),
-          IconButton(
-            tooltip: 'База знаний',
+          TextButton.icon(
             onPressed: () => context.push('/workout/exercises'),
-            icon: const Icon(LucideIcons.bookOpen, size: 20),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.textSecondary,
+            ),
+            icon: const Icon(LucideIcons.bookOpen, size: 18),
+            label: const Text('Техника'),
           ),
           const SizedBox(width: 8),
         ],
@@ -278,9 +286,14 @@ class _StartView extends ConsumerWidget {
                         child: _DoneToday(log: log, next: today),
                       )
                     : restDay
-                    ? const SingleChildScrollView(
-                        physics: AlwaysScrollableScrollPhysics(),
-                        child: _RestDayCard(),
+                    ? SingleChildScrollView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        child: _RestDayCard(
+                          next: today.title,
+                          recoveryDay: recoveryDay,
+                          cardioDone: cardioDone,
+                          cardioActive: ref.watch(cardioProvider) != null,
+                        ),
                       )
                     : Align(
                         alignment: Alignment.topCenter,
@@ -433,28 +446,6 @@ class _StartView extends ConsumerWidget {
             ),
             const SizedBox(height: 16),
             if (restDay) ...[
-              if (recoveryDay && !cardioDone) ...[
-                FilledButton.icon(
-                  onPressed: () => context.push('/workout/recovery'),
-                  icon: const Icon(LucideIcons.leaf, size: 18),
-                  label: const Text('День восстановления · 15 минут'),
-                ),
-                const SizedBox(height: 8),
-              ] else
-                FilledButton.icon(
-                  onPressed: cardioDone && ref.watch(cardioProvider) == null
-                      ? null
-                      : () => context.push('/workout/cardio'),
-                  icon: const Icon(LucideIcons.heartPulse, size: 18),
-                  label: Text(
-                    ref.watch(cardioProvider) != null
-                        ? 'Продолжить кардио'
-                        : cardioDone
-                        ? 'Кардио сегодня уже было'
-                        : 'Лёгкое кардио',
-                  ),
-                ),
-              const SizedBox(height: 8),
               TextButton(
                 onPressed: () =>
                     ref.read(workoutProvider.notifier).startPlanned(today),
@@ -513,41 +504,219 @@ class _StartView extends ConsumerWidget {
   }
 }
 
-/// День отдыха по графику: зачем отдыхать и что можно сделать.
-class _RestDayCard extends StatelessWidget {
-  const _RestDayCard();
+/// День отдыха по графику: когда следующая силовая и что можно сделать сегодня.
+/// Сделанное — с галочкой, а не выключенной кнопкой.
+class _RestDayCard extends ConsumerWidget {
+  const _RestDayCard({
+    required this.next,
+    required this.recoveryDay,
+    required this.cardioDone,
+    required this.cardioActive,
+  });
+
+  /// Название следующей силовой по плану («Верх», «Всё тело А»).
+  final String next;
+  final bool recoveryDay;
+  final bool cardioDone;
+  final bool cardioActive;
+
+  static const _days = ['пн', 'вт', 'ср', 'чт', 'пт', 'сб', 'вс'];
 
   @override
-  Widget build(BuildContext context) => const Align(
-    alignment: Alignment.topCenter,
-    child: Card(
-      child: Padding(
-        padding: EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
+  Widget build(BuildContext context, WidgetRef ref) {
+    final hero = ref.watch(heroProvider);
+    final now = DateTime.now();
+    // Ближайший день загрузки после сегодня.
+    DateTime? nextDay;
+    for (var i = 1; i <= 7 && hero != null; i++) {
+      final d = now.add(Duration(days: i));
+      if (hero.isLoadDay(d)) {
+        nextDay = d;
+        break;
+      }
+    }
+    final when = nextDay == null
+        ? null
+        : nextDay.difference(DateTime(now.year, now.month, now.day)).inDays == 1
+        ? 'завтра'
+        : _days[nextDay.weekday - 1];
+    final aura = ref.watch(auraProvider).value;
+    final auraKind = aura?.equipped;
+    final auraOpen = auraKind != null && (aura?.canTrain ?? false);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Card(
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Icon(LucideIcons.moon, size: 20),
-                SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'По графику — отдых',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                Row(
+                  children: [
+                    const Icon(LucideIcons.moon, size: 20),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        recoveryDay ? 'День восстановления' : 'День отдыха',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Мышцы растут, пока ты восстанавливаешься. Серия не сгорит',
+                  style: TextStyle(color: AppColors.textSecondary, height: 1.4),
+                ),
+                if (when != null) ...[
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      const Icon(
+                        LucideIcons.dumbbell,
+                        size: 16,
+                        color: AppColors.textMuted,
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text.rich(
+                          TextSpan(
+                            text: 'Следующая силовая — ',
+                            children: [
+                              TextSpan(
+                                text: '$when · $next',
+                                style: const TextStyle(
+                                  color: AppColors.textPrimary,
+                                ),
+                              ),
+                            ],
+                          ),
+                          style: const TextStyle(
+                            fontSize: 14,
+                            color: AppColors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        const Padding(
+          padding: EdgeInsets.only(left: 4, bottom: 8),
+          child: Text(
+            'Что можно сегодня',
+            style: TextStyle(fontSize: 13, color: AppColors.textMuted),
+          ),
+        ),
+        Card(
+          clipBehavior: Clip.antiAlias,
+          child: Column(
+            children: [
+              if (recoveryDay)
+                _RestOption(
+                  icon: LucideIcons.leaf,
+                  title: 'Восстановление',
+                  subtitle: 'Растяжка, суставы, дыхание · 15 мин',
+                  done: cardioDone,
+                  onTap: () => context.push('/workout/recovery'),
+                ),
+              _RestOption(
+                icon: LucideIcons.heartPulse,
+                title: cardioActive ? 'Продолжить кардио' : 'Лёгкое кардио',
+                subtitle: 'Прогулка, велосипед, плавание · 20–30 мин',
+                done: cardioDone && !cardioActive,
+                onTap: () => context.push('/workout/cardio'),
+              ),
+              if (auraKind != null)
+                _RestOption(
+                  icon: auraIcon(auraKind),
+                  iconColor: auraKind.color,
+                  title: 'Тренировка ауры «${auraKind.label}»',
+                  subtitle: auraOpen
+                      ? 'Короткие интервалы · ~8 мин'
+                      : 'Сегодня уже была или лимит недели',
+                  done: !auraOpen,
+                  onTap: () => context.push('/duels/auras'),
+                ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+/// Строка «что можно сегодня»: иконка, что и сколько, стрелка или галочка.
+class _RestOption extends StatelessWidget {
+  const _RestOption({
+    required this.icon,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.done = false,
+    this.iconColor,
+  });
+
+  final IconData icon;
+  final String title;
+  final String subtitle;
+  final VoidCallback onTap;
+  final bool done;
+  final Color? iconColor;
+
+  @override
+  Widget build(BuildContext context) => InkWell(
+    onTap: done ? null : onTap,
+    child: Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      child: Row(
+        children: [
+          Icon(
+            icon,
+            size: 20,
+            color: done
+                ? AppColors.textMuted
+                : iconColor ?? Theme.of(context).colorScheme.primary,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  title,
+                  style: TextStyle(
+                    fontSize: 15,
+                    color: done
+                        ? AppColors.textSecondary
+                        : AppColors.textPrimary,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  subtitle,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    color: AppColors.textMuted,
                   ),
                 ),
               ],
             ),
-            SizedBox(height: 10),
-            Text(
-              'Мышцы растут, пока ты восстанавливаешься. Сегодня лучше лёгкое '
-              'кардио на 20–30 минут: прогулка, велосипед, плавание. Серия не '
-              'сгорит, а кардио тоже качает героя.',
-              style: TextStyle(color: AppColors.textSecondary, height: 1.4),
-            ),
-          ],
-        ),
+          ),
+          Icon(
+            done ? LucideIcons.circleCheck : LucideIcons.chevronRight,
+            size: 18,
+            color: done ? AppColors.success : AppColors.textMuted,
+          ),
+        ],
       ),
     ),
   );

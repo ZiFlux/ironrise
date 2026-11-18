@@ -48,15 +48,25 @@ class SeasonScreen extends ConsumerWidget {
   }
 }
 
-class _SeasonView extends ConsumerWidget {
+class _SeasonView extends ConsumerStatefulWidget {
   const _SeasonView({required this.season});
 
   final SeasonInfo season;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<_SeasonView> createState() => _SeasonViewState();
+}
+
+class _SeasonViewState extends ConsumerState<_SeasonView> {
+  /// Взятые уровни свёрнуты в одну строку — список начинается с текущего.
+  bool _showPast = false;
+
+  @override
+  Widget build(BuildContext context) {
     final accent = Theme.of(context).colorScheme.primary;
-    final s = season;
+    final s = widget.season;
+    final past = s.tiers.where((t) => t.level <= s.level).toList();
+    final ahead = s.tiers.where((t) => t.level > s.level).toList();
     final maxed = s.level >= s.maxLevel;
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 4, 16, 32),
@@ -158,7 +168,44 @@ class _SeasonView extends ConsumerWidget {
           ],
         ),
         const SizedBox(height: 8),
-        for (final t in s.tiers)
+        if (past.isNotEmpty)
+          Card(
+            margin: const EdgeInsets.only(bottom: 6),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: () => setState(() => _showPast = !_showPast),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                child: Row(
+                  children: [
+                    const Icon(
+                      LucideIcons.circleCheck,
+                      size: 18,
+                      color: AppColors.success,
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        'Получено: уровни 1–${past.last.level}',
+                        style: const TextStyle(color: AppColors.textSecondary),
+                      ),
+                    ),
+                    Icon(
+                      _showPast
+                          ? LucideIcons.chevronUp
+                          : LucideIcons.chevronDown,
+                      size: 18,
+                      color: AppColors.textMuted,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        for (final t in [if (_showPast) ...past, ...ahead])
           _TierRow(
             tier: t,
             reached: t.level <= s.level,

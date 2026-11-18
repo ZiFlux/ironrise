@@ -47,10 +47,11 @@ class TrainingStatsScreen extends ConsumerWidget {
               children: [
                 _Tiles(
                   items: [
-                    ('Тренировок', '${stats.workouts}'),
-                    ('За 30 дней', '${stats.inLastDays(30, now)}'),
+                    // Подписи короткие — четыре плитки в ряд без многоточий.
+                    ('Всего', '${stats.workouts}'),
+                    ('За месяц', '${stats.inLastDays(30, now)}'),
                     ('Подходов', '${records.sets}'),
-                    ('Поднято, т', (stats.volume / 1000).toStringAsFixed(1)),
+                    ('Поднято', '${(stats.volume / 1000).toStringAsFixed(1)} т'),
                   ],
                 ),
                 if (ref.watch(heroProvider) case final hero?)
