@@ -8,6 +8,7 @@ import '../state/health_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
 import '../theme.dart';
+import '../widgets/watch_wizard.dart';
 
 /// Версия приложения на телефоне («1.1.0»).
 final appVersionProvider = FutureProvider<String>(
@@ -56,6 +57,16 @@ class DevicesScreen extends ConsumerWidget {
         children: [
           _Intro(anyConnected: anyConnected, tester: tester),
           const SizedBox(height: 16),
+          // Сначала мастер: сам находит часы и ведёт к пульсу (п. 152).
+          const WatchWizard(),
+          const SizedBox(height: 24),
+          const Padding(
+            padding: EdgeInsets.only(left: 4, bottom: 8),
+            child: Text(
+              'Все способы',
+              style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
+            ),
+          ),
           _DeviceCard(
             icon: LucideIcons.watch,
             title: 'IronRise на часах',

@@ -90,6 +90,14 @@
     <queries>
         <!-- Установлен ли Health Connect -->
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- Приложения-компаньоны часов: по ним мастер узнаёт марку (п. 152) -->
+        <package android:name="com.samsung.android.app.watchmanager" />
+        <package android:name="com.huawei.health" />
+        <package android:name="com.garmin.android.apps.connectmobile" />
+        <package android:name="fi.polar.polarflow" />
+        <package android:name="com.huami.watch.hmwatchmanager" />
+        <package android:name="com.xiaomi.wearable" />
+        <package android:name="com.xiaomi.hm.health" />
         <intent>
             <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
         </intent>

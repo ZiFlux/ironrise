@@ -1,6 +1,11 @@
 package com.ironrise.ironrise
 
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothManager
 import android.content.ContentValues
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.media.AudioManager
 import android.media.ToneGenerator
 import android.provider.CalendarContract
@@ -8,6 +13,8 @@ import com.google.android.gms.wearable.MessageClient
 import com.google.android.gms.wearable.PutDataMapRequest
 import java.util.TimeZone
 import com.google.android.gms.wearable.Wearable
+import androidx.wear.remote.interactions.RemoteActivityHelper
+import androidx.core.content.ContextCompat
 import io.flutter.embedding.android.FlutterFragmentActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.EventChannel
@@ -35,6 +42,23 @@ class MainActivity : FlutterFragmentActivity() {
                         result,
                         (call.argument<String>("kind") ?: "").toByteArray(),
                     )
+                    else -> result.notImplemented()
+                }
+            }
+        // Мастер «Найти мои часы»: что уже сопряжено с телефоном (п. 152).
+        MethodChannel(flutterEngine.dartExecutor.binaryMessenger, DEVICES_CHANNEL)
+            .setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "bonded" -> result.success(bondedDevices())
+                    "wearNodes" -> Wearable.getNodeClient(applicationContext).connectedNodes
+                        .addOnSuccessListener { nodes ->
+                            result.success(nodes.map { mapOf("id" to it.id, "name" to it.displayName) })
+                        }
+                        .addOnFailureListener { result.success(emptyList<Any>()) }
+                    "installed" -> result.success(
+                        (call.argument<List<String>>("packages") ?: emptyList()).filter(::isInstalled),
+                    )
+                    "installOnWatch" -> installOnWatch(call.argument<String>("node"), result)
                     else -> result.notImplemented()
                 }
             }
@@ -133,6 +157,43 @@ class MainActivity : FlutterFragmentActivity() {
         return contentResolver.insert(CalendarContract.Events.CONTENT_URI, values) != null
     }
 
+    /**
+     * Сопряжённые с телефоном устройства: имя, адрес, тип (1 — обычный Bluetooth,
+     * 2 — BLE, 3 — оба). Без разрешения «Устройства поблизости» — пустой список.
+     */
+    private fun bondedDevices(): List<Map<String, Any>> = try {
+        val adapter = getSystemService(BluetoothManager::class.java)?.adapter
+        adapter?.bondedDevices.orEmpty().map { d: BluetoothDevice ->
+            mapOf("name" to (d.name ?: ""), "address" to d.address, "type" to d.type)
+        }
+    } catch (e: SecurityException) {
+        emptyList()
+    }
+
+    private fun isInstalled(pkg: String): Boolean = try {
+        packageManager.getPackageInfo(pkg, 0)
+        true
+    } catch (e: PackageManager.NameNotFoundException) {
+        false
+    }
+
+    /** Открыть страницу IronRise в магазине прямо на часах (Wear OS). */
+    private fun installOnWatch(node: String?, result: MethodChannel.Result) {
+        val intent = Intent(Intent.ACTION_VIEW)
+            .addCategory(Intent.CATEGORY_BROWSABLE)
+            .setData(Uri.parse("market://details?id=com.ironrise.ironrise"))
+        try {
+            val future = RemoteActivityHelper(applicationContext).startRemoteActivity(intent, node)
+            future.addListener({
+                // Ошибка (часы не ответили, нет магазина) приходит из get().
+                val ok = try { future.get(); true } catch (e: Exception) { false }
+                result.success(ok)
+            }, ContextCompat.getMainExecutor(this))
+        } catch (e: Exception) {
+            result.success(false)
+        }
+    }
+
     /** Команда приложению на часах. Отвечает true, если хоть одни часы на связи. */
     private fun sendToWatch(path: String, result: MethodChannel.Result, body: ByteArray = ByteArray(0)) {
         val messages = Wearable.getMessageClient(applicationContext)
@@ -197,6 +258,7 @@ class MainActivity : FlutterFragmentActivity() {
         const val CALENDAR_CHANNEL = "ironrise/calendar"
         const val SOUND_CHANNEL = "ironrise/sound"
         const val SUMMARY_CHANNEL = "ironrise/summary"
+        const val DEVICES_CHANNEL = "ironrise/devices"
         const val PATH_SUMMARY = "/ironrise/summary"
     }
 }

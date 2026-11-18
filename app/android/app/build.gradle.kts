@@ -79,4 +79,6 @@ flutter {
 dependencies {
     // Пульс с приложения IronRise на Wear OS часах (watch/wearos).
     implementation("com.google.android.gms:play-services-wearable:19.0.0")
+    // Открыть страницу приложения в магазине на часах (мастер подключения).
+    implementation("androidx.wear:wear-remote-interactions:1.0.0")
 }

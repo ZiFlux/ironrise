@@ -1,3 +1,6 @@
+import 'dart:io';
+
+import 'state/watch_discovery.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -303,6 +306,27 @@ class _Shell extends ConsumerStatefulWidget {
 
 class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
   int _visit = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    // Часы подключены к телефону, а пульс в IronRise не настроен — предложить
+    // один раз на каждые часы (п. 152). Без запроса разрешений.
+    if (!Platform.isAndroid) return;
+    Future.delayed(const Duration(seconds: 6), () async {
+      if (!mounted) return;
+      final watch = await ref
+          .read(watchDiscoveryProvider.notifier)
+          .newWatchToSuggest();
+      if (watch == null || !mounted) return;
+      showStatus(
+        'Нашли «${watch.name}» — подключить пульс?',
+        actionLabel: 'Да',
+        onAction: () => ref.read(routerProvider).push('/profile/devices'),
+        duration: const Duration(seconds: 8),
+      );
+    });
+  }
 
   /// Натяжение: откуда начали и насколько тянем сейчас (0 — покой).
   Offset? _pullFrom;

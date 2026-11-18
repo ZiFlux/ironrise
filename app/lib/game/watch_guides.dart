@@ -2,6 +2,8 @@
 /// трансляция пульса по Bluetooth или Health Connect. Пути меню — по официальным
 /// инструкциям производителей (16.11.2026); у моделей и прошивок они могут отличаться.
 typedef WatchGuide = ({
+  /// Ключ марки для мастера подключения (watch_detect.dart).
+  String id,
   String brand,
   String models,
 
@@ -15,6 +17,7 @@ typedef WatchGuide = ({
 
 const watchGuides = <WatchGuide>[
   (
+    id: 'huawei',
     brand: 'Huawei, Honor',
     models: 'Watch GT, Watch Fit, Band',
     live: true,
@@ -28,6 +31,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'garmin',
     brand: 'Garmin',
     models: 'Forerunner, Venu, fēnix, Vivoactive',
     live: true,
@@ -40,6 +44,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'polar',
     brand: 'Polar',
     models: 'Ignite, Unite, Pacer, Vantage',
     live: true,
@@ -52,6 +57,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'coros',
     brand: 'COROS',
     models: 'Pace, Apex, Vertix',
     live: true,
@@ -62,6 +68,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'amazfit',
     brand: 'Amazfit',
     models: 'на Zepp OS 3 и новее',
     live: true,
@@ -75,6 +82,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'xiaomi',
     brand: 'Xiaomi, Redmi',
     models: 'Smart Band 8 и новее, Watch',
     live: false,
@@ -86,6 +94,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'wearos',
     brand: 'Samsung Galaxy Watch',
     models: 'и другие часы на Wear OS',
     live: true,
@@ -96,6 +105,7 @@ const watchGuides = <WatchGuide>[
     ],
   ),
   (
+    id: 'strap',
     brand: 'Нагрудный датчик',
     models: 'Polar H9/H10, Garmin HRM, COROS и другие',
     live: true,
@@ -107,3 +117,6 @@ const watchGuides = <WatchGuide>[
     ],
   ),
 ];
+
+WatchGuide? watchGuideById(String id) =>
+    watchGuides.where((g) => g.id == id).firstOrNull;
