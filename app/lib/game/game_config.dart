@@ -47,8 +47,8 @@ class GameConfig {
   static const int tipCoins = 10;
 
   /// Советы дня: монеты за каждый верный ответ и бонус за все верные (как на сервере).
-  static const int tipCoinsPerAnswer = 4;
-  static const int tipQuizBonus = 10;
+  static const int tipCoinsPerAnswer = 3;
+  static const int tipQuizBonus = 5;
 
   // ---- Антифрод (ТЗ 4.4). Пороги калибруются на реальных данных беты. ----
 

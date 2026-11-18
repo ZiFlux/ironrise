@@ -6,6 +6,7 @@ import { mondayOf } from '../game/bots';
 import { GameConfig as C } from '../game/config';
 import { FighterSnapshot, simulateDuel } from '../game/duel';
 import { Prisma } from '../generated/prisma/client';
+import { capDuelCoins, duelCoinsToday } from '../economy/duel-coins';
 import { EconomyService } from '../economy/economy.service';
 import { HeroService, HeroState } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
@@ -185,8 +186,9 @@ export class SocialService {
     userId: string,
     args: { friendId: string; attackerName: string; won: boolean; duelId: string },
   ) {
-    const coins = args.won ? C.duelWinCoins : C.duelLossCoins;
-    await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: args.duelId } });
+    // Бои с друзьями — под дневным лимитом монет за дуэли.
+    const coins = capDuelCoins(args.won ? C.duelWinCoins : C.duelLossCoins, await duelCoinsToday(tx, userId));
+    if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: args.duelId } });
     this.push.notify(args.friendId, {
       type: 'attacked',
       title: args.won ? 'На тебя напали и победили' : 'Ты отбился!',

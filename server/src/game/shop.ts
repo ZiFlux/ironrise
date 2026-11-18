@@ -1,24 +1,25 @@
 import { SEASON_ITEMS } from './season';
 import { STREAK_ITEMS } from './streak-rewards';
 /**
- * Цены косметики. Совпадают с app/lib/game/shop.dart; клиент показывает цены,
+ * Цены косметики (×2,5 с 18.11.2026: магазин скупался за две недели).
+ * Совпадают с app/lib/game/shop.dart; клиент показывает цены,
  * но списывает монеты только сервер по этой таблице. 0 — есть у всех с начала.
  */
 export const SHOP_PRICES: Readonly<Record<string, number>> = {
-  hair_short: 0, hair_buzz: 40, hair_curly: 60, hair_manbun: 80,
-  hair_bob: 0, hair_ponytail: 40, hair_bun: 60, hair_long: 80,
-  hair_spiky: 70, hair_mane: 90, hair_mullet: 80,
-  hc_black: 0, hc_brown: 30, hc_blond: 30, hc_red: 40, hc_platinum: 60, hc_pink: 70, hc_blue: 70,
-  hc_white: 70, hc_silver: 60, hc_cherry: 70,
-  top_none: 0, top_bra: 0, top_tank: 50, top_tee: 40, top_vneck: 50, top_oversize: 60, top_crop: 50,
-  tc_graphite: 0, tc_white: 30, tc_cream: 30, tc_sage: 40, tc_lime: 40, tc_ember: 40, tc_ice: 40, tc_navy: 40, tc_red: 40,
-  bottom_shorts: 0, bottom_joggers: 50, bottom_leggings: 50, bottom_wide_shorts: 60, bottom_harem: 80, bottom_cargo: 70,
-  bc_graphite: 0, bc_navy: 30, bc_olive: 30, bc_grey: 30, bc_black: 30, bc_white: 30, bc_denim: 40, bc_sand: 30,
-  sneakers_none: 0, sh_sneakers: 0, sh_slippers: 60, sh_chunky: 90, sn_white: 40, sn_black: 40, sn_lime: 70, sn_red: 70, sn_blue: 70,
-  acc_headband: 50, acc_wristbands: 50, acc_belt: 90, acc_knee_sleeves: 70, acc_cap: 80,
-  acc_glasses: 60, acc_headphones: 100, acc_bandana: 60, acc_silver_chain: 90,
+  hair_short: 0, hair_buzz: 100, hair_curly: 150, hair_manbun: 200,
+  hair_bob: 0, hair_ponytail: 100, hair_bun: 150, hair_long: 200,
+  hair_spiky: 175, hair_mane: 225, hair_mullet: 200,
+  hc_black: 0, hc_brown: 75, hc_blond: 75, hc_red: 100, hc_platinum: 150, hc_pink: 175, hc_blue: 175,
+  hc_white: 175, hc_silver: 150, hc_cherry: 175,
+  top_none: 0, top_bra: 0, top_tank: 125, top_tee: 100, top_vneck: 125, top_oversize: 150, top_crop: 125,
+  tc_graphite: 0, tc_white: 75, tc_cream: 75, tc_sage: 100, tc_lime: 100, tc_ember: 100, tc_ice: 100, tc_navy: 100, tc_red: 100,
+  bottom_shorts: 0, bottom_joggers: 125, bottom_leggings: 125, bottom_wide_shorts: 150, bottom_harem: 200, bottom_cargo: 175,
+  bc_graphite: 0, bc_navy: 75, bc_olive: 75, bc_grey: 75, bc_black: 75, bc_white: 75, bc_denim: 100, bc_sand: 75,
+  sneakers_none: 0, sh_sneakers: 0, sh_slippers: 150, sh_chunky: 225, sn_white: 100, sn_black: 100, sn_lime: 175, sn_red: 175, sn_blue: 175,
+  acc_headband: 125, acc_wristbands: 125, acc_belt: 225, acc_knee_sleeves: 175, acc_cap: 200,
+  acc_glasses: 150, acc_headphones: 250, acc_bandana: 150, acc_silver_chain: 225,
   // Костюм клоуна: только покупка, в редакторе старта его нет (COSTUME_ITEMS).
-  hair_clown: 120, top_clown: 150, acc_clown_nose: 60,
+  hair_clown: 300, top_clown: 375, acc_clown_nose: 150,
   skin_iron: 0, skin_light: 0, skin_tan: 0, skin_brown: 0, skin_dark: 0,
   // Золотой комплект — бесплатно всем с 16.11 (п. 111; раньше премиум за монеты).
   tc_gold: 0, sn_gold: 0, acc_gold_chain: 0,

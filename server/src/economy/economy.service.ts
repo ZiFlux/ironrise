@@ -26,6 +26,7 @@ import {
   nicknameKey,
 } from '../game/nickname';
 import { Prisma } from '../generated/prisma/client';
+import { capDuelCoins, duelCoinsToday } from './duel-coins';
 import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
 import { SEASON_POINTS } from '../game/season';
@@ -427,7 +428,13 @@ export class EconomyService {
     // Бот не своей ступени (ступень сменилась, пока шёл бой) — без отметки и подъёма.
     const ofTier = args.botId.startsWith(`lad_${ladder.tier}_`);
     const firstWin = args.won && ofTier && !beaten.includes(args.botId);
-    const coins = ladderCoins({ tier: ladder.tier, won: args.won, firstWin, boss });
+    // Первая победа — прогресс лестницы, без лимита; остальное — под дневным лимитом.
+    const coins = firstWin
+      ? ladderCoins({ tier: ladder.tier, won: args.won, firstWin, boss })
+      : capDuelCoins(
+          ladderCoins({ tier: ladder.tier, won: args.won, firstWin, boss }),
+          await duelCoinsToday(tx, userId),
+        );
     let tierUp = false;
     if (firstWin) {
       tierUp = boss && ladder.tier < LADDER.length - 1;
@@ -439,7 +446,11 @@ export class EconomyService {
         },
       });
     }
-    if (coins > 0) await tx.walletTx.create({ data: { userId, amount: coins, reason: 'duel', refId: args.duelId } });
+    if (coins > 0) {
+      await tx.walletTx.create({
+        data: { userId, amount: coins, reason: firstWin ? 'duel_win' : 'duel', refId: args.duelId },
+      });
+    }
     // Повторный бой за сутки очков сезона не даёт — иначе их фармят у одного бота.
     if (!args.repeat) {
       await addSeasonPoints(tx, userId, args.won ? SEASON_POINTS.duelWin : SEASON_POINTS.duelLoss);

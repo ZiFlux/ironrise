@@ -45,7 +45,7 @@ export const BOSS_UNLOCK_WINS = 3;
 const RATIOS = [0.75, 0.9, 1.0, 1.1];
 const BOSS_RATIO = 1.25;
 /** Повторная победа над уже побеждённым — такая доля монет (п. 88). */
-export const LADDER_REPEAT_FACTOR = 0.3;
+export const LADDER_REPEAT_FACTOR = 0.2;
 
 export const ladderBotId = (tier: number, i: number) => `lad_${tier}_${i}`;
 export const ladderBossId = (tier: number) => `lad_${tier}_boss`;
@@ -119,7 +119,7 @@ export const tierWins = (tier: number, beaten: readonly string[]) =>
 
 export const bossUnlocked = (tier: number, beaten: readonly string[]) => tierWins(tier, beaten) >= BOSS_UNLOCK_WINS;
 
-/** Монеты за бой на ступени: выше — щедрее; повторная победа — 30 %; босс — бонус. */
+/** Монеты за бой на ступени: выше — щедрее; повторная победа — 20 %; босс — бонус. */
 export const ladderCoins = (args: { tier: number; won: boolean; firstWin: boolean; boss: boolean }) => {
   const scale = 1 + 0.15 * args.tier;
   if (!args.won) return Math.round(C.duelLossCoins * scale);

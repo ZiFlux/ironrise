@@ -32,8 +32,8 @@ export const GameConfig = {
   /** Монеты за правильный ответ на вопрос «Совета дня», раз в день. */
   tipCoins: 10,
   /** Советы дня: монеты за каждый верный ответ подборки и бонус, если верны все. */
-  tipCoinsPerAnswer: 4,
-  tipQuizBonus: 10,
+  tipCoinsPerAnswer: 3,
+  tipQuizBonus: 5,
   /** Больше советов в подборке не бывает. */
   tipsPerDayMax: 5,
   /** Монеты за создание аккаунта — один раз. */
@@ -72,6 +72,11 @@ export const GameConfig = {
   duelHealMax: 0.09,
   duelWinCoins: 15,
   duelLossCoins: 3,
+  /**
+   * Не больше стольких монет в сутки за повторные бои, проигрыши и бои
+   * с друзьями; первая победа над ботом или боссом — сверх лимита.
+   */
+  duelCoinsPerDay: 60,
 
   // Кардио
   cardioXpPerMinute: 6,

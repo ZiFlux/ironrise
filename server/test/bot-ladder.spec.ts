@@ -45,10 +45,10 @@ describe('лестница ботов (п. 88)', () => {
     expect(bossUnlocked(2, [...beaten, ladderBotId(2, 3)])).toBe(true);
   });
 
-  it('монеты: первая победа полностью, повтор — 30 %, босс щедрее, выше — больше', () => {
+  it('монеты: первая победа полностью, повтор — 20 %, босс щедрее, выше — больше', () => {
     const first = ladderCoins({ tier: 0, won: true, firstWin: true, boss: false });
     const again = ladderCoins({ tier: 0, won: true, firstWin: false, boss: false });
-    expect(again).toBe(Math.round(first * 0.3));
+    expect(again).toBe(Math.round(first * 0.2));
     expect(ladderCoins({ tier: 0, won: true, firstWin: true, boss: true })).toBeGreaterThan(first);
     expect(ladderCoins({ tier: 6, won: true, firstWin: true, boss: false })).toBeGreaterThan(first);
   });
@@ -56,5 +56,18 @@ describe('лестница ботов (п. 88)', () => {
   it('из профиля читаются только id лестницы', () => {
     expect(readBeaten(['lad_0_1', 'bot_1', 5, null])).toEqual(['lad_0_1']);
     expect(readBeaten('мусор')).toEqual([]);
+  });
+});
+
+describe('дневной лимит монет за дуэли', () => {
+  it('повторы и проигрыши — не больше лимита в сутки, остаток не уходит в минус', () => {
+    // Импорт здесь: функция без Nest, только конфиг.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { capDuelCoins } = require('../src/economy/duel-coins');
+    const { GameConfig } = require('../src/game/config');
+    expect(capDuelCoins(15, 0)).toBe(15);
+    expect(capDuelCoins(15, GameConfig.duelCoinsPerDay - 5)).toBe(5);
+    expect(capDuelCoins(15, GameConfig.duelCoinsPerDay)).toBe(0);
+    expect(capDuelCoins(15, GameConfig.duelCoinsPerDay + 30)).toBe(0);
   });
 });
