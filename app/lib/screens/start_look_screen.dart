@@ -254,9 +254,7 @@ class _StartLookScreenState extends ConsumerState<StartLookScreen> {
                       scrollDirection: Axis.horizontal,
                       padding: const EdgeInsets.symmetric(horizontal: 16),
                       children: [
-                        for (final s in _Section.values.where(
-                          (s) => s.slot?.shownFor(look.sex) ?? true,
-                        ))
+                        for (final s in _Section.values)
                           Padding(
                             padding: const EdgeInsets.only(right: 8),
                             child: ChoiceChip(

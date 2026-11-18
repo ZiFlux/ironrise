@@ -18,10 +18,6 @@ enum ShopSlot {
   const ShopSlot(this.label);
   final String label;
 
-  /// Видно на герое этого пола. Герой без причёски, героиня — с причёской:
-  /// у героя вкладки волос в магазине, гардеробе и на «Старте» скрыты.
-  bool shownFor(AvatarSex sex) =>
-      sex == AvatarSex.female || (this != hair && this != hairColor);
 }
 
 /// Косметика за монеты (ТЗ: магазин, PLAN 5.3 — 10–15 предметов на старте).

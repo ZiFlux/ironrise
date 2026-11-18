@@ -48,8 +48,7 @@ class AvatarPainter extends CustomPainter {
       ..scale(scale);
 
     _paintFloorShadow(canvas);
-    // Причёска — только у героини (герой без волос).
-    if (look.isFemale) _fillSolid(canvas, layers.hairBack, look.hairColor);
+    _fillSolid(canvas, layers.hairBack, look.hairColor);
     // Как у человека в анфас: плечо (бицепс, трицепс) — за корпусом, край
     // груди и широчайших поверх; предплечье и кисть — перед корпусом и
     // одеждой (кулаки на поясе, руки перед телом в позах); дельта сверху
@@ -476,6 +475,82 @@ class AvatarPainter extends CustomPainter {
     }
   }
 
+  /// Объём головы без черт лица: надбровная дуга, блики на скуле и
+  /// подбородке, тень под скулой и вдоль челюсти со стороны тени.
+  void _paintHeadForm(Canvas canvas, Path head) {
+    final c = BodyFrame.headCenter;
+    final rx = frame.headRx, ry = frame.headRy;
+    final f = look.isFemale;
+    final shade = Color.lerp(look.skin.shade, Colors.black, 0.35)!;
+    Paint soft(Color color, double a, double blur) => Paint()
+      ..color = color.withValues(alpha: a)
+      ..maskFilter = MaskFilter.blur(BlurStyle.normal, blur);
+    canvas
+      ..save()
+      ..clipPath(head);
+    // Надбровная дуга: светлая полоса и мягкая тень под ней.
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: c + Offset(0, -ry * 0.12),
+        width: rx * 1.5,
+        height: ry * 0.16,
+      ),
+      soft(Colors.white, f ? 0.06 : 0.1, 1.6),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: c + Offset(0, ry * 0.04),
+        width: rx * 1.35,
+        height: ry * 0.14,
+      ),
+      soft(shade, f ? 0.12 : 0.2, 2),
+    );
+    for (final s in const [-1.0, 1.0]) {
+      // Скула: блик сверху (ярче к свету), тень под ней.
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + Offset(s * rx * 0.6, ry * 0.14),
+          width: rx * 0.5,
+          height: ry * 0.2,
+        ),
+        soft(Colors.white, s < 0 ? 0.12 : 0.05, 2),
+      );
+      canvas.drawOval(
+        Rect.fromCenter(
+          center: c + Offset(s * rx * 0.66, ry * 0.42),
+          width: rx * 0.42,
+          height: ry * 0.26,
+        ),
+        soft(shade, (s < 0 ? 0.1 : 0.22) * (f ? 0.6 : 1), 2.4),
+      );
+    }
+    // Челюсть со стороны тени и подбородок с бликом.
+    canvas.drawPath(
+      Path()
+        ..moveTo(c.dx + rx * 0.95, c.dy + ry * 0.35)
+        ..quadraticBezierTo(
+          c.dx + rx * 0.85,
+          c.dy + ry * 0.8,
+          c.dx + rx * 0.2,
+          c.dy + ry * 1.0,
+        ),
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4
+        ..color = shade.withValues(alpha: f ? 0.18 : 0.3)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2.2),
+    );
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: c + Offset(-rx * 0.08, ry * 0.86),
+        width: rx * 0.5,
+        height: ry * 0.14,
+      ),
+      soft(Colors.white, 0.1, 1.6),
+    );
+    canvas.restore();
+  }
+
   /// Колени: блик на чашечке и мягкая тень под ней — нога не «палка».
   void _paintKnees(Canvas canvas) {
     final cx = (frame.knee + 5.5) / 2;
@@ -627,14 +702,22 @@ class AvatarPainter extends CustomPainter {
       _fillCloth(canvas, tail, _scarfDark);
       _fillCloth(canvas, wrap, _scarf);
     }
-    final head = Path()
-      ..addOval(
-        Rect.fromCenter(
-          center: BodyFrame.headCenter,
-          width: frame.headRx * 2,
-          height: frame.headRy * 2,
-        ),
-      );
+    final head = frame.headShape;
+    final headFill = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [look.skin.lit, look.skin.shade],
+      ).createShader(_figureBounds);
+    // Уши — за головой (у героини их закрывает причёска).
+    if (!look.isFemale) {
+      for (final ear in frame.ears) {
+        canvas
+          ..drawPath(ear, headFill)
+          ..drawPath(ear, _shadePaint(ear))
+          ..drawPath(ear, _outline);
+      }
+    }
     canvas
       ..drawPath(
         head,
@@ -654,9 +737,10 @@ class AvatarPainter extends CustomPainter {
             colors: [Color(0x1AFFFFFF), Color(0x00000000), Color(0x52000000)],
             stops: [0, 0.5, 1],
           ).createShader(head.getBounds()),
-      )
-      ..drawPath(head, _outline);
-    if (look.isFemale) _fillSolid(canvas, layers.hairFront, look.hairColor);
+      );
+    _paintHeadForm(canvas, head);
+    canvas.drawPath(head, _outline);
+    _fillSolid(canvas, layers.hairFront, look.hairColor);
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
     for (final (tuft, color) in layers.wigTufts) {

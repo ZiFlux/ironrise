@@ -88,7 +88,9 @@ class ArmGeometry {
   /// Поворачивается вместе с рукой (овал не поворачивался и висел «ракеткой»).
   Path hand(double wristHalf, double length) {
     final d = _fore;
-    final n = Offset(-d.dy, d.dx);
+    // Сторона руки: у левой и правой кисти большой палец к телу (раньше обе
+    // были «правыми»).
+    final n = Offset(-d.dy, d.dx) * _side;
     Offset p(double along, double across) => wrist + d * along + n * across;
     // Большой палец — со стороны тела, у основания ладони.
     return smoothClosedPath([
@@ -391,6 +393,55 @@ class BodyFrame {
       arm.at(-0.03, deltSize * 0.42 + grow),
     ]);
   }
+
+  /// Голова по-мужски: черепная коробка, висок, скула, угол челюсти и
+  /// широкий подбородок; у героини — мягче и уже книзу. Не просто овал.
+  Path get headShape {
+    final c = headCenter;
+    Offset p(double x, double y) =>
+        Offset(c.dx + x * headRx, c.dy + y * headRy);
+    final half = isFemale
+        ? const [
+            Offset(0.6, -0.93),
+            Offset(0.9, -0.62),
+            Offset(1.0, -0.2),
+            Offset(0.96, 0.14),
+            Offset(0.84, 0.48),
+            Offset(0.6, 0.8),
+            Offset(0.3, 0.97),
+          ]
+        : const [
+            Offset(0.62, -0.92),
+            Offset(0.92, -0.62),
+            Offset(1.0, -0.22),
+            // Скула.
+            Offset(1.0, 0.1),
+            // Угол челюсти.
+            Offset(0.94, 0.46),
+            Offset(0.84, 0.66),
+            Offset(0.52, 0.9),
+            // Широкий подбородок.
+            Offset(0.27, 1.0),
+          ];
+    return smoothClosedPath([
+      p(0, -1),
+      for (final o in half) p(o.dx, o.dy),
+      p(0, isFemale ? 1.0 : 1.03),
+      for (final o in half.reversed) p(-o.dx, o.dy),
+    ]);
+  }
+
+  /// Уши: по бокам головы на уровне скулы.
+  List<Path> get ears => [
+    for (final s in const [-1.0, 1.0])
+      Path()..addOval(
+        Rect.fromCenter(
+          center: headCenter + Offset(s * headRx * 0.98, headRy * 0.02),
+          width: 5.5,
+          height: headRy * 0.46,
+        ),
+      ),
+  ];
 
   double headHalfWidthAt(double y) =>
       headRx * sqrt(max(0, 1 - pow((y - headCenter.dy) / headRy, 2)));
