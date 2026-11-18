@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 enum AvatarSex { male, female }
 
 enum SkinTone {
-  iron(Color(0xFF606068), Color(0xFF2A2A2F), Color(0xFF34343A)),
+  iron(Color(0xFF7C7C86), Color(0xFF3A3A42), Color(0xFF4A4A52)),
   light(Color(0xFFE3C2A8), Color(0xFFA8846C), Color(0xFFC09A80)),
   tan(Color(0xFFC79A76), Color(0xFF8A6244), Color(0xFFA07652)),
   brown(Color(0xFF996848), Color(0xFF5E3B26), Color(0xFF744C32)),

@@ -141,16 +141,18 @@ class AvatarPainter extends CustomPainter {
     }
     final handPaint = Paint()..color = look.skin.hand;
     for (final arm in [frame.rightArm, frame.leftArm]) {
-      canvas.drawPath(
-        arm.hand(frame.wristWidth, look.isFemale ? 15 : 17),
-        handPaint,
-      );
+      final hand = arm.hand(frame.wristWidth, look.isFemale ? 18 : 20);
+      canvas
+        ..drawPath(hand, handPaint)
+        ..drawPath(hand, _shadePaint(hand))
+        ..drawPath(hand, _outline);
     }
   }
 
   void _paintTorso(Canvas canvas) {
-    _fillSkin(canvas, frame.bodyOutline);
+    // Шея — под телом: видна только над плечами, светотень берёт торс.
     _paintNeck(canvas);
+    _fillSkin(canvas, frame.bodyOutline);
   }
 
   /// Шея — с телом, под одеждой: её основание у трапеций прячется под ворот.
@@ -223,6 +225,7 @@ class AvatarPainter extends CustomPainter {
       // Без тёмной кромки по краям: рукав — продолжение футболки, не «пузырь».
       canvas
         ..drawPath(sleeve, Paint()..color = color)
+        ..drawPath(sleeve, _shadePaint(sleeve))
         ..drawPath(sleeve, _fallPaint(sleeve));
       if (look.top == TopKind.clownSuit) {
         canvas
@@ -488,16 +491,35 @@ class AvatarPainter extends CustomPainter {
       _fillCloth(canvas, tail, _scarfDark);
       _fillCloth(canvas, wrap, _scarf);
     }
-    _fillSkin(
-      canvas,
-      Path()..addOval(
+    final head = Path()
+      ..addOval(
         Rect.fromCenter(
           center: BodyFrame.headCenter,
           width: frame.headRx * 2,
           height: frame.headRy * 2,
         ),
-      ),
-    );
+      );
+    canvas
+      ..drawPath(
+        head,
+        Paint()
+          ..shader = LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [look.skin.lit, look.skin.shade],
+          ).createShader(_figureBounds),
+      )
+      ..drawPath(
+        head,
+        Paint()
+          ..shader = const RadialGradient(
+            center: Alignment(-0.35, -0.4),
+            radius: 1.05,
+            colors: [Color(0x1AFFFFFF), Color(0x00000000), Color(0x52000000)],
+            stops: [0, 0.5, 1],
+          ).createShader(head.getBounds()),
+      )
+      ..drawPath(head, _outline);
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
     for (final (tuft, color) in layers.wigTufts) {
@@ -591,8 +613,41 @@ class AvatarPainter extends CustomPainter {
       ).createShader(_figureBounds);
     canvas
       ..drawPath(path, skin)
-      ..drawPath(path, _rimPaint(path));
+      ..drawPath(path, _shadePaint(path))
+      ..drawPath(path, _outline);
   }
+
+  /// Тонкая тёмная обводка: силуэт читается на тёмном фоне, руки — поверх
+  /// тела, а не сливаются с ним.
+  static final _outline = Paint()
+    ..style = PaintingStyle.stroke
+    ..strokeWidth = 1.1
+    ..strokeJoin = StrokeJoin.round
+    ..color = const Color(0xA60C0A0D);
+
+  /// Светотень в 2–3 тона: свет слева сверху — светлая сторона, середина,
+  /// тень справа с чётким переходом (вместо мягкого градиента по краям).
+  /// Свет общий для всей фигуры (по ширине плеч), а не по каждой части:
+  /// иначе на стыках торса, дельт и рук — ступеньки тона.
+  Paint _shadePaint(Path _) => Paint()
+    ..shader = const LinearGradient(
+      colors: [
+        Color(0x1FFFFFFF),
+        Color(0x0FFFFFFF),
+        Color(0x00000000),
+        Color(0x00000000),
+        Color(0x47000000),
+        Color(0x66000000),
+      ],
+      stops: [0, 0.22, 0.32, 0.6, 0.7, 1],
+    ).createShader(_lightBounds);
+
+  late final Rect _lightBounds = Rect.fromLTRB(
+    100 - frame.shoulder - 14,
+    0,
+    100 + frame.shoulder + 14,
+    avatarCanvasHeight,
+  );
 
   /// Дельта: та же кожа, свет сверху снаружи, мягкая тень снизу — округлая
   /// мышца, а не шар с тёмной кромкой.
@@ -603,7 +658,9 @@ class AvatarPainter extends CustomPainter {
         end: Alignment.bottomCenter,
         colors: [look.skin.lit, look.skin.shade],
       ).createShader(_figureBounds);
-    canvas.drawPath(path, skin);
+    canvas
+      ..drawPath(path, skin)
+      ..drawPath(path, _shadePaint(path));
     final r = path.getBounds();
     final outer = arm.at(0.06, -frame.deltSize * 0.55);
     canvas
@@ -627,6 +684,22 @@ class AvatarPainter extends CustomPainter {
           ).createShader(r),
       )
       ..restore();
+    canvas
+      ..save()
+      ..clipPath(
+        // Только внешний край: на груди и на самой руке — без дуг.
+        Path.combine(
+          PathOperation.difference,
+          Path()..addRect(const Rect.fromLTWH(-100, -100, 400, 600)),
+          Path.combine(
+            PathOperation.union,
+            frame.bodyOutline,
+            arm.outline(frame.armStations),
+          ),
+        ),
+      )
+      ..drawPath(path, _outline)
+      ..restore();
   }
 
   void _fillCloth(
@@ -637,25 +710,14 @@ class AvatarPainter extends CustomPainter {
   }) {
     canvas
       ..drawPath(path, Paint()..color = color)
-      ..drawPath(path, _rimPaint(path));
+      ..drawPath(path, _shadePaint(path));
     if (withFall) canvas.drawPath(path, _fallPaint(path));
+    canvas.drawPath(path, _outline);
   }
 
   void _fillSolid(Canvas canvas, Path? path, Color color) {
     if (path != null) canvas.drawPath(path, Paint()..color = color);
   }
-
-  /// Затенение по краям формы даёт объём без свечения.
-  Paint _rimPaint(Path path) => Paint()
-    ..shader = const LinearGradient(
-      colors: [
-        Color(0x6B000000),
-        Color(0x00000000),
-        Color(0x0DFFFFFF),
-        Color(0x6B000000),
-      ],
-      stops: [0, 0.28, 0.62, 1],
-    ).createShader(path.getBounds());
 
   /// Свет сверху, тень снизу: для ткани.
   Paint _fallPaint(Path path) => Paint()
