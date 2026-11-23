@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:health/health.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'line_chart.dart';
@@ -97,12 +98,13 @@ class _AnalysisHint extends ConsumerWidget {
               final found = await ref
                   .read(bodyLogProvider.notifier)
                   .importFromHealth();
-              if (context.mounted) Navigator.pop(context);
-              showStatus(
-                found > 0
-                    ? 'Состав тела получен'
-                    : 'Анализа пока нет — подтянется после замера',
-              );
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              if (found > 0) {
+                showStatus('Состав тела получен');
+              } else {
+                await showBodyDiagnostics(context, ref);
+              }
             },
             child: const Text('Проверить сейчас'),
           ),
@@ -208,15 +210,125 @@ class BodySummary extends ConsumerWidget {
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
         const SizedBox(height: 8),
-        Align(
-          alignment: Alignment.centerLeft,
-          child: OutlinedButton.icon(
-            onPressed: () => showWeighIn(context, ref),
-            icon: const Icon(LucideIcons.scale, size: 16),
-            label: const Text('Взвеситься'),
-          ),
+        Wrap(
+          spacing: 8,
+          runSpacing: 4,
+          children: [
+            OutlinedButton.icon(
+              onPressed: () => showWeighIn(context, ref),
+              icon: const Icon(LucideIcons.scale, size: 16),
+              label: const Text('Взвеситься'),
+            ),
+            // Анализ с часов не приходит — показать, чего не хватает.
+            TextButton.icon(
+              onPressed: () async {
+                final found = await ref
+                    .read(bodyLogProvider.notifier)
+                    .importFromHealth();
+                if (!context.mounted) return;
+                if (found > 0) {
+                  showStatus('Состав тела получен');
+                } else {
+                  await showBodyDiagnostics(context, ref);
+                }
+              },
+              icon: const Icon(LucideIcons.refreshCw, size: 16),
+              label: const Text('Забрать с часов'),
+            ),
+          ],
         ),
       ],
     );
   }
+}
+
+/// Почему состав тела не пришёл: доступ и записи по каждому показателю и что
+/// сделать — дать доступ IronRise или разрешить Samsung Health писать в Health Connect.
+Future<void> showBodyDiagnostics(BuildContext context, WidgetRef ref) async {
+  final health = ref.read(healthProvider.notifier);
+  final access = await health.bodyAccess(
+    since: DateTime.now().subtract(const Duration(days: 90)),
+  );
+  if (!context.mounted) return;
+  const labels = {
+    HealthDataType.BODY_FAT_PERCENTAGE: 'Процент жира',
+    HealthDataType.WEIGHT: 'Вес',
+    HealthDataType.BASAL_ENERGY_BURNED: 'Базовый обмен',
+    HealthDataType.LEAN_BODY_MASS: 'Безжировая масса',
+    HealthDataType.BODY_WATER_MASS: 'Вода',
+  };
+  final missing = access.where((a) => !a.granted).toList();
+  final fat = access
+      .where((a) => a.type == HealthDataType.BODY_FAT_PERCENTAGE)
+      .firstOrNull;
+  final noData = fat != null && fat.granted && fat.points.isEmpty;
+  await showDialog<void>(
+    context: context,
+    builder: (context) => AlertDialog(
+      backgroundColor: AppColors.surface,
+      icon: const Icon(LucideIcons.scanLine),
+      title: const Text('Состав тела пока не пришёл'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (access.isEmpty)
+              const Text(
+                'Health Connect не подключён. Подключи его: Профиль → Часы и телефон.',
+              ),
+            for (final a in access)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 4),
+                child: Text(
+                  '${labels[a.type] ?? a.type.name}: '
+                  '${a.granted ? 'доступ есть, замеров за 90 дней — ${a.points.length}' : 'нет доступа'}',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: a.granted && a.points.isNotEmpty
+                        ? AppColors.textPrimary
+                        : AppColors.textSecondary,
+                  ),
+                ),
+              ),
+            const SizedBox(height: 8),
+            if (missing.isNotEmpty)
+              const Text(
+                'У IronRise нет доступа к части показателей. Нажми «Дать доступ» '
+                'и в Health Connect включи все пункты состава тела.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+            if (noData)
+              const Text(
+                'Доступ есть, но замеров в Health Connect нет: Samsung Health их туда '
+                'не передаёт. Открой Samsung Health → меню (три полоски) → Настройки → '
+                'Health Connect и разреши Samsung Health запись: «Процент жира», '
+                '«Вес» и «Базовый обмен». Затем сделай замер на часах: '
+                'Samsung Health → Состав тела → Измерить. Через пару минут он '
+                'появится здесь сам.',
+                style: TextStyle(color: AppColors.textSecondary),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        if (missing.isNotEmpty)
+          TextButton(
+            onPressed: () async {
+              await health.requestBodyAccess();
+              final found = await ref
+                  .read(bodyLogProvider.notifier)
+                  .importFromHealth();
+              if (context.mounted) Navigator.pop(context);
+              if (found > 0) showStatus('Состав тела получен');
+            },
+            child: const Text('Дать доступ'),
+          ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Понятно'),
+        ),
+      ],
+    ),
+  );
 }

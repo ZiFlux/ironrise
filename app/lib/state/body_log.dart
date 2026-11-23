@@ -133,13 +133,13 @@ class BodyLogNotifier extends Notifier<List<BodyMeasurement>> {
     }
   }
 
-  /// Состав тела из Health Connect за 60 дней: новые замеры добавляются сами.
+  /// Состав тела из Health Connect за 90 дней: новые замеры добавляются сами.
   /// Возвращает, сколько новых замеров нашлось.
   Future<int> importFromHealth() async {
     final points = await ref
         .read(healthProvider.notifier)
         .bodyComposition(
-          since: DateTime.now().subtract(const Duration(days: 60)),
+          since: DateTime.now().subtract(const Duration(days: 90)),
         );
     if (points.isEmpty) return 0;
     final fresh = mergeComposition(state, points);
@@ -195,6 +195,8 @@ List<BodyMeasurement> mergeComposition(
     out.add(
       BodyMeasurement(
         at: at,
+        // Вес, который часы взяли для анализа: от него считаются доли мышц и воды.
+        weightKg: of(HealthDataType.WEIGHT),
         fatPct: fat,
         leanKg: of(HealthDataType.LEAN_BODY_MASS),
         waterKg: of(HealthDataType.BODY_WATER_MASS),

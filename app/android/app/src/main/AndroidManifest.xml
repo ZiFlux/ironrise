@@ -12,8 +12,9 @@
     <uses-permission android:name="android.permission.health.READ_HEART_RATE" />
     <uses-permission android:name="android.permission.health.READ_STEPS" />
     <uses-permission android:name="android.permission.health.READ_DISTANCE" />
-    <!-- Состав тела с часов: жир, безжировая масса, вода, базовый обмен. -->
+    <!-- Состав тела с часов: жир, вес анализа, безжировая масса, вода, базовый обмен. -->
     <uses-permission android:name="android.permission.health.READ_BODY_FAT" />
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_LEAN_BODY_MASS" />
     <uses-permission android:name="android.permission.health.READ_BODY_WATER_MASS" />
     <uses-permission android:name="android.permission.health.READ_BASAL_METABOLIC_RATE" />

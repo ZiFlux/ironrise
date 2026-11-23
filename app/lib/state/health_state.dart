@@ -18,12 +18,23 @@ const _types = [
 ];
 
 /// Состав тела: анализ тела на часах (Samsung Health и др.) пишет это в Health Connect.
+/// Samsung Health пишет процент жира, вес и базовый обмен; безжировую массу и
+/// воду — не всегда, поэтому каждый показатель читается отдельно.
 const bodyTypes = [
   HealthDataType.BODY_FAT_PERCENTAGE,
+  HealthDataType.WEIGHT,
+  HealthDataType.BASAL_ENERGY_BURNED,
   HealthDataType.LEAN_BODY_MASS,
   HealthDataType.BODY_WATER_MASS,
-  HealthDataType.BASAL_ENERGY_BURNED,
 ];
+
+/// Что Health Connect отдаёт по составу тела: доступ и число записей по каждому
+/// показателю — чтобы сказать человеку, чего не хватает.
+typedef BodyAccess = ({
+  HealthDataType type,
+  bool granted,
+  List<HealthDataPoint> points,
+});
 
 enum HealthStatus {
   /// Ещё не проверяли.
@@ -203,30 +214,45 @@ class HealthNotifier extends Notifier<HealthState> {
     }
   }
 
-  /// Точки состава тела с [since]. Нет доступа (подключались до появления
-  /// анализа тела) — просим его один раз; пусто, если Health Connect не подключён.
+  /// Точки состава тела с [since]. Каждый показатель — отдельным запросом:
+  /// раньше общий запрос падал целиком, если не было доступа хотя бы к одному
+  /// (например, к воде), и анализ с часов не подтягивался вовсе.
   Future<List<HealthDataPoint>> bodyComposition({
     required DateTime since,
   }) async {
-    if (!state.connected || !await _available()) return const [];
-    try {
-      final has = await _health.hasPermissions(
-        bodyTypes,
-        permissions: [for (final _ in bodyTypes) HealthDataAccess.READ],
-      );
-      if (has != true) return const [];
-      return await _health.getHealthDataFromTypes(
-        types: bodyTypes,
-        startTime: since,
-        endTime: DateTime.now(),
-      );
-    } catch (e) {
-      debugPrint('Health Connect состав тела: $e');
-      return const [];
-    }
+    final access = await bodyAccess(since: since);
+    return [for (final a in access) ...a.points];
   }
 
-  /// Доступ к составу тела для тех, кто подключил Health Connect раньше.
+  /// Доступ и записи по каждому показателю состава тела.
+  Future<List<BodyAccess>> bodyAccess({required DateTime since}) async {
+    if (!state.connected || !await _available()) return const [];
+    final out = <BodyAccess>[];
+    for (final type in bodyTypes) {
+      try {
+        final granted =
+            await _health.hasPermissions(
+              [type],
+              permissions: const [HealthDataAccess.READ],
+            ) ==
+            true;
+        final points = granted
+            ? await _health.getHealthDataFromTypes(
+                types: [type],
+                startTime: since,
+                endTime: DateTime.now(),
+              )
+            : const <HealthDataPoint>[];
+        out.add((type: type, granted: granted, points: points));
+      } catch (e) {
+        debugPrint('Health Connect состав тела ($type): $e');
+        out.add((type: type, granted: false, points: const []));
+      }
+    }
+    return out;
+  }
+
+  /// Доступ к составу тела (кто подключил Health Connect раньше — его ещё нет).
   Future<bool> requestBodyAccess() async {
     if (!await _available()) return false;
     return _health.requestAuthorization(
