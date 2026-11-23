@@ -32,6 +32,27 @@ typedef MusclePoints = Map<Muscle, double>;
 /// Целевые мышцы упражнений, доли в сумме 1 (shared/exercises.json).
 const exerciseMuscles = generatedMuscles;
 
+/// Главная мышца упражнения — с наибольшей долей.
+Muscle? primaryMuscleOf(String exerciseId) {
+  MapEntry<Muscle, double>? best;
+  for (final e in (exerciseMuscles[exerciseId] ?? const {}).entries) {
+    if (best == null || e.value > best.value) best = e;
+  }
+  return best?.key;
+}
+
+/// Насколько упражнения нагружают одни мышцы: 0 — совсем другие, 1 — те же доли.
+double muscleOverlapOf(String a, String b) {
+  final ma = exerciseMuscles[a] ?? const <Muscle, double>{};
+  final mb = exerciseMuscles[b] ?? const <Muscle, double>{};
+  var sum = 0.0;
+  for (final e in ma.entries) {
+    final other = mb[e.key];
+    if (other != null) sum += e.value < other ? e.value : other;
+  }
+  return sum;
+}
+
 class MuscleMath {
   const MuscleMath._();
 

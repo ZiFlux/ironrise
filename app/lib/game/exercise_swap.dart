@@ -7,16 +7,7 @@ import 'muscles.dart';
 import 'program.dart';
 
 /// Насколько [b] нагружает те же мышцы, что [a]: 0 — совсем другие, 1 — те же доли.
-double muscleOverlap(Exercise a, Exercise b) {
-  final ma = exerciseMuscles[a.id] ?? const <Muscle, double>{};
-  final mb = exerciseMuscles[b.id] ?? const <Muscle, double>{};
-  var sum = 0.0;
-  for (final e in ma.entries) {
-    final other = mb[e.key];
-    if (other != null) sum += e.value < other ? e.value : other;
-  }
-  return sum;
-}
+double muscleOverlap(Exercise a, Exercise b) => muscleOverlapOf(a.id, b.id);
 
 /// Минимальное совпадение по мышцам, чтобы замена считалась равноценной.
 const minSwapOverlap = 0.45;

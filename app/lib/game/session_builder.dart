@@ -169,38 +169,55 @@ const _lower = _DayTemplate('L', 'Низ', [
   _Slot('core', 3, ['side_plank', 'russian_twist']),
 ]);
 
-/// Сплит (п. 41): спина и бицепс; грудь, трицепс, предплечья; ноги и плечи.
+/// Сплит (п. 41) по схеме тренеров «тяни / толкай / ноги»: каждая мышца — в свой
+/// день вместе с теми, что ей помогают, и не работает два дня подряд.
+/// Спина и бицепс (бицепс помогает в тягах), задние дельты и трапеции — тоже тянут.
 const _splitBack = _DayTemplate('S1', 'Спина и бицепс', [
   _Slot('pull_v', 1, _pullV),
   _Slot('pull_h', 1, _pullH),
   _Slot('biceps', 1),
-  _Slot('pull_h', 2, ['seated_cable_row', 'db_row']),
-  _Slot('hinge', 2, ['back_extension', 'romanian_deadlift']),
-  _Slot('biceps', 2, ['hammer_curl', 'barbell_curl', 'db_curl']),
-  _Slot('rear_delts', 3),
-  _Slot('core', 3),
+  _Slot('rear_delts', 2, ['face_pull', 'reverse_pec_deck', 'rear_delt_fly']),
+  _Slot('traps', 2),
+  _Slot('pull_h', 2, ['seated_cable_row', 'chest_supported_row', 'db_row']),
+  _Slot('biceps', 2, ['hammer_curl', 'concentration_curl', 'cable_curl']),
+  _Slot('core', 3, ['hanging_knee_raise', 'reverse_crunch', 'crunches']),
+  _Slot('lats_iso', 3),
 ]);
 
+/// Грудь, трицепс (помогает в жимах) и предплечья; косые мышцы живота.
 const _splitChest = _DayTemplate('S2', 'Грудь, трицепс, предплечья', [
   _Slot('push_h', 1, _bench),
-  _Slot('push_h', 1, ['db_bench_press', 'machine_chest_press', 'push_up']),
+  _Slot('push_h', 1, [
+    'incline_db_press',
+    'incline_bench_press',
+    'db_bench_press',
+    'decline_push_up',
+    'push_up',
+  ]),
   _Slot('triceps', 1),
   _Slot('chest_fly', 2, _fly),
-  _Slot('triceps', 2, ['french_press', 'triceps_pushdown', 'bench_dips']),
-  _Slot('biceps', 2, ['hammer_curl']),
-  _Slot('delts', 2),
-  _Slot('core', 3),
-  _Slot('push_h', 3, ['dips', 'push_up', 'incline_push_up']),
+  _Slot('triceps', 2, [
+    'french_press',
+    'overhead_db_extension',
+    'cable_overhead_extension',
+    'bench_dips',
+  ]),
+  _Slot('forearms', 2, ['wrist_curl', 'reverse_curl', 'reverse_wrist_curl']),
+  _Slot('core', 3, ['oblique_crunch', 'side_plank', 'russian_twist']),
+  _Slot('push_h', 3, ['dips', 'wide_push_up', 'push_up']),
 ]);
 
+/// Ноги и плечи: все три пучка дельт (жим — передние, отведения — средние),
+/// икры. Плечи не работают накануне дня груди: там жимы снова грузят передние.
 const _splitLegs = _DayTemplate('S3', 'Ноги и плечи', [
   _Slot('squat', 1, _squat),
-  _Slot('hinge', 1, ['romanian_deadlift', 'deadlift', 'glute_bridge']),
   _Slot('push_v', 1, _press),
+  _Slot('hinge', 1, ['romanian_deadlift', 'deadlift', 'glute_bridge']),
+  _Slot('delts', 1),
   _Slot('lunge', 2),
-  _Slot('delts', 2),
-  _Slot('hinge', 2, ['leg_curl', 'glute_bridge']),
   _Slot('calves', 2),
+  _Slot('hinge', 2, ['leg_curl', 'lying_leg_curl', 'towel_leg_curl']),
+  _Slot('front_delts', 3),
   _Slot('quads', 3),
 ]);
 
@@ -216,6 +233,9 @@ const _focus = _DayTemplate('F', 'День отстающей части', [
   _Slot('lunge', 3),
 ]);
 
+/// Раскладка дней по кругу для «подбери сам».
+enum Rotation { fullBody, upperLower, split }
+
 /// Сборщик тренировок: по формату, уровню и инвентарю — дни по 6–8 упражнений,
 /// подходы разложены так, чтобы за неделю каждая мышца получила свою норму.
 class SessionBuilder {
@@ -223,13 +243,15 @@ class SessionBuilder {
 
   /// Раскладка по кругу (TRAINING_SYSTEM.md 14): стиль игрока на любое число дней.
   /// [adjacent] — среди дней есть соседние: «всё тело» тогда нагрузило бы одни мышцы
-  /// два дня подряд, и программа берёт верх/низ.
+  /// два дня подряд, и программа берёт верх/низ. [weekdays] — дни графика
+  /// (0 — понедельник): с ними «подбери сам» выбирает раскладку по оценке недели.
   static List<_DayTemplate> _templates(
     TrainingFormat format,
     int sessionsPerWeek,
     TrainingLevel level, {
     required bool start,
     required bool adjacent,
+    List<int>? weekdays,
   }) {
     const fullBody = [_fullBodyA, _fullBodyB];
     const upperLower = [_upper, _lower];
@@ -241,6 +263,12 @@ class SessionBuilder {
       TrainingFormat.minimum => adjacent ? upperLower : fullBody,
       TrainingFormat.upperLower => upperLower,
       TrainingFormat.split => split,
+      TrainingFormat.custom when weekdays != null && weekdays.length >= 2 =>
+        switch (bestRotation(weekdays, level)) {
+          Rotation.fullBody => fullBody,
+          Rotation.upperLower => upperLower,
+          Rotation.split => split,
+        },
       TrainingFormat.custom => switch (sessionsPerWeek) {
         <= 2 => adjacent ? upperLower : fullBody,
         3 when level == TrainingLevel.novice && !adjacent => fullBody,
@@ -249,6 +277,142 @@ class SessionBuilder {
         _ => split,
       },
     };
+  }
+
+  /// Группы мышц, по которым считается частота: какие движения их грузят.
+  static const _groupOf = <String, String>{
+    'push_h': 'chest',
+    'chest_fly': 'chest',
+    'pull_v': 'back',
+    'pull_h': 'back',
+    'lats_iso': 'back',
+    'squat': 'legs',
+    'hinge': 'legs',
+    'lunge': 'legs',
+    'quads': 'legs',
+    'push_v': 'shoulders',
+    'delts': 'shoulders',
+    'front_delts': 'shoulders',
+    'rear_delts': 'rear',
+    'biceps': 'biceps',
+    'triceps': 'triceps',
+  };
+
+  /// Вес группы в оценке: мелкие (бицепс, трицепс, задние дельты) и так работают
+  /// в базовых движениях — им половина.
+  static const _groupWeight = <String, double>{
+    'biceps': 0.5,
+    'triceps': 0.5,
+    'rear': 0.5,
+  };
+
+  static Set<String> _groupsOf(_DayTemplate t) => {
+    for (final slot in t.slots)
+      if (slot.priority <= 2) ?_groupOf[slot.pattern],
+  };
+
+  /// Оценка раскладки на конкретных днях недели (docs/TRAINING_SYSTEM.md 14.1):
+  /// - каждой группе мышц — 2 тренировки в неделю: это лучше одной при той же
+  ///   работе (Schoenfeld 2016), больше двух — уже без заметной прибавки;
+  /// - одна группа — не чаще раза в 48 часов (не два дня подряд);
+  /// - уровень (ACSM 2009): новичку — всё тело, опытному с 5 днями — сплит.
+  /// Цикл дней идёт по кругу через недели, поэтому считаем на 6 недель.
+  static double rotationScore(
+    Rotation rotation,
+    List<int> weekdays,
+    TrainingLevel level,
+  ) {
+    final days = {...weekdays}.toList()..sort();
+    if (days.isEmpty) return double.negativeInfinity;
+    final templates = switch (rotation) {
+      Rotation.fullBody => const [_fullBodyA, _fullBodyB],
+      Rotation.upperLower => const [_upper, _lower],
+      Rotation.split => const [_splitBack, _splitChest, _splitLegs],
+    };
+    const weeks = 6;
+    final hits = <String, int>{};
+    var backToBack = 0;
+    Set<String>? previous;
+    var previousDay = -10;
+    var i = 0;
+    for (var w = 0; w < weeks; w++) {
+      for (final d in days) {
+        final groups = _groupsOf(templates[i % templates.length]);
+        i++;
+        for (final g in groups) {
+          hits[g] = (hits[g] ?? 0) + 1;
+        }
+        final day = w * 7 + d;
+        if (previous != null && day - previousDay == 1) {
+          backToBack += groups.intersection(previous).length;
+        }
+        previous = groups;
+        previousDay = day;
+      }
+    }
+    var score = 0.0;
+    for (final g in _groupOf.values.toSet()) {
+      final perWeek = (hits[g] ?? 0) / weeks;
+      score += 10 * (_groupWeight[g] ?? 1) * (perWeek < 2 ? perWeek : 2);
+    }
+    score -= 15 * backToBack / weeks;
+    score += switch ((rotation, level)) {
+      (Rotation.split, TrainingLevel.novice) => -10,
+      (Rotation.upperLower, TrainingLevel.novice) => -2,
+      (Rotation.fullBody, TrainingLevel.advanced) when days.length >= 4 => -6,
+      (Rotation.split, TrainingLevel.advanced) when days.length >= 5 => 10,
+      _ => 0,
+    };
+    // Всё тело чаще трёх раз в неделю — каждая тренировка снова те же мышцы.
+    if (rotation == Rotation.fullBody && days.length > 3) score -= 8;
+    return score;
+  }
+
+  /// Лучшая раскладка для дней графика — по [rotationScore]; при равенстве — проще.
+  static Rotation bestRotation(List<int> weekdays, TrainingLevel level) {
+    var best = Rotation.fullBody;
+    var bestScore = double.negativeInfinity;
+    for (final r in Rotation.values) {
+      final score = rotationScore(r, weekdays, level);
+      if (score > bestScore + 0.01) {
+        best = r;
+        bestScore = score;
+      }
+    }
+    return best;
+  }
+
+  /// Порядок упражнений дня: подряд — разные мышцы (широчайшие → бицепс →
+  /// широчайшие…): пока одна отдыхает, работает другая. Из оставшихся берётся
+  /// первое по плану, не похожее на предыдущее; пресс, икры и предплечья — в
+  /// конце (уставшие хват и пресс мешали бы базовым движениям).
+  static List<({Exercise exercise, bool compound})> alternate(
+    List<({Exercise exercise, bool compound})> list,
+  ) {
+    const finishers = {'core', 'calves', 'forearms', 'conditioning'};
+    final main = [
+      for (final c in list)
+        if (!finishers.contains(c.exercise.pattern)) c,
+    ];
+    final tail = [
+      for (final c in list)
+        if (finishers.contains(c.exercise.pattern)) c,
+    ];
+    final out = <({Exercise exercise, bool compound})>[];
+    while (main.isNotEmpty) {
+      final prev = out.lastOrNull?.exercise;
+      var index = 0;
+      if (prev != null) {
+        final fit = main.indexWhere(
+          (c) =>
+              primaryMuscleOf(c.exercise.id) != primaryMuscleOf(prev.id) &&
+              muscleOverlapOf(c.exercise.id, prev.id) < 0.4,
+        );
+        if (fit >= 0) index = fit;
+      }
+      out.add(main.removeAt(index));
+    }
+    return [...out, ...tail];
   }
 
   /// Дни программы. [stepOf] — ступень человека в движении (лесенка),
@@ -260,6 +424,7 @@ class SessionBuilder {
     required int Function(String pattern) stepOf,
     TrainingFormat format = TrainingFormat.custom,
     bool adjacent = false,
+    List<int>? weekdays,
     bool start = false,
     BodyPart? lagging,
     Goal? goal,
@@ -277,6 +442,7 @@ class SessionBuilder {
       level,
       start: start,
       adjacent: adjacent,
+      weekdays: weekdays,
     );
     // Новичок в зале в фазе «Старт»: основа — свой вес (присед, отжимания, выпады,
     // пресс, гравитрон), с инвентарём — 2–3 упражнения с небольшим весом (13.3).
@@ -352,7 +518,7 @@ class SessionBuilder {
       ..sort((a, b) => a.$1 != b.$1 ? a.$1 - b.$1 : a.$2 - b.$2);
     final kept = byPriority.take(maxExercises ?? level.exercises).toList()
       ..sort((a, b) => a.$2 - b.$2);
-    return [for (final c in kept) (exercise: c.$3, compound: c.$4)];
+    return alternate([for (final c in kept) (exercise: c.$3, compound: c.$4)]);
   }
 
   /// Слоты дня для девушки: в ягодичных шарнирах первым — мост со штангой,
