@@ -4,6 +4,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../game/exercise_catalog.dart';
 import '../game/set_effort.dart';
 import '../theme.dart';
+import 'format.dart';
 
 /// Итог «Пульс по подходам»: насколько тяжёлым был каждый подход,
 /// какие упражнения поднимают пульс сильнее и где пульс не отреагировал.
@@ -11,6 +12,9 @@ class SetEffortCard extends StatelessWidget {
   const SetEffortCard({super.key, required this.analysis});
 
   final SetEffortAnalysis analysis;
+
+  /// Хвост прошлого подхода к началу этого, уд/мин, — подход начат неостывшим.
+  static const carryWarning = 75;
 
   static const _levelColors = {
     EffortLevel.light: Color(0xFF4CC38A),
@@ -126,6 +130,26 @@ class SetEffortCard extends StatelessWidget {
               'Справа — средний подъём пульса за подход, уд/мин',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
+            const SizedBox(height: 4),
+            Text(
+              'После подхода пульс приходит в норму примерно за '
+              '${formatClock(analysis.recoveryTau * 3)}',
+              style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
+            ),
+            if (analysis
+                .carriedSets(SetEffortCard.carryWarning)
+                .isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text(
+                'Подходов, начатых с неостывшим пульсом: '
+                '${analysis.carriedSets(SetEffortCard.carryWarning).length}. '
+                'Подъём пульса в них посчитан от спадающего хвоста прошлого подхода',
+                style: const TextStyle(
+                  fontSize: 13,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ],
             if (flat.isNotEmpty) ...[
               const SizedBox(height: 8),
               Text(
