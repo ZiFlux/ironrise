@@ -85,7 +85,7 @@ String dayBubbleText(CalendarDay day, List<LoggedWorkout> log, int maxRest) {
     DayKind.trained => 'Тренировка засчитана',
     DayKind.rest => 'Отдых — серия не сгорела',
     DayKind.missed =>
-      'Пропуск: отдыхать без потери серии можно до $maxRest дн. подряд',
+      'Пропуск: без потери серии можно отдыхать до ${daysWord(maxRest)} подряд',
     DayKind.upcomingTraining =>
       day.isToday ? 'Сегодня по графику тренировка' : 'По графику тренировка',
     DayKind.upcomingRest =>

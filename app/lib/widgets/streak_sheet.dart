@@ -1,3 +1,5 @@
+import 'format.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -88,7 +90,7 @@ class _StreakSheet extends ConsumerWidget {
           ],
           const SizedBox(height: 16),
           Text(
-            'До рубежа ${next.day} дн.: ещё ${next.day - streak}',
+            'До рубежа в ${daysWord(next.day)} осталось ${daysWord(next.day - streak)}',
             style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
           const SizedBox(height: 6),

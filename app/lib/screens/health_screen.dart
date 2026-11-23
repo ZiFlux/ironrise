@@ -94,7 +94,7 @@ class HealthScreen extends ConsumerWidget {
           const SizedBox(height: 12),
           const Text(
             'Живой пульс на экране тренировки — через датчик по Bluetooth или часы Wear OS '
-            '(Профиль → Устройства). Через Health Connect пульс приходит с задержкой, '
+            '(Профиль → Часы и телефон). Через Health Connect пульс приходит с задержкой, '
             'и сервер пересчитывает опыт после синхронизации',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
@@ -148,7 +148,7 @@ class _Connected extends StatelessWidget {
         if (health.stepsToday == 0) ...[
           const SizedBox(height: 12),
           const Text(
-            'Пока ноль: проверьте, что приложение часов пишет данные в Health Connect (инструкция ниже)',
+            'Пока ноль: проверь, что приложение часов передаёт данные в Health Connect (инструкция ниже)',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
         ],
@@ -344,7 +344,7 @@ class _AppGuide extends StatelessWidget {
         const Align(
           alignment: Alignment.centerLeft,
           child: Text(
-            'Потом вернитесь сюда — приложение появится в «Откуда приходят данные»',
+            'Потом вернись сюда — приложение появится в списке «Откуда приходят данные»',
             style: TextStyle(fontSize: 12, color: AppColors.textMuted),
           ),
         ),
@@ -371,7 +371,7 @@ class _SourcesState extends ConsumerState<_Sources> {
     final d = DateTime.now().difference(t);
     if (d.inMinutes < 60) return '${d.inMinutes} мин назад';
     if (d.inHours < 24) return '${d.inHours} ч назад';
-    return '${d.inDays} дн. назад';
+    return '${daysWord(d.inDays)} назад';
   }
 
   @override

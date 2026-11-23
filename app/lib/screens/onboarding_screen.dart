@@ -275,7 +275,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
       const SizedBox(height: 8),
       const Text(
-        'Продолжая, вы соглашаетесь с обработкой данных о тренировках '
+        'Продолжая, ты соглашаешься с обработкой данных о тренировках '
         'по политике конфиденциальности',
         style: TextStyle(fontSize: 13, color: AppColors.textMuted),
       ),

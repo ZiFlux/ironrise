@@ -27,9 +27,9 @@ const en = <String, String>{
   'Выйти': 'Sign out',
   'Удалить аккаунт': 'Delete account',
   'Неверный пароль': 'Wrong password',
-  'Проверьте e-mail': 'Check your e-mail',
+  'Проверь e-mail': 'Check your e-mail',
   'Пароль — не меньше 8 символов': 'Password must be at least 8 characters',
-  'Сервер недоступен. Проверьте сеть':
+  'Сервер недоступен. Проверь интернет':
       'Server unavailable. Check your connection',
   'Неверный e-mail или пароль': 'Wrong e-mail or password',
   'Аккаунт заблокирован: {banReason}': 'Account blocked: {banReason}',
@@ -73,7 +73,7 @@ const en = <String, String>{
   'IronRise на часах': 'IronRise on the watch',
   'Передаёт пульс: {p1} уд/мин': 'Sending heart rate: {p1} bpm',
   'Wear OS: Galaxy Watch и другие': 'Wear OS: Galaxy Watch and others',
-  'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, часы сами начнут передавать пульс — ничего нажимать не нужно.': 'Install IronRise on your watch. When you start a workout on the phone, the watch starts sending heart rate by itself — nothing to press.',
+  'Поставь IronRise на часы. Когда начнёшь тренировку на телефоне, часы сами начнут передавать пульс — ничего нажимать не нужно.': 'Install IronRise on your watch. When you start a workout on the phone, the watch starts sending heart rate by itself — nothing to press.',
   'На часах версия {watchVersion}.': 'Watch version: {watchVersion}.',
   'Пульс работает. Обнови IronRise на часах — появятся эффекты аур.':
       'Heart rate works. Update IronRise on the watch to get aura effects.',
@@ -98,7 +98,7 @@ const en = <String, String>{
   'Тренировки': 'Training',
   'Где тренируешься': 'Where you train',
   'Ритм опытных': 'Advanced rhythm',
-  'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя':
+  'Каждая 4-я тренировка — силовая (тяжелее обычной), каждая 5-я неделя — разгрузочная':
       'Every 4th workout is heavy, after 4 weeks — a deload week',
   'Тренировки в календарь': 'Workouts to calendar',
   'Событие с временем начала и конца — видно и на часах':
@@ -133,7 +133,7 @@ const en = <String, String>{
   'не указано': 'not set',
   'сколько раз подряд': 'how many in a row',
   'Подтягиваний за подход': 'Pull-ups per set',
-  'Макс. пульс {maxHeartRate}, зона 2 для кардио — от {zone} уд/мин{p3}':
+  'Максимальный пульс — {maxHeartRate}, зона 2 для кардио — от {zone} уд/мин{p3}':
       'Max heart rate {maxHeartRate}, cardio zone 2 — from {zone} bpm{p3}',
   '. Пока по средним значениям': '. Average values for now',
   'Лиги работают с аккаунтом: войди в «Аккаунт и синхронизация»':
@@ -171,7 +171,7 @@ const en = <String, String>{
   'синхронизация…': 'syncing…',
   'автосинхронизация выключена': 'auto sync off',
   'ещё не синхронизировано': 'not synced yet',
-  'синхр. {p1}': 'synced {p1}',
+  'синхронизировано {p1}': 'synced {p1}',
   'Отдых между подходами': 'Rest between sets',
   'По цели — {p1}': 'By goal — {p1}',
   'Свой — {p1}': 'Custom — {p1}',
@@ -209,7 +209,7 @@ const en = <String, String>{
   'Разрешить': 'Allow',
   'IronRise на часах стоит — пульс пойдёт сам с началом тренировки':
       'IronRise is on the watch — heart rate will flow when the workout starts',
-  'Поставьте IronRise на часы — пульс будет идти сам':
+  'Поставь IronRise на часы — пульс будет передаваться сам':
       'Install IronRise on the watch — heart rate will flow by itself',
   'Включи на часах трансляцию пульса — и мы подключимся':
       'Turn on heart rate broadcast on the watch — and we\'ll connect',
@@ -223,6 +223,6 @@ const en = <String, String>{
   'Без приложения — через Health Connect':
       'Without the app — via Health Connect',
   'Ждём сигнал от часов…': 'Waiting for the watch signal…',
-  'Включил — подключить': 'Turned it on — connect',
+  'Готово — подключить': 'Turned it on — connect',
   'Подключить Health Connect': 'Connect Health Connect',
 };

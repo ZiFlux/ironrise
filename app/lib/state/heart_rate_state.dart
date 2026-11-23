@@ -196,9 +196,8 @@ class HeartRateNotifier extends Notifier<HeartRateState> {
         )
         .listen(
           _onDiscovered,
-          onError: (_) => _fail(
-            'Не удалось начать поиск. Проверьте, что Bluetooth включён',
-          ),
+          onError: (_) =>
+              _fail('Не удалось начать поиск. Проверь, что Bluetooth включён'),
         );
     Future.delayed(const Duration(seconds: 15), stopScan);
   }

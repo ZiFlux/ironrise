@@ -1,3 +1,5 @@
+import 'format.dart';
+
 import 'package:flutter/material.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
@@ -138,8 +140,8 @@ class SchedulePicker extends StatelessWidget {
               ? 'Загрузка: ${load.map((d) => weekdayShort[d]).join(', ')}, восстановление: '
                     '${recovery.map((d) => weekdayShort[d]).join(', ')}. '
                     'Восстановление — по желанию: без него серия держится до '
-                    '${maxRestDaysInRow(load.toList())} дн. отдыха подряд.'
-              : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${maxRestDaysInRow(days.toList())} дн.'
+                    'до ${daysWord(maxRestDaysInRow(load.toList()))} отдыха подряд.'
+              : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${daysWord(maxRestDaysInRow(days.toList()))}.'
                     '${format == TrainingFormat.fullBody && hasAdjacentDays(days) ? ' Всё тело в соседние дни перекрыло бы мышцы — в такие недели программа даст верх/низ.' : ''}',
           style: TextStyle(
             color: tooFew

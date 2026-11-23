@@ -1,3 +1,5 @@
+import 'format.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -66,7 +68,7 @@ class SkillGoalsPanel extends ConsumerWidget {
                         [
                           goal.checkDue(now)
                               ? 'проверка — в ближайшей тренировке с ним'
-                              : 'проверка через ${goal.daysToCheck(now)} дн.',
+                              : 'проверка через ${daysWord(goal.daysToCheck(now))}',
                           if (goal.practicedOutside(now))
                             'комплекс делаешь отдельно — в плане только замена',
                         ].join(' · '),

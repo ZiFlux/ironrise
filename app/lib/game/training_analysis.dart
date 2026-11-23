@@ -168,8 +168,9 @@ class TrainingAnalysis {
       switch (f.trend) {
         case LiftTrend.plateau when f.weeksOfData >= 3:
           out.add(
-            '$name не растёт ${f.weeksOfData.round()} нед. — помогут облегчённая '
-            'неделя, другой диапазон повторов или вариант упражнения',
+            '$name не растёт уже ${f.weeksOfData.round()} нед. Помогут '
+            'облегчённая неделя, другой диапазон повторов или другой вариант '
+            'упражнения',
           );
         case LiftTrend.declining:
           out.add(

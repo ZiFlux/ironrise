@@ -1,6 +1,7 @@
 import '../game/exercise_catalog.dart';
 import '../game/program.dart';
 import '../game/workout.dart';
+import '../l10n/tr.dart';
 
 /// 20 → «20», 22.5 → «22,5».
 String formatWeight(double kg) => kg % 1 == 0
@@ -72,3 +73,34 @@ String formatDate(DateTime d) => '${d.day} ${_monthsOf[d.month - 1]}';
 String formatKg(double kg) => kg == kg.roundToDouble()
     ? kg.toStringAsFixed(0)
     : kg.toStringAsFixed(1).replaceAll('.', ',');
+
+/// «3 дня», «5 дней», «1 день» — для предложений вместо «дн.».
+String daysWord(int n) => trPlural(n, 'день', 'дня', 'дней', 'day', 'days');
+
+/// «2 тренировки», «5 тренировок».
+String workoutsWord(int n) => trPlural(
+  n,
+  'тренировка',
+  'тренировки',
+  'тренировок',
+  'workout',
+  'workouts',
+);
+
+/// «1 неделя», «3 недели», «6 недель».
+String weeksWord(int n) =>
+    trPlural(n, 'неделя', 'недели', 'недель', 'week', 'weeks');
+
+/// «4 упражнения», «1 упражнение».
+String exercisesWord(int n) => trPlural(
+  n,
+  'упражнение',
+  'упражнения',
+  'упражнений',
+  'exercise',
+  'exercises',
+);
+
+/// «7 движений».
+String movesWord(int n) =>
+    trPlural(n, 'движение', 'движения', 'движений', 'move', 'moves');

@@ -211,5 +211,5 @@ String warmupSummary(List<WarmupMove> moves) {
   final head = cardio == null
       ? ''
       : '${cardio.name.split(',').first.toLowerCase()} и ';
-  return 'Разминка ~${formatMinutes(Warmup.duration(moves))}: $head$rest движ.';
+  return 'Разминка ~${formatMinutes(Warmup.duration(moves))}: $head${movesWord(rest)}';
 }

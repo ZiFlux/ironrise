@@ -17,9 +17,9 @@ bool isConditioning(Exercise e) => e.pattern == 'conditioning';
 
 /// Ответ после тренировки: каким был темп кардио.
 enum CircuitPace {
-  tooHard('Тяжело, задыхался'),
+  tooHard('Тяжело, не хватало дыхания'),
   right('В самый раз'),
-  easy('Мог бы бодрее');
+  easy('Можно бодрее');
 
   const CircuitPace(this.label);
   final String label;

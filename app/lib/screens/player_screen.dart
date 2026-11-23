@@ -587,7 +587,7 @@ class _Menu extends ConsumerWidget {
           (
             LucideIcons.users,
             'Друзья',
-            'Заявки, поиск по нику, кто нападал',
+            'Заявки, поиск по нику, кто вызывал тебя на бой',
             '/profile/friends',
             off,
           ),
@@ -602,8 +602,8 @@ class _Menu extends ConsumerWidget {
             LucideIcons.handshake,
             'Тренировка вместе',
             joint?.bonusActive ?? false
-                ? 'Идёт: $bonus'
-                : '$bonus, если рядом друзья',
+                ? 'Идёт сейчас: $bonus'
+                : '$bonus, если тренируетесь вместе',
             '/workout/joint',
             false,
           ),

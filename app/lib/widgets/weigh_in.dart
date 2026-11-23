@@ -133,7 +133,7 @@ class BodySummary extends ConsumerWidget {
         s.weightKg == null ? '—' : '${formatKg(s.weightKg!)} кг',
         change == null
             ? null
-            : '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)} за 30 дн.',
+            : '${change > 0 ? '+' : ''}${change.toStringAsFixed(1)} за 30 дней',
       ),
       ('Жир', pct(s.fatPct), null),
       ('Безжировая', pct(s.leanPct), 'мышцы, кости'),

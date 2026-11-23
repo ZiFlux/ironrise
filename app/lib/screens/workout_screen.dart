@@ -96,7 +96,8 @@ String _phaseExplain(UserProgram program, HeroProfile? hero) {
           'около ${level.weeklySets} подходов на мышцу в неделю. С опытом уровень '
           'растёт, а раз в несколько недель план сам облегчается — разгрузка.',
   };
-  return '$phase\n\nРазминка подобрана под сегодняшние упражнения: 5 минут берегут суставы.';
+  return '$phase\n\nРазминка: сначала суставы сверху вниз, потом мышцы, которые сегодня '
+      'работают больше всего, — так меньше риск растяжений.';
 }
 
 /// Неделя по графику: какой день что тренировать (п. 127).
@@ -232,7 +233,7 @@ class _StartView extends ConsumerWidget {
     final notes = [
       if (rhythm) '${adapted.variant.label}: ${adapted.variant.description}',
       if (rhythm && untilDeload > 0)
-        'До разгрузочной недели — $untilDeload трен.',
+        'До разгрузочной недели — ${workoutsWord(untilDeload)}',
       ?_splitLine(program, ref.watch(heroProvider)),
       if (adapted.eased) 'План облегчён: на подход меньше',
       if (adapted.boosted) 'План усилен: на подход больше',
@@ -833,7 +834,7 @@ class _DoneToday extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               Text(
-                'За эту неделю: ${week.workouts} трен., ${week.volume.round()} кг',
+                'За эту неделю: ${workoutsWord(week.workouts)}, поднято ${week.volume.round()} кг',
                 style: const TextStyle(
                   fontSize: 13,
                   color: AppColors.textSecondary,
@@ -1338,7 +1339,7 @@ class _PulseIndicator extends ConsumerWidget {
         'Зона: $zone',
         if (avg != null) 'За тренировку: средний $avg, максимум $top',
         'Твой максимум — около $max уд/мин. Пульс подтверждает тренировку '
-            'и подсказывает, когда ты отдохнул.',
+            'и подсказывает, когда отдых закончен.',
       ].join('\n'),
       actionLabel: 'Датчики',
       onAction: () => GoRouter.of(anchor).push('/profile/heart-rate'),
@@ -1727,8 +1728,8 @@ class _PlanTarget extends StatelessWidget {
         text:
             '${plan.sets} × ${range.min}–${range.max}$unit. «${plan.repsInReserve} в запасе» — '
             'остановись, когда можешь сделать ещё ${plan.repsInReserve}: так сила растёт '
-            'без травм. Сделал верх диапазона во всех подходах с запасом — в следующий '
-            'раз вес чуть больше.',
+            'без травм. Если во всех подходах получился верх диапазона с запасом, в '
+            'следующий раз вес будет чуть больше.',
       ),
       child: Padding(
         padding: const EdgeInsets.only(bottom: 6, right: 12),

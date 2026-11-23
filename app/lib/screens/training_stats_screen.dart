@@ -99,7 +99,7 @@ class TrainingStatsScreen extends ConsumerWidget {
                         value: w.volume,
                         tip:
                             'Неделя с ${formatDate(w.week)}: ${w.volume.round()} кг, '
-                            '${w.workouts} трен.',
+                            '${workoutsWord(w.workouts)}',
                       ),
                   ],
                 ),

@@ -1,3 +1,5 @@
+import '../widgets/format.dart';
+
 import 'dart:async';
 
 import 'package:flutter/material.dart';
@@ -104,8 +106,8 @@ class _LockedCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final left = [
-      if (info.daysLeft > 0) '${info.daysLeft} дн.',
-      if (info.workoutsLeft > 0) '${info.workoutsLeft} трен. с пульсом',
+      if (info.daysLeft > 0) daysWord(info.daysLeft),
+      if (info.workoutsLeft > 0) '${workoutsWord(info.workoutsLeft)} с пульсом',
     ].join(' и ещё ');
     return Card(
       child: Padding(
@@ -245,7 +247,7 @@ class _AuraCard extends ConsumerWidget {
                     progress.toNext == null
                         ? 'Максимальный уровень'
                         : open
-                        ? 'До уровня ${progress.level + 1}: ${progress.toNext} трен.'
+                        ? 'До уровня ${progress.level + 1}: ещё ${workoutsWord(progress.toNext!)}'
                         : 'Откроется после первой тренировки',
                     style: const TextStyle(
                       fontSize: 12,
@@ -468,7 +470,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
             'Пульс записан только на часть тренировки — держи часы или датчик '
                 'включёнными до конца. Если пульс идёт через Samsung Health, '
                 'подожди минуту и нажми «Повторить»',
-          422 when e.message.contains('low') => 'Пульс слишком спокойный для ауры: нужен средний от 85 или пик от 110',
+          422 when e.message.contains('low') => 'Пульс слишком спокойный для ауры: нужен средний от 85 уд/мин или пик от 110',
           422 =>
             'Нет пульса с часов или датчика — тренировка ауры не засчитана',
           409 when e.message.contains('locked') =>
@@ -571,7 +573,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                         const SizedBox(height: 6),
                         Text(
                           '${AuraKind.rounds} круга, отдых ${AuraKind.restSeconds} с · '
-                          '~${(kind.totalSeconds / 60).round()} мин. Наденьте часы: '
+                          '~${(kind.totalSeconds / 60).round()} мин. Надень часы: '
                           'без пульса тренировка не засчитается',
                           textAlign: TextAlign.center,
                           style: const TextStyle(color: AppColors.textMuted),

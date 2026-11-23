@@ -250,7 +250,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                 ),
                 title: f.name,
                 subtitle: d.results.containsKey(f.id)
-                    ? 'сила ${f.power} · сегодня ${d.results[f.id]! ? 'ты победил' : 'победил он'}'
+                    ? 'сила ${f.power} · сегодня ${d.results[f.id]! ? 'победа за тобой' : 'победа за соперником'}'
                     : 'сила ${f.power}',
                 trailing: Row(
                   mainAxisSize: MainAxisSize.min,
@@ -320,7 +320,7 @@ class _FriendsScreenState extends ConsumerState<FriendsScreen> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(
-                      a.attackerWon ? 'победил' : 'ты отбился',
+                      a.attackerWon ? 'победа соперника' : 'атака отбита',
                       style: TextStyle(
                         fontSize: 13,
                         color: a.attackerWon

@@ -184,7 +184,7 @@ class _FoundWatch extends ConsumerWidget {
         true,
       ),
       DetectedWatch(isWearOs: true) => (
-        tr('Поставьте IronRise на часы — пульс будет идти сам'),
+        tr('Поставь IronRise на часы — пульс будет передаваться сам'),
         false,
       ),
       _ when guide?.live ?? false => (
@@ -311,7 +311,7 @@ class _FoundWatch extends ConsumerWidget {
                   label: Text(
                     waiting
                         ? tr('Ждём сигнал от часов…')
-                        : tr('Включил — подключить'),
+                        : tr('Готово — подключить'),
                   ),
                 )
               else

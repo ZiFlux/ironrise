@@ -1,3 +1,5 @@
+import 'format.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -152,7 +154,7 @@ class PairCard extends ConsumerWidget {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  'Общая серия с ${pair.nickname}: ${pair.weeks} нед. 🔥',
+                  'Общая серия с ${pair.nickname}: ${weeksWord(pair.weeks)} 🔥',
                   style: const TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w500,

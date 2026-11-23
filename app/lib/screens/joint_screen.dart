@@ -60,7 +60,7 @@ class _JointScreenState extends ConsumerState<JointScreen> {
     } on ApiException catch (e) {
       setState(
         () => _error = switch (e.status) {
-          0 => 'Сервер недоступен. Проверьте сеть',
+          0 => 'Сервер недоступен. Проверь интернет',
           404 => 'Код не найден или уже не действует',
           409 => 'В тренировке уже 5 человек',
           400 => 'Это твой собственный код',

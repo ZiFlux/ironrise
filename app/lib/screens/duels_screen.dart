@@ -181,7 +181,7 @@ String _botsCounter(Iterable<int> fights) =>
 const _ladderFooter = '3 победы — босс, босс — ступень выше';
 
 final _botsFooter =
-    'С ботом — раз в ${GameConfig.duelCooldown.inHours} ч, повтор за сутки — ½ монет. Новые — каждый день';
+    'С одним ботом — бой раз в ${GameConfig.duelCooldown.inHours} ч, повторная победа в те же сутки — половина монет. Новые боты — каждый день';
 
 /// Две плашки над списком: сезон (уровень и прогресс) и аура (какая выбрана).
 class _Perks extends ConsumerWidget {
@@ -226,8 +226,8 @@ class _Perks extends ConsumerWidget {
               icon: auraIcon(aura),
               title: aura == null ? 'Ауры' : 'Аура: ${aura.label}',
               subtitle: aura == null
-                  ? 'Способность в бою — открой'
-                  : 'ур. $auraLevel · ${auras!.sessionsThisWeek}/${auras.perWeek} трен. за неделю',
+                  ? 'Особый приём в бою — открой и выбери'
+                  : 'ур. $auraLevel · тренировок ауры за неделю: ${auras!.sessionsThisWeek} из ${auras.perWeek}',
               onTap: () => context.push('/duels/auras'),
             ),
           ),
@@ -777,7 +777,7 @@ class _FighterCard extends StatelessWidget {
                     _FightButton(label: 'Ещё бой', onTap: onFight),
                     const SizedBox(height: 1),
                     Text(
-                      beaten ? '20 % монет' : '½ монет',
+                      beaten ? '20 % монет' : 'половина монет',
                       style: TextStyle(
                         fontSize: 11,
                         color: AppColors.textMuted,

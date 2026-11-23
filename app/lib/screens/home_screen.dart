@@ -521,13 +521,13 @@ class _RestDayNote extends StatelessWidget {
           title: 'День отдыха',
           text:
               'Мышцы растут, пока ты отдыхаешь. Подряд без тренировки можно '
-              '$maxRestDays дн. — серия не сгорит. Лёгкое кардио в отдых '
+              '${daysWord(maxRestDays)} — серия не сгорит. Лёгкое кардио в отдых '
               'тоже качает героя, но необязательно.',
           actionLabel: 'Изменить график',
           onAction: () => context.push('/profile/settings/schedule'),
         ),
         child: Text(
-          'По графику отдых. Серия не сгорит ещё $maxRestDays дн.',
+          'По графику отдых. Серия не сгорит ещё ${daysWord(maxRestDays)}',
           textAlign: TextAlign.center,
           style: const TextStyle(color: AppColors.textMuted, fontSize: 13),
         ),
@@ -611,7 +611,7 @@ class _TodayRow extends ConsumerWidget {
           label: 'Тест',
           hint: entry.first
               ? 'Входная тренировка · 12 мин · +50 монет'
-              : 'Месяц прошёл — сравним, как ты вырос',
+              : 'Прошёл месяц — пора сравнить результаты',
           due: true,
           onTap: () => context.push('/entry-test'),
         ),
@@ -629,7 +629,7 @@ class _TodayRow extends ConsumerWidget {
         icon: LucideIcons.scale,
         label: 'Вес',
         hint: weighDue
-            ? 'Пора взвеситься — и анализ тела на часах'
+            ? 'Пора взвеситься и сделать анализ тела на часах'
             : 'Записать вес и состав тела',
         due: weighDue,
         onTap: () => showWeighIn(context, ref),

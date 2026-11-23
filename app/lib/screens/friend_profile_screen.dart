@@ -1,3 +1,5 @@
+import '../widgets/format.dart';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -162,7 +164,7 @@ class _Body extends StatelessWidget {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'сила ${p.power} · серия ${p.streakDays} · с IronRise $days дн.',
+                    'сила ${p.power} · серия ${daysWord(p.streakDays)} · с IronRise ${daysWord(days)}',
                     style: const TextStyle(
                       fontSize: 13,
                       color: AppColors.textMuted,

@@ -1,3 +1,6 @@
+import '../l10n/tr.dart';
+import '../widgets/format.dart';
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
@@ -165,13 +168,17 @@ class _LeagueView extends StatelessWidget {
                                 ),
                               ),
                               const SizedBox(width: 8),
-                              Text(
-                                daysLeft == 0
-                                    ? 'последний день'
-                                    : 'ещё $daysLeft дн.',
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: AppColors.textMuted,
+                              Flexible(
+                                child: Text(
+                                  daysLeft == 0
+                                      ? 'последний день'
+                                      : 'ещё ${daysWord(daysLeft)}',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: AppColors.textMuted,
+                                  ),
                                 ),
                               ),
                             ],
@@ -181,7 +188,7 @@ class _LeagueView extends StatelessWidget {
                             // Правила подъёма и вылета — в листе лиг по нажатию на название.
                             'Тренировка +${GameConfig.leagueWorkoutPoints} · '
                             'победа +${GameConfig.leagueWinPoints}'
-                            '${trainedDays == null ? '' : ' · у тебя $trainedDays трен., $wins побед'}',
+                            '${trainedDays == null ? '' : ' · у тебя ${workoutsWord(trainedDays!)} и ${trPlural(wins ?? 0, 'победа', 'победы', 'побед', 'win', 'wins')}'}',
                             style: const TextStyle(
                               fontSize: 13,
                               color: AppColors.textSecondary,
@@ -504,7 +511,7 @@ class _LastWeekBanner extends StatelessWidget {
     final after = LeagueTier.of(result.tierAfter).title.toLowerCase();
     return switch (result.outcome) {
       'up' when result.tierAfter > result.tierBefore =>
-        'Прошлая неделя: ${result.rank} место — ты поднялся: $after',
+        'Прошлая неделя: ${result.rank} место — повышение: $after',
       'down' when result.tierAfter < result.tierBefore =>
         'Прошлая неделя: ${result.rank} место — лига ниже: $after',
       _ => 'Прошлая неделя: ${result.rank} место, лига та же',
@@ -668,7 +675,7 @@ class _LeaguesSheetState extends ConsumerState<_LeaguesSheet> {
             padding: EdgeInsets.all(24),
             child: Center(
               child: Text(
-                'Не удалось загрузить — проверьте сеть',
+                'Не удалось загрузить — проверь интернет',
                 style: TextStyle(color: AppColors.textSecondary),
               ),
             ),

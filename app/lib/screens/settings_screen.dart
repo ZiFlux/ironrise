@@ -94,7 +94,7 @@ class SettingsScreen extends ConsumerWidget {
                     title: Text(tr('Ритм опытных')),
                     subtitle: Text(
                       tr(
-                        'Каждая 4-я тренировка силовая, после 4 недель — разгрузочная неделя',
+                        'Каждая 4-я тренировка — силовая (тяжелее обычной), каждая 5-я неделя — разгрузочная',
                       ),
                       style: TextStyle(
                         fontSize: 13,
@@ -470,7 +470,7 @@ class _HeartZones extends ConsumerWidget {
             padding: const EdgeInsets.fromLTRB(16, 4, 16, 14),
             child: Text(
               tr(
-                'Макс. пульс {maxHeartRate}, зона 2 для кардио — от {zone} уд/мин{p3}',
+                'Максимальный пульс — {maxHeartRate}, зона 2 для кардио — от {zone} уд/мин{p3}',
                 {
                   'maxHeartRate': hero.maxHeartRate,
                   'zone': zone,
@@ -954,7 +954,7 @@ String _accountLine(AccountState a) {
       ? tr('автосинхронизация выключена')
       : synced == null
       ? tr('ещё не синхронизировано')
-      : tr('синхр. {p1}', {'p1': syncedWhen(synced)});
+      : tr('синхронизировано {p1}', {'p1': syncedWhen(synced)});
   return '${a.email} · $sync';
 }
 

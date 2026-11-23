@@ -211,7 +211,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
     final email = _email.text.trim();
     final password = _password.text;
     final problem = !email.contains('@')
-        ? tr('Проверьте e-mail')
+        ? tr('Проверь e-mail')
         : _register && password.length < 8
         ? tr('Пароль — не меньше 8 символов')
         : null;
@@ -231,7 +231,7 @@ class _SignInFormState extends ConsumerState<_SignInForm> {
     } on ApiException catch (e) {
       setState(
         () => _error = switch (e.status) {
-          0 => tr('Сервер недоступен. Проверьте сеть'),
+          0 => tr('Сервер недоступен. Проверь интернет'),
           401 => tr('Неверный e-mail или пароль'),
           403 when e.isBanned => tr('Аккаунт заблокирован: {banReason}', {
             'banReason': e.banReason,

@@ -364,7 +364,7 @@ class _NotificationSettingsState
                 const Padding(
                   padding: EdgeInsets.fromLTRB(12, 16, 12, 0),
                   child: Text(
-                    'Если пуши не приходят совсем, проверьте, что уведомления IronRise разрешены '
+                    'Если уведомления не приходят совсем, проверь, что они разрешены для IronRise '
                     'в настройках Android',
                     style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                   ),

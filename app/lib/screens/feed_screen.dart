@@ -57,11 +57,11 @@ class FeedItem {
     switch (kind) {
       case 'level_up':
         final part = BodyPart.values.asNameMap()[data['part']];
-        return 'прокачал${part == null ? '' : ' ${_whom[part]}'} до ${data['level']}';
+        return 'качает${part == null ? '' : ' ${_whom[part]}'}: уже уровень ${data['level']}';
       case 'streak':
         return 'держит серию ${data['days']} дней 🔥';
       case 'comeback':
-        return 'вернулся к тренировкам после паузы';
+        return 'снова тренируется после паузы';
       case 'hero_level':
         final item = ShopCatalog.all
             .where((i) => i.id == data['item'])
@@ -69,7 +69,7 @@ class FeedItem {
         return 'герой достиг уровня ${data['level']}'
             '${item == null ? '' : ' — подарок: ${item.name.toLowerCase()}'}';
       default:
-        return 'что-то сделал';
+        return 'есть новости';
     }
   }
 }

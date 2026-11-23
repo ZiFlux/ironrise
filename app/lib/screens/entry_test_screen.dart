@@ -199,7 +199,7 @@ class _EntryTestScreenState extends ConsumerState<EntryTestScreen> {
             const Text(
               'Шесть упражнений дома, без инвентаря. Это не тест на максимум: '
               'останавливайся, как только техника ломается. По результатам подберём '
-              'уровень и упражнения, а через месяц сравним, насколько ты вырос.',
+              'уровень и упражнения, а через месяц сравним результаты.',
               style: TextStyle(color: AppColors.textSecondary, height: 1.4),
             ),
             const SizedBox(height: 16),
@@ -281,7 +281,7 @@ class _EntryTestScreenState extends ConsumerState<EntryTestScreen> {
       if (_item == EntryTestItem.pushUps)
         SwitchListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Отжимался с колен'),
+          title: const Text('Отжимания были с колен'),
           value: _knee,
           onChanged: (v) => setState(() => _knee = v),
         ),
@@ -318,7 +318,7 @@ class _EntryTestScreenState extends ConsumerState<EntryTestScreen> {
                 ? 'Старт — 60 секунд'
                 : item == EntryTestItem.plank
                 ? 'Старт секундомера'
-                : 'Сделал — ввести результат',
+                : 'Готово — ввести результат',
           ),
         ),
         if (item == EntryTestItem.pullUps) ...[
@@ -378,7 +378,7 @@ class _EntryTestScreenState extends ConsumerState<EntryTestScreen> {
               Text(
                 prev == null
                     ? 'План и упражнения подобраны под твой результат. Через месяц '
-                          'повторим и посмотрим, как ты вырос.'
+                          'повторим тест и сравним результаты.'
                     : 'Сравнение с прошлым разом — в скобках. Так держать!',
                 textAlign: TextAlign.center,
                 style: const TextStyle(color: AppColors.textSecondary),

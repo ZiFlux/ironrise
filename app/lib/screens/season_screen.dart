@@ -87,7 +87,7 @@ class _SeasonViewState extends ConsumerState<_SeasonView> {
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Осталось ${s.daysLeft(DateTime.now())} дн. · до ${formatDate(s.endsAt)}',
+                  'Осталось ${daysWord(s.daysLeft(DateTime.now()))} · до ${formatDate(s.endsAt)}',
                   style: const TextStyle(color: AppColors.textSecondary),
                 ),
                 const SizedBox(height: 14),
