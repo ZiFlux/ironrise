@@ -4,6 +4,7 @@ import '../game/body_part.dart';
 import '../game/muscles.dart';
 import 'avatar_look.dart';
 import 'avatar_painter.dart';
+import 'avatar_raster.dart';
 import 'body_frame.dart';
 
 /// Аватар героя. Пропорции из уровней, внешний вид из образа.
@@ -35,17 +36,23 @@ class AvatarView extends StatelessWidget {
   Widget build(BuildContext context) {
     // Свой слой: аватар не перерисовывается, когда меняется что-то рядом
     // (таймер, анимация кнопки, прокрутка соседнего списка).
+    final painter = AvatarPainter(
+      levels: levels,
+      look: look,
+      muscles: muscles,
+      pose: pose,
+      poseT: poseT,
+    );
+    // Неподвижный герой — из кэша готовых картинок (avatar_raster.dart); в
+    // середине позы кадры разные — рисуем напрямую.
+    final still = poseT == 0 || poseT == 1;
     final avatar = RepaintBoundary(
-      child: CustomPaint(
-        painter: AvatarPainter(
-          levels: levels,
-          look: look,
-          muscles: muscles,
-          pose: pose,
-          poseT: poseT,
-        ),
-        size: Size.infinite,
-      ),
+      child: still
+          ? RasterPaint(
+              cacheKey: (look, _mapKey(levels), _mapKey(muscles), pose, poseT),
+              paint: painter.paint,
+            )
+          : CustomPaint(painter: painter, size: Size.infinite),
     );
     if (!withLamp) return avatar;
     return Stack(
@@ -83,4 +90,11 @@ class _LampPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_LampPainter oldDelegate) => false;
+}
+
+/// Ключ кэша для словаря уровней или мышц: значения по порядку перечисления,
+/// округлённые до сотых (дробные очки мышц растут плавно).
+String _mapKey(Map<Object, num> map) {
+  final keys = map.keys.toList()..sort((a, b) => '$a'.compareTo('$b'));
+  return [for (final k in keys) '$k:${(map[k]! * 100).round()}'].join(',');
 }

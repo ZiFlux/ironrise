@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_painter.dart';
+import '../avatar/avatar_raster.dart';
 import '../avatar/body_frame.dart';
 import '../game/body_part.dart';
 import '../game/shop.dart';
@@ -57,12 +58,18 @@ class ItemPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final look = item.apply(base);
+    final painter = _CropPainter(
+      AvatarPainter(levels: _levels, look: look),
+      regionOf(item),
+    );
+    // Превью одинаковые от кадра к кадру — из кэша картинок (avatar_raster.dart):
+    // в магазине десятки плиток, и каждая рисовала героя целиком.
     return SizedBox.square(
       dimension: size,
-      child: CustomPaint(
-        painter: _CropPainter(
-          AvatarPainter(levels: _levels, look: look),
-          regionOf(item),
+      child: RepaintBoundary(
+        child: RasterPaint(
+          cacheKey: ('item', item.id, look, regionOf(item)),
+          paint: painter.paint,
         ),
       ),
     );

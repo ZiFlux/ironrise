@@ -74,7 +74,8 @@ class _PosingAvatarState extends State<PosingAvatar>
     if (!mounted) return;
     // Вкладка скрыта (TickerMode выключен) — не позируем: иначе поза ждала бы
     // и начиналась ровно при переходе на вкладку, отнимая кадры у перехода.
-    if (MediaQuery.of(context).disableAnimations || !TickerMode.of(context)) {
+    if (MediaQuery.of(context).disableAnimations ||
+        !TickerMode.valuesOf(context).enabled) {
       return _schedule();
     }
     final favourite = poseFor(

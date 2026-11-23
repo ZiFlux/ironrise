@@ -359,7 +359,14 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
         .currentConfiguration
         .uri
         .path;
-    if (!tabRoots.contains(path)) {
+    // Поверх вкладки открыта панель или диалог (они живут в навигаторе вкладки) —
+    // свайп принадлежит им: листать фильтры и не улетать на соседнюю вкладку.
+    final shell = widget.shell;
+    final overlayOpen =
+        shell.route.branches[shell.currentIndex].navigatorKey.currentState
+            ?.canPop() ??
+        false;
+    if (!tabRoots.contains(path) || overlayOpen) {
       _pullFrom = null;
       _pullCancelled = true;
       return;
