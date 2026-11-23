@@ -1,12 +1,22 @@
 import 'body_part.dart';
 
 part 'tips_more.dart';
+part 'tips_facts.dart';
 
 /// «Совет дня» (PLAN.md, раздел 4.8): короткий совет и один вопрос по нему.
 /// Тексты — общеизвестные безопасные принципы; перед публичным запуском
 /// их должен проверить тренер или спортивный врач (TRAINING_SYSTEM.md, раздел 10).
 
 enum TipMoment { training, rest, any }
+
+/// Вид совета: практический приём или факт из исследования.
+enum TipKind {
+  advice('Совет'),
+  fact('Факт из науки');
+
+  const TipKind(this.label);
+  final String label;
+}
 
 class TipQuestion {
   const TipQuestion(this.text, this.options, this.correct);
@@ -25,7 +35,18 @@ class Tip {
     this.exerciseIds = const [],
     this.part,
     this.moment = TipMoment.any,
+    this.kind = TipKind.advice,
+    this.figure,
+    this.source,
   });
+
+  final TipKind kind;
+
+  /// Крупная цифра-зацепка над заголовком: «−18 %», «66 дней».
+  final String? figure;
+
+  /// Откуда факт: журнал, год, сколько людей.
+  final String? source;
 
   final String id;
   final String title;
@@ -41,7 +62,7 @@ class Tip {
 }
 
 /// Все советы: основные и дополнительные (tips_more.dart).
-const tipLibrary = <Tip>[..._baseTips, ..._moreTips];
+const tipLibrary = <Tip>[..._baseTips, ..._moreTips, ..._factTips];
 
 const _baseTips = <Tip>[
   Tip(
@@ -322,8 +343,30 @@ class TipPicker {
         .where((t) => _relevant(t, isTrainingDay, planExerciseIds, lagging))
         .toList();
     final others = pool.where((t) => !relevant.contains(t)).toList();
-    return [...rotated(relevant), ...rotated(others)].take(count).toList();
+    final ordered = [...rotated(relevant), ...rotated(others)];
+    // Каждый день — и практика, и наука: не меньше [factsPerDay] фактов,
+    // остальное — по делу (план, отстающая часть), чередуя виды.
+    final facts = ordered.where((t) => t.kind == TipKind.fact).toList();
+    final advice = ordered.where((t) => t.kind != TipKind.fact).toList();
+    final wantFacts = factsPerDay.clamp(0, count);
+    final pickedFacts = facts.take(wantFacts).toList();
+    final pickedAdvice = advice.take(count - pickedFacts.length).toList();
+    final rest = ordered
+        .where((t) => !pickedFacts.contains(t) && !pickedAdvice.contains(t))
+        .take(count - pickedFacts.length - pickedAdvice.length);
+    final out = <Tip>[];
+    for (var i = 0; out.length < count; i++) {
+      final f = i < pickedFacts.length ? pickedFacts[i] : null;
+      final a = i < pickedAdvice.length ? pickedAdvice[i] : null;
+      if (f == null && a == null) break;
+      if (a != null) out.add(a);
+      if (f != null && out.length < count) out.add(f);
+    }
+    return [...out, ...rest].take(count).toList();
   }
+
+  /// Фактов из исследований в день.
+  static const factsPerDay = 2;
 
   static bool _relevant(
     Tip tip,

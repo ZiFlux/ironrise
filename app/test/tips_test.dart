@@ -111,4 +111,36 @@ void main() {
     expect(tipQuizCoins(3, 5), 3 * GameConfig.tipCoinsPerAnswer);
     expect(tipQuizCoins(0, 3), 0);
   });
+
+  test('две недели по 5 советов — без повторов, каждый день есть факты', () {
+    var recent = <String>[];
+    final seen = <String>{};
+    for (var d = 0; d < 14; d++) {
+      final set = TipPicker.pickSet(
+        day: DateTime(2026, 11, 23).add(Duration(days: d)),
+        isTrainingDay: d.isEven,
+        planExerciseIds: const ['barbell_squat', 'bench_press'],
+        lagging: null,
+        recentTipIds: recent,
+        count: 5,
+      );
+      expect(set.length, 5);
+      expect(
+        set.where((t) => t.kind == TipKind.fact).length,
+        greaterThanOrEqualTo(TipPicker.factsPerDay),
+      );
+      for (final t in set) {
+        expect(seen.add(t.id), isTrue, reason: 'повтор ${t.id} на день $d');
+      }
+      recent = [for (final t in set) t.id, ...recent].take(75).toList();
+    }
+  });
+
+  test('у фактов есть источник и цифра', () {
+    for (final t in tipLibrary.where((t) => t.kind == TipKind.fact)) {
+      expect(t.source, isNotNull, reason: t.id);
+      expect(t.figure, isNotNull, reason: t.id);
+    }
+    expect(tipLibrary.length, greaterThanOrEqualTo(100));
+  });
 }

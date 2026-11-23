@@ -132,19 +132,67 @@ class _TipPage extends StatelessWidget {
   final String? reward;
   final ValueChanged<int> onAnswer;
 
+  /// Порядок вариантов: перемешан по id совета — стабильно, но верный ответ
+  /// не всегда первый.
+  static List<int> _order(Tip tip) {
+    int hash(String v) =>
+        v.codeUnits.fold(7, (h, c) => (h * 31 + c) & 0x7fffffff);
+    return List.generate(tip.question.options.length, (i) => i)
+      ..sort((a, b) => hash('${tip.id}#$a').compareTo(hash('${tip.id}#$b')));
+  }
+
   @override
   Widget build(BuildContext context) {
     final question = tip.question;
     final answered = answer != null;
     final correct = answer == question.correct;
+    final accent = Theme.of(context).colorScheme.primary;
+    final fact = tip.kind == TipKind.fact;
     return ListView(
       padding: const EdgeInsets.fromLTRB(20, 8, 20, 32),
       children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: (fact ? accent : AppColors.textSecondary).withValues(
+                  alpha: 0.14,
+                ),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    fact ? LucideIcons.flaskConical : LucideIcons.lightbulb,
+                    size: 14,
+                    color: fact ? accent : AppColors.textSecondary,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    tip.kind.label,
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: fact ? accent : AppColors.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        if (tip.figure case final figure?) ...[
+          const SizedBox(height: 14),
+          Text(figure, style: figureStyle(size: 44, color: accent)),
+        ],
+        const SizedBox(height: 10),
         Text(
           tip.title,
           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w500),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Text(
           tip.text,
           style: const TextStyle(
@@ -153,43 +201,111 @@ class _TipPage extends StatelessWidget {
             color: AppColors.textSecondary,
           ),
         ),
-        const SizedBox(height: 28),
-        Text(
-          question.text,
-          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-        ),
-        if (!answered && reward != null) ...[
-          const SizedBox(height: 4),
-          Text(
-            reward!,
-            style: const TextStyle(fontSize: 13, color: AppColors.textMuted),
+        if (tip.source case final source?) ...[
+          const SizedBox(height: 10),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Padding(
+                padding: EdgeInsets.only(top: 2),
+                child: Icon(
+                  LucideIcons.bookOpen,
+                  size: 14,
+                  color: AppColors.textMuted,
+                ),
+              ),
+              const SizedBox(width: 6),
+              Expanded(
+                child: Text(
+                  source,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
-        const SizedBox(height: 12),
-        for (final (i, option) in question.options.indexed)
-          _Option(
-            text: option,
-            state: !answered
-                ? _OptionState.open
-                : i == question.correct
-                ? _OptionState.correct
-                : i == answer
-                ? _OptionState.wrong
-                : _OptionState.idle,
-            onTap: answered ? null : () => onAnswer(i),
-          ),
-        if (answered) ...[
-          const SizedBox(height: 12),
-          Text(
-            correct ? 'Верно' : 'Не совсем — правильный ответ отмечен',
-            style: TextStyle(
-              fontSize: 14,
-              color: correct
-                  ? Theme.of(context).colorScheme.primary
-                  : AppColors.textSecondary,
+        const SizedBox(height: 24),
+        Card(
+          margin: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 14, 16, 8),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  children: [
+                    Icon(LucideIcons.circleHelp, size: 16, color: accent),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Проверь себя',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: AppColors.textMuted,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  question.text,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                if (!answered && reward != null) ...[
+                  const SizedBox(height: 4),
+                  Text(
+                    reward!,
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: AppColors.textMuted,
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 12),
+                for (final i in _order(tip))
+                  _Option(
+                    text: question.options[i],
+                    state: !answered
+                        ? _OptionState.open
+                        : i == question.correct
+                        ? _OptionState.correct
+                        : i == answer
+                        ? _OptionState.wrong
+                        : _OptionState.idle,
+                    onTap: answered ? null : () => onAnswer(i),
+                  ),
+                if (answered)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 4, bottom: 6),
+                    child: Row(
+                      children: [
+                        Icon(
+                          correct ? LucideIcons.partyPopper : LucideIcons.info,
+                          size: 16,
+                          color: correct ? accent : AppColors.textSecondary,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            correct ? 'Верно!' : 'Не совсем — правильный ответ отмечен галочкой',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: correct ? accent : AppColors.textSecondary,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+              ],
             ),
           ),
-        ],
+        ),
       ],
     );
   }
@@ -262,7 +378,7 @@ class _Option extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: Material(
-        color: AppColors.surface,
+        color: AppColors.raised,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
           side: BorderSide(color: border),
