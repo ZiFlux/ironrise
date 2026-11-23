@@ -3,6 +3,7 @@ import 'dart:math' as math;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ironrise/game/anti_fraud.dart';
 import 'package:ironrise/game/body_part.dart';
+import 'package:ironrise/game/circuit_rest.dart';
 import 'package:ironrise/game/exercise_catalog.dart';
 import 'package:ironrise/game/muscles.dart';
 import 'package:ironrise/game/program.dart';
@@ -362,5 +363,22 @@ void main() {
         reason: id,
       );
     }
+  });
+
+  test('кардио: отдых от 30 с, по ответам — длиннее или постепенно короче', () {
+    var r = CircuitRest.start(TrainingLevel.novice);
+    expect(r.seconds, 60);
+    r = r.after(CircuitPace.right);
+    expect(r.seconds, 60);
+    r = r.after(CircuitPace.right);
+    expect(r.seconds, 55);
+    r = r.after(CircuitPace.tooHard);
+    expect(r.seconds, 70);
+    for (var i = 0; i < 10; i++) {
+      r = r.after(CircuitPace.easy);
+    }
+    expect(r.seconds, CircuitRest.minSeconds);
+    expect(isConditioning(ExerciseCatalog.byId('burpee')), isTrue);
+    expect(isConditioning(ExerciseCatalog.byId('push_up')), isFalse);
   });
 }

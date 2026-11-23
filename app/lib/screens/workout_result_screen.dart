@@ -3,6 +3,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../game/circuit_rest.dart';
+import '../state/rest_state.dart';
 import '../avatar/avatar_look.dart';
 import '../avatar/avatar_view.dart';
 import '../game/anti_fraud.dart';
@@ -109,6 +111,10 @@ class WorkoutResultScreen extends ConsumerWidget {
               when summary.cardio == null) ...[
             const SizedBox(height: 16),
             SetEffortCard(analysis: effort),
+          ],
+          if (ref.watch(lastCircuitProvider)) ...[
+            const SizedBox(height: 16),
+            const _CircuitPaceCard(),
           ],
           if (planResult != null && planResult.levelUps.isNotEmpty) ...[
             const SizedBox(height: 16),
@@ -678,6 +684,81 @@ class _SkillCheckCard extends StatelessWidget {
                   ),
                 ),
               ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// «Каким был темп кардио?» — по ответу отдых между кардио-упражнениями
+/// становится длиннее или постепенно короче (не меньше 30 с).
+class _CircuitPaceCard extends ConsumerStatefulWidget {
+  const _CircuitPaceCard();
+
+  @override
+  ConsumerState<_CircuitPaceCard> createState() => _CircuitPaceCardState();
+}
+
+class _CircuitPaceCardState extends ConsumerState<_CircuitPaceCard> {
+  String? _answer;
+
+  @override
+  Widget build(BuildContext context) {
+    final rest = ref.read(circuitRestProvider.notifier).current();
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Каким был темп кардио?',
+              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              _answer ??
+                  'Отдых между кардио-упражнениями сейчас ${rest.seconds} с. '
+                      'По ответу подстроим его к следующей тренировке.',
+              style: const TextStyle(
+                fontSize: 13,
+                color: AppColors.textSecondary,
+              ),
+            ),
+            if (_answer == null) ...[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  for (final pace in CircuitPace.values)
+                    ActionChip(
+                      label: Text(pace.label),
+                      onPressed: () async {
+                        final before = rest.seconds;
+                        final next = await ref
+                            .read(circuitRestProvider.notifier)
+                            .answer(pace);
+                        if (!mounted) return;
+                        setState(
+                          () => _answer = next.seconds > before
+                              ? 'Отдых между кардио-упражнениями — ${next.seconds} с: '
+                                    'дадим отдышаться.'
+                              : next.seconds < before
+                              ? 'Отдых между кардио-упражнениями — ${next.seconds} с: '
+                                    'темп чуть выше.'
+                              : next.seconds <= CircuitRest.minSeconds
+                              ? 'Отдых уже минимальный — ${next.seconds} с. '
+                                    'Дальше растут темп и число повторов.'
+                              : 'Оставляем ${next.seconds} с. Ещё одна такая '
+                                    'тренировка — и сократим отдых на 5 с.',
+                        );
+                      },
+                    ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

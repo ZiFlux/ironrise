@@ -45,6 +45,7 @@ import '../widgets/guide.dart';
 import '../widgets/info_bubble.dart';
 import '../game/set_pulse.dart';
 import '../game/skill_practice.dart';
+import '../game/circuit_rest.dart';
 import '../game/anti_fraud.dart' show PulseSample;
 
 class WorkoutScreen extends ConsumerWidget {
@@ -1072,9 +1073,18 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   Duration _restTotal = const Duration(seconds: 90);
 
   void _logSet(int index, SetRecord set) {
+    final exercise = widget.session.entries[index].exercise;
     _workout.logSet(index, set);
     TrainingSound.rest();
-    _startRest(_rest);
+    // Кардио (бёрпи, скалолаз…) — короткая передышка: пульс держится в рабочей
+    // зоне, отдых подстраивается по ответам после тренировки (circuit_rest.dart).
+    _startRest(
+      isConditioning(exercise)
+          ? Duration(
+              seconds: ref.read(circuitRestProvider.notifier).current().seconds,
+            )
+          : _rest,
+    );
   }
 
   /// Запустить (или продлить) отдых: плашка, звонок в конце, метка в журнал.

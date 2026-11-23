@@ -1,3 +1,6 @@
+import '../game/circuit_rest.dart';
+import 'rest_state.dart';
+
 import 'dart:convert';
 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -240,6 +243,13 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
         );
     ref.read(lastStreakRewardProvider.notifier).show(streak);
     ref.read(lastSummaryProvider.notifier).show(summary);
+    ref
+        .read(lastCircuitProvider.notifier)
+        .show(
+          session.entries.any(
+            (e) => e.sets.isNotEmpty && isConditioning(e.exercise),
+          ),
+        );
     ref
         .read(lastSetEffortProvider.notifier)
         .show(
