@@ -51,6 +51,22 @@ export const settleWeek = (args: {
   return { week: args.week, rank: args.rank, outcome, tierBefore: args.tier, tierAfter: tierAfter(args.tier, outcome) };
 };
 
+/**
+ * Лига игрока в неделю week. Есть запись за неделю — она. Нет: если игрок ещё
+ * не подводил эту неделю (leagueWeek ≤ week), его текущая лига и есть лига той
+ * недели; если уже подвёл — уровень до подведения из последнего итога.
+ */
+export const tierInWeek = (
+  p: { leagueTier: number; leagueWeek: string | null; leagueLast: WeekSettlement | null },
+  recorded: number | undefined,
+  week: string,
+): number => {
+  if (recorded !== undefined) return recorded;
+  if (p.leagueWeek === null || p.leagueWeek <= week) return p.leagueTier;
+  if (p.leagueLast?.week === week) return p.leagueLast.tierBefore;
+  return p.leagueTier;
+};
+
 /** Понедельник через n недель. */
 export const addWeeks = (monday: string, n: number): string =>
   new Date(new Date(`${monday}T00:00:00Z`).getTime() + n * 7 * 86_400_000).toISOString().slice(0, 10);

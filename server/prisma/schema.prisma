@@ -47,6 +47,7 @@ model User {
   entryTests    EntryTest[]
   suspicions    Suspicion[]
   wellbeing     WellbeingReport[]
+  leagueWeeks   LeagueWeekTier[]
   xpEvents      XpEvent[]
   walletTx      WalletTx[]
   refreshTokens RefreshToken[]
@@ -476,6 +477,19 @@ model Suspicion {
 
 /// Самочувствие после тренировки (п. 81): только с отдельным согласием, при отзыве удаляется.
 /// Хранится до публичной версии, затем обезличивается (политика конфиденциальности).
+/// В какой лиге игрок был в неделю week (понедельник). Итог недели считается по
+/// составу лиги той недели, а не по текущим уровням: иначе первые подведённые
+/// поднимались, выбывали из таблицы, и остальные шли вверх цепочкой.
+model LeagueWeekTier {
+  userId String @db.Uuid
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  week   String
+  tier   Int
+
+  @@id([userId, week])
+  @@index([week, tier])
+}
+
 model WellbeingReport {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @db.Uuid

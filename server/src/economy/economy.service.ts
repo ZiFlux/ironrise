@@ -7,7 +7,7 @@ import { showcaseLock } from '../game/showcase';
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { Bot, fillLeague, LEAGUE_WIN_POINTS, LEAGUE_WORKOUT_POINTS, liveLeague, MIN_LEAGUE_PLAYERS, mondayOf } from '../game/bots';
-import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, minTrainedDaysToPromote, promoteTopFor, settleWeek, TOP_TIER, WeekSettlement } from '../game/league';
+import { addWeeks, DEMOTE_BOTTOM, sundayOf, LEAGUE_TIERS, minTrainedDaysToPromote, promoteTopFor, settleWeek, tierInWeek, TOP_TIER, WeekSettlement } from '../game/league';
 import { GameConfig as C } from '../game/config';
 import { simulateDuel } from '../game/duel';
 import { BOSS_UNLOCK_WINS, LADDER, LADDER_BOTS, bossUnlocked, clampTier, isBossId, ladderCoins, ladderTier, readBeaten, tierWins } from '../game/bot-ladder';
@@ -514,16 +514,46 @@ export class EconomyService {
   }
 
   /** Очки за неделю всех живых игроков лиги [tier], кроме [exceptId]: активные за 4 недели. */
-  private async tierPlayers(tier: number, monday: string, today: string, exceptId: string, fill = true) {
+  /**
+   * Игроки лиги [tier] за неделю [monday]. [past] — неделя уже прошла и подводится:
+   * состав берётся по лигам той недели (LeagueWeekTier), а не по текущим, иначе
+   * успевшие подняться выпадали бы из таблицы и тянули вверх остальных.
+   */
+  private async tierPlayers(tier: number, monday: string, today: string, exceptId: string, fill = true, past = false) {
     const since = addWeeks(monday, -4);
     const active = { lastActiveDay: { gte: since }, userId: { not: exceptId }, user: { bannedAt: null } };
     const select = { userId: true, nickname: true, leagueTier: true } as const;
-    const own = await this.db.profile.findMany({ where: { ...active, leagueTier: tier }, select, take: 30 });
-    // Мало своих — добираем соседей (fillLeague): в бете иначе каждый один в своей лиге.
-    const others =
-      !fill || own.length >= MIN_LEAGUE_PLAYERS
-        ? []
-        : await this.db.profile.findMany({ where: { ...active, leagueTier: { not: tier } }, select, take: 200 });
+    let own: { userId: string; nickname: string; leagueTier: number }[];
+    let others: { userId: string; nickname: string; leagueTier: number }[];
+    if (past) {
+      const [candidates, records] = await Promise.all([
+        this.db.profile.findMany({
+          where: active,
+          select: { ...select, leagueWeek: true, leagueLast: true },
+          take: 500,
+        }),
+        this.db.leagueWeekTier.findMany({ where: { week: monday }, select: { userId: true, tier: true } }),
+      ]);
+      const recorded = new Map(records.map((r) => [r.userId, r.tier]));
+      const withTier = candidates.map((p) => ({
+        userId: p.userId,
+        nickname: p.nickname,
+        leagueTier: tierInWeek(
+          { leagueTier: p.leagueTier, leagueWeek: p.leagueWeek, leagueLast: p.leagueLast as WeekSettlement | null },
+          recorded.get(p.userId),
+          monday,
+        ),
+      }));
+      own = withTier.filter((p) => p.leagueTier === tier).slice(0, 30);
+      others = !fill || own.length >= MIN_LEAGUE_PLAYERS ? [] : withTier.filter((p) => p.leagueTier !== tier).slice(0, 200);
+    } else {
+      own = await this.db.profile.findMany({ where: { ...active, leagueTier: tier }, select, take: 30 });
+      // Мало своих — добираем соседей (fillLeague): в бете иначе каждый один в своей лиге.
+      others =
+        !fill || own.length >= MIN_LEAGUE_PLAYERS
+          ? []
+          : await this.db.profile.findMany({ where: { ...active, leagueTier: { not: tier } }, select, take: 200 });
+    }
     const profiles = fillLeague(
       own.map((p) => ({ ...p, tier: p.leagueTier })),
       others.map((p) => ({ ...p, tier: p.leagueTier })),
@@ -609,10 +639,11 @@ export class EconomyService {
     for (let n = 0; week < currentMonday && n < MAX_WEEKS_TO_SETTLE; n++) {
       const sunday = sundayOf(week);
       const stats = await this.weeklyStats(userId, week, sunday);
+      await this.rememberWeekTier(userId, week, tier);
       const table = liveLeague({
         today: sunday,
         me: { id: userId, name: nickname, points: stats.points },
-        players: await this.tierPlayers(tier, week, sunday, userId),
+        players: await this.tierPlayers(tier, week, sunday, userId, true, true),
         tier,
       });
       const rank = table.findIndex((e) => e.isPlayer) + 1;
@@ -622,6 +653,7 @@ export class EconomyService {
     }
     if (week < currentMonday) tier = 0; // полгода без входа — снова с бронзы
     if (profile.leagueWeek !== currentMonday) {
+      await this.rememberWeekTier(userId, currentMonday, tier);
       await this.db.profile.update({
         where: { userId },
         data: {
@@ -632,6 +664,15 @@ export class EconomyService {
       });
     }
     return { tier, last };
+  }
+
+  /** Запомнить, в какой лиге игрок в эту неделю (для честного подведения у всех). */
+  private rememberWeekTier(userId: string, week: string, tier: number) {
+    return this.db.leagueWeekTier.upsert({
+      where: { userId_week: { userId, week } },
+      create: { userId, week, tier },
+      update: {},
+    });
   }
 
   auras(userId: string) {
