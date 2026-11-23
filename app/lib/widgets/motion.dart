@@ -51,8 +51,9 @@ class TabVisit extends InheritedWidget {
 }
 
 /// Появление: блок проявляется и поднимается снизу. [index] задаёт очередь —
-/// блоки выезжают один за другим. Повторяется при каждом заходе на вкладку,
-/// но сам блок не пересоздаётся (его состояние сохраняется).
+/// блоки выезжают один за другим. Только при первом показе: на повторных
+/// заходах на вкладку десятки одновременных слоёв прозрачности давали рывки,
+/// а саму вкладку и так проявляет переход между вкладками.
 class FadeSlideIn extends StatefulWidget {
   const FadeSlideIn({super.key, required this.child, this.index = 0});
 
@@ -73,7 +74,6 @@ class _FadeSlideInState extends State<FadeSlideIn>
 
   late final AnimationController _c;
   late final Animation<double> _t;
-  int? _visit;
 
   @override
   void initState() {
@@ -88,16 +88,7 @@ class _FadeSlideInState extends State<FadeSlideIn>
       parent: _c,
       curve: Interval(delay / total, 1, curve: AppMotion.curve),
     );
-  }
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final visit = TabVisit.of(context);
-    if (visit != _visit) {
-      _visit = visit;
-      _c.forward(from: 0);
-    }
+    _c.forward();
   }
 
   @override
@@ -106,16 +97,20 @@ class _FadeSlideInState extends State<FadeSlideIn>
     super.dispose();
   }
 
+  // Прозрачность — слоем (FadeTransition), без пересборки блока каждый кадр;
+  // после появления слоёв нет вовсе: блок рисуется как обычно.
   @override
   Widget build(BuildContext context) => AnimatedBuilder(
-    animation: _t,
-    builder: (_, child) => Opacity(
-      opacity: _t.value,
-      child: Transform.translate(
-        offset: Offset(0, _rise * (1 - _t.value)),
-        child: child,
-      ),
-    ),
+    animation: _c,
+    builder: (_, child) => _c.isCompleted
+        ? child!
+        : FadeTransition(
+            opacity: _t,
+            child: Transform.translate(
+              offset: Offset(0, _rise * (1 - _t.value)),
+              child: child,
+            ),
+          ),
     child: widget.child,
   );
 }

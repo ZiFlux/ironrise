@@ -404,21 +404,19 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
     _snap.forward(from: 0);
   }
 
-  // Переключение вкладок «fade through» (Material): новая вкладка проявляется
-  // и чуть подрастает. Вкладки не пересоздаются — их состояние сохраняется.
+  // Переключение вкладок: новая вкладка быстро проявляется. Без масштаба: он
+  // менял матрицу каждый кадр, и тяжёлые слои (аватары соперников, таблицы)
+  // перерисовывались заново вместо готовой картинки из кэша — отсюда рывки.
+  // Начинаем не с нуля: вкладка видна сразу, переход — лёгкое проявление.
   late final AnimationController _switch = AnimationController(
     vsync: this,
-    duration: const Duration(milliseconds: 260),
+    duration: const Duration(milliseconds: 180),
     value: 1,
   );
-  late final Animation<double> _fade = CurvedAnimation(
-    parent: _switch,
-    curve: Curves.easeOutCubic,
-  );
-  late final Animation<double> _scale = Tween(
-    begin: 0.96,
+  late final Animation<double> _fade = Tween(
+    begin: 0.35,
     end: 1.0,
-  ).animate(_fade);
+  ).animate(CurvedAnimation(parent: _switch, curve: Curves.easeOutCubic));
 
   @override
   void dispose() {
@@ -493,10 +491,7 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
             notificationPredicate: (n) => n.metrics.axis == Axis.vertical,
             child: FadeTransition(
               opacity: _fade,
-              child: ScaleTransition(
-                scale: _scale,
-                child: TabVisit(visit: _visit, child: shell),
-              ),
+              child: TabVisit(visit: _visit, child: shell),
             ),
           ),
         ),

@@ -72,7 +72,11 @@ class _PosingAvatarState extends State<PosingAvatar>
 
   Future<void> _strike() async {
     if (!mounted) return;
-    if (MediaQuery.of(context).disableAnimations) return _schedule();
+    // Вкладка скрыта (TickerMode выключен) — не позируем: иначе поза ждала бы
+    // и начиналась ровно при переходе на вкладку, отнимая кадры у перехода.
+    if (MediaQuery.of(context).disableAnimations || !TickerMode.of(context)) {
+      return _schedule();
+    }
     final favourite = poseFor(
       widget.focus.isNotEmpty ? widget.focus : widget.muscles,
     );

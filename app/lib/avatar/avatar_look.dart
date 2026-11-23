@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show setEquals;
 import 'package:flutter/material.dart';
 
 /// Внешний вид аватара: всё, что можно поменять в магазине и гардеробе.
@@ -210,6 +211,43 @@ class AvatarLook {
   final BodyBuild build;
 
   bool get isFemale => sex == AvatarSex.female;
+
+  /// Равенство по содержимому: одинаковый образ с сервера или стартовый образ
+  /// бота не перерисовывает аватар заново (AvatarPainter.shouldRepaint).
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is AvatarLook &&
+          sex == other.sex &&
+          skin == other.skin &&
+          hair == other.hair &&
+          hairColor == other.hairColor &&
+          top == other.top &&
+          topColor == other.topColor &&
+          bottom == other.bottom &&
+          bottomColor == other.bottomColor &&
+          sneakersColor == other.sneakersColor &&
+          shoes == other.shoes &&
+          accessoryColor == other.accessoryColor &&
+          build == other.build &&
+          setEquals(accessories, other.accessories);
+
+  @override
+  int get hashCode => Object.hash(
+    sex,
+    skin,
+    hair,
+    hairColor,
+    top,
+    topColor,
+    bottom,
+    bottomColor,
+    sneakersColor,
+    shoes,
+    accessoryColor,
+    build,
+    Object.hashAllUnordered(accessories),
+  );
 
   AvatarLook copyWith({
     SkinTone? skin,

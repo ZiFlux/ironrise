@@ -64,9 +64,18 @@ class HeroNotifier extends Notifier<HeroProfile?> {
   }
 
   Future<void> save(HeroProfile hero) async {
+    // Синхронизация каждые 5 минут обычно приносит то же самое: без изменений
+    // не трогаем состояние — иначе перестраивались бы все вкладки с аватарами.
+    final encoded = hero.encode();
+    final current = state;
+    if (current != null && encoded == (_encoded ??= current.encode())) return;
+    _encoded = encoded;
     state = hero;
-    await ref.read(prefsProvider).setString(_heroKey, hero.encode());
+    await ref.read(prefsProvider).setString(_heroKey, encoded);
   }
+
+  /// Последнее сохранённое состояние в JSON — для сравнения без пересборки.
+  String? _encoded;
 
   Future<void> reset() async {
     state = null;
