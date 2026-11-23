@@ -6,7 +6,7 @@
 <meta name="page-type" content="software">
 <meta name="site-kind" content="software">
 <title>IronRise — фитнес-RPG: герой растёт от твоих тренировок</title>
-<meta name="description" content="Каждый подход качает свою мышцу героя, пульс с часов подтверждает тренировку. Бои с выбором действий, лестница боссов, лиги и сезоны. Бесплатно, Android.">
+<meta name="description" content="Каждый подход качает свою мышцу героя, пульс с часов подтверждает тренировку. План как у тренера, бои с выбором действий, лиги и сезоны. Бесплатно, Android.">
 <meta property="og:type" content="website">
 <meta property="og:title" content="IronRise — фитнес-RPG">
 <meta property="og:description" content="Тренируйся — твой герой растёт, сражается и побеждает.">
@@ -48,6 +48,8 @@
 <!-- page CSS: the phone frame round the app's own screens, and the brand wordmark (Russo One — the app's display face) -->
 <style>
   .nav__logo .brand, .closing .brand { font-family: "Russo One", var(--font-display); letter-spacing: 0; font-weight: 400; }
+  .logo-mark { width: 28px; height: 28px; flex: none; color: var(--ink); }
+  .nav__logo { display: inline-flex; align-items: center; gap: 8px; }
   .device { position: relative; aspect-ratio: 720 / 1560; height: 100%; margin-inline: auto;
     padding: 9px; border-radius: 38px; background: #0a0809; border: 1px solid #3a2c31; }
   .device img { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 30px; }
@@ -71,6 +73,9 @@
     .stage-phone { height: auto; padding: 20px 0; }
     .stage-phone .device { height: auto; width: min(76vw, 330px); }
     .phones .stat:nth-child(n+2) .stage-phone { display: none; }
+    /* Перебивает высоту 380px для планшета: иначе телефон 715px центрировался
+       в коробке 380px и ложился на заголовок и цифры. */
+    .phones .stat .stage-phone { height: auto; }
   }
 </style>
 </head>
@@ -82,7 +87,7 @@
 <header class="nav nav--centre">
   <div class="wrap nav__bar">
     <a class="skip-link" href="#top">К содержанию</a>
-    <a class="nav__logo" href="#top"><span class="mark" data-mark="stack" aria-hidden="true"></span><span class="brand">IronRise</span></a>
+    <a class="nav__logo" href="#top"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4 57 18 57 46 32 60 7 46 7 18Z" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round"/><path d="M21.5 22V43M30.5 43V22H38A5.75 5.75 0 0 1 38 33.5H30.5M36 33.5 43 43" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="brand">IronRise</span></a>
     <nav class="nav__links" aria-label="Главное">
       <div class="nav__item">
         <a class="nav__link" href="#train">Возможности <svg class="chev" viewBox="0 0 12 12" aria-hidden="true"><path d="M3 4.5l3 3 3-3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></a>
@@ -90,7 +95,7 @@
           <div class="wrap grid">
             <div class="menu-col span-3">
               <p class="t-label">Тренировки</p>
-              <a href="#train">План по силам<span>Входная тренировка и прогрессия</span></a>
+              <a href="#train">План по силам<span>Входная тренировка, сплит, рост весов</span></a>
               <a href="#progress">Прогресс<span>Нагрузка на каждую мышцу</span></a>
             </div>
             <div class="menu-col span-3">
@@ -116,9 +121,9 @@
   <section class="hero hero--split" data-enter aria-labelledby="hero-h">
     <div class="wrap"><div class="hero-text grid hero__grid">
       <div class="hero__text span-5">
-        <p class="hero__kicker"><span class="dot" aria-hidden="true"></span>Версия 1.6 · бесплатно · Android</p>
+        <p class="hero__kicker"><span class="dot" aria-hidden="true"></span>Версия 1.7 · бесплатно · Android</p>
         <h1 id="hero-h">Фитнес-RPG, где растёт твой герой</h1>
-        <p class="hero__lead">Каждый подход качает свою мышцу героя. Пульс с часов подтверждает тренировку: настоящая даёт полный опыт, без часов — половину.</p>
+        <p class="hero__lead">Каждый подход качает свою мышцу героя. Пульс с часов подтверждает тренировку и даёт полный опыт, без часов опыт — вдвое меньше.</p>
         <div class="btn-row"><a class="btn btn--primary" href="#join">Вступить в бету</a><a class="btn btn--secondary" href="#train">Посмотреть тренировку</a></div>
       </div>
       <div class="hero__media hero__media--phone span-6 start-7">
@@ -134,10 +139,10 @@
           <h2 id="train-h">Тренировка по плану. <span class="muted">Упражнения, веса и отдых уже подставлены.</span></h2>
         </div>
         <ul class="rows">
-          <li><span class="rows__name">Входная тренировка<small>Десять минут дома — и план по твоим силам</small></span></li>
-          <li><span class="rows__name">Двойная прогрессия<small>Вес растёт, когда готов, и откатывается, если тяжело</small></span></li>
-          <li><span class="rows__name">«Не получается?»<small>Техника и замена упражнения прямо в подходе</small></span></li>
-          <li><span class="rows__name">Зал, гантели или без инвентаря<small>Цель, стиль и любые 2–6 дней в неделю</small></span></li>
+          <li><span class="rows__name">Входная тренировка<small>12 минут дома — и план под твой уровень</small></span></li>
+          <li><span class="rows__name">Вес растёт вместе с тобой<small>Получилось с запасом — в следующий раз чуть тяжелее; не идёт — вес откатится</small></span></li>
+          <li><span class="rows__name">«Не получается?»<small>Замена прямо в подходе, подводящие упражнения и проверка через 2 недели</small></span></li>
+          <li><span class="rows__name">Зал, гантели или без инвентаря<small>Сплит как у тренеров, всё тело или верх и низ — на любые 2–6 дней</small></span></li>
         </ul>
       </div>
       <div class="span-6 start-7">
@@ -151,7 +156,7 @@
       <div class="span-6">
         <div class="section-head">
           <h2 id="fight-h">Бой с выбором действий. <span class="muted">Соперник выбирает одновременно с тобой.</span></h2>
-          <p>Пять действий на раунд из шести. Главное — сила героя, а при близких силах побеждает тот, кто угадал соперника.</p>
+          <p>На каждый раунд — пять действий из шести. Многое решает сила героя, а при близких силах — кто точнее угадал соперника.</p>
         </div>
         <p class="t-card">В корпус · По ногам · Мощный удар · Захват · Блок · Отход</p>
       </div>
@@ -187,7 +192,7 @@
           <li><span class="rows__name">Galaxy Watch и Wear OS<small>Приложение IronRise на часах</small></span></li>
           <li><span class="rows__name">Huawei, Garmin, Polar, COROS, Amazfit<small>Трансляция пульса по Bluetooth</small></span></li>
           <li><span class="rows__name">Xiaomi и другие<small>Через Health Connect</small></span></li>
-          <li><span class="rows__name">Анализ на телефоне<small>Подходы на каждую мышцу против нормы, прогноз весов</small></span></li>
+          <li><span class="rows__name">Анализ на телефоне<small>Подходы на каждую мышцу против нормы и прогноз весов</small></span></li>
         </ul>
       </div>
       <div class="span-6 start-7">
@@ -224,9 +229,9 @@
       </div>
       <div class="span-6 start-7 faq">
         <div class="faq__item"><h3>Нужны ли часы?</h3><p>Нет. С часами или нагрудным датчиком тренировка подтверждается и даёт полный опыт, без них — примерно половину.</p></div>
-        <div class="faq__item"><h3>Мне подойдёт, если я не тренировался?</h3><p>Да. Входная тренировка покажет уровень, новичок начнёт с фазы «Старт»: 6 простых упражнений, акцент на технике.</p></div>
-        <div class="faq__item"><h3>Можно ли купить силу?</h3><p>Нет. Сила растёт только от тренировок. Монеты — за тренировки и бои, тратятся на одежду и причёски.</p></div>
-        <div class="faq__item"><h3>Что с данными о здоровье?</h3><p>Пульс используется только с отдельного согласия. Анализ считается на телефоне, аккаунт и данные удаляются в настройках.</p></div>
+        <div class="faq__item"><h3>Подойдёт ли новичку без опыта?</h3><p>Да. Входная тренировка покажет уровень, а первые недели идут в мягком режиме «Старт»: простые упражнения и упор на технику.</p></div>
+        <div class="faq__item"><h3>Можно ли купить силу?</h3><p>Нет. Сила растёт только от тренировок. Монеты дают за тренировки, бои и советы дня, а тратятся они только на внешний вид героя.</p></div>
+        <div class="faq__item"><h3>Что с данными о здоровье?</h3><p>Пульс используется только с отдельного согласия. Анализ идёт на телефоне, а удалить аккаунт и все данные можно в настройках.</p></div>
         <div class="faq__item"><h3>Нужен ли аккаунт?</h3><p>Тренироваться можно без него. Аккаунт нужен для дуэлей с друзьями, лиг, сезона и чтобы прогресс не потерялся.</p></div>
       </div>
     </div>
@@ -244,8 +249,8 @@
     <div class="closing__links">
       <div class="grid">
         <div class="span-6 stack-4">
-          <a class="nav__logo" href="#top"><span class="mark" data-mark="stack" aria-hidden="true"></span><span class="brand">IronRise</span></a>
-          <p class="footer__lede">Фитнес-RPG: тренируйся — герой растёт.</p>
+          <a class="nav__logo" href="#top"><svg class="logo-mark" viewBox="0 0 64 64" aria-hidden="true"><path d="M32 4 57 18 57 46 32 60 7 46 7 18Z" fill="none" stroke="var(--accent)" stroke-width="3.5" stroke-linejoin="round"/><path d="M21.5 22V43M30.5 43V22H38A5.75 5.75 0 0 1 38 33.5H30.5M36 33.5 43 43" fill="none" stroke="currentColor" stroke-width="5" stroke-linejoin="round" stroke-linecap="round"/></svg><span class="brand">IronRise</span></a>
+          <p class="footer__lede">Фитнес-RPG: тренируйся — герой растёт</p>
         </div>
         <div class="span-2 footer__col"><h3>Тренировки</h3><ul><li><a href="#train">План</a></li><li><a href="#progress">Прогресс</a></li></ul></div>
         <div class="span-2 footer__col"><h3>Игра</h3><ul><li><a href="#fight">Бои</a></li><li><a href="#ladder">Лиги</a></li></ul></div>
