@@ -21,6 +21,7 @@ MUSCLE_PART = {'pecs': 'chest', 'delts': 'arms', 'biceps': 'arms', 'triceps': 'a
                'quads': 'legs', 'hamstrings': 'legs', 'glutes': 'legs', 'calves': 'legs'}
 JOINTS = {'shoulder', 'elbowWrist', 'lowerBack', 'knee'}
 GEAR = {'none', 'dumbbells', 'gym'}
+ZONES = ('neck', 'shoulders', 'arms', 'back', 'waist', 'hips', 'knees')
 
 
 def check(data):
@@ -40,8 +41,11 @@ def check(data):
         assert e['difficulty'] in (1, 2, 3), e['id']
         assert e.get('marker') in (None, 'f'), e['id']
         assert set(e.get('joints', [])) <= JOINTS, e['id']
+        for target in e.get('prepFor', []):
+            assert target in ids and target != e['id'], f"{e['id']}: prepFor {target}"
     for e in data['warmup']:
         assert set(e['targets']) <= PARTS, e['id']
+        assert e.get('general') in (None, *ZONES), e['id']
 
 
 def dstr(s):
@@ -74,11 +78,15 @@ def dart(data):
             fields.append('joints: {' + ', '.join(dstr(j) for j in e['joints']) + '}')
         if e.get('marker'):
             fields.append(f"marker: {dstr(e['marker'])}")
+        if e.get('prepFor'):
+            fields.append('prepFor: [' + ', '.join(dstr(t) for t in e['prepFor']) + ']')
         out.append('  Exercise(' + ', '.join(fields) + '),')
     out += ['];', '', 'const generatedWarmups = <WarmupMove>[']
     for e in data['warmup']:
         targets = ', '.join(f'BodyPart.{p}' for p in e['targets'])
         seconds = ', seconds: true' if e.get('unit') == 'seconds' else ''
+        if e.get('general'):
+            seconds += f", general: {dstr(e['general'])}"
         out.append(f"  WarmupMove(id: {dstr(e['id'])}, name: {dstr(e['name'])}, "
                    f"gear: ExerciseGear.{e['equipment']}, amount: {e['defaultReps']}{seconds}, "
                    f'targets: {{{targets}}}),')

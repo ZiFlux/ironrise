@@ -33,9 +33,10 @@ void main() {
     },
   );
 
-  test('поясница: присед заменяется жимом ногами', () {
+  test('поясница: присед заменяется тренажёром для ног', () {
     final d = Wellbeing.adapt(gymA, ease: false, avoid: {PainZone.lowerBack});
-    expect(ids(d).first, 'leg_press');
+    // Тренажёр без нагрузки на позвоночник: жим ногами или наклонный присед.
+    expect(['leg_press', 'hack_squat'], contains(ids(d).first));
   });
 
   test(

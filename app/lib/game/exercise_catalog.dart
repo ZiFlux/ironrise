@@ -32,6 +32,7 @@ class Exercise {
     this.defaultReps = 10,
     this.joints = const {},
     this.marker,
+    this.prepFor = const [],
   });
 
   final String id;
@@ -54,6 +55,9 @@ class Exercise {
   /// выбирают девушки. В интерфейсе не показывается.
   final String? marker;
 
+  /// Подводящее: каким упражнениям помогает научиться (комплекс «не получается»).
+  final List<String> prepFor;
+
   /// Часть тела с наибольшей долей нагрузки.
   BodyPart get mainPart =>
       shares.entries.reduce((a, b) => a.value >= b.value ? a : b).key;
@@ -68,6 +72,7 @@ class WarmupMove {
     required this.amount,
     required this.targets,
     this.seconds = false,
+    this.general,
   });
 
   final String id;
@@ -78,6 +83,10 @@ class WarmupMove {
   final int amount;
   final bool seconds;
   final Set<BodyPart> targets;
+
+  /// Суставная зона общей разминки (neck, shoulders, arms, back, waist, hips,
+  /// knees); null — движение под мышцы дня.
+  final String? general;
 
   bool get isCardio => targets.contains(BodyPart.cardio);
 }
