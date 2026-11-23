@@ -114,6 +114,15 @@ class WorkoutResultScreen extends ConsumerWidget {
             const SizedBox(height: 16),
             _LevelUpCard(levelUps: planResult.levelUps),
           ],
+          if (planResult != null &&
+              (planResult.skillsLearned.isNotEmpty ||
+                  planResult.skillsRetry.isNotEmpty)) ...[
+            const SizedBox(height: 16),
+            _SkillCheckCard(
+              learned: planResult.skillsLearned,
+              retry: planResult.skillsRetry,
+            ),
+          ],
           if (planResult != null && planResult.changes.isNotEmpty) ...[
             const SizedBox(height: 16),
             NextTimeCard(result: planResult),
@@ -612,6 +621,61 @@ class _LevelUpCard extends StatelessWidget {
                 child: Text(
                   '${l.from} → ${l.to}',
                   style: const TextStyle(fontSize: 14),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+/// Проверка отработки через две недели (skill_practice.dart).
+class _SkillCheckCard extends StatelessWidget {
+  const _SkillCheckCard({required this.learned, required this.retry});
+
+  final List<String> learned;
+  final List<String> retry;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(LucideIcons.graduationCap, size: 20, color: accent),
+                const SizedBox(width: 8),
+                const Expanded(
+                  child: Text(
+                    'Проверка отработки',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+                  ),
+                ),
+              ],
+            ),
+            for (final name in learned)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '$name — получается! Упражнение снова в плане как обычное.',
+                  style: const TextStyle(fontSize: 14),
+                ),
+              ),
+            for (final name in retry)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  '$name — пока не выходит. Ещё две недели замены и подводящих, '
+                  'потом проверим снова.',
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
           ],

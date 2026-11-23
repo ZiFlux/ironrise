@@ -6,8 +6,9 @@ import '../game/exercise_guide.dart';
 import '../game/exercise_swap.dart';
 import '../theme.dart';
 
-/// Выбор в панели «Не получается?»: на что заменить и убрать ли упражнение на месяц.
-typedef StruggleChoice = ({Exercise to, bool dislike});
+/// Выбор в панели «Не получается?»: на что заменить, учиться ли делать
+/// упражнение или убрать его на месяц.
+typedef StruggleChoice = ({Exercise to, bool dislike, bool learn});
 
 /// «Не получается упражнение?» (п. 80): техника по шагам, частая ошибка,
 /// советы и замены с той же нагрузкой на те же мышцы.
@@ -16,6 +17,7 @@ Future<StruggleChoice?> showStruggleSheet(
   required Exercise exercise,
   required List<Exercise> options,
   required bool hasSets,
+  List<Exercise> drills = const [],
 }) => showModalBottomSheet<StruggleChoice>(
   context: context,
   isScrollControlled: true,
@@ -32,6 +34,7 @@ Future<StruggleChoice?> showStruggleSheet(
       exercise: exercise,
       options: options,
       hasSets: hasSets,
+      drills: drills,
       scroll: scroll,
     ),
   ),
@@ -43,7 +46,11 @@ class _StruggleSheet extends StatefulWidget {
     required this.options,
     required this.hasSets,
     required this.scroll,
+    this.drills = const [],
   });
+
+  /// Подводящие: чем научиться делать упражнение.
+  final List<Exercise> drills;
 
   final Exercise exercise;
   final List<Exercise> options;
@@ -56,6 +63,7 @@ class _StruggleSheet extends StatefulWidget {
 
 class _StruggleSheetState extends State<_StruggleSheet> {
   bool _dislike = false;
+  late bool _learn = widget.drills.isNotEmpty;
 
   @override
   Widget build(BuildContext context) {
@@ -120,14 +128,41 @@ class _StruggleSheetState extends State<_StruggleSheet> {
                 onTap: () => Navigator.pop<StruggleChoice>(context, (
                   to: option,
                   dislike: _dislike,
+                  learn: _learn && !_dislike,
                 )),
               ),
             const SizedBox(height: 4),
+            if (widget.drills.isNotEmpty)
+              CheckboxListTile(
+                contentPadding: EdgeInsets.zero,
+                controlAffinity: ListTileControlAffinity.leading,
+                value: _learn,
+                onChanged: (v) => setState(() {
+                  _learn = v ?? false;
+                  if (_learn) _dislike = false;
+                }),
+                title: const Text(
+                  'Научиться делать',
+                  style: TextStyle(fontSize: 14),
+                ),
+                subtitle: Text(
+                  'В тренировках с этим упражнением — замена и подводящие: '
+                  '${widget.drills.map((e) => e.name.toLowerCase()).join(', ')}. '
+                  'Через 2 недели — проверка. Комплекс можно делать и отдельно',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMuted,
+                  ),
+                ),
+              ),
             CheckboxListTile(
               contentPadding: EdgeInsets.zero,
               controlAffinity: ListTileControlAffinity.leading,
               value: _dislike,
-              onChanged: (v) => setState(() => _dislike = v ?? false),
+              onChanged: (v) => setState(() {
+                _dislike = v ?? false;
+                if (_dislike) _learn = false;
+              }),
               title: const Text(
                 'Не ставить это упражнение месяц',
                 style: TextStyle(fontSize: 14),

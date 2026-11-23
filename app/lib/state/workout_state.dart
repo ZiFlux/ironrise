@@ -76,6 +76,23 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     ref.read(heartRateProvider.notifier).startWatch();
   }
 
+  /// Отдельный комплекс отработки (skill_practice.dart): вне плана, у каждого
+  /// подводящего — цель. Засчитывается в отработку после завершения.
+  void startPractice(List<PlannedExercise> drills) {
+    if (state != null || _doneToday || drills.isEmpty) return;
+    _save(
+      WorkoutSession(
+        startedAt: DateTime.now(),
+        warmup: _warmupFor([for (final e in drills) e.exercise]),
+        entries: [
+          for (final plan in drills)
+            ExerciseEntry(exercise: plan.exercise, plan: plan),
+        ],
+      ),
+    );
+    ref.read(heartRateProvider.notifier).startWatch();
+  }
+
   /// Отметить движение разминки сделанным (или снять отметку).
   void toggleWarmup(String moveId) {
     final session = state;
@@ -269,6 +286,8 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     WorkoutSummary summary,
   ) async {
     if (session.planDayId == null) {
+      // Вне плана: подводящие считаются отработкой (skill_practice.dart).
+      await ref.read(programProvider.notifier).recordPractice(session);
       ref.read(lastPlanResultProvider.notifier).show(null);
       return;
     }
@@ -286,6 +305,8 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
             changes: applied.changes,
             bonusCoins: bonus,
             levelUps: applied.levelUps,
+            skillsLearned: applied.skillsLearned,
+            skillsRetry: applied.skillsRetry,
           ),
         );
   }

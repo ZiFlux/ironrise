@@ -13,6 +13,21 @@ enum Equipment {
   final String label;
 }
 
+/// Роль упражнения в отработке того, что не получается (skill_practice.dart).
+enum SkillRole {
+  /// Замена на сегодня: те же мышцы, проще.
+  alternative('замена'),
+
+  /// Подводящее: учит движению, которое не получается.
+  drill('подводящее'),
+
+  /// Проверка через две недели: получается ли теперь.
+  check('проверка');
+
+  const SkillRole(this.label);
+  final String label;
+}
+
 /// Упражнение в плане: подходы, диапазон повторов и сколько повторов оставить в запасе.
 class PlannedExercise {
   const PlannedExercise(
@@ -22,9 +37,15 @@ class PlannedExercise {
     required this.repsMax,
     required this.repsInReserve,
     this.weightFactor = 1,
+    this.skillFor,
+    this.skillRole,
   });
 
   final String exerciseId;
+
+  /// Отработка: какому упражнению учимся и в какой роли это упражнение.
+  final String? skillFor;
+  final SkillRole? skillRole;
   final int sets;
   final int repsMin;
   final int repsMax;
@@ -41,6 +62,8 @@ class PlannedExercise {
     int? repsMax,
     int? repsInReserve,
     double? weightFactor,
+    String? skillFor,
+    SkillRole? skillRole,
   }) => PlannedExercise(
     exerciseId ?? this.exerciseId,
     sets: sets ?? this.sets,
@@ -48,6 +71,8 @@ class PlannedExercise {
     repsMax: repsMax ?? this.repsMax,
     repsInReserve: repsInReserve ?? this.repsInReserve,
     weightFactor: weightFactor ?? this.weightFactor,
+    skillFor: skillFor ?? this.skillFor,
+    skillRole: skillRole ?? this.skillRole,
   );
 
   /// Предлагаемый вес: рабочий × множитель вида тренировки, до 0,5 кг.
@@ -66,6 +91,8 @@ class PlannedExercise {
     'repsMax': repsMax,
     'repsInReserve': repsInReserve,
     if (weightFactor != 1) 'weightFactor': weightFactor,
+    if (skillFor != null) 'skillFor': skillFor,
+    if (skillRole != null) 'skillRole': skillRole!.name,
   };
 
   factory PlannedExercise.fromJson(Map<String, dynamic> j) => PlannedExercise(
@@ -75,6 +102,11 @@ class PlannedExercise {
     repsMax: j['repsMax'],
     repsInReserve: j['repsInReserve'],
     weightFactor: (j['weightFactor'] as num?)?.toDouble() ?? 1,
+    skillFor: j['skillFor'] as String?,
+    skillRole: switch (j['skillRole']) {
+      final String name => SkillRole.values.asNameMap()[name],
+      _ => null,
+    },
   );
 }
 

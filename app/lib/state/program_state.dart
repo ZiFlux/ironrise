@@ -4,9 +4,11 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../avatar/avatar_look.dart';
 import '../game/body_part.dart';
+import '../game/exercise_catalog.dart';
 import '../game/exercise_ladder.dart';
 import '../game/program.dart';
 import '../game/session_builder.dart';
+import '../game/skill_practice.dart';
 import '../game/workout_variant.dart';
 import '../game/training_format.dart';
 import '../game/wellbeing.dart';
@@ -34,7 +36,11 @@ class UserProgram {
     this.rhythmTrial = false,
     this.variantOverride,
     this.overrideAt = -1,
+    this.skillGoals = const {},
   });
+
+  /// Упражнения, которые учимся делать (skill_practice.dart): id → отработка.
+  final Map<String, SkillGoal> skillGoals;
 
   /// Средний уровень попробовал ритм опытных: силовые и разгрузочные.
   final bool rhythmTrial;
@@ -94,6 +100,7 @@ class UserProgram {
     int sessionsPerWeek, {
     TrainingFormat format = TrainingFormat.custom,
     bool adjacent = false,
+    List<int>? weekdays,
     TrainingLevel level = TrainingLevel.novice,
     BodyPart? lagging,
     Goal? goal,
@@ -107,6 +114,7 @@ class UserProgram {
       stepOf: (pattern) => levelOf(pattern, start: level.startStep),
       format: format,
       adjacent: adjacent,
+      weekdays: weekdays,
       start: start,
       lagging: start ? null : lagging,
       goal: goal,
@@ -129,6 +137,7 @@ class UserProgram {
     TrainingLevel level = TrainingLevel.novice,
     TrainingFormat format = TrainingFormat.custom,
     bool adjacent = false,
+    List<int>? weekdays,
     Goal? goal,
     bool female = false,
   }) {
@@ -136,6 +145,7 @@ class UserProgram {
       sessionsPerWeek,
       format: format,
       adjacent: adjacent,
+      weekdays: weekdays,
       goal: goal,
       level: level,
       lagging: lagging,
@@ -150,10 +160,13 @@ class UserProgram {
     final variant = overrideAt == completedWorkouts
         ? variantOverride ?? planned
         : planned;
-    final day = Periodization.apply(
-      all[nextDayIndex % all.length],
-      variant,
-      level,
+    final day = SkillPractice.apply(
+      Periodization.apply(all[nextDayIndex % all.length], variant, level),
+      goals: skillGoals,
+      now: now,
+      equipment: equipment,
+      excluded: dislikedNow(now),
+      female: female,
     );
     return Wellbeing.adapt(
       day,
@@ -184,7 +197,9 @@ class UserProgram {
     bool? rhythmTrial,
     WorkoutVariant? variantOverride,
     int? overrideAt,
+    Map<String, SkillGoal>? skillGoals,
   }) => UserProgram(
+    skillGoals: skillGoals ?? this.skillGoals,
     rhythmTrial: rhythmTrial ?? this.rhythmTrial,
     variantOverride: variantOverride ?? this.variantOverride,
     overrideAt: overrideAt ?? this.overrideAt,
@@ -218,6 +233,9 @@ class UserProgram {
     'rhythmTrial': rhythmTrial,
     'variantOverride': variantOverride?.name,
     'overrideAt': overrideAt,
+    'skillGoals': {
+      for (final e in skillGoals.entries) e.key: e.value.toJson(),
+    },
   };
 
   factory UserProgram.fromJson(Map<String, dynamic> j) => UserProgram(
@@ -250,6 +268,11 @@ class UserProgram {
       _ => null,
     },
     overrideAt: j['overrideAt'] ?? -1,
+    skillGoals: {
+      for (final e in (j['skillGoals'] as Map? ?? const {}).entries)
+        if (ExerciseCatalog.tryById(e.key as String) != null)
+          e.key: SkillGoal.fromJson(e.key, e.value as Map<String, dynamic>),
+    },
   );
 }
 
@@ -305,7 +328,15 @@ class PlanResult {
     required this.changes,
     required this.bonusCoins,
     this.levelUps = const [],
+    this.skillsLearned = const [],
+    this.skillsRetry = const [],
   });
+
+  /// Проверка отработки прошла: упражнение получается.
+  final List<String> skillsLearned;
+
+  /// Проверка не прошла: ещё две недели отработки.
+  final List<String> skillsRetry;
 
   final List<ProgressChange> changes;
   final int bonusCoins;
@@ -331,11 +362,49 @@ class ProgramNotifier extends Notifier<UserProgram> {
 
   /// Записать результат тренировки по плану: рабочие веса, ступени движений
   /// и следующий день.
-  Future<({List<ProgressChange> changes, List<LevelUp> levelUps})> applyWorkout(
-    WorkoutSession session,
-  ) async {
+  Future<
+    ({
+      List<ProgressChange> changes,
+      List<LevelUp> levelUps,
+      List<String> skillsLearned,
+      List<String> skillsRetry,
+    })
+  >
+  applyWorkout(WorkoutSession session) async {
     if (session.planDayId == null) {
-      return (changes: <ProgressChange>[], levelUps: <LevelUp>[]);
+      await recordPractice(session);
+      return (
+        changes: <ProgressChange>[],
+        levelUps: <LevelUp>[],
+        skillsLearned: <String>[],
+        skillsRetry: <String>[],
+      );
+    }
+    // Проверки отработки (через две недели): получилось — отработка закончена.
+    final now = DateTime.now();
+    final goals = {...state.skillGoals};
+    final learned = <String>[];
+    final retry = <String>[];
+    for (final entry in session.entries) {
+      final plan = entry.plan;
+      if (plan == null || plan.skillRole != SkillRole.check) continue;
+      final goal = goals[plan.exerciseId];
+      if (goal == null) continue;
+      switch (SkillPractice.checkPassed(plan, [
+        for (final s in entry.sets) s.reps,
+      ])) {
+        case true:
+          goals.remove(plan.exerciseId);
+          learned.add(entry.exercise.name);
+        case false:
+          goals[plan.exerciseId] = goal.copyWith(
+            since: now,
+            checks: goal.checks + 1,
+          );
+          retry.add(entry.exercise.name);
+        case null:
+          break;
+      }
     }
     final progress = {...state.progress};
     final changes = <ProgressChange>[];
@@ -395,9 +464,54 @@ class ProgramNotifier extends Notifier<UserProgram> {
         // Облегчённая или усиленная тренировка сделана — дальше обычный план.
         easeNext: false,
         boostNext: false,
+        skillGoals: goals,
       ),
     );
-    return (changes: changes, levelUps: levelUps);
+    return (
+      changes: changes,
+      levelUps: levelUps,
+      skillsLearned: learned,
+      skillsRetry: retry,
+    );
+  }
+
+  /// Учиться делать упражнение: замена и подводящие в плане, проверка через
+  /// две недели. Уже учимся — отсчёт начинается заново.
+  Future<void> learnSkill(String exerciseId) {
+    final goals = {...state.skillGoals};
+    final now = DateTime.now();
+    goals[exerciseId] =
+        goals[exerciseId]?.copyWith(since: now) ??
+        SkillGoal(exerciseId: exerciseId, since: now);
+    return _save(state.copyWith(skillGoals: goals));
+  }
+
+  /// Перестать отрабатывать: упражнение возвращается в план как есть.
+  Future<void> dropSkill(String exerciseId) {
+    final goals = {...state.skillGoals}..remove(exerciseId);
+    return _save(state.copyWith(skillGoals: goals));
+  }
+
+  /// Тренировка вне плана с подводящими — отработка: в ближайшую неделю
+  /// в тренировки по плану пойдёт только замена, без комплекса.
+  Future<void> recordPractice(WorkoutSession session) async {
+    if (session.planDayId != null || state.skillGoals.isEmpty) return;
+    final done = {
+      for (final e in session.entries)
+        if (e.sets.isNotEmpty) e.exercise.id,
+    };
+    final now = DateTime.now();
+    var changed = false;
+    final goals = {
+      for (final e in state.skillGoals.entries)
+        e.key: SkillPractice.isPractice(e.value, done, state.equipment)
+            ? (() {
+                changed = true;
+                return e.value.copyWith(practice: [...e.value.practice, now]);
+              })()
+            : e.value,
+    };
+    if (changed) await _save(state.copyWith(skillGoals: goals));
   }
 
   /// Средний уровень: попробовать ритм опытных (силовые и разгрузочные).
@@ -522,6 +636,7 @@ AdaptedDay planForHero(UserProgram program, HeroProfile? hero) =>
       level: trainingLevelOf(hero, program),
       format: hero?.format ?? TrainingFormat.custom,
       adjacent: hasAdjacentDays(hero?.loadDays ?? const []),
+      weekdays: hero?.loadDays,
       goal: hero?.goal,
       // Подбор упражнений — по полу аватара (метка `f` в базе упражнений).
       female: hero?.look.sex == AvatarSex.female,

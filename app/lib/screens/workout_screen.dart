@@ -37,12 +37,14 @@ import '../theme.dart';
 import '../widgets/every_second.dart';
 import '../widgets/exercise_picker.dart';
 import '../widgets/struggle_sheet.dart';
+import '../widgets/skill_goals.dart';
 import '../game/exercise_swap.dart';
 import '../widgets/format.dart';
 import '../widgets/warmup_card.dart';
 import '../widgets/guide.dart';
 import '../widgets/info_bubble.dart';
 import '../game/set_pulse.dart';
+import '../game/skill_practice.dart';
 import '../game/anti_fraud.dart' show PulseSample;
 
 class WorkoutScreen extends ConsumerWidget {
@@ -109,6 +111,7 @@ Future<void> _showWeekPlan(
             hero.loadDays.length,
             format: hero.format,
             adjacent: hasAdjacentDays(hero.loadDays),
+            weekdays: hero.loadDays,
             level: trainingLevelOf(hero, program),
           ),
           nextIndex: program.nextDayIndex,
@@ -183,6 +186,7 @@ String? _splitLine(UserProgram program, HeroProfile? hero) {
     hero.loadDays.length,
     format: hero.format,
     adjacent: hasAdjacentDays(hero.loadDays),
+    weekdays: hero.loadDays,
     level: trainingLevelOf(hero, program),
   );
   if (days.every((d) => d.title.startsWith('Всё тело'))) return null;
@@ -288,11 +292,22 @@ class _StartView extends ConsumerWidget {
                     : restDay
                     ? SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
-                        child: _RestDayCard(
-                          next: today.title,
-                          recoveryDay: recoveryDay,
-                          cardioDone: cardioDone,
-                          cardioActive: ref.watch(cardioProvider) != null,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            _RestDayCard(
+                              next: today.title,
+                              recoveryDay: recoveryDay,
+                              cardioDone: cardioDone,
+                              cardioActive: ref.watch(cardioProvider) != null,
+                            ),
+                            // Отработка — хоть в день отдыха: отдельный комплекс.
+                            if (program.skillGoals.isNotEmpty)
+                              const Card(
+                                clipBehavior: Clip.antiAlias,
+                                child: SkillGoalsPanel(),
+                              ),
+                          ],
                         ),
                       )
                     : Align(
@@ -419,10 +434,31 @@ class _StartView extends ConsumerWidget {
                                     child: Row(
                                       children: [
                                         Expanded(
-                                          child: Text(
-                                            e.exercise.name,
-                                            style: const TextStyle(
-                                              fontSize: 15,
+                                          child: Padding(
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 6,
+                                            ),
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  e.exercise.name,
+                                                  style: const TextStyle(
+                                                    fontSize: 15,
+                                                  ),
+                                                ),
+                                                if (skillNote(e)
+                                                    case final note?)
+                                                  Text(
+                                                    note,
+                                                    style: const TextStyle(
+                                                      fontSize: 12,
+                                                      color:
+                                                          AppColors.textMuted,
+                                                    ),
+                                                  ),
+                                              ],
                                             ),
                                           ),
                                         ),
@@ -438,6 +474,7 @@ class _StartView extends ConsumerWidget {
                                     ),
                                   ),
                                 ),
+                              const SkillGoalsPanel(canStart: false),
                             ],
                           ),
                         ),
@@ -886,11 +923,25 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   String? _restHint(Duration left) {
     final hero = ref.read(heroProvider);
     if (hero == null) return null;
+    final session = widget.session;
+    // Скорость спада пульса — по отдыху между подходами этой тренировки.
+    final tau = SetEffortAnalysis.recoveryTauOf(
+      ref
+          .read(heartRateProvider.notifier)
+          .samplesBetween(session.startedAt, DateTime.now()),
+      [
+        for (final e in session.entries)
+          for (final s in e.sets)
+            if (s.at != null) s.at!,
+      ],
+      restingHr: hero.restingHeartRate,
+    );
     return SetEffortAnalysis.restHint(
       bpm: ref.read(heartRateProvider).bpm,
       left: left,
       restingHr: hero.restingHeartRate,
       maxHr: hero.maxHeartRate,
+      tau: tau,
     );
   }
 
@@ -943,11 +994,18 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
       excluded: program.dislikedNow(DateTime.now()),
       female: ref.read(heroProvider)?.look.sex == AvatarSex.female,
     );
+    // Учиться имеет смысл, только если это не подводящее к самому себе.
+    final target = entry.plan?.skillFor == null
+        ? entry.exercise
+        : ExerciseCatalog.byId(entry.plan!.skillFor!);
     final choice = await showStruggleSheet(
       context,
       exercise: entry.exercise,
       options: options,
       hasSets: entry.sets.isNotEmpty,
+      drills: target.id == entry.exercise.id
+          ? SkillPractice.drillsFor(target, equipment: program.equipment)
+          : const [],
     );
     if (choice == null || !mounted) return;
     final programNotifier = ref.read(programProvider.notifier);
@@ -956,6 +1014,7 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
     if (choice.dislike && !program.disliked.containsKey(entry.exercise.id)) {
       await programNotifier.toggleDislike(entry.exercise.id);
     }
+    if (choice.learn) await programNotifier.learnSkill(entry.exercise.id);
   }
 
   Future<void> _addExercise() async {
