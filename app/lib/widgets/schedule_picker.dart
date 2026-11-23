@@ -130,10 +130,10 @@ class SchedulePicker extends StatelessWidget {
         Text(
           tooFew
               ? minimum
-                    ? 'Выберите 2 дня загрузки не подряд — после каждого будет день восстановления'
+                    ? 'Выбери 2 дня загрузки не подряд — после каждого будет день восстановления'
                     : days.length > maxTrainingDaysPerWeek
                     ? 'Оставьте хотя бы день отдыха в неделю'
-                    : 'Выберите минимум $minTrainingDaysPerWeek дня'
+                    : 'Выбери минимум $minTrainingDaysPerWeek дня'
               : minimum
               ? 'Загрузка: ${load.map((d) => weekdayShort[d]).join(', ')}, восстановление: '
                     '${recovery.map((d) => weekdayShort[d]).join(', ')}. '

@@ -77,8 +77,8 @@ class _HowToCard extends StatelessWidget {
   const _HowToCard();
 
   static const _steps = [
-    'Включите на часах трансляцию пульса — инструкция для вашей модели ниже',
-    'Нажмите «Найти датчик» и выберите устройство из списка',
+    'Включи на часах трансляцию пульса — инструкция для твоей модели ниже',
+    'Нажми «Найти датчик» и выбери устройство из списка',
   ];
 
   @override
@@ -126,14 +126,14 @@ class _HowToCard extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             const Text(
-              'Ваши часы',
+              'Твои часы',
               style: TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
             ),
             for (final g in watchGuides) _WatchGuideTile(guide: g),
             const SizedBox(height: 4),
             const Text(
-              'Меню у моделей и прошивок может отличаться. Не получилось — напишите '
-              'в канал бета-тестеров, добавим вашу модель.',
+              'Меню у моделей и прошивок может отличаться. Не получилось — напиши '
+              'в канал бета-тестеров, добавим твою модель.',
               style: TextStyle(fontSize: 12, color: AppColors.textMuted),
             ),
           ],
@@ -233,7 +233,7 @@ class _ConnectedCard extends StatelessWidget {
                   const SizedBox(height: 12),
                   if (fromWatch)
                     const Text(
-                      'Чтобы отключить, завершите тренировку на часах',
+                      'Чтобы отключить, заверши тренировку на часах',
                       style: TextStyle(
                         fontSize: 13,
                         color: AppColors.textMuted,

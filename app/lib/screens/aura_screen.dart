@@ -463,18 +463,18 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
         _error = switch (e.status) {
           422 when e.message.contains('6-40') =>
             'Тренировка короче 6 минут — не засчитана',
-          422 when e.message.contains('no_consent') => 'Без согласия на данные о пульсе ауру не засчитать — включите его в настройках',
+          422 when e.message.contains('no_consent') => 'Без согласия на данные о пульсе ауру не засчитать — включи его в настройках',
           422 when e.message.contains('coverage') =>
-            'Пульс записан только на часть тренировки — держите часы или датчик '
+            'Пульс записан только на часть тренировки — держи часы или датчик '
                 'включёнными до конца. Если пульс идёт через Samsung Health, '
-                'подождите минуту и нажмите «Повторить»',
+                'подожди минуту и нажми «Повторить»',
           422 when e.message.contains('low') => 'Пульс слишком спокойный для ауры: нужен средний от 85 или пик от 110',
           422 =>
             'Нет пульса с часов или датчика — тренировка ауры не засчитана',
           409 when e.message.contains('locked') =>
             'Ауры ещё закрыты: сначала неделя тренировок с пульсом',
           409 => 'Тренировка ауры уже была — следующая завтра',
-          _ => 'Нет связи с сервером — попробуйте ещё раз',
+          _ => 'Нет связи с сервером — попробуй ещё раз',
         };
       });
     } catch (_) {
@@ -482,7 +482,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
       setState(() {
         _saving = false;
         _canRetry = true;
-        _error = 'Не удалось сохранить тренировку — попробуйте ещё раз';
+        _error = 'Не удалось сохранить тренировку — попробуй ещё раз';
       });
     }
   }
@@ -616,7 +616,7 @@ class _AuraTrainingState extends ConsumerState<AuraTrainingScreen> {
                   style: figureStyle(size: 56),
                 ),
                 const Text(
-                  'Аура засчитывается от 6 минут. Походите и восстановите '
+                  'Аура засчитывается от 6 минут. Походи и восстанови '
                   'дыхание — тренировка отправится сама',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: AppColors.textMuted),

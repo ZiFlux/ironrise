@@ -97,7 +97,7 @@ class _NicknameDialogState extends ConsumerState<_NicknameDialog> {
                 ? 'Без аккаунта ник хранится только на телефоне.'
                 : waiting
                 ? 'Бесплатно — с ${formatDate(next)}. '
-                      'Сейчас — за $nicknameChangeCoins монет (у вас ${hero.coins}).'
+                      'Сейчас — за $nicknameChangeCoins монет (у тебя ${hero.coins}).'
                 : 'Менять ник можно раз в $nicknameChangeDays дней. '
                       'Прежний ник ещё $nicknameChangeDays дней останется за вами.',
             style: const TextStyle(

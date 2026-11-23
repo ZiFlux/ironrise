@@ -635,7 +635,7 @@ class AccountNotifier extends Notifier<AccountState> {
           clearEmail: true,
           error: e.isBanned
               ? 'Аккаунт заблокирован: ${e.banReason}'
-              : 'Войдите в аккаунт заново',
+              : 'Войди в аккаунт заново',
         );
       } else {
         state = state.copyWith(

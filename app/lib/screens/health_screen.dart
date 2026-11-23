@@ -86,7 +86,7 @@ class HealthScreen extends ConsumerWidget {
           ),
           const Text(
             'Приложения часов и браслетов передают данные в Health Connect, '
-            'а IronRise берёт их оттуда. Включите передачу в своём приложении:',
+            'а IronRise берёт их оттуда. Включи передачу в своём приложении:',
             style: TextStyle(fontSize: 13, color: AppColors.textMuted),
           ),
           const SizedBox(height: 8),
@@ -225,34 +225,34 @@ const _apps = <_App>[
     name: 'Samsung Health',
     devices: 'Galaxy Watch, Galaxy Fit',
     steps: [
-      'Откройте Samsung Health',
+      'Открой Samsung Health',
       '⋮ → Настройки → Health Connect',
-      'Разрешите запись шагов, расстояния и пульса',
+      'Разреши запись шагов, расстояния и пульса',
     ],
   ),
   (
     name: 'Mi Fitness',
     devices: 'Xiaomi, Redmi',
     steps: [
-      'Откройте Mi Fitness',
+      'Открой Mi Fitness',
       'Профиль → Подключения → Health Connect',
-      'Включите передачу пульса и шагов',
+      'Включи передачу пульса и шагов',
     ],
   ),
   (
     name: 'Zepp',
     devices: 'Amazfit',
     steps: [
-      'Откройте Zepp',
+      'Открой Zepp',
       'Профиль → Добавить аккаунты → Health Connect',
-      'Разрешите пульс, шаги и тренировки',
+      'Разреши пульс, шаги и тренировки',
     ],
   ),
   (
     name: 'Huawei Health',
     devices: 'Huawei, Honor',
     steps: [
-      'Обновите Huawei Health до последней версии',
+      'Обнови Huawei Health до последней версии',
       'Я → Настройки → Общий доступ к данным → Health Connect',
       'Если пункта нет — версия Huawei Health не поддерживает Health Connect',
     ],
@@ -261,45 +261,45 @@ const _apps = <_App>[
     name: 'Google Fit',
     devices: 'Wear OS, телефон',
     steps: [
-      'Откройте Google Fit',
+      'Открой Google Fit',
       'Профиль → ⚙ → Синхронизация с Health Connect',
-      'Включите синхронизацию',
+      'Включи синхронизацию',
     ],
   ),
   (
     name: 'Fitbit',
     devices: 'Fitbit, Pixel Watch',
     steps: [
-      'Откройте Fitbit',
+      'Открой Fitbit',
       'Аккаунт → Health Connect',
-      'Разрешите пульс и шаги',
+      'Разреши пульс и шаги',
     ],
   ),
   (
     name: 'Garmin Connect',
     devices: 'Garmin',
     steps: [
-      'Откройте Garmin Connect',
+      'Открой Garmin Connect',
       'Ещё → Настройки → Health Connect',
-      'Включите передачу данных',
+      'Включи передачу данных',
     ],
   ),
   (
     name: 'Polar Flow',
     devices: 'Polar',
     steps: [
-      'Откройте Polar Flow',
+      'Открой Polar Flow',
       'Ещё → Общие настройки → Health Connect',
-      'Разрешите передачу пульса и тренировок',
+      'Разреши передачу пульса и тренировок',
     ],
   ),
   (
     name: 'Suunto',
     devices: 'Suunto',
     steps: [
-      'Откройте Suunto',
+      'Открой Suunto',
       'Профиль → Партнёрские сервисы → Health Connect',
-      'Включите передачу',
+      'Включи передачу',
     ],
   ),
 ];
@@ -409,7 +409,7 @@ class _SourcesState extends ConsumerState<_Sources> {
               final list = snap.data ?? const <HealthSource>[];
               if (list.isEmpty) {
                 return const Text(
-                  'За неделю никто не передал пульс и шаги. Включите передачу '
+                  'За неделю никто не передал пульс и шаги. Включи передачу '
                   'в приложении часов — инструкции ниже',
                   style: TextStyle(fontSize: 13, color: AppColors.textMuted),
                 );

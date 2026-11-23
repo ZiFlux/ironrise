@@ -365,7 +365,7 @@ String _decimal(double v) => v
 /// Человеческое объяснение, почему опыт урезан.
 String _explain(ValidityIssue issue, ValidityReport report) => switch (issue) {
   ValidityIssue.noPulse =>
-    'Пульса нет: подключите часы или датчик, и опыт будет полным',
+    'Пульса нет: подключи часы или датчик, и опыт будет полным',
   ValidityIssue.partialPulse =>
     'Пульс записан только на ${(report.pulseCoverage * 100).round()}% тренировки, нужно от '
         '${(GameConfig.minPulseCoverage * 100).round()}%: часы передавали его не всё время',

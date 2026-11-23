@@ -582,7 +582,7 @@ class _DebugTools extends ConsumerWidget {
   ) async {
     if (!ref.read(accountProvider).signedIn) {
       showStatus(
-        tr('Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»'),
+        tr('Лиги работают с аккаунтом: войди в «Аккаунт и синхронизация»'),
       );
       return;
     }
@@ -590,7 +590,7 @@ class _DebugTools extends ConsumerWidget {
       await ref.read(apiProvider).post('/v1/dev/league', {'shift': shift});
       ref.invalidate(serverLeagueProvider);
       showStatus(
-        tr('Готово: откройте вкладку «Рейтинг»'),
+        tr('Готово: открой вкладку «Рейтинг»'),
         kind: StatusKind.success,
       );
     } on ApiException catch (e) {

@@ -182,7 +182,7 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                       child: Text(
                         shop
                             ? 'Здесь всё бесплатное — оно уже в инвентаре'
-                            : 'Пока ничего — загляните в магазин',
+                            : 'Пока ничего — загляни в магазин',
                         style: const TextStyle(color: AppColors.textMuted),
                       ),
                     )

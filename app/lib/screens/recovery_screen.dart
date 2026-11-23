@@ -149,7 +149,7 @@ class _RecoveryScreenState extends ConsumerState<RecoveryScreen> {
               label: Text(
                 session == null
                     ? 'Начать восстановление'
-                    : 'Сначала закончите кардио',
+                    : 'Сначала закончи кардио',
               ),
             )
           else

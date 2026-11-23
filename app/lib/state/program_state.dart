@@ -233,9 +233,7 @@ class UserProgram {
     'rhythmTrial': rhythmTrial,
     'variantOverride': variantOverride?.name,
     'overrideAt': overrideAt,
-    'skillGoals': {
-      for (final e in skillGoals.entries) e.key: e.value.toJson(),
-    },
+    'skillGoals': {for (final e in skillGoals.entries) e.key: e.value.toJson()},
   };
 
   factory UserProgram.fromJson(Map<String, dynamic> j) => UserProgram(

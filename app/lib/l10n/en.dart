@@ -75,7 +75,7 @@ const en = <String, String>{
   'Wear OS: Galaxy Watch и другие': 'Wear OS: Galaxy Watch and others',
   'Поставьте IronRise на часы. Когда начнёте тренировку на телефоне, часы сами начнут передавать пульс — ничего нажимать не нужно.': 'Install IronRise on your watch. When you start a workout on the phone, the watch starts sending heart rate by itself — nothing to press.',
   'На часах версия {watchVersion}.': 'Watch version: {watchVersion}.',
-  'Пульс работает. Обновите IronRise на часах — появятся эффекты аур.':
+  'Пульс работает. Обнови IronRise на часах — появятся эффекты аур.':
       'Heart rate works. Update IronRise on the watch to get aura effects.',
   'На телефоне {appVersion} — всё совместимо.':
       'Phone version {appVersion} — everything is compatible.',
@@ -89,9 +89,9 @@ const en = <String, String>{
   'Датчик': 'Sensor',
   'Нагрудный датчик или часы в режиме трансляции':
       'Chest strap or a watch in broadcast mode',
-  'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, Polar, COROS, Amazfit и нагрудные датчики — инструкция для вашей модели внутри.': 'Live heart rate right during your sets. Huawei, Garmin, Polar, COROS, Amazfit and chest straps — instructions for your model inside.',
+  'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, Polar, COROS, Amazfit и нагрудные датчики — инструкция для твоей модели внутри.': 'Live heart rate right during your sets. Huawei, Garmin, Polar, COROS, Amazfit and chest straps — instructions for your model inside.',
   'Найти датчик': 'Find sensor',
-  'Пульс подтверждает тренировки. У вас, как у бета-тестера, тренировки без часов засчитываются полностью': 'Heart rate confirms workouts. As a beta tester, your workouts without a watch count in full',
+  'Пульс подтверждает тренировки. У тебя, как у бета-тестера, тренировки без часов засчитываются полностью': 'Heart rate confirms workouts. As a beta tester, your workouts without a watch count in full',
   'Пульс подтверждает тренировки: без часов опыт засчитывается ×0,5':
       'Heart rate confirms workouts: without a watch XP counts ×0.5',
   'Настройки': 'Settings',
@@ -136,9 +136,9 @@ const en = <String, String>{
   'Макс. пульс {maxHeartRate}, зона 2 для кардио — от {zone} уд/мин{p3}':
       'Max heart rate {maxHeartRate}, cardio zone 2 — from {zone} bpm{p3}',
   '. Пока по средним значениям': '. Average values for now',
-  'Лиги работают с аккаунтом: войдите в «Аккаунт и синхронизация»':
+  'Лиги работают с аккаунтом: войди в «Аккаунт и синхронизация»':
       'Leagues need an account: sign in under «Account and sync»',
-  'Готово: откройте вкладку «Рейтинг»': 'Done: open the «Rating» tab',
+  'Готово: открой вкладку «Рейтинг»': 'Done: open the «Rating» tab',
   'Это доступно только на сервере разработки':
       'Available only on the development server',
   'На этом сервере выдача монет выключена':
@@ -200,7 +200,7 @@ const en = <String, String>{
   'Нашли часы': 'Found a watch',
   'Нашли {length} устройства': 'Found {length} devices',
   'Ещё раз': 'Again',
-  'Включите Bluetooth на часах и проверьте, что они подключены к телефону в своём приложении.': 'Turn on Bluetooth on the watch and make sure it is connected to the phone in its own app.',
+  'Включи Bluetooth на часах и проверь, что они подключены к телефону в своём приложении.': 'Turn on Bluetooth on the watch and make sure it is connected to the phone in its own app.',
   'Есть приложение для {p1} — инструкция ниже, в «Датчик пульса».':
       'You have the app for {p1} — instructions below, in «Heart rate sensor».',
   'Нет часов — подойдёт нагрудный датчик или Health Connect.':
@@ -211,13 +211,13 @@ const en = <String, String>{
       'IronRise is on the watch — heart rate will flow when the workout starts',
   'Поставьте IronRise на часы — пульс будет идти сам':
       'Install IronRise on the watch — heart rate will flow by itself',
-  'Включите на часах трансляцию пульса — и мы подключимся':
+  'Включи на часах трансляцию пульса — и мы подключимся':
       'Turn on heart rate broadcast on the watch — and we\'ll connect',
   'Пульс придёт через Health Connect после тренировки':
       'Heart rate will come via Health Connect after the workout',
-  'На часах открылся магазин — нажмите «Установить»':
+  'На часах открылся магазин — нажми «Установить»':
       'The store opened on the watch — tap «Install»',
-  'Не получилось. Откройте Play Маркет на часах и найдите IronRise':
+  'Не получилось. Открой Play Маркет на часах и найди IronRise':
       'Didn\'t work. Open Play Store on the watch and search for IronRise',
   'Поставить на часы': 'Install on watch',
   'Без приложения — через Health Connect':

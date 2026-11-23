@@ -25,7 +25,7 @@ class PremiumScreen extends ConsumerWidget {
       'Премиум-вещи',
       'Новые эксклюзивы в магазине. Золотой комплект теперь бесплатно у всех',
     ),
-    (LucideIcons.crown, 'Корона у ника', 'В профиле видно, что вы с нами'),
+    (LucideIcons.crown, 'Корона у ника', 'В профиле видно, что ты с нами'),
     (
       LucideIcons.heartHandshake,
       'Поддержка IronRise',

@@ -102,7 +102,7 @@ class WatchWizard extends ConsumerWidget {
               child: Text(
                 [
                   tr(
-                    'Включите Bluetooth на часах и проверьте, что они подключены к телефону в своём приложении.',
+                    'Включи Bluetooth на часах и проверь, что они подключены к телефону в своём приложении.',
                   ),
                   if (d.brandsByApp.isNotEmpty)
                     tr(
@@ -188,7 +188,7 @@ class _FoundWatch extends ConsumerWidget {
         false,
       ),
       _ when guide?.live ?? false => (
-        tr('Включите на часах трансляцию пульса — и мы подключимся'),
+        tr('Включи на часах трансляцию пульса — и мы подключимся'),
         false,
       ),
       _ => (tr('Пульс придёт через Health Connect после тренировки'), false),
@@ -282,11 +282,9 @@ class _FoundWatch extends ConsumerWidget {
                     final opened = await notifier.installOnWatch(watch);
                     showStatus(
                       opened
-                          ? tr(
-                              'На часах открылся магазин — нажмите «Установить»',
-                            )
+                          ? tr('На часах открылся магазин — нажми «Установить»')
                           : tr(
-                              'Не получилось. Откройте Play Маркет на часах и найдите IronRise',
+                              'Не получилось. Открой Play Маркет на часах и найди IronRise',
                             ),
                       kind: opened ? StatusKind.success : StatusKind.info,
                       duration: const Duration(seconds: 5),

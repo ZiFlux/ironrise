@@ -86,7 +86,7 @@ class DevicesScreen extends ConsumerWidget {
                 }),
               if (differs && (caps?.protocol ?? 1) < watchProtocol)
                 tr(
-                  'Пульс работает. Обновите IronRise на часах — появятся эффекты аур.',
+                  'Пульс работает. Обнови IronRise на часах — появятся эффекты аур.',
                 )
               else if (differs)
                 tr('На телефоне {appVersion} — всё совместимо.', {
@@ -118,7 +118,7 @@ class DevicesScreen extends ConsumerWidget {
                 : tr('Нагрудный датчик или часы в режиме трансляции'),
             ok: bleLive,
             text: tr(
-              'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, Polar, COROS, Amazfit и нагрудные датчики — инструкция для вашей модели внутри.',
+              'Пульс в реальном времени прямо во время подходов. Huawei, Garmin, Polar, COROS, Amazfit и нагрудные датчики — инструкция для твоей модели внутри.',
             ),
             action: bleLive ? tr('Открыть') : tr('Найти датчик'),
             onTap: () => context.push('/profile/heart-rate'),
@@ -151,7 +151,7 @@ class _Intro extends StatelessWidget {
           child: Text(
             tester
                 ? tr(
-                    'Пульс подтверждает тренировки. У вас, как у бета-тестера, тренировки без часов засчитываются полностью',
+                    'Пульс подтверждает тренировки. У тебя, как у бета-тестера, тренировки без часов засчитываются полностью',
                   )
                 : tr(
                     'Пульс подтверждает тренировки: без часов опыт засчитывается ×0,5',

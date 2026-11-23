@@ -82,11 +82,11 @@ class _AnalysisHint extends ConsumerWidget {
       title: const Text('Анализ тела на часах'),
       content: Text(
         health
-            ? 'Вес записан. Сделайте анализ тела на часах: Samsung Health → '
+            ? 'Вес записан. Сделай анализ тела на часах: Samsung Health → '
                   'Состав тела → Измерить (пальцы на кнопки, 15 секунд). '
                   'Процент жира, мышцы и вода подтянутся в IronRise сами.'
             : 'Вес записан. Чтобы IronRise видел процент жира, мышц и воды '
-                  'с часов, подключите Health Connect: Профиль → Часы и телефон.',
+                  'с часов, подключи Health Connect: Профиль → Часы и телефон.',
         style: const TextStyle(color: AppColors.textSecondary),
       ),
       actions: [

@@ -63,7 +63,7 @@ class _JointScreenState extends ConsumerState<JointScreen> {
           0 => 'Сервер недоступен. Проверьте сеть',
           404 => 'Код не найден или уже не действует',
           409 => 'В тренировке уже 5 человек',
-          400 => 'Это ваш собственный код',
+          400 => 'Это твой собственный код',
           _ => e.message,
         },
       );
@@ -107,7 +107,7 @@ class _JointScreenState extends ConsumerState<JointScreen> {
         ),
         const SizedBox(height: 24),
         const Text(
-          'Или введите код с телефона друга',
+          'Или введи код с телефона друга',
           style: TextStyle(fontSize: 13, color: AppColors.textSecondary),
         ),
         const SizedBox(height: 8),
@@ -235,7 +235,7 @@ class _JointScreenState extends ConsumerState<JointScreen> {
               m.isHost ? LucideIcons.crown : LucideIcons.user,
               size: 20,
             ),
-            title: Text(m.nickname == me ? '${m.nickname} (вы)' : m.nickname),
+            title: Text(m.nickname == me ? '${m.nickname} (ты)' : m.nickname),
             trailing: m.nickname == me
                 ? null
                 : IconButton(
