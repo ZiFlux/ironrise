@@ -32,7 +32,7 @@ void main() {
     return;
   }
   final key = GlobalKey();
-  const bg = Color(0xFF141415);
+  const bg = Color(0xFF120D10); // AppColors.background
 
   Future<void> shot(
     WidgetTester tester,
