@@ -120,10 +120,11 @@ flutter:
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
 
-# Иконка приложения: блин с IR. Исходники в assets/icon, пересобрать: dart run flutter_launcher_icons
+# Иконка приложения: шестигранная печать с IR (Android и заготовка iOS). Исходники в assets/icon, пересобрать: dart run flutter_launcher_icons
 flutter_launcher_icons:
   android: true
-  ios: false
+  ios: true
+  remove_alpha_ios: true
   image_path: "assets/icon/icon.png"
   adaptive_icon_background: "#120D10"
   adaptive_icon_foreground: "assets/icon/foreground.png"
