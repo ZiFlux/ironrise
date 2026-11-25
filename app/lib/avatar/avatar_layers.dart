@@ -74,7 +74,6 @@ class AvatarLayers {
     ]),
     TopKind.tee ||
     TopKind.betaTee ||
-    TopKind.clownSuit ||
     TopKind.creatorTee ||
     TopKind.uniform ||
     TopKind.openShirt ||
@@ -320,42 +319,6 @@ class AvatarLayers {
     ..lineTo(100 + _f.neck + 2.5, 62)
     ..lineTo(100, 100)
     ..close();
-
-  /// Горошек костюма клоуна: кружки по сетке (обрезаются по костюму при рисовании).
-  List<(Offset, int)> get clownDots {
-    if (look.top != TopKind.clownSuit) return const [];
-    return [
-      for (var row = 0; row < 7; row++)
-        for (var col = -3; col <= 3; col++)
-          (
-            Offset(100 + col * 11.0 + (row.isOdd ? 5.5 : 0), 74 + row * 17.0),
-            (row + col) % 3,
-          ),
-    ];
-  }
-
-  /// Горошек на рукавах — та же сетка, шире по бокам (рукава в позах высоко).
-  List<(Offset, int)> get sleeveDots {
-    if (look.top != TopKind.clownSuit) return const [];
-    return [
-      for (var row = -3; row < 9; row++)
-        for (var col = -9; col <= 9; col++)
-          (
-            Offset(100 + col * 11.0 + (row.isOdd ? 5.5 : 0), 74 + row * 17.0),
-            (row + col) % 3,
-          ),
-    ];
-  }
-
-  /// Воротник-жабо: белые полукруги вокруг шеи.
-  List<Offset> get ruffle {
-    if (look.top != TopKind.clownSuit) return const [];
-    final w = _f.neck + 11;
-    return [
-      for (var i = 0; i <= 6; i++)
-        Offset(100 - w + i * (2 * w / 6), 65 + (i == 0 || i == 6 ? -1 : 1.5)),
-    ];
-  }
 
   /// Центр эмблемы на груди футболки тестера.
   Offset get chestEmblem => Offset(100 + _f.lat * 0.42, 100);
@@ -1022,74 +985,8 @@ class AvatarLayers {
     };
   }
 
-  /// Парик клоуна сзади: облако кудрей вокруг головы в два слоя, пышное
-  /// по бокам —
-  /// снаружи красные и оранжевые, ближе к голове жёлтые и зелёные, как дуга
-  /// радуги. Кудри: (центр, радиус, место в радуге 0…1).
-  List<(Offset, double, double)> get wigBack => [
-    ..._wigRing(
-      from: -pi - 0.75,
-      to: 0.75,
-      grow: 9,
-      growTop: -2,
-      count: 17,
-      radius: 8,
-      colors: const (0.0, 0.2),
-    ),
-    ..._wigRing(
-      from: -pi - 0.45,
-      to: 0.45,
-      grow: 3,
-      growTop: -6,
-      count: 13,
-      radius: 7.4,
-      colors: const (0.4, 0.6),
-    ),
-  ];
-
-  /// Парик спереди: чёлка из синих и фиолетовых кудрей по линии волос —
-  /// закрывает стык парика с головой, лоб и лицо открыты.
-  List<(Offset, double, double)> get wigFront => _wigRing(
-    from: -pi + 0.4,
-    to: -0.4,
-    grow: -4,
-    growTop: -8,
-    count: 8,
-    radius: 5.6,
-    colors: const (0.8, 1.0),
-  );
-
-  List<(Offset, double, double)> _wigRing({
-    required double from,
-    required double to,
-    required double grow,
-    required double growTop,
-    required int count,
-    required double radius,
-    required (double, double) colors,
-  }) {
-    if (look.hair != HairStyle.clownWig) return const [];
-    final c = BodyFrame.headCenter;
-    // По бокам пышнее, на макушке ниже: над головой у холста всего 7 px.
-    final rx = _f.headRx + grow, ry = _f.headRy + growTop;
-    return [
-      for (var i = 0; i < count; i++)
-        (
-          Offset(
-            c.dx + cos(from + (to - from) * i / (count - 1)) * rx,
-            c.dy + sin(from + (to - from) * i / (count - 1)) * ry,
-          ),
-          // Кудри неровные: соседние чуть больше и меньше, через одну
-          // — второй цвет слоя.
-          radius * (i.isEven ? 1.0 : 0.86),
-          i.isEven ? colors.$1 : colors.$2,
-        ),
-    ];
-  }
-
   /// Волосы поверх головы.
   Path get hairFront => switch (look.hair) {
-    HairStyle.clownWig => Path(),
     HairStyle.spiky => Path.combine(
       PathOperation.union,
       _cap(24, 1.4),

@@ -42,9 +42,6 @@ enum HairStyle {
   bun,
   long,
 
-  /// Парик клоуна: разноцветные кудри по бокам, макушка открыта.
-  clownWig,
-
   /// Взъерошенные: пряди торчат вверх.
   spiky,
 
@@ -78,9 +75,6 @@ enum TopKind {
   /// Футболка бета-тестера: фиолетовая с эмблемой β (эксклюзив).
   betaTee,
 
-  /// Костюм клоуна: жёлтый в горошек, с воротником-жабо.
-  clownSuit,
-
   /// Футболка создателя: чёрная с золотой эмблемой (эксклюзив).
   creatorTee,
 
@@ -109,7 +103,6 @@ enum TopKind {
   bool get teeCut => const {
     tee,
     betaTee,
-    clownSuit,
     creatorTee,
     vneck,
     oversize,
@@ -127,8 +120,7 @@ enum TopKind {
   bool get wideSleeves => this == openShirt || this == haori;
 
   /// Свой цвет, выбранный «цвет верха» к нему не применяется.
-  bool get fixedColor =>
-      this == betaTee || this == clownSuit || this == creatorTee;
+  bool get fixedColor => this == betaTee || this == creatorTee;
 }
 
 enum BottomKind {

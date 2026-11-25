@@ -178,10 +178,10 @@ describe('боты, лига, магазин', () => {
     for (let i = 1; i < sun.length; i++) expect(sun[i - 1].points).toBeGreaterThanOrEqual(sun[i].points);
   });
 
-  it('в магазине 91 вещь, из них 73 платных — как в клиенте (золото бесплатно, п. 111)', () => {
+  it('в магазине 89 вещей, из них 71 платная — как в клиенте (золото бесплатно, п. 111)', () => {
     const prices = Object.values(SHOP_PRICES);
-    expect(prices).toHaveLength(91);
-    expect(prices.filter((p) => p > 0)).toHaveLength(73);
+    expect(prices).toHaveLength(89);
+    expect(prices.filter((p) => p > 0)).toHaveLength(71);
   });
 });
 

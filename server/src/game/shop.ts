@@ -21,8 +21,7 @@ export const SHOP_PRICES: Readonly<Record<string, number>> = {
   acc_headband: 125, acc_wristbands: 125, acc_belt: 225, acc_knee_sleeves: 175, acc_cap: 200,
   acc_glasses: 150, acc_headphones: 250, acc_bandana: 150, acc_silver_chain: 225,
   acc_round_shades: 150, acc_blindfold: 175, acc_straw_hat: 250, acc_sash: 175,
-  // Костюм клоуна: только покупка, в редакторе старта его нет (COSTUME_ITEMS).
-  hair_clown: 300, top_clown: 375, acc_clown_nose: 150,
+  acc_clown_nose: 150,
   skin_iron: 0, skin_light: 0, skin_tan: 0, skin_brown: 0, skin_dark: 0,
   // Золотой комплект — бесплатно всем с 16.11 (п. 111; раньше премиум за монеты).
   tc_gold: 0, sn_gold: 0, acc_gold_chain: 0,
@@ -53,7 +52,7 @@ export const ACHIEVEMENT_ITEMS = { guide: 'sn_first_step', watch: 'acc_smartwatc
 export type Achievement = keyof typeof ACHIEVEMENT_ITEMS;
 
 /** Костюмы: продаются, но бесплатно в редакторе стартового образа их не надеть. */
-export const COSTUME_ITEMS: ReadonlySet<string> = new Set(['hair_clown', 'top_clown']);
+export const COSTUME_ITEMS: ReadonlySet<string> = new Set<string>();
 
 /** Вещи, которых нет в продаже: носить можно только выданные (тестерам, за серию, создателю). */
 export const EXCLUSIVE_ITEMS: ReadonlySet<string> = new Set([

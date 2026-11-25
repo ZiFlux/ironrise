@@ -10,7 +10,7 @@ const BUILD_NAMES: readonly unknown[] = ['slim', 'average', 'solid', 'heavy'];
  */
 const HAIR: Record<string, string> = {
   short: 'hair_short', buzz: 'hair_buzz', curly: 'hair_curly', manBun: 'hair_manbun',
-  bob: 'hair_bob', ponytail: 'hair_ponytail', bun: 'hair_bun', long: 'hair_long', clownWig: 'hair_clown',
+  bob: 'hair_bob', ponytail: 'hair_ponytail', bun: 'hair_bun', long: 'hair_long',
   spiky: 'hair_spiky', mane: 'hair_mane', mullet: 'hair_mullet', wolfcut: 'hair_wolfcut',
 };
 const HAIR_COLOR: Record<number, string> = {
@@ -20,7 +20,7 @@ const HAIR_COLOR: Record<number, string> = {
 };
 const TOP: Record<string, string> = {
   none: 'top_none', bra: 'top_bra', tank: 'top_tank', tee: 'top_tee', betaTee: 'top_beta_tee',
-  clownSuit: 'top_clown', creatorTee: 'top_creator_tee', vneck: 'top_vneck', oversize: 'top_oversize', crop: 'top_crop',
+  creatorTee: 'top_creator_tee', vneck: 'top_vneck', oversize: 'top_oversize', crop: 'top_crop',
   uniform: 'top_uniform', openShirt: 'top_open_shirt', suit: 'top_suit', haori: 'top_haori',
 };
 const TOP_COLOR: Record<number, string> = {

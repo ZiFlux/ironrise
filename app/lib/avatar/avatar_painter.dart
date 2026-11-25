@@ -49,7 +49,6 @@ class AvatarPainter extends CustomPainter {
 
     _paintFloorShadow(canvas);
     _fillSolid(canvas, layers.hairBack, look.hairColor);
-    _paintWig(canvas, layers.wigBack);
     // Как у человека в анфас: плечо (бицепс, трицепс) — за корпусом, край
     // груди и широчайших поверх; предплечье и кисть — перед корпусом и
     // одеждой (кулаки на поясе, руки перед телом в позах); дельта сверху
@@ -296,21 +295,11 @@ class AvatarPainter extends CustomPainter {
         ..drawPath(sleeve, Paint()..color = color)
         ..drawPath(sleeve, _shadePaint(sleeve))
         ..drawPath(sleeve, _fallPaint(sleeve));
-      if (look.top == TopKind.clownSuit) {
-        canvas
-          ..save()
-          ..clipPath(sleeve);
-        for (final (at, c) in layers.sleeveDots) {
-          canvas.drawCircle(at, 4.2, Paint()..color = _clownDots[c]);
-        }
-        canvas.restore();
-      }
     }
   }
 
   Color get _topColor => switch (look.top) {
     TopKind.betaTee => _beta,
-    TopKind.clownSuit => _clownYellow,
     TopKind.creatorTee => _creatorBlack,
     _ => look.topColor,
   };
@@ -780,18 +769,6 @@ class AvatarPainter extends CustomPainter {
         radius: 9,
       );
     }
-    if (top != null && look.top == TopKind.clownSuit) {
-      canvas
-        ..save()
-        ..clipPath(top);
-      for (final (at, color) in layers.clownDots) {
-        canvas.drawCircle(at, 4.2, Paint()..color = _clownDots[color]);
-      }
-      canvas.restore();
-      for (final at in layers.ruffle) {
-        canvas.drawCircle(at, 6, Paint()..color = const Color(0xFFF4F4F0));
-      }
-    }
     if (layers.sash case (final wrap, final tail)) {
       final dark = Color.lerp(look.accessoryColor, Colors.black, 0.25)!;
       _fillCloth(canvas, _stanceShape(tail), dark);
@@ -870,7 +847,6 @@ class AvatarPainter extends CustomPainter {
     _fillSolid(canvas, layers.hairFront, look.hairColor);
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
-    _paintWig(canvas, layers.wigFront);
     _fillSolid(canvas, layers.clownNose, const Color(0xFFE5302A));
     _fillSolid(canvas, layers.crown, _gold);
     _fillSolid(canvas, layers.glasses, _lens);
@@ -921,59 +897,9 @@ class AvatarPainter extends CustomPainter {
   static const _capBrim = Color(0xFF1C1C1F);
   static const _beta = Color(0xFF8B5CF6);
   static const _betaDark = Color(0xFF17171A);
-  static const _clownYellow = Color(0xFFFFD23F);
   static const _creatorBlack = Color(0xFF26262B);
   static const _scarf = Color(0xFF3E6E9E);
   static const _scarfDark = Color(0xFF2F587F);
-  static const _clownDots = [
-    Color(0xFFE5302A),
-    Color(0xFF3D7BFF),
-    Color(0xFF2EBD59),
-  ];
-
-  /// Кудри парика: шарик с бликом слева сверху и тенью по краю, цвет плавно
-  /// идёт по радуге слева направо; тонкая тёмная кромка отделяет кудри.
-  void _paintWig(Canvas canvas, List<(Offset, double, double)> curls) {
-    for (final (at, r, t) in curls) {
-      final x = t.clamp(0.0, 1.0) * (_rainbow.length - 1);
-      final i = min(x.floor(), _rainbow.length - 2);
-      final color = Color.lerp(_rainbow[i], _rainbow[i + 1], x - i)!;
-      final rect = Rect.fromCircle(center: at, radius: r);
-      canvas
-        ..drawCircle(
-          at,
-          r,
-          Paint()
-            ..shader = RadialGradient(
-              center: const Alignment(-0.35, -0.45),
-              radius: 1.0,
-              colors: [
-                Color.lerp(color, Colors.white, 0.35)!,
-                color,
-                Color.lerp(color, Colors.black, 0.35)!,
-              ],
-              stops: const [0, 0.5, 1],
-            ).createShader(rect),
-        )
-        ..drawCircle(
-          at,
-          r,
-          Paint()
-            ..style = PaintingStyle.stroke
-            ..strokeWidth = 0.7
-            ..color = Color.lerp(color, Colors.black, 0.55)!,
-        );
-    }
-  }
-
-  static const _rainbow = [
-    Color(0xFFE5302A),
-    Color(0xFFFF8A1F),
-    Color(0xFFFFD23F),
-    Color(0xFF2EBD59),
-    Color(0xFF3D7BFF),
-    Color(0xFF9B5CF6),
-  ];
 
   /// Эмблема на груди: у тестера — лаймовый круг с «β», у создателя — золотой с «IR».
   void _paintEmblem(

@@ -38,7 +38,7 @@ class ShopItem {
     this.costume = false,
   });
 
-  /// Костюм (клоун): в редакторе стартового образа его нет — только покупка.
+  /// Костюм: в редакторе стартового образа его нет — только покупка.
   final bool costume;
 
   /// Вещь за серию: сколько дней (на плитке — огонёк и число).
@@ -245,15 +245,6 @@ class ShopCatalog {
       apply: (l) => l.copyWith(hair: HairStyle.wolfcut),
       isWorn: (l) => l.hair == HairStyle.wolfcut,
     ),
-    ShopItem(
-      id: 'hair_clown',
-      name: 'Парик клоуна',
-      slot: ShopSlot.hair,
-      price: 300,
-      costume: true,
-      apply: (l) => l.copyWith(hair: HairStyle.clownWig),
-      isWorn: (l) => l.hair == HairStyle.clownWig,
-    ),
     // Цвет волос
     _color(
       'hc_black',
@@ -332,15 +323,6 @@ class ShopCatalog {
     _top('top_open_shirt', 'Рубаха нараспашку', TopKind.openShirt, 225),
     _top('top_suit', 'Пиджак босса', TopKind.suit, 350),
     _top('top_haori', 'Хаори мастера', TopKind.haori, 325),
-    ShopItem(
-      id: 'top_clown',
-      name: 'Костюм клоуна',
-      slot: ShopSlot.top,
-      price: 375,
-      costume: true,
-      apply: (l) => l.copyWith(top: TopKind.clownSuit),
-      isWorn: (l) => l.top == TopKind.clownSuit,
-    ),
     ShopItem(
       id: 'top_creator_tee',
       name: 'Футболка создателя',
