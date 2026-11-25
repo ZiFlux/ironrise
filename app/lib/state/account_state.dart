@@ -15,6 +15,7 @@ import '../net/api_client.dart';
 import '../net/app_log.dart';
 import '../net/push.dart';
 import 'health_state.dart';
+import 'api_cache.dart';
 import 'aura_state.dart';
 import 'consent_state.dart';
 import 'goals_state.dart';
@@ -66,12 +67,52 @@ enum SyncReason {
 
 const _maxOutbox = 300;
 
-/// Тренировка, ожидающая отправки на сервер. clientId делает отправку идемпотентной.
+/// Сверять ли вкладки (боты дня, лига, ауры, сезон) при синхронизации: герой на
+/// сервере изменился, потянули вниз, прошло 10 минут (лига движется от чужих
+/// боёв) или наступил новый день (новые боты). Иначе — экран не трогаем.
+bool tabsNeedCheck({
+  required bool heroChanged,
+  required bool manual,
+  required DateTime? last,
+  required DateTime now,
+}) =>
+    heroChanged ||
+    manual ||
+    last == null ||
+    now.difference(last) >= const Duration(minutes: 10) ||
+    now.day != last.day;
+
+/// Очередь с новым заданием [job] от [owner]: такое же ждущее действие того же
+/// аккаунта (тот же key — образ, витрина) заменяется, тренировки копятся.
+List<OutboxJob> outboxWith(List<OutboxJob> jobs, OutboxJob job, String? owner) {
+  final key = job.key;
+  return [
+    for (final j in jobs)
+      if (key == null || j.key != key || j.owner != owner) j,
+    job.ownedBy(owner),
+  ];
+}
+
+/// Запрос, ожидающий отправки на сервер: тренировка (clientId делает отправку
+/// идемпотентной) или действие, сделанное без сети (образ, витрина, награда…).
 class OutboxJob {
-  const OutboxJob({required this.path, required this.body, this.owner});
+  const OutboxJob({
+    required this.path,
+    required this.body,
+    this.owner,
+    this.method = 'POST',
+    this.key,
+  });
 
   final String path;
   final Map<String, dynamic> body;
+
+  /// POST или PUT.
+  final String method;
+
+  /// Одно и то же действие (образ, витрина): новое заменяет ждущее старое —
+  /// на сервер уходит только последнее состояние.
+  final String? key;
 
   /// Чья тренировка: e-mail аккаунта на момент записи. null — сделана до входа,
   /// уйдёт в первый аккаунт, в который войдут. Чужая (вошли в другой аккаунт) —
@@ -82,16 +123,25 @@ class OutboxJob {
     'path': path,
     'body': body,
     if (owner != null) 'owner': owner,
+    if (method != 'POST') 'method': method,
+    'key': ?key,
   };
 
   factory OutboxJob.fromJson(Map<String, dynamic> j) => OutboxJob(
     path: j['path'],
     body: Map<String, dynamic>.from(j['body']),
     owner: j['owner'] as String?,
+    method: j['method'] as String? ?? 'POST',
+    key: j['key'] as String?,
   );
 
-  OutboxJob ownedBy(String? email) =>
-      OutboxJob(path: path, body: body, owner: owner ?? email);
+  OutboxJob ownedBy(String? email) => OutboxJob(
+    path: path,
+    body: body,
+    owner: owner ?? email,
+    method: method,
+    key: key,
+  );
 }
 
 class AccountState {
@@ -211,6 +261,12 @@ class AccountNotifier extends Notifier<AccountState> {
   /// Синхронизацию попросили, пока шла предыдущая, — повторить сразу после неё,
   /// иначе только что законченная тренировка ждала бы до таймера.
   bool _again = false;
+
+  /// Последний ответ /v1/me: не изменился — вкладки не пересверяем.
+  String? _lastMe;
+
+  /// Когда вкладки (боты, лига, ауры, сезон) последний раз сверялись с сервером.
+  DateTime? _tabsAt;
 
   /// Как часто перепроверять Health Connect, пока тренировка ждёт пульс.
   static const _pulseRetryEvery = Duration(minutes: 1);
@@ -424,8 +480,32 @@ class AccountNotifier extends Notifier<AccountState> {
   Future<void> enqueueEntryTest(Map<String, dynamic> body) =>
       _enqueue(OutboxJob(path: '/v1/entry-test', body: body));
 
+  /// Действие на сервере, которое можно отложить (п. 114, часть 2): есть сеть —
+  /// уходит сразу и возвращает ответ; нет — встаёт в очередь (с [key] — вместо
+  /// ждущего такого же) и уйдёт при синхронизации; тогда null. Сервер отказал по
+  /// существу — [ApiException], как обычно. Без аккаунта — null, ничего не шлём.
+  Future<Map<String, dynamic>?> sendOrQueue(
+    String method,
+    String path,
+    Map<String, dynamic> body, {
+    String? key,
+  }) async {
+    if (!state.signedIn) return null;
+    try {
+      return method == 'PUT'
+          ? await _api.put(path, body)
+          : await _api.post(path, body);
+    } on ApiException catch (e) {
+      if (!e.isNetwork) rethrow;
+      await _enqueue(
+        OutboxJob(path: path, body: body, method: method, key: key),
+      );
+      return null;
+    }
+  }
+
   Future<void> _enqueue(OutboxJob job) async {
-    final jobs = _readOutbox()..add(job.ownedBy(state.email));
+    final jobs = outboxWith(_readOutbox(), job, state.email);
     // Без аккаунта очередь не растёт бесконечно: старейшие уходят первыми.
     await _writeOutbox(
       jobs.length > _maxOutbox ? jobs.sublist(jobs.length - _maxOutbox) : jobs,
@@ -504,6 +584,9 @@ class AccountNotifier extends Notifier<AccountState> {
     }
     await _api.tokens.clear();
     await ref.read(prefsProvider).remove(_emailKey);
+    // Лиги, друзья, уведомления прошлого аккаунта не остаются на телефоне.
+    await ref.read(apiCacheProvider).clear();
+    _lastMe = null;
     state = state.copyWith(clearEmail: true, clearError: true);
   }
 
@@ -586,7 +669,9 @@ class AccountNotifier extends Notifier<AccountState> {
           waiting.add(job);
         } else {
           try {
-            await _api.post(job.path, body);
+            job.method == 'PUT'
+                ? await _api.put(job.path, body)
+                : await _api.post(job.path, body);
           } on ApiException catch (e) {
             if (!e.isRejected) rethrow;
             rejected++;
@@ -598,18 +683,31 @@ class AccountNotifier extends Notifier<AccountState> {
       // Тренировка ещё ждёт пульс (Samsung Health, до 3 ч) — на сервере её пока нет.
       // Не накладываем его состояние: иначе опыт, монеты и серия на телефоне
       // откатились бы до прихода пульса. Применим, когда очередь разойдётся.
+      var heroChanged = true;
       if (!waitingForPulse) {
-        await ref
-            .read(heroProvider.notifier)
-            .applyServer(await _api.get('/v1/me'));
+        final me = await _api.get('/v1/me');
+        final key = jsonEncode(me);
+        heroChanged = key != _lastMe;
+        _lastMe = key;
+        await ref.read(heroProvider.notifier).applyServer(me);
       }
-      // Уровни изменились — боты дня и лига на сервере тоже.
-      ref.invalidate(serverBotsProvider);
-      ref.invalidate(serverLeagueProvider);
+      // Герой на сервере изменился (тренировка, бой, награда) — боты дня, лига,
+      // ауры и очки сезона тоже: сверяем их. Не изменился (таймер, сворачивание) —
+      // вкладки не трогаем. Уведомления приходят сами по себе — сверка дешёвая (304).
+      final now = DateTime.now();
+      if (tabsNeedCheck(
+        heroChanged: heroChanged,
+        manual: reason == SyncReason.manual,
+        last: _tabsAt,
+        now: now,
+      )) {
+        _tabsAt = now;
+        ref.invalidate(serverBotsProvider);
+        ref.invalidate(serverLeagueProvider);
+        ref.invalidate(auraProvider);
+        ref.invalidate(seasonProvider);
+      }
       ref.invalidate(notificationsProvider);
-      ref.invalidate(auraProvider);
-      // Очки сезона растут от тренировок, боёв и советов — карточка в дуэлях не застывает.
-      ref.invalidate(seasonProvider);
       await ref.read(goalsSyncProvider).push();
       _netFailures = 0;
       _netRetry?.cancel();

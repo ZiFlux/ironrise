@@ -17,9 +17,14 @@ class NotificationsScreen extends ConsumerWidget {
 
   Future<void> _markRead(WidgetRef ref, [List<String>? ids]) async {
     try {
-      await ref.read(apiProvider).post('/v1/notifications/read', {'ids': ?ids});
+      // Без сети — в очередь, отметится при синхронизации.
+      await ref.read(accountProvider.notifier).sendOrQueue(
+        'POST',
+        '/v1/notifications/read',
+        {'ids': ?ids},
+      );
     } on ApiException {
-      // Нет сети — отметим в следующий раз.
+      // Старый сервер или отказ — не мешаем.
     }
     // Экран могли закрыть, пока шёл запрос (п. 137).
     if (!ref.context.mounted) return;

@@ -1,6 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'account_state.dart';
+import 'api_cache.dart';
 
 /// Награда уровня сезона (server/src/game/season.ts).
 class SeasonReward {
@@ -93,7 +93,10 @@ class SeasonInfo {
       : (endsAt.difference(now).inHours / 24).ceil();
 }
 
-final seasonProvider = FutureProvider.autoDispose<SeasonInfo>((ref) async {
-  final j = await ref.read(apiProvider).get('/v1/season');
-  return SeasonInfo.fromJson(j);
-});
+final seasonProvider = StreamProvider<SeasonInfo>(
+  (ref) => cachedGet(
+    ref,
+    '/v1/season',
+    (raw) => SeasonInfo.fromJson(raw as Map<String, dynamic>),
+  ),
+);

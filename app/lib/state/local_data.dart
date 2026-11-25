@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'account_state.dart';
+import 'api_cache.dart';
 import 'cardio_state.dart';
 import 'duel_state.dart';
 import 'health_state.dart';
@@ -40,6 +41,8 @@ class LocalData {
     ]) {
       ref.invalidate(provider);
     }
+    // Кэш ответов сервера держит копию в памяти — сбросить и её.
+    ref.invalidate(apiCacheProvider);
   }
 }
 

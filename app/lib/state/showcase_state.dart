@@ -62,7 +62,15 @@ class ShowcaseNotifier extends Notifier<Showcase> {
         .setString(_showcaseKey, jsonEncode(showcase.toJson()));
     if (!ref.read(accountProvider).signedIn) return;
     try {
-      await ref.read(apiProvider).put('/v1/me/showcase', showcase.toJson());
+      // Без сети — в очередь, уйдёт при синхронизации (п. 114).
+      await ref
+          .read(accountProvider.notifier)
+          .sendOrQueue(
+            'PUT',
+            '/v1/me/showcase',
+            showcase.toJson(),
+            key: 'showcase',
+          );
     } on ApiException catch (e) {
       // Сервер проверяет достижения сам (п. 84): если тренировки ещё не дошли до
       // сервера, аватарка-достижение откроется после синхронизации.

@@ -23,9 +23,13 @@ class WellbeingConsentNotifier extends Notifier<bool?> {
     await ref.read(prefsProvider).setBool(_key, granted);
     if (!ref.read(accountProvider).signedIn) return;
     try {
-      await ref.read(apiProvider).put('/v1/me/consent/wellbeing', {
-        'granted': granted,
-      });
+      // Без сети — в очередь: отзыв согласия дойдёт до сервера при синхронизации.
+      await ref.read(accountProvider.notifier).sendOrQueue(
+        'PUT',
+        '/v1/me/consent/wellbeing',
+        {'granted': granted},
+        key: 'wellbeingConsent',
+      );
     } on ApiException {
       // Нет сети или старый сервер: без согласия на сервере ответ просто не примут.
     }
@@ -40,12 +44,17 @@ class WellbeingConsentNotifier extends Notifier<bool?> {
   }) async {
     if (state != true || !ref.read(accountProvider).signedIn) return;
     try {
-      await ref.read(apiProvider).post('/v1/wellbeing', {
-        'feeling': feeling.name,
-        'zone': ?zone?.name,
-        'painKind': ?kind?.name,
-        'exercises': exercises.take(12).toList(),
-      });
+      // Ответ из зала без сети не теряется — уйдёт при синхронизации.
+      await ref.read(accountProvider.notifier).sendOrQueue(
+        'POST',
+        '/v1/wellbeing',
+        {
+          'feeling': feeling.name,
+          'zone': ?zone?.name,
+          'painKind': ?kind?.name,
+          'exercises': exercises.take(12).toList(),
+        },
+      );
     } on ApiException {
       // Не отправилось — не страшно: план на телефоне уже подстроен.
     }

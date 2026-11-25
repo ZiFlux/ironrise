@@ -67,13 +67,26 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     final api = ref.read(apiProvider);
     // Нотификатор — до await: экран могут закрыть во время покупки (п. 137).
     final heroes = ref.read(heroProvider.notifier);
+    final account = ref.read(accountProvider.notifier);
     try {
-      final hero = cart.isEmpty
-          ? await api.put('/v1/me/appearance', {'appearance': look.toJson()})
-          : await api.post('/v1/shop/buy', {
-              'itemIds': [for (final i in cart) i.id],
-              'appearance': look.toJson(),
-            });
+      // Переодеться в своё можно и без сети: образ сразу на телефоне, на сервер
+      // уйдёт при синхронизации (п. 114). Покупка — только с сетью: монеты
+      // списывает сервер.
+      if (cart.isEmpty) {
+        final hero = await account.sendOrQueue('PUT', '/v1/me/appearance', {
+          'appearance': look.toJson(),
+        }, key: 'appearance');
+        if (hero != null) {
+          await heroes.applyServer(hero);
+        } else {
+          await heroes.setLook(look);
+        }
+        return true;
+      }
+      final hero = await api.post('/v1/shop/buy', {
+        'itemIds': [for (final i in cart) i.id],
+        'appearance': look.toJson(),
+      });
       await heroes.applyServer(hero);
       return true;
     } on ApiException catch (e) {

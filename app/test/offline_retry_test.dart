@@ -46,4 +46,80 @@ void main() {
     // Владелец не перезаписывается.
     expect(mine.ownedBy('b@x.ru').owner, 'a@x.ru');
   });
+
+  test(
+    'действия без сети: метод и ключ сохраняются, старая очередь читается',
+    () {
+      const put = OutboxJob(
+        path: '/v1/me/appearance',
+        body: {'appearance': {}},
+        method: 'PUT',
+        key: 'appearance',
+      );
+      final back = OutboxJob.fromJson(put.toJson());
+      expect(back.method, 'PUT');
+      expect(back.key, 'appearance');
+      // Записи до 1.7 — без метода: это POST тренировок.
+      final old = OutboxJob.fromJson({
+        'path': '/v1/workouts/cardio',
+        'body': {},
+      });
+      expect(old.method, 'POST');
+      expect(old.key, isNull);
+    },
+  );
+
+  test('одно и то же действие заменяет ждущее, тренировки копятся', () {
+    OutboxJob look(int n) => OutboxJob(
+      path: '/v1/me/appearance',
+      body: {'n': n},
+      method: 'PUT',
+      key: 'appearance',
+    );
+    const workout = OutboxJob(path: '/v1/workouts/strength', body: {'w': 1});
+    var q = outboxWith([], workout, 'a@x.ru');
+    q = outboxWith(q, look(1), 'a@x.ru');
+    q = outboxWith(q, workout, 'a@x.ru');
+    q = outboxWith(q, look(2), 'a@x.ru');
+    expect(
+      [for (final j in q) j.body],
+      [
+        {'w': 1},
+        {'w': 1},
+        {'n': 2},
+      ],
+    );
+    // Образ другого аккаунта на этом телефоне не трогаем.
+    q = outboxWith(q, look(3), 'b@x.ru');
+    expect(q.where((j) => j.key == 'appearance'), hasLength(2));
+  });
+
+  test('вкладки сверяются, только когда есть зачем', () {
+    final at = DateTime(2026, 11, 25, 12);
+    bool check({
+      bool hero = false,
+      bool manual = false,
+      required DateTime now,
+    }) => tabsNeedCheck(heroChanged: hero, manual: manual, last: at, now: now);
+    // Таймер через 5 минут, герой тот же — не трогаем.
+    expect(check(now: at.add(const Duration(minutes: 5))), isFalse);
+    expect(check(hero: true, now: at.add(const Duration(minutes: 1))), isTrue);
+    expect(check(manual: true, now: at), isTrue);
+    expect(check(now: at.add(const Duration(minutes: 10))), isTrue);
+    // Полночь — новые боты дня.
+    final late = DateTime(2026, 11, 25, 23, 58);
+    expect(
+      tabsNeedCheck(
+        heroChanged: false,
+        manual: false,
+        last: late,
+        now: late.add(const Duration(minutes: 3)),
+      ),
+      isTrue,
+    );
+    expect(
+      tabsNeedCheck(heroChanged: false, manual: false, last: null, now: at),
+      isTrue,
+    );
+  });
 }

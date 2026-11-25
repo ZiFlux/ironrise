@@ -4,6 +4,7 @@ import '../game/anti_fraud.dart';
 import '../game/aura.dart';
 import '../net/api_client.dart';
 import 'account_state.dart';
+import 'api_cache.dart';
 
 /// Прогресс одной ауры: тренировок, уровень (0 — не открыта), до следующего.
 typedef AuraProgress = ({AuraKind kind, int sessions, int level, int? toNext});
@@ -59,10 +60,14 @@ class AuraInfo {
   bool get canTrain => ready && !trainedToday && sessionsThisWeek < perWeek;
 }
 
-class AuraNotifier extends AsyncNotifier<AuraInfo> {
+class AuraNotifier extends StreamNotifier<AuraInfo> {
+  /// Из кэша телефона сразу, потом сверка с сервером.
   @override
-  Future<AuraInfo> build() async =>
-      AuraInfo.fromJson(await ref.read(apiProvider).get('/v1/auras'));
+  Stream<AuraInfo> build() => cachedGet(
+    ref,
+    '/v1/auras',
+    (raw) => AuraInfo.fromJson(raw as Map<String, dynamic>),
+  );
 
   /// Тренировка ауры пройдена: +1 к прогрессу. Сервер проверяет лимит
   /// (раз в день, два в неделю) и пульс с часов за время тренировки.
@@ -109,6 +114,6 @@ class AuraNotifier extends AsyncNotifier<AuraInfo> {
   }
 }
 
-final auraProvider = AsyncNotifierProvider<AuraNotifier, AuraInfo>(
+final auraProvider = StreamNotifierProvider<AuraNotifier, AuraInfo>(
   AuraNotifier.new,
 );

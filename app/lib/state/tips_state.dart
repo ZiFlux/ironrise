@@ -125,14 +125,18 @@ class TipsNotifier extends Notifier<DailyTips?> {
       return coins;
     }
     try {
-      final r = await ref.read(apiProvider).post('/v1/tips/reward', {
+      // Без сети награда встаёт в очередь: монеты придут при синхронизации
+      // (сервер сам следит за «раз в день»).
+      final account = ref.read(accountProvider.notifier);
+      final r = await account.sendOrQueue('POST', '/v1/tips/reward', {
         'correct': correct,
         'total': total,
       });
-      await ref.read(accountProvider.notifier).sync();
+      if (r == null) return coins;
+      await account.sync();
       return (r['coins'] as num?)?.toInt() ?? coins;
     } on ApiException {
-      // 409 — сегодня награда уже получена; без сети — просто без монет.
+      // 409 — сегодня награда уже получена.
       return 0;
     }
   }

@@ -106,6 +106,25 @@ class ApiClient {
 
   Future<void> delete(String path) => _send('DELETE', path);
 
+  /// GET с проверкой «изменилось ли»: [etag] — метка прошлого ответа. null —
+  /// не изменилось (сервер ответил 304 и ничего не прислал).
+  Future<({Object? body, String? etag})?> getIfChanged(
+    String path,
+    String? etag,
+  ) async {
+    String? fresh;
+    final body = await _send(
+      'GET',
+      path,
+      headers: {'if-none-match': ?etag},
+      onHeaders: (h) => fresh = h['etag'],
+    );
+    if (identical(body, _notModified)) return null;
+    return (body: body, etag: fresh);
+  }
+
+  static const _notModified = Object();
+
   /// Разобранный JSON ответа: объект, массив или пустой объект для 204.
   Future<Object?> _send(
     String method,
@@ -113,12 +132,15 @@ class ApiClient {
     Map<String, dynamic>? body,
     bool auth = true,
     bool retried = false,
+    Map<String, String> headers = const {},
+    void Function(Map<String, String> headers)? onHeaders,
   }) async {
     if (auth && tokens.access == null) await _refresh();
     final http.Response res;
     try {
       final request = http.Request(method, Uri.parse('$baseUrl$path'))
         ..headers['content-type'] = 'application/json'
+        ..headers.addAll(headers)
         ..headers.addAll({
           if (auth && tokens.access != null)
             'authorization': 'Bearer ${tokens.access}',
@@ -140,8 +162,18 @@ class ApiClient {
 
     if (res.statusCode == 401 && auth && !retried) {
       await _refresh();
-      return _send(method, path, body: body, auth: auth, retried: true);
+      return _send(
+        method,
+        path,
+        body: body,
+        auth: auth,
+        retried: true,
+        headers: headers,
+        onHeaders: onHeaders,
+      );
     }
+    if (res.statusCode == 304) return _notModified;
+    onHeaders?.call(res.headers);
     final decoded = res.body.isEmpty
         ? <String, dynamic>{}
         : jsonDecode(utf8.decode(res.bodyBytes));

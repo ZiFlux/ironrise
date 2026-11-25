@@ -109,129 +109,143 @@ List<Override> _serverFakes() {
     accountProvider.overrideWith(_SignedIn.new),
     jointProvider.overrideWith(_NoJoint.new),
     serverBotsProvider.overrideWith(
-      (ref) async => (
-        ladder: (
-          tier: 2,
-          tiers: 13,
-          name: 'Подвальная качалка',
-          bossId: 'boss',
-          bossUnlocked: false,
-          wins: 2,
-          winsToBoss: 3,
-          beaten: {'b0'},
-          nextName: 'Фитнес у дома',
+      _stream(
+        (ref) async => (
+          ladder: (
+            tier: 2,
+            tiers: 13,
+            name: 'Подвальная качалка',
+            bossId: 'boss',
+            bossUnlocked: false,
+            wins: 2,
+            winsToBoss: 3,
+            beaten: {'b0'},
+            nextName: 'Фитнес у дома',
+          ),
+          bots: [
+            for (var i = 0; i < 4; i++)
+              _fighter('b$i', 'Железный Лёха $i', 5 + i),
+            _fighter('boss', 'Гоша-Протеин', 10),
+          ],
+          results: {'b0': true, 'b1': false},
+          nextFightAt: <String, DateTime>{},
+          fights: const {'b0': 1, 'b1': 2},
         ),
-        bots: [
-          for (var i = 0; i < 4; i++)
-            _fighter('b$i', 'Железный Лёха $i', 5 + i),
-          _fighter('boss', 'Гоша-Протеин', 10),
-        ],
-        results: {'b0': true, 'b1': false},
-        nextFightAt: <String, DateTime>{},
-        fights: const {'b0': 1, 'b1': 2},
       ),
     ),
     serverFriendsProvider.overrideWith(
-      (ref) async => (
-        friends: friends,
-        incoming: [(userId: 'u1', nickname: 'Очень_Длинный_Ник_01')],
-        outgoing: [(userId: 'u2', nickname: 'Ещё_Один_Длинный_Ник')],
-        results: {'f0': true},
-        fightsLeft: 4,
+      _stream(
+        (ref) async => (
+          friends: friends,
+          incoming: [(userId: 'u1', nickname: 'Очень_Длинный_Ник_01')],
+          outgoing: [(userId: 'u2', nickname: 'Ещё_Один_Длинный_Ник')],
+          results: {'f0': true},
+          fightsLeft: 4,
+        ),
       ),
     ),
     serverLeagueProvider.overrideWith(
-      (ref) async => (
-        entries: [
-          for (var i = 0; i < 8; i++)
-            LeagueEntry(
-              name: i == 3 ? _longNick : 'Соперник номер $i',
-              points: 120 - i * 9,
-              isPlayer: i == 3,
-            ),
-        ],
-        trainedDays: 4,
-        wins: 7,
-        tier: LeagueTier.silver,
-        promoteTop: 2,
-        minDaysToPromote: 1,
-        demoteBottom: 2,
-        lastWeek: (rank: 2, outcome: 'promoted', tierBefore: 0, tierAfter: 1),
+      _stream(
+        (ref) async => (
+          entries: [
+            for (var i = 0; i < 8; i++)
+              LeagueEntry(
+                name: i == 3 ? _longNick : 'Соперник номер $i',
+                points: 120 - i * 9,
+                isPlayer: i == 3,
+              ),
+          ],
+          trainedDays: 4,
+          wins: 7,
+          tier: LeagueTier.silver,
+          promoteTop: 2,
+          minDaysToPromote: 1,
+          demoteBottom: 2,
+          lastWeek: (rank: 2, outcome: 'promoted', tierBefore: 0, tierAfter: 1),
+        ),
       ),
     ),
     auraProvider.overrideWith(_Auras.new),
     seasonProvider.overrideWith(
-      (ref) async => SeasonInfo.fromJson({
-        'number': 1,
-        'name': 'Пробуждение',
-        'endsAt': '2026-12-28T00:00:00Z',
-        'points': 1234,
-        'level': 8,
-        'levelPoints': 150,
-        'maxLevel': 30,
-        'premium': false,
-        'freeGranted': 8,
-        'premiumGranted': 0,
-        'tracks': [
-          for (var l = 1; l <= 30; l++)
-            {
-              'level': l,
-              'free': {
-                'coins': l == 30 ? 215 : 15,
-                'items': [if (l == 5) 'sn_s1', if (l == 15) 'tc_s1'],
-                'boosters': {'xp': l == 20 ? 1 : 0, 'coins': l == 10 ? 1 : 0},
+      _stream(
+        (ref) async => SeasonInfo.fromJson({
+          'number': 1,
+          'name': 'Пробуждение',
+          'endsAt': '2026-12-28T00:00:00Z',
+          'points': 1234,
+          'level': 8,
+          'levelPoints': 150,
+          'maxLevel': 30,
+          'premium': false,
+          'freeGranted': 8,
+          'premiumGranted': 0,
+          'tracks': [
+            for (var l = 1; l <= 30; l++)
+              {
+                'level': l,
+                'free': {
+                  'coins': l == 30 ? 215 : 15,
+                  'items': [if (l == 5) 'sn_s1', if (l == 15) 'tc_s1'],
+                  'boosters': {'xp': l == 20 ? 1 : 0, 'coins': l == 10 ? 1 : 0},
+                },
+                'premium': {
+                  'coins': 10,
+                  'items': [if (l == 10) 'hc_s1'],
+                  'boosters': {'xp': 0, 'coins': 0},
+                },
               },
-              'premium': {
-                'coins': 10,
-                'items': [if (l == 10) 'hc_s1'],
-                'boosters': {'xp': 0, 'coins': 0},
-              },
-            },
-        ],
-      }),
+          ],
+        }),
+      ),
     ),
     serverFriendsLeagueProvider.overrideWith(
-      (ref) async => [
-        for (var i = 0; i < 12; i++)
-          LeagueEntry(name: 'Друг $i', points: 90 - i * 5, isPlayer: i == 5),
-      ],
+      _stream(
+        (ref) async => [
+          for (var i = 0; i < 12; i++)
+            LeagueEntry(name: 'Друг $i', points: 90 - i * 5, isPlayer: i == 5),
+        ],
+      ),
     ),
     serverAttacksProvider.overrideWith(
-      (ref) async => [
-        (
-          attacker: 'Очень_Длинный_Ник_01',
-          attackerId: 'f1',
-          attackerWon: true,
-          at: DateTime.now(),
-        ),
-        (
-          attacker: 'Кирпич',
-          attackerId: null,
-          attackerWon: false,
-          at: DateTime.now().subtract(const Duration(days: 2)),
-        ),
-      ],
+      _stream(
+        (ref) async => [
+          (
+            attacker: 'Очень_Длинный_Ник_01',
+            attackerId: 'f1',
+            attackerWon: true,
+            at: DateTime.now(),
+          ),
+          (
+            attacker: 'Кирпич',
+            attackerId: null,
+            attackerWon: false,
+            at: DateTime.now().subtract(const Duration(days: 2)),
+          ),
+        ],
+      ),
     ),
     notificationsProvider.overrideWith(
-      (ref) async => (
-        unread: 12,
-        items: [
-          for (var i = 0; i < 6; i++)
-            AppNotification(
-              id: 'n$i',
-              type: const [
-                'friend_request',
-                'attacked',
-                'streak_risk',
-                'friend_accepted',
-              ][i % 4],
-              title: 'Очень длинный заголовок уведомления номер $i',
-              body: 'Очень_Длинный_Ник_01 напал на тебя, но твой герой выстоял. Вызови в ответ!',
-              screen: 'duels',
-              read: i > 2,
-              createdAt: DateTime.now().subtract(Duration(hours: i * 7)),
-            ),
-        ],
+      _stream(
+        (ref) async => (
+          unread: 12,
+          items: [
+            for (var i = 0; i < 6; i++)
+              AppNotification(
+                id: 'n$i',
+                type: const [
+                  'friend_request',
+                  'attacked',
+                  'streak_risk',
+                  'friend_accepted',
+                ][i % 4],
+                title: 'Очень длинный заголовок уведомления номер $i',
+                body: 'Очень_Длинный_Ник_01 напал на тебя, но твой герой выстоял. Вызови в ответ!',
+                screen: 'duels',
+                read: i > 2,
+                createdAt: DateTime.now().subtract(Duration(hours: i * 7)),
+              ),
+          ],
+        ),
       ),
     ),
   ];
@@ -626,15 +640,21 @@ void main() {
 /// Ауры для экрана: одна открыта и выбрана, лимит недели почти исчерпан.
 class _Auras extends AuraNotifier {
   @override
-  Future<AuraInfo> build() async => AuraInfo.fromJson({
-    'equipped': 'fury',
-    'sessionsThisWeek': 1,
-    'perWeek': 2,
-    'auras': [
-      {'kind': 'fury', 'sessions': 4, 'level': 2, 'toNext': 2},
-      {'kind': 'guard', 'sessions': 0, 'level': 0, 'toNext': 1},
-      {'kind': 'haste', 'sessions': 15, 'level': 5, 'toNext': null},
-      {'kind': 'focus', 'sessions': 1, 'level': 1, 'toNext': 2},
-    ],
-  });
+  Stream<AuraInfo> build() => Stream.value(_auraInfo);
 }
+
+final _auraInfo = AuraInfo.fromJson({
+  'equipped': 'fury',
+  'sessionsThisWeek': 1,
+  'perWeek': 2,
+  'auras': [
+    {'kind': 'fury', 'sessions': 4, 'level': 2, 'toNext': 2},
+    {'kind': 'guard', 'sessions': 0, 'level': 0, 'toNext': 1},
+    {'kind': 'haste', 'sessions': 15, 'level': 5, 'toNext': null},
+    {'kind': 'focus', 'sessions': 1, 'level': 1, 'toNext': 2},
+  ],
+});
+
+/// Данные вкладок приходят потоком (кэш, затем сервер): в тестах — одно значение.
+Stream<T> Function(Ref) _stream<T>(Future<T> Function(Ref) make) =>
+    (ref) => Stream.fromFuture(make(ref));

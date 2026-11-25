@@ -5,6 +5,7 @@ import '../game/body_part.dart';
 import '../game/duel.dart';
 import '../game/league.dart';
 import 'account_state.dart';
+import 'api_cache.dart';
 import '../game/aura.dart';
 
 /// Данные игры с сервера — когда игрок вошёл в аккаунт. Без аккаунта
@@ -112,25 +113,27 @@ typedef ServerBots = ({
   Map<String, int> fights,
 });
 
-final serverBotsProvider = FutureProvider.autoDispose<ServerBots>((ref) async {
-  final j = await ref.read(apiProvider).get('/v1/duels/bots');
-  return (
-    ladder: botLadderFromJson(j['ladder']),
-    bots: [
-      for (final b in j['bots'] as List)
-        fighterFromJson(Map<String, dynamic>.from(b as Map)),
-    ],
-    results: Map<String, bool>.from(j['results'] as Map),
-    nextFightAt: {
-      for (final e in (j['nextFightAt'] as Map? ?? const {}).entries)
-        e.key as String: DateTime.parse(e.value as String).toLocal(),
-    },
-    fights: {
-      for (final e in (j['fights'] as Map? ?? const {}).entries)
-        e.key as String: (e.value as num).toInt(),
-    },
-  );
-});
+final serverBotsProvider = StreamProvider<ServerBots>(
+  (ref) => cachedGet(ref, '/v1/duels/bots', (raw) {
+    final j = raw as Map<String, dynamic>;
+    return (
+      ladder: botLadderFromJson(j['ladder']),
+      bots: [
+        for (final b in j['bots'] as List)
+          fighterFromJson(Map<String, dynamic>.from(b as Map)),
+      ],
+      results: Map<String, bool>.from(j['results'] as Map),
+      nextFightAt: {
+        for (final e in (j['nextFightAt'] as Map? ?? const {}).entries)
+          e.key as String: DateTime.parse(e.value as String).toLocal(),
+      },
+      fights: {
+        for (final e in (j['fights'] as Map? ?? const {}).entries)
+          e.key as String: (e.value as num).toInt(),
+      },
+    );
+  }),
+);
 
 /// Итог прошлой недели: место и куда сдвинулась лига.
 typedef LeagueWeekResult = ({
@@ -161,32 +164,32 @@ final serverLeagueTierProvider = FutureProvider.autoDispose
       ];
     });
 
-final serverLeagueProvider = FutureProvider.autoDispose<ServerLeague>((
-  ref,
-) async {
-  final j = await ref.read(apiProvider).get('/v1/league');
-  return (
-    entries: [
-      for (final e in j['entries'] as List)
-        LeagueEntry.fromJson(e as Map<String, dynamic>),
-    ],
-    trainedDays: (j['trainedDays'] as num).toInt(),
-    wins: (j['wins'] as num).toInt(),
-    tier: LeagueTier.of((j['tier'] as num?)?.toInt() ?? 0),
-    promoteTop: (j['promoteTop'] as num?)?.toInt() ?? 0,
-    minDaysToPromote: (j['minDaysToPromote'] as num?)?.toInt() ?? 1,
-    demoteBottom: (j['demoteBottom'] as num?)?.toInt() ?? 0,
-    lastWeek: switch (j['lastWeek']) {
-      final Map<String, dynamic> w => (
-        rank: (w['rank'] as num).toInt(),
-        outcome: w['outcome'] as String,
-        tierBefore: (w['tierBefore'] as num).toInt(),
-        tierAfter: (w['tierAfter'] as num).toInt(),
-      ),
-      _ => null,
-    },
-  );
-});
+final serverLeagueProvider = StreamProvider<ServerLeague>(
+  (ref) => cachedGet(ref, '/v1/league', (raw) {
+    final j = raw as Map<String, dynamic>;
+    return (
+      entries: [
+        for (final e in j['entries'] as List)
+          LeagueEntry.fromJson(e as Map<String, dynamic>),
+      ],
+      trainedDays: (j['trainedDays'] as num).toInt(),
+      wins: (j['wins'] as num).toInt(),
+      tier: LeagueTier.of((j['tier'] as num?)?.toInt() ?? 0),
+      promoteTop: (j['promoteTop'] as num?)?.toInt() ?? 0,
+      minDaysToPromote: (j['minDaysToPromote'] as num?)?.toInt() ?? 1,
+      demoteBottom: (j['demoteBottom'] as num?)?.toInt() ?? 0,
+      lastWeek: switch (j['lastWeek']) {
+        final Map<String, dynamic> w => (
+          rank: (w['rank'] as num).toInt(),
+          outcome: w['outcome'] as String,
+          tierBefore: (w['tierBefore'] as num).toInt(),
+          tierAfter: (w['tierAfter'] as num).toInt(),
+        ),
+        _ => null,
+      },
+    );
+  }),
+);
 
 typedef PlayerRef = ({String userId, String nickname});
 
@@ -203,30 +206,31 @@ List<PlayerRef> _refs(Object? list) => [
     (userId: r['userId'] as String, nickname: r['nickname'] as String),
 ];
 
-final serverFriendsProvider = FutureProvider.autoDispose<ServerFriends>((
-  ref,
-) async {
-  final j = await ref.read(apiProvider).get('/v1/friends');
-  return (
-    friends: [
-      for (final f in j['friends'] as List)
-        fighterFromJson(Map<String, dynamic>.from(f as Map)),
-    ],
-    incoming: _refs(j['incoming']),
-    outgoing: _refs(j['outgoing']),
-    results: Map<String, bool>.from(j['results'] as Map),
-    fightsLeft: (j['fightsLeft'] as num).toInt(),
-  );
-});
+final serverFriendsProvider = StreamProvider<ServerFriends>(
+  (ref) => cachedGet(ref, '/v1/friends', (raw) {
+    final j = raw as Map<String, dynamic>;
+    return (
+      friends: [
+        for (final f in j['friends'] as List)
+          fighterFromJson(Map<String, dynamic>.from(f as Map)),
+      ],
+      incoming: _refs(j['incoming']),
+      outgoing: _refs(j['outgoing']),
+      results: Map<String, bool>.from(j['results'] as Map),
+      fightsLeft: (j['fightsLeft'] as num).toInt(),
+    );
+  }),
+);
 
-final serverFriendsLeagueProvider =
-    FutureProvider.autoDispose<List<LeagueEntry>>((ref) async {
-      final j = await ref.read(apiProvider).get('/v1/league/friends');
-      return [
-        for (final e in j['entries'] as List)
-          LeagueEntry.fromJson(e as Map<String, dynamic>),
-      ];
-    });
+final serverFriendsLeagueProvider = StreamProvider<List<LeagueEntry>>(
+  (ref) => cachedGet(ref, '/v1/league/friends', (raw) {
+    final j = raw as Map<String, dynamic>;
+    return [
+      for (final e in j['entries'] as List)
+        LeagueEntry.fromJson(e as Map<String, dynamic>),
+    ];
+  }),
+);
 
 typedef AttackOnMe = ({
   String attacker,
@@ -235,20 +239,20 @@ typedef AttackOnMe = ({
   DateTime at,
 });
 
-final serverAttacksProvider = FutureProvider.autoDispose<List<AttackOnMe>>((
-  ref,
-) async {
-  final list = await ref.read(apiProvider).getList('/v1/duels/incoming');
-  return [
-    for (final a in list)
-      (
-        attacker: a['attacker'] as String,
-        attackerId: a['attackerId'] as String?,
-        attackerWon: a['attackerWon'] as bool,
-        at: DateTime.parse(a['at'] as String).toLocal(),
-      ),
-  ];
-});
+final serverAttacksProvider = StreamProvider<List<AttackOnMe>>(
+  (ref) => cachedGet(ref, '/v1/duels/incoming', (raw) {
+    final list = raw as List;
+    return [
+      for (final a in list)
+        (
+          attacker: a['attacker'] as String,
+          attackerId: a['attackerId'] as String?,
+          attackerWon: a['attackerWon'] as bool,
+          at: DateTime.parse(a['at'] as String).toLocal(),
+        ),
+    ];
+  }),
+);
 
 class AppNotification {
   const AppNotification({
@@ -281,23 +285,23 @@ class AppNotification {
 
 typedef NotificationFeed = ({List<AppNotification> items, int unread});
 
-final notificationsProvider = FutureProvider.autoDispose<NotificationFeed>((
-  ref,
-) async {
-  final j = await ref.read(apiProvider).get('/v1/notifications');
-  return (
-    unread: (j['unread'] as num).toInt(),
-    items: [
-      for (final n in j['items'] as List)
-        AppNotification(
-          id: n['id'] as String,
-          type: n['type'] as String,
-          title: n['title'] as String,
-          body: n['body'] as String,
-          screen: n['screen'] as String,
-          read: n['read'] as bool,
-          createdAt: DateTime.parse(n['createdAt'] as String).toLocal(),
-        ),
-    ],
-  );
-});
+final notificationsProvider = StreamProvider<NotificationFeed>(
+  (ref) => cachedGet(ref, '/v1/notifications', (raw) {
+    final j = raw as Map<String, dynamic>;
+    return (
+      unread: (j['unread'] as num).toInt(),
+      items: [
+        for (final n in j['items'] as List)
+          AppNotification(
+            id: n['id'] as String,
+            type: n['type'] as String,
+            title: n['title'] as String,
+            body: n['body'] as String,
+            screen: n['screen'] as String,
+            read: n['read'] as bool,
+            createdAt: DateTime.parse(n['createdAt'] as String).toLocal(),
+          ),
+      ],
+    );
+  }),
+);
