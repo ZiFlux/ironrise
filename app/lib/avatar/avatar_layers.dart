@@ -61,10 +61,24 @@ class AvatarLayers {
       Offset(_f.ribs + 1.2, 146),
       const Offset(0, 148),
     ]),
+    TopKind.haori => mirroredPath([
+      const Offset(0, 72),
+      Offset(_f.neck + 2, 63),
+      Offset(_f.trapX + 2, 70),
+      Offset(_f.shoulder + 1, 88),
+      Offset(_f.lat + 4, 116),
+      Offset(_f.lat + 5, 160),
+      Offset(_f.hip + 8, 220),
+      Offset(_f.hip + 10, 250),
+      const Offset(0, 252),
+    ]),
     TopKind.tee ||
     TopKind.betaTee ||
     TopKind.clownSuit ||
-    TopKind.creatorTee => _teePath,
+    TopKind.creatorTee ||
+    TopKind.uniform ||
+    TopKind.openShirt ||
+    TopKind.suit => _teePath,
   };
 
   Path get _teePath => mirroredPath([
@@ -83,16 +97,147 @@ class AvatarLayers {
 
   /// Рукава футболки повторяют дельту и доходят до середины бицепса.
   /// Дельта под рукавом целиком — край рукава не обнажает плечо.
+  /// Длинный рукав — по всей руке до запястья, широкий — до локтя с раструбом.
   List<Path> get sleeves => look.top.teeCut
       ? [
           for (final arm in [_f.rightArm, _f.leftArm])
             Path.combine(
               PathOperation.union,
-              _sleeveOf(arm),
+              look.top.longSleeves
+                  ? _longSleeveOf(arm)
+                  : look.top.wideSleeves
+                  ? _wideSleeveOf(arm)
+                  : _sleeveOf(arm),
               _f.deltCap(arm, grow: 1.4),
             ),
         ]
       : const [];
+
+  Path _longSleeveOf(ArmGeometry arm) => Path.combine(
+    PathOperation.union,
+    arm.outline([
+      for (final (t, w) in _f.armStations)
+        if (t <= 0.86) (t, w + 1.4),
+      (0.88, _f.wristWidth + 1.8),
+    ]),
+    Path()..addOval(
+      Rect.fromCircle(center: arm.elbow, radius: _f.elbowWidth + 1.4),
+    ),
+  );
+
+  Path _wideSleeveOf(ArmGeometry arm) => smoothClosedPath([
+    arm.at(-0.08, -(_f.deltSize * 0.15 + 1.6)),
+    arm.at(-0.01, -(_f.deltSize * 0.85 + 1.6)),
+    arm.at(0.12, -(_f.deltSize + 2.4)),
+    arm.at(0.44, -(_f.bicepWidth + 5.5)),
+    arm.at(0.44, _f.bicepWidth + 5.5),
+    arm.at(0.1, _f.deltSize * 0.6 + 2),
+    arm.at(-0.04, _f.deltSize * 0.4 + 1.4),
+  ]);
+
+  /// Разрез спереди: рубаха нараспашку открывает грудь и пресс, хаори —
+  /// тёмную рубаху под собой.
+  Path? get _frontOpening => switch (look.top) {
+    TopKind.openShirt => polygonPath([
+      Offset(100 - _f.neck * 0.7, 62),
+      Offset(100 + _f.neck * 0.7, 62),
+      Offset(100 + _f.lat * 0.42, 120),
+      Offset(100 + _f.waist * 0.5, 172),
+      Offset(100 + _f.hip * 0.42, 212),
+      Offset(100 - _f.hip * 0.42, 212),
+      Offset(100 - _f.waist * 0.5, 172),
+      Offset(100 - _f.lat * 0.42, 120),
+    ]),
+    TopKind.haori => polygonPath([
+      Offset(100 - _f.neck - 1, 62),
+      Offset(100 + _f.neck + 1, 62),
+      Offset(100 + _f.lat * 0.32, 150),
+      Offset(100 + _f.hip * 0.42, 254),
+      Offset(100 - _f.hip * 0.42, 254),
+      Offset(100 - _f.lat * 0.32, 150),
+    ]),
+    _ => null,
+  };
+
+  /// Что видно в разрезе хаори: тёмная рубаха по телу.
+  Path? get topInner {
+    if (look.top != TopKind.haori) return null;
+    return Path.combine(
+      PathOperation.intersect,
+      _frontOpening!,
+      Path.combine(
+        PathOperation.union,
+        Path.combine(
+          PathOperation.intersect,
+          _f.bodyOutline,
+          Path()..addRect(const Rect.fromLTRB(-50, 60, 250, 209)),
+        ),
+        _hemSkirt,
+      ),
+    );
+  }
+
+  /// Пиджак: белая рубашка в вырезе лацканов и галстук.
+  (Path, Path)? get suitFront {
+    if (look.top != TopKind.suit) return null;
+    final w = _f.lat * 0.4;
+    final shirt = polygonPath([
+      Offset(100 - _f.neck - 1, 62),
+      Offset(100 + _f.neck + 1, 62),
+      Offset(100 + w, 104),
+      const Offset(100, 138),
+      Offset(100 - w, 104),
+    ]);
+    final tie = polygonPath([
+      const Offset(97.6, 64),
+      const Offset(102.4, 64),
+      const Offset(101.4, 70),
+      const Offset(103.6, 118),
+      const Offset(100, 126),
+      const Offset(96.4, 118),
+      const Offset(98.6, 70),
+    ]);
+    return (shirt, tie);
+  }
+
+  /// Лацканы пиджака: линии от ворота к вырезу.
+  Path? get lapels {
+    if (look.top != TopKind.suit) return null;
+    final w = _f.lat * 0.4;
+    return Path()
+      ..moveTo(100 - _f.neck - 3, 62)
+      ..lineTo(100 - w - 4, 100)
+      ..lineTo(100 - w + 1, 106)
+      ..moveTo(100 + _f.neck + 3, 62)
+      ..lineTo(100 + w + 4, 100)
+      ..lineTo(100 + w - 1, 106);
+  }
+
+  /// Мундир: стойка-воротник и золотые пуговицы в ряд по центру.
+  (Path, List<Offset>)? get uniformDetails {
+    if (look.top != TopKind.uniform) return null;
+    final collar = Path()
+      ..addRRect(
+        RRect.fromLTRBR(
+          100 - _f.neck - 2,
+          55,
+          100 + _f.neck + 2,
+          66,
+          const Radius.circular(2.5),
+        ),
+      );
+    return (collar, [for (var y = 78.0; y <= 196; y += 19) Offset(100, y)]);
+  }
+
+  /// Пушистые отвороты шорт.
+  Path? get shortsCuffs {
+    if (look.bottom != BottomKind.cuffedShorts) return null;
+    return Path.combine(
+      PathOperation.intersect,
+      bottom,
+      Path()..addRect(const Rect.fromLTRB(-50, 276, 250, 290)),
+    );
+  }
 
   /// Верх по телу: контур тела (с дельтами), обрезанный по крою вещи, —
   /// горловина, лямки, длина. Сидит на любой фигуре и в любой позе: тянется
@@ -106,6 +251,7 @@ class AvatarLayers {
       TopKind.bra => 142.0,
       TopKind.crop => 148.0,
       TopKind.oversize => 224.0,
+      TopKind.haori => 252.0,
       TopKind.tank => 207.0,
       _ => 209.0,
     };
@@ -118,7 +264,9 @@ class AvatarLayers {
       cut,
       Path()..addRect(Rect.fromLTRB(-50, sleeved ? 76 : 116, 250, hem)),
     );
-    var body = _f.bodyOutline;
+    // Тело вместе с низом: у пояса верх не уже штанов — углы таза и пояса
+    // не выглядывают из-под подола на узкой талии.
+    var body = Path.combine(PathOperation.union, _f.bodyOutline, _hemSkirt);
     if (sleeved) {
       for (final arm in [_f.rightArm, _f.leftArm]) {
         body = Path.combine(PathOperation.union, body, _f.deltCap(arm));
@@ -128,10 +276,43 @@ class AvatarLayers {
     if (look.top == TopKind.vneck) {
       fitted = Path.combine(PathOperation.difference, fitted, _vCut);
     }
-    if (look.top == TopKind.oversize) {
+    if (look.top == TopKind.oversize || look.top == TopKind.haori) {
       fitted = Path.combine(PathOperation.union, fitted, cut);
     }
+    if (_frontOpening case final opening?) {
+      fitted = Path.combine(PathOperation.difference, fitted, opening);
+    }
     return fitted;
+  }
+
+  /// Ровный клин от талии к бёдрам по ширине низа у пояса: подол прямой,
+  /// без бугорков от пояса штанов, и закрывает их углы.
+  Path get _hemSkirt {
+    // Ширины — по самим фигурам: getBounds у кривых учитывает контрольные
+    // точки и завышает.
+    final low = fittedBottom;
+    final half =
+        max(_halfWidth(low, 196), _halfWidth(low, 204)).clamp(_f.hip, 60) + 1.6;
+    // Клин начинается там, где тело ещё не шире него, и плавно выходит
+    // к ширине низа: на узкой талии без ступеньки.
+    final start = _halfWidth(_f.bodyOutline, 182) + 1;
+    return mirroredPath([
+      const Offset(0, 182),
+      Offset(start, 182),
+      Offset(_lerp(start, half, 0.55), 193),
+      Offset(half, 203),
+      Offset(half, 230),
+      const Offset(0, 230),
+    ]);
+  }
+
+  /// Полуширина фигуры [path] на высоте [y] от середины холста.
+  static double _halfWidth(Path path, double y) {
+    var x = 0.0;
+    while (x < 80 && path.contains(Offset(100 + x + 0.5, y))) {
+      x += 0.5;
+    }
+    return x;
   }
 
   Path get _vCut => Path()
@@ -314,6 +495,45 @@ class AvatarLayers {
       const Offset(3.8, 292),
       const Offset(4.2, 254),
       const Offset(1.3, 232),
+    ]),
+    BottomKind.trousers => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.4, 192),
+      Offset(_f.hip + 2, 200),
+      Offset(_f.thigh + 2.4, 224),
+      Offset(_f.thigh + 0.8, 256),
+      Offset(_f.knee + 3, 292),
+      Offset(_f.calf + 2.4, 320),
+      Offset(_f.shin + 3.4, 352),
+      Offset(_f.ankle + 4, 374),
+      const Offset(3, 374),
+      const Offset(3.4, 350),
+      const Offset(3.8, 292),
+      const Offset(4.2, 254),
+      const Offset(1.3, 232),
+    ]),
+    // Хакама: от пояса расходятся книзу, шаг низкий, внизу почти юбка.
+    BottomKind.hakama => mirroredPath([
+      const Offset(0, 188),
+      Offset(_f.waistband + 1.8, 190),
+      Offset(_f.hip + 4, 204),
+      Offset(_f.thigh + 8, 236),
+      Offset(_f.knee + 12, 290),
+      Offset(_f.calf + 15, 334),
+      Offset(_f.ankle + 19, 376),
+      const Offset(2.4, 376),
+      const Offset(1.6, 330),
+      const Offset(0.6, 290),
+    ]),
+    BottomKind.cuffedShorts => mirroredPath([
+      const Offset(0, 190),
+      Offset(_f.waistband + 1.4, 192),
+      Offset(_f.hip + 2.4, 200),
+      Offset(_f.thigh + 4, 226),
+      Offset(_f.thigh + 4.5, 262),
+      Offset(_f.knee + 6, 284),
+      const Offset(2.6, 286),
+      const Offset(1.4, 234),
     ]),
     BottomKind.leggings => mirroredPath([
       const Offset(0, 186),
@@ -602,6 +822,77 @@ class AvatarLayers {
   }
 
   /// Тёмные очки.
+  /// Круглые очки: две линзы и мостик.
+  Path? get roundShades {
+    if (!_has(Accessory.roundShades)) return null;
+    return Path()
+      ..addOval(Rect.fromCircle(center: const Offset(92.6, 28.6), radius: 5))
+      ..addOval(Rect.fromCircle(center: const Offset(107.4, 28.6), radius: 5))
+      ..addRect(const Rect.fromLTRB(97.4, 27.2, 102.6, 28.4));
+  }
+
+  /// Повязка на глаза: широкая лента через всю голову и узел сбоку.
+  Path? get blindfold {
+    if (!_has(Accessory.blindfold)) return null;
+    final top = _f.headHalfWidthAt(23) + 0.8;
+    final bottom = _f.headHalfWidthAt(33) + 0.8;
+    return Path.combine(
+      PathOperation.union,
+      polygonPath([
+        Offset(100 - top, 23),
+        Offset(100 + top, 23),
+        Offset(100 + bottom, 33),
+        Offset(100 - bottom, 33),
+      ]),
+      polygonPath([
+        Offset(100 + top - 1, 25),
+        Offset(100 + top + 6, 29),
+        Offset(100 + top + 4, 37),
+        Offset(100 + top - 1, 31),
+      ]),
+    );
+  }
+
+  /// Соломенная шляпа: купол, лента и широкие поля.
+  (Path, Path, Path)? get strawHat {
+    if (!_has(Accessory.strawHat)) return null;
+    final rx = _f.headRx;
+    final dome = Path()
+      ..moveTo(100 - rx + 1, 17)
+      ..cubicTo(100 - rx + 2, -2, 100 + rx - 2, -2, 100 + rx - 1, 17)
+      ..close();
+    final band = polygonPath([
+      Offset(100 - rx + 0.6, 11.5),
+      Offset(100 + rx - 0.6, 11.5),
+      Offset(100 + rx - 1, 16.5),
+      Offset(100 - rx + 1, 16.5),
+    ]);
+    final brim = Path()
+      ..addOval(Rect.fromLTRB(100 - rx - 13, 13.5, 100 + rx + 13, 22.5));
+    return (dome, band, brim);
+  }
+
+  /// Кушак: лента по поясу и конец, свисающий сбоку.
+  (Path, Path)? get sash {
+    if (!_has(Accessory.sash)) return null;
+    final w = _f.waistband + 2.4;
+    final wrap = mirroredPath([
+      const Offset(0, 182),
+      Offset(w - 0.6, 182),
+      Offset(w, 194),
+      const Offset(0, 195),
+    ]);
+    final tail = smoothClosedPath([
+      Offset(100 + w - 7, 186),
+      Offset(100 + w + 1, 188),
+      Offset(100 + w + 4, 214),
+      Offset(100 + w + 2, 236),
+      Offset(100 + w - 5, 236),
+      Offset(100 + w - 3, 212),
+    ]);
+    return (wrap, tail);
+  }
+
   Path? get glasses {
     if (!_has(Accessory.glasses)) return null;
     return Path()
@@ -731,25 +1022,69 @@ class AvatarLayers {
     };
   }
 
-  /// Пряди парика клоуна: кружки по бокам головы, у каждой свой цвет радуги.
-  List<(Path, int)> get wigTufts {
+  /// Парик клоуна сзади: облако кудрей вокруг головы в два слоя, пышное
+  /// по бокам —
+  /// снаружи красные и оранжевые, ближе к голове жёлтые и зелёные, как дуга
+  /// радуги. Кудри: (центр, радиус, место в радуге 0…1).
+  List<(Offset, double, double)> get wigBack => [
+    ..._wigRing(
+      from: -pi - 0.75,
+      to: 0.75,
+      grow: 9,
+      growTop: -2,
+      count: 17,
+      radius: 8,
+      colors: const (0.0, 0.2),
+    ),
+    ..._wigRing(
+      from: -pi - 0.45,
+      to: 0.45,
+      grow: 3,
+      growTop: -6,
+      count: 13,
+      radius: 7.4,
+      colors: const (0.4, 0.6),
+    ),
+  ];
+
+  /// Парик спереди: чёлка из синих и фиолетовых кудрей по линии волос —
+  /// закрывает стык парика с головой, лоб и лицо открыты.
+  List<(Offset, double, double)> get wigFront => _wigRing(
+    from: -pi + 0.4,
+    to: -0.4,
+    grow: -4,
+    growTop: -8,
+    count: 8,
+    radius: 5.6,
+    colors: const (0.8, 1.0),
+  );
+
+  List<(Offset, double, double)> _wigRing({
+    required double from,
+    required double to,
+    required double grow,
+    required double growTop,
+    required int count,
+    required double radius,
+    required (double, double) colors,
+  }) {
     if (look.hair != HairStyle.clownWig) return const [];
-    final rx = _f.headRx;
-    final tufts = <(Path, int)>[];
-    var i = 0;
-    for (final side in const [-1.0, 1.0]) {
-      for (final (dx, y) in const [
-        (2.0, 12.0),
-        (7.0, 18.0),
-        (9.0, 26.0),
-        (7.0, 34.0),
-        (10.0, 13.0),
-        (11.0, 22.0),
-      ]) {
-        tufts.add((_circle(100 + side * (rx - 1 + dx), y, 6.8), i++ % 6));
-      }
-    }
-    return tufts;
+    final c = BodyFrame.headCenter;
+    // По бокам пышнее, на макушке ниже: над головой у холста всего 7 px.
+    final rx = _f.headRx + grow, ry = _f.headRy + growTop;
+    return [
+      for (var i = 0; i < count; i++)
+        (
+          Offset(
+            c.dx + cos(from + (to - from) * i / (count - 1)) * rx,
+            c.dy + sin(from + (to - from) * i / (count - 1)) * ry,
+          ),
+          // Кудри неровные: соседние чуть больше и меньше, через одну
+          // — второй цвет слоя.
+          radius * (i.isEven ? 1.0 : 0.86),
+          i.isEven ? colors.$1 : colors.$2,
+        ),
+    ];
   }
 
   /// Волосы поверх головы.

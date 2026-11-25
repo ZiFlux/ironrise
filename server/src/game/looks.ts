@@ -21,6 +21,7 @@ const HAIR_COLOR: Record<number, string> = {
 const TOP: Record<string, string> = {
   none: 'top_none', bra: 'top_bra', tank: 'top_tank', tee: 'top_tee', betaTee: 'top_beta_tee',
   clownSuit: 'top_clown', creatorTee: 'top_creator_tee', vneck: 'top_vneck', oversize: 'top_oversize', crop: 'top_crop',
+  uniform: 'top_uniform', openShirt: 'top_open_shirt', suit: 'top_suit', haori: 'top_haori',
 };
 const TOP_COLOR: Record<number, string> = {
   0xff1f1f22: 'tc_graphite', 0xffe8e8e8: 'tc_white', 0xffc6ff3d: 'tc_lime',
@@ -31,6 +32,7 @@ const TOP_COLOR: Record<number, string> = {
 const BOTTOM: Record<string, string> = {
   shorts: 'bottom_shorts', joggers: 'bottom_joggers', leggings: 'bottom_leggings', betaJoggers: 'bottom_beta_joggers',
   wideShorts: 'bottom_wide_shorts', harem: 'bottom_harem', cargo: 'bottom_cargo',
+  trousers: 'bottom_trousers', hakama: 'bottom_hakama', cuffedShorts: 'bottom_cuffed_shorts',
 };
 const BOTTOM_COLOR: Record<number, string> = {
   0xff1f1f22: 'bc_graphite', 0xff1e2a4a: 'bc_navy', 0xff4a5230: 'bc_olive', 0xff8a8a90: 'bc_grey',
@@ -47,6 +49,7 @@ const ACCESSORY: Record<string, string> = {
   cap: 'acc_cap', glasses: 'acc_glasses', headphones: 'acc_headphones', goldChain: 'acc_gold_chain',
   betaCap: 'acc_beta_cap', clownNose: 'acc_clown_nose', crown: 'acc_crown', smartwatch: 'acc_smartwatch',
   bandana: 'acc_bandana', silverChain: 'acc_silver_chain', bucketHat: 'acc_bucket', scarf: 'acc_scarf',
+  roundShades: 'acc_round_shades', blindfold: 'acc_blindfold', strawHat: 'acc_straw_hat', sash: 'acc_sash',
 };
 /** Модель обуви (AvatarLook.shoes); нет поля — обычные кроссовки. */
 const SHOES: Record<string, string> = {

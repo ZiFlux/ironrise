@@ -328,6 +328,10 @@ class ShopCatalog {
     _top('top_vneck', 'Футболка с V-вырезом', TopKind.vneck, 125),
     _top('top_oversize', 'Оверсайз', TopKind.oversize, 150),
     _top('top_crop', 'Кроп-топ', TopKind.crop, 125),
+    _top('top_uniform', 'Мундир отличника', TopKind.uniform, 300),
+    _top('top_open_shirt', 'Рубаха нараспашку', TopKind.openShirt, 225),
+    _top('top_suit', 'Пиджак босса', TopKind.suit, 350),
+    _top('top_haori', 'Хаори мастера', TopKind.haori, 325),
     ShopItem(
       id: 'top_clown',
       name: 'Костюм клоуна',
@@ -402,6 +406,14 @@ class ShopCatalog {
     _bottom('bottom_wide_shorts', 'Широкие шорты', BottomKind.wideShorts, 150),
     _bottom('bottom_harem', 'Шаровары', BottomKind.harem, 200),
     _bottom('bottom_cargo', 'Карго', BottomKind.cargo, 175),
+    _bottom('bottom_trousers', 'Брюки', BottomKind.trousers, 150),
+    _bottom('bottom_hakama', 'Хакама', BottomKind.hakama, 250),
+    _bottom(
+      'bottom_cuffed_shorts',
+      'Шорты с отворотом',
+      BottomKind.cuffedShorts,
+      175,
+    ),
     _bottom(
       'bottom_beta_joggers',
       'Джоггеры тестера',
@@ -705,6 +717,10 @@ class ShopCatalog {
     ),
     _accessory('acc_clown_nose', 'Красный нос', Accessory.clownNose, 150),
     _accessory('acc_bandana', 'Бандана', Accessory.bandana, 150),
+    _accessory('acc_round_shades', 'Круглые очки', Accessory.roundShades, 150),
+    _accessory('acc_blindfold', 'Повязка на глаза', Accessory.blindfold, 175),
+    _accessory('acc_straw_hat', 'Соломенная шляпа', Accessory.strawHat, 250),
+    _accessory('acc_sash', 'Кушак', Accessory.sash, 175),
     _accessory(
       'acc_silver_chain',
       'Серебряная цепь',

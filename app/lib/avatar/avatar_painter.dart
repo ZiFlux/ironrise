@@ -49,6 +49,7 @@ class AvatarPainter extends CustomPainter {
 
     _paintFloorShadow(canvas);
     _fillSolid(canvas, layers.hairBack, look.hairColor);
+    _paintWig(canvas, layers.wigBack);
     // Как у человека в анфас: плечо (бицепс, трицепс) — за корпусом, край
     // груди и широчайших поверх; предплечье и кисть — перед корпусом и
     // одеждой (кулаки на поясе, руки перед телом в позах); дельта сверху
@@ -57,8 +58,11 @@ class AvatarPainter extends CustomPainter {
     _inStance(canvas, () {
       _paintTorso(canvas);
       _paintRelief(canvas);
-      _paintClothes(canvas);
+      _paintBottomClothes(canvas);
     });
+    // Верх — одним куском поверх ног в стойке: иначе подол режется по линии
+    // поворота ног (щель посередине), а повёрнутые бёдра торчат из-под ткани.
+    _paintTopClothes(canvas);
     _paintArms(canvas);
     _paintShoulders(canvas);
     _paintHead(canvas);
@@ -614,7 +618,48 @@ class AvatarPainter extends CustomPainter {
       ..restore();
   }
 
-  void _paintClothes(Canvas canvas) {
+  /// Поворот ноги стороны [side] в стойке — та же матрица, что в [_inStance].
+  Float64List _stanceMatrix(int side) {
+    final pivot = Offset(100 + side * frame.hipJointX, BodyFrame.stanceTop - 4);
+    final a = -side * frame.stanceAngle;
+    final c = cos(a), s = sin(a);
+    return Float64List.fromList([
+      c, s, 0, 0, //
+      -s, c, 0, 0,
+      0, 0, 1, 0,
+      pivot.dx - c * pivot.dx + s * pivot.dy,
+      pivot.dy - s * pivot.dx - c * pivot.dy,
+      0,
+      1,
+    ]);
+  }
+
+  /// Контур, который в стойке закрывает и ровное тело, и повёрнутые ноги:
+  /// сама форма плюс её половины ниже линии стойки, повёрнутые с ногами.
+  Path _stanceShape(Path path) {
+    const top = BodyFrame.stanceTop;
+    if (path.getBounds().bottom <= top) return path;
+    var out = path;
+    for (final side in const [1, -1]) {
+      final half = Path.combine(
+        PathOperation.intersect,
+        path,
+        Path()..addRect(
+          side == 1
+              ? const Rect.fromLTRB(100, top, 400, 600)
+              : const Rect.fromLTRB(-200, top, 100, 600),
+        ),
+      );
+      out = Path.combine(
+        PathOperation.union,
+        out,
+        half.transform(_stanceMatrix(side)),
+      );
+    }
+    return out;
+  }
+
+  void _paintBottomClothes(Canvas canvas) {
     final betaBottom = look.bottom == BottomKind.betaJoggers;
     _fillCloth(
       canvas,
@@ -655,8 +700,32 @@ class AvatarPainter extends CustomPainter {
           ..color = look.accessoryColor,
       );
     }
+    for (final sleeve in layers.kneeSleeves) {
+      _fillCloth(canvas, sleeve, _sleeveColor);
+    }
+    // Отвороты — пушистые: светлая заливка и толстая скруглённая кромка.
+    if (layers.shortsCuffs case final cuffs?) {
+      canvas
+        ..drawPath(
+          cuffs,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 3
+            ..strokeJoin = StrokeJoin.round
+            ..color = _fluff,
+        )
+        ..drawPath(cuffs, Paint()..color = _fluff)
+        ..drawPath(cuffs, _shadePaint(cuffs));
+    }
+  }
+
+  void _paintTopClothes(Canvas canvas) {
     final topColor = _topColor;
-    final top = layers.fittedTop;
+    final fitted = layers.fittedTop;
+    final top = fitted == null ? null : _stanceShape(fitted);
+    if (layers.topInner case final inner?) {
+      _fillCloth(canvas, _stanceShape(inner), _innerDark);
+    }
     if (top != null) {
       // Ткань чуть шире кожи: обводка тем же цветом «надувает» вещь на 1 px.
       canvas.drawPath(
@@ -668,6 +737,35 @@ class AvatarPainter extends CustomPainter {
           ..color = topColor,
       );
       _fillCloth(canvas, top, topColor, withFall: true);
+    }
+    if (layers.suitFront case (final shirt, final tie)) {
+      _fillCloth(canvas, shirt, const Color(0xFFF1F0EC));
+      _fillCloth(canvas, tie, Color.lerp(topColor, Colors.black, 0.45)!);
+    }
+    if (layers.lapels case final lapels?) {
+      canvas.drawPath(
+        lapels,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.4
+          ..strokeJoin = StrokeJoin.round
+          ..color = Color.lerp(topColor, Colors.black, 0.5)!,
+      );
+    }
+    if (layers.uniformDetails case (final collar, final buttons)) {
+      _fillCloth(canvas, collar, topColor);
+      for (final at in buttons) {
+        canvas
+          ..drawCircle(at, 2.1, Paint()..color = _gold)
+          ..drawCircle(
+            at,
+            2.1,
+            Paint()
+              ..style = PaintingStyle.stroke
+              ..strokeWidth = 0.6
+              ..color = const Color(0xFF8A6A24),
+          );
+      }
     }
     if (look.top == TopKind.betaTee) {
       _paintEmblem(canvas, layers.chestEmblem);
@@ -694,8 +792,10 @@ class AvatarPainter extends CustomPainter {
         canvas.drawCircle(at, 6, Paint()..color = const Color(0xFFF4F4F0));
       }
     }
-    for (final sleeve in layers.kneeSleeves) {
-      _fillCloth(canvas, sleeve, _sleeveColor);
+    if (layers.sash case (final wrap, final tail)) {
+      final dark = Color.lerp(look.accessoryColor, Colors.black, 0.25)!;
+      _fillCloth(canvas, _stanceShape(tail), dark);
+      _fillCloth(canvas, wrap, look.accessoryColor);
     }
     if (layers.belt case (final belt, final buckle)) {
       _fillCloth(canvas, belt, _leather);
@@ -770,12 +870,29 @@ class AvatarPainter extends CustomPainter {
     _fillSolid(canvas, layers.hairFront, look.hairColor);
     _fillSolid(canvas, layers.headband, look.accessoryColor);
     _fillSolid(canvas, layers.bandana, const Color(0xFFC8323A));
-    for (final (tuft, color) in layers.wigTufts) {
-      _fillSolid(canvas, tuft, _rainbow[color]);
-    }
+    _paintWig(canvas, layers.wigFront);
     _fillSolid(canvas, layers.clownNose, const Color(0xFFE5302A));
     _fillSolid(canvas, layers.crown, _gold);
     _fillSolid(canvas, layers.glasses, _lens);
+    if (layers.blindfold case final band?) {
+      _fillCloth(canvas, band, const Color(0xFF1B1B21));
+    }
+    if (layers.roundShades case final shades?) {
+      canvas
+        ..drawPath(shades, Paint()..color = _lens)
+        ..drawPath(
+          shades,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.8
+            ..color = const Color(0xFF6B6F78),
+        );
+    }
+    if (layers.strawHat case (final dome, final band, final brim)) {
+      _fillCloth(canvas, brim, _straw);
+      _fillCloth(canvas, dome, _straw);
+      _fillSolid(canvas, band, const Color(0xFF5C3A21));
+    }
     if (layers.cap case (final dome, final brim)) {
       final beta = look.accessories.contains(Accessory.betaCap);
       _fillCloth(canvas, dome, beta ? _beta : _capColor);
@@ -797,6 +914,9 @@ class AvatarPainter extends CustomPainter {
   static const _gold = Color(0xFFD9B25A);
   static const _sleeveColor = Color(0xFF1A1A1D);
   static const _lens = Color(0xFF111114);
+  static const _straw = Color(0xFFE2C27A);
+  static const _fluff = Color(0xFFF2F0EA);
+  static const _innerDark = Color(0xFF1A1A1E);
   static const _capColor = Color(0xFF2A2A2E);
   static const _capBrim = Color(0xFF1C1C1F);
   static const _beta = Color(0xFF8B5CF6);
@@ -810,6 +930,42 @@ class AvatarPainter extends CustomPainter {
     Color(0xFF3D7BFF),
     Color(0xFF2EBD59),
   ];
+
+  /// Кудри парика: шарик с бликом слева сверху и тенью по краю, цвет плавно
+  /// идёт по радуге слева направо; тонкая тёмная кромка отделяет кудри.
+  void _paintWig(Canvas canvas, List<(Offset, double, double)> curls) {
+    for (final (at, r, t) in curls) {
+      final x = t.clamp(0.0, 1.0) * (_rainbow.length - 1);
+      final i = min(x.floor(), _rainbow.length - 2);
+      final color = Color.lerp(_rainbow[i], _rainbow[i + 1], x - i)!;
+      final rect = Rect.fromCircle(center: at, radius: r);
+      canvas
+        ..drawCircle(
+          at,
+          r,
+          Paint()
+            ..shader = RadialGradient(
+              center: const Alignment(-0.35, -0.45),
+              radius: 1.0,
+              colors: [
+                Color.lerp(color, Colors.white, 0.35)!,
+                color,
+                Color.lerp(color, Colors.black, 0.35)!,
+              ],
+              stops: const [0, 0.5, 1],
+            ).createShader(rect),
+        )
+        ..drawCircle(
+          at,
+          r,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 0.7
+            ..color = Color.lerp(color, Colors.black, 0.55)!,
+        );
+    }
+  }
+
   static const _rainbow = [
     Color(0xFFE5302A),
     Color(0xFFFF8A1F),
