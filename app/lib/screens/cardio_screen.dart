@@ -15,6 +15,7 @@ import '../state/training_log.dart';
 import '../theme.dart';
 import '../widgets/fit_screen.dart';
 import '../widgets/format.dart';
+import '../widgets/delayed_confirm.dart';
 
 /// Кардио: таймер и живой пульс. Опыт идёт в часть тела «Кардио».
 class CardioScreen extends ConsumerWidget {
@@ -37,7 +38,9 @@ class _ChooseActivity extends ConsumerStatefulWidget {
 }
 
 class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
-  CardioActivity _activity = CardioActivity.run;
+  /// Вид кардио не выбран заранее: человек сам отмечает, чем занимается, —
+  /// иначе «бег» по умолчанию записывался вместо велосипеда или скакалки.
+  CardioActivity? _activity;
 
   @override
   Widget build(BuildContext context) {
@@ -119,11 +122,13 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
                     ),
                   ),
                 FilledButton(
-                  onPressed: done
+                  onPressed: done || _activity == null
                       ? null
                       : () =>
-                            ref.read(cardioProvider.notifier).start(_activity),
-                  child: const Text('Старт'),
+                            ref.read(cardioProvider.notifier).start(_activity!),
+                  child: Text(
+                    _activity == null && !done ? 'Выбери вид кардио' : 'Старт',
+                  ),
                 ),
               ],
             ),
@@ -163,6 +168,13 @@ class _ActiveCardioState extends ConsumerState<_ActiveCardio> {
   }
 
   Future<void> _finish() async {
+    final sure = await confirmWithDelay(
+      context,
+      title: 'Завершить кардио?',
+      message: 'Продолжить эту сессию после завершения нельзя',
+      confirm: 'Завершить',
+    );
+    if (!sure || !mounted) return;
     setState(() => _finishing = true);
     final summary = await ref.read(cardioProvider.notifier).finish();
     if (!mounted) return;

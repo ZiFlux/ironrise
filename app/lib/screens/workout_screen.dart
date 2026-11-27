@@ -42,6 +42,7 @@ import '../game/exercise_swap.dart';
 import '../widgets/format.dart';
 import '../widgets/warmup_card.dart';
 import '../widgets/guide.dart';
+import '../widgets/delayed_confirm.dart';
 import '../widgets/info_bubble.dart';
 import '../game/set_pulse.dart';
 import '../game/skill_practice.dart';
@@ -1121,6 +1122,15 @@ class _ActiveWorkoutState extends ConsumerState<_ActiveWorkout> {
   }
 
   Future<void> _finish() async {
+    // «Завершить» стоит рядом с «Упражнение» — промахнуться легко, а
+    // завершённую тренировку не вернуть: подтверждение, кнопка — через 3 с.
+    final sure = await confirmWithDelay(
+      context,
+      title: 'Завершить тренировку?',
+      message: 'Подходы сохранятся, добавить упражнения после этого нельзя',
+      confirm: 'Завершить',
+    );
+    if (!sure || !mounted) return;
     final summary = await _workout.finish();
     if (summary != null && mounted) context.go('/workout/result');
   }
