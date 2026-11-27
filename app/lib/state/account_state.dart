@@ -377,15 +377,33 @@ class AccountNotifier extends Notifier<AccountState> {
     state = state.copyWith(pending: jobs.length);
   }
 
+  /// Снять ждущую отправки тренировку из очереди («вернуться к тренировке»).
+  /// Идёт синхронизация — сначала дождаться её. true — была в очереди и снята,
+  /// false — уже на сервере (или не было).
+  Future<bool> dropQueued(String clientId) async {
+    for (var i = 0; i < 75 && state.syncing; i++) {
+      await Future<void>.delayed(const Duration(milliseconds: 200));
+    }
+    final jobs = _readOutbox();
+    final left = [
+      for (final j in jobs)
+        if (j.body['clientId'] != clientId) j,
+    ];
+    if (left.length == jobs.length) return false;
+    await _writeOutbox(left);
+    return true;
+  }
+
   Future<void> enqueueStrength(
     WorkoutSession s,
     DateTime finishedAt,
-    List<PulseSample> pulse,
-  ) => _enqueue(
+    List<PulseSample> pulse, {
+    String? clientId,
+  }) => _enqueue(
     OutboxJob(
       path: '/v1/workouts/strength',
       body: {
-        'clientId': newClientId(),
+        'clientId': clientId ?? newClientId(),
         'startedAt': s.startedAt.toUtc().toIso8601String(),
         'finishedAt': finishedAt.toUtc().toIso8601String(),
         'entries': _strengthEntries(s, pulse),

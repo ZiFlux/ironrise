@@ -1,4 +1,4 @@
-import { BadRequestException, ConflictException, Injectable } from '@nestjs/common';
+import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { z } from 'zod';
 import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
@@ -19,11 +19,16 @@ import { HeroService, HeroState } from '../hero/hero.service';
 import { JointService } from '../joint/joint.service';
 import { PrismaService } from '../prisma.service';
 import { AntiCheatService } from './anti-cheat.service';
+import { UndoSnapshot, undoWorkout } from './undo';
 import { SEASON_POINTS } from '../game/season';
 import { addSeasonPoints } from '../season/season';
 
 const MAX_DURATION_MS = 6 * 3600_000;
 const CLOCK_SKEW_MS = 5 * 60_000;
+/** Сколько после завершения тренировку можно откатить и продолжить. */
+const UNDO_WINDOW_MS = 6 * 60_000;
+
+export const UndoSchema = z.object({ clientId: z.string().min(1).max(100) });
 
 const PulseSchema = z
   .array(z.object({ at: z.coerce.date(), bpm: z.number().int().min(30).max(230) }))
@@ -143,6 +148,23 @@ export class WorkoutsService {
         zoneBound: norm.bound,
         calibrating: norm.calibrating,
       });
+    });
+  }
+
+  /**
+   * «Вернуться к тренировке»: завершил случайно — в течение 5 минут тренировку
+   * можно откатить и продолжить (запас на расхождение часов — минута). Только
+   * свою и только по clientId; день снова свободен, повторная отправка начислит заново.
+   */
+  async undoRecent(userId: string, clientId: string): Promise<{ hero: HeroState }> {
+    return this.db.$transaction(async (tx) => {
+      const w = await tx.workout.findUnique({ where: { userId_clientId: { userId, clientId } } });
+      if (!w) throw new NotFoundException('Workout not found');
+      if (Date.now() - w.createdAt.getTime() > UNDO_WINDOW_MS) {
+        throw new ConflictException('Undo window is over');
+      }
+      await undoWorkout(tx, w.id);
+      return { hero: await this.hero.state(userId, tx) };
     });
   }
 
@@ -270,7 +292,17 @@ export class WorkoutsService {
           day,
           validity: summary.validity,
           // Пик и пульс отдыха по подходам — данные о здоровье: без согласия не храним.
-          payload: { ...(profile.healthConsentAt ? payload : withoutSetPulse(payload)), summary } as unknown as Prisma.InputJsonValue,
+          // undo — профиль до тренировки: откат (админка, «вернуться к тренировке») вернёт серию и бустеры.
+          payload: {
+            ...(profile.healthConsentAt ? payload : withoutSetPulse(payload)),
+            summary,
+            undo: {
+              streakDays: profile.streakDays,
+              lastActiveDay: profile.lastActiveDay,
+              boosters: profile.boosters,
+              heroMilestone: profile.heroMilestone,
+            } satisfies UndoSnapshot,
+          } as unknown as Prisma.InputJsonValue,
           // Храним сводку, а не сырой ряд: сырой нужен только для расчёта выше.
           pulse: (summarizePulse(pulse) ?? { n: 0 }) as unknown as Prisma.InputJsonValue,
         },

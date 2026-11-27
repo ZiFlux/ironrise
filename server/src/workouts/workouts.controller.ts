@@ -1,9 +1,9 @@
-import { Body, Controller, Get, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Post, UseGuards } from '@nestjs/common';
 import { z } from 'zod';
 import { AuthGuard, UserId } from '../auth/auth.guard';
 import { ZodPipe } from '../common/zod';
 import { HeroService } from '../hero/hero.service';
-import { CardioSchema, StrengthSchema, WorkoutsService } from './workouts.service';
+import { CardioSchema, StrengthSchema, UndoSchema, WorkoutsService } from './workouts.service';
 
 @Controller()
 @UseGuards(AuthGuard)
@@ -28,6 +28,13 @@ export class WorkoutsController {
   @Get('cardio/norms')
   cardioNorms(@UserId() userId: string) {
     return this.workouts.cardioNorms(userId);
+  }
+
+  /** Откатить только что завершённую тренировку (5 минут), чтобы продолжить её. */
+  @Post('workouts/undo')
+  @HttpCode(200)
+  undo(@UserId() userId: string, @Body(new ZodPipe(UndoSchema)) body: z.infer<typeof UndoSchema>) {
+    return this.workouts.undoRecent(userId, body.clientId);
   }
 
   @Post('workouts/cardio')

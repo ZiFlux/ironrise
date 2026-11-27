@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
+import '../widgets/status_toast.dart';
 import '../game/circuit_rest.dart';
 import '../state/rest_state.dart';
 import '../avatar/avatar_look.dart';
@@ -178,7 +181,63 @@ class WorkoutResultScreen extends ConsumerWidget {
             onPressed: () => context.go('/'),
             child: const Text('Готово'),
           ),
+          const _ResumeButton(),
         ],
+      ),
+    );
+  }
+}
+
+/// «Вернуться к тренировке»: завершил случайно — 5 минут можно продолжить.
+class _ResumeButton extends ConsumerStatefulWidget {
+  const _ResumeButton();
+
+  @override
+  ConsumerState<_ResumeButton> createState() => _ResumeButtonState();
+}
+
+class _ResumeButtonState extends ConsumerState<_ResumeButton> {
+  Timer? _tick;
+  bool _busy = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _tick = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (mounted) setState(() {});
+    });
+  }
+
+  @override
+  void dispose() {
+    _tick?.cancel();
+    super.dispose();
+  }
+
+  Future<void> _resume() async {
+    setState(() => _busy = true);
+    final error = await ref.read(workoutProvider.notifier).resumeFinished();
+    if (!mounted) return;
+    setState(() => _busy = false);
+    if (error != null) {
+      showStatusError(error);
+      return;
+    }
+    context.go('/workout');
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final left = ref.read(workoutProvider.notifier).undoLeft();
+    if (left == null) return const SizedBox.shrink();
+    final m = left.inMinutes;
+    final s = (left.inSeconds % 60).toString().padLeft(2, '0');
+    return Padding(
+      padding: const EdgeInsets.only(top: 8),
+      child: TextButton.icon(
+        onPressed: _busy ? null : _resume,
+        icon: const Icon(LucideIcons.undo2, size: 18),
+        label: Text('Вернуться к тренировке · $m:$s'),
       ),
     );
   }

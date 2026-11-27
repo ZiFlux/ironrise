@@ -16,6 +16,7 @@ import { Prisma, PrismaClient } from '../generated/prisma/client';
 import { SEASON_ITEMS } from '../game/season';
 import { pulseNorms } from '../game/pulse-norms';
 import { findExercise } from '../game/exercises';
+import { undoWorkout } from '../workouts/undo';
 
 export const HELP = `Команды (ник или e-mail игрока — <кто>):
   find <кто>                     — карточка игрока
@@ -25,6 +26,8 @@ export const HELP = `Команды (ник или e-mail игрока — <кт
   take <кто> <вещь...>           — забрать вещи
   xp <кто> <часть> <±N>          — поправить опыт части тела (chest back arms legs core cardio)
   streak <кто> <N>               — выставить серию дней
+  workouts <кто> [N]             — последние тренировки с id (для отката)
+  undo-workout <кто> <id|last>   — откатить тренировку: опыт, монеты, очки мышц и сезона, серия до неё
   premium <кто> <дней|off>       — премиум на N дней или снять
   tester <кто> [off]             — статус бета-тестера (с вещами тестера)
   ban <кто> <причина>            — заблокировать: вход закрыт, сессии сброшены
@@ -271,6 +274,44 @@ export async function run(db: Db, [cmd, who, ...rest]: string[]): Promise<string
       });
       await log(db, 'start-look', u.id, {});
       return card(db, who);
+    }
+
+    case 'workouts': {
+      const u = await findUser(db, who);
+      const rows = await db.workout.findMany({
+        where: { userId: u.id },
+        orderBy: { startedAt: 'desc' },
+        take: rest[0] ? int(rest[0], 'N') : 10,
+        select: { id: true, day: true, type: true, startedAt: true, endedAt: true, validity: true, payload: true },
+      });
+      if (!rows.length) return 'Тренировок нет';
+      return rows
+        .map((w) => {
+          const p = w.payload as { activity?: string; summary?: { gains?: { xp: number }[]; coins?: number } } | null;
+          const xp = Math.round((p?.summary?.gains ?? []).reduce((n, g) => n + g.xp, 0));
+          const min = Math.round((w.endedAt.getTime() - w.startedAt.getTime()) / 60_000);
+          return `${w.id}  ${w.day}  ${w.type === 'strength' ? 'силовая' : `кардио ${p?.activity ?? ''}`}  ${min} мин  +${xp} xp${w.validity >= 0.99 ? '  ✓часы' : ''}`;
+        })
+        .join('\n');
+    }
+
+    case 'undo-workout': {
+      const u = await findUser(db, who);
+      const ref = rest[0];
+      if (!ref) throw new Error('Укажите id тренировки (команда workouts) или last');
+      const target =
+        ref === 'last'
+          ? await db.workout.findFirst({ where: { userId: u.id }, orderBy: { createdAt: 'desc' }, select: { id: true } })
+          : await db.workout.findFirst({ where: { userId: u.id, id: ref }, select: { id: true } });
+      if (!target) throw new Error(`Тренировка «${ref}» у игрока не найдена`);
+      const r = await db.$transaction((tx) => undoWorkout(tx, target.id));
+      await log(db, 'undo-workout', u.id, r);
+      const xp = Object.entries(r.xp).map(([p, v]) => `${p} ${v}`).join(', ') || '0';
+      return (
+        `Откачена ${r.type === 'strength' ? 'силовая' : 'кардио'} за ${r.day}: опыт ${xp}; монеты ${r.coins}; ` +
+        `сезон ${r.seasonPoints}; серия ${r.streakRestored ? 'возвращена как до тренировки' : 'не менялась (были тренировки позже или нет снимка)'}\n\n` +
+        (await card(db, who))
+      );
     }
 
     case 'streak': {
@@ -604,11 +645,12 @@ export async function playerWorkouts(db: Db, who: string, take = 15) {
     where: { userId: u.id },
     orderBy: { startedAt: 'desc' },
     take,
-    select: { day: true, type: true, validity: true, startedAt: true, endedAt: true, payload: true },
+    select: { id: true, day: true, type: true, validity: true, startedAt: true, endedAt: true, payload: true },
   });
   return rows.map((w) => {
     const p = w.payload as { entries?: { sets: unknown[] }[]; activity?: string; summary?: { gains?: { xp: number }[] } } | null;
     return {
+      id: w.id,
       day: w.day,
       type: w.type,
       minutes: Math.round((w.endedAt.getTime() - w.startedAt.getTime()) / 60_000),

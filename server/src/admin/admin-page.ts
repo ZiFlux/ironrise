@@ -223,12 +223,12 @@ export const adminPageHtml = String.raw`<!doctype html>
     t.textContent = '';
     api('player/workouts?who=' + encodeURIComponent(who)).then(function (rows) {
       var head = document.createElement('tr');
-      ['День', 'Вид', 'Мин', 'Подходы', 'Опыт', 'Часы'].forEach(function (h) { head.appendChild(cell('th', h)); });
+      ['День', 'Вид', 'Мин', 'Подходы', 'Опыт', 'Часы', ''].forEach(function (h) { head.appendChild(cell('th', h)); });
       t.appendChild(head);
       if (!rows.length) {
         var empty = document.createElement('tr');
         var td = cell('td', 'Тренировок пока нет');
-        td.colSpan = 6;
+        td.colSpan = 7;
         empty.appendChild(td);
         t.appendChild(empty);
       }
@@ -237,6 +237,19 @@ export const adminPageHtml = String.raw`<!doctype html>
         var kind = w.type === 'strength' ? 'Силовая' : (w.activity === 'recovery' ? 'Восстановление' : 'Кардио');
         [w.day, kind, String(w.minutes), w.type === 'strength' ? String(w.sets) : '—', String(w.xp), w.verified ? '✓' : '—']
           .forEach(function (v) { tr.appendChild(cell('td', v)); });
+        // Откат: опыт, монеты, очки мышц и сезона назад, серия — как до тренировки.
+        var undo = document.createElement('button');
+        undo.textContent = 'Откатить';
+        undo.onclick = function () {
+          if (!confirm('Откатить ' + kind.toLowerCase() + ' за ' + w.day + ' у ' + who + '? Опыт (' + w.xp + '), монеты и очки сезона снимутся')) return;
+          api('run', { args: ['undo-workout', who, w.id] }).then(function (r) {
+            show(r.output.split('\n')[0]);
+            find(who);
+          }).catch(function (e) { show(e.message, true); });
+        };
+        var tdUndo = document.createElement('td');
+        tdUndo.appendChild(undo);
+        tr.appendChild(tdUndo);
         t.appendChild(tr);
       });
     }).catch(function (e) { show(e.message, true); });

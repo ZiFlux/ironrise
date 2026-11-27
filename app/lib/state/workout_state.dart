@@ -14,6 +14,7 @@ import '../game/set_effort.dart';
 import '../game/streak_rewards.dart';
 import '../game/warmup.dart';
 import '../game/workout.dart';
+import '../net/api_client.dart';
 import 'account_state.dart';
 import 'consent_state.dart';
 import 'health_state.dart';
@@ -24,6 +25,15 @@ import 'training_log.dart';
 import 'providers.dart';
 
 const _sessionKey = 'workout_session_v1';
+
+/// Только что завершённая тренировка: что было до неё — чтобы вернуться (5 минут).
+const _undoKey = 'workout_undo_v1';
+
+/// Сколько после «Завершить» можно вернуться к тренировке (сервер даёт с запасом).
+const workoutUndoWindow = Duration(minutes: 5);
+
+/// Что меняет завершение тренировки на телефоне: герой, план, рекорды, журнал.
+const _undoPrefs = ['hero_v1', 'program_v1', 'records_v1', 'training_log_v1'];
 
 /// Текущая тренировка. null — тренировка не начата.
 /// Каждое изменение сохраняется, поэтому подходы переживают закрытие приложения.
@@ -193,6 +203,10 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
     if (session == null || hero == null || session.totalSets == 0) return null;
 
     final finishedAt = DateTime.now();
+    // Снимок до тренировки: завершил случайно — можно вернуться (resumeFinished).
+    final prefs = ref.read(prefsProvider);
+    final before = {for (final k in _undoPrefs) k: prefs.getString(k)};
+    final clientId = newClientId();
     ref.read(heartRateProvider.notifier).stopWatch();
     final live = ref
         .read(heartRateProvider.notifier)
@@ -283,11 +297,89 @@ class WorkoutNotifier extends Notifier<WorkoutSession?> {
           ),
         );
     _save(null);
+    await prefs.setString(
+      _undoKey,
+      jsonEncode({
+        'at': finishedAt.toIso8601String(),
+        'clientId': clientId,
+        'session': session.toJson(),
+        'prefs': before,
+      }),
+    );
     // Не ждём сети: итог уже на экране, отправка идёт в фоне.
     ref
         .read(accountProvider.notifier)
-        .enqueueStrength(session, finishedAt, pulse);
+        .enqueueStrength(session, finishedAt, pulse, clientId: clientId);
     return summary;
+  }
+
+  Map<String, dynamic>? _readUndo() {
+    final raw = ref.read(prefsProvider).getString(_undoKey);
+    if (raw == null) return null;
+    try {
+      return jsonDecode(raw) as Map<String, dynamic>;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  /// Сколько ещё можно вернуться к завершённой тренировке; null — нельзя.
+  Duration? undoLeft([DateTime? now]) {
+    final at = DateTime.tryParse(_readUndo()?['at'] as String? ?? '');
+    if (at == null) return null;
+    final left = at.add(workoutUndoWindow).difference(now ?? DateTime.now());
+    return left > Duration.zero ? left : null;
+  }
+
+  /// «Вернуться к тренировке»: завершил случайно. Тренировка ещё в очереди —
+  /// снимаем её; уже на сервере — сервер откатывает начисления. Потом герой,
+  /// план, рекорды и журнал — как до «Завершить», подходы снова на экране.
+  /// null — получилось, иначе — почему нет.
+  Future<String?> resumeFinished() async {
+    final undo = _readUndo();
+    final prefs = ref.read(prefsProvider);
+    if (undo == null || undoLeft() == null || state != null) {
+      await prefs.remove(_undoKey);
+      return 'Вернуться можно только в первые 5 минут';
+    }
+    final clientId = undo['clientId'] as String;
+    final account = ref.read(accountProvider.notifier);
+    Map<String, dynamic>? serverHero;
+    if (ref.read(accountProvider).signedIn &&
+        !await account.dropQueued(clientId)) {
+      try {
+        final r = await ref.read(apiProvider).post('/v1/workouts/undo', {
+          'clientId': clientId,
+        });
+        serverHero = Map<String, dynamic>.from(r['hero'] as Map);
+      } on ApiException catch (e) {
+        if (e.isNetwork) return 'Тренировка уже на сервере — нужна сеть';
+        if (e.status == 409) return 'Прошло больше 5 минут';
+        if (e.status == 404)
+          return 'Тренировка ещё отправляется — попробуй через пару секунд';
+        return e.message;
+      }
+    }
+    final saved = Map<String, dynamic>.from(undo['prefs'] as Map);
+    for (final k in _undoPrefs) {
+      final v = saved[k] as String?;
+      v == null ? await prefs.remove(k) : await prefs.setString(k, v);
+    }
+    ref
+      ..invalidate(heroProvider)
+      ..invalidate(programProvider)
+      ..invalidate(recordsProvider)
+      ..invalidate(trainingLogProvider);
+    if (serverHero != null) {
+      await ref.read(heroProvider.notifier).applyServer(serverHero);
+    }
+    await prefs.remove(_undoKey);
+    _save(
+      WorkoutSession.fromJson(
+        Map<String, dynamic>.from(undo['session'] as Map),
+      ),
+    );
+    return null;
   }
 
   /// Рабочие веса на следующий раз и бонус монет за тренировку по плану.
