@@ -6,6 +6,7 @@ import 'package:go_router/go_router.dart';
 import 'package:lucide_icons_flutter/lucide_icons.dart';
 
 import 'l10n/tr.dart';
+import 'state/connection.dart';
 import 'state/watch_discovery.dart';
 import 'screens/fight_screen.dart';
 import 'screens/account_screen.dart';
@@ -503,37 +504,86 @@ class _ShellState extends ConsumerState<_Shell> with TickerProviderStateMixin {
           ),
         ),
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        onDestinationSelected: (i) =>
-            // Вкладка всегда открывается с главного экрана, а не с последнего вложенного.
-            shell.goBranch(i, initialLocation: true),
-        destinations: [
-          NavigationDestination(
-            icon: Icon(LucideIcons.personStanding),
-            label: tr('Герой'),
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.dumbbell),
-            label: tr('Тренировка'),
-          ),
-          // Без аккаунта — с замком: дуэли и рейтинг после регистрации.
-          NavigationDestination(
-            icon: _Locked(locked: !signedIn, icon: LucideIcons.swords),
-            label: tr('Дуэли'),
-          ),
-          NavigationDestination(
-            icon: _Locked(locked: !signedIn, icon: LucideIcons.trophy),
-            label: tr('Рейтинг'),
-          ),
-          NavigationDestination(
-            icon: Icon(LucideIcons.circleUser),
-            label: tr('Профиль'),
+      bottomNavigationBar: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          // Связи с сервером нет (сеть, VPN) — видно сохранённое, вкладки не крутят загрузку.
+          if (signedIn && !ref.watch(connectionProvider)) const _Offline(),
+          NavigationBar(
+            selectedIndex: shell.currentIndex,
+            onDestinationSelected: (i) =>
+                // Вкладка всегда открывается с главного экрана, а не с последнего вложенного.
+                shell.goBranch(i, initialLocation: true),
+            destinations: [
+              NavigationDestination(
+                icon: Icon(LucideIcons.personStanding),
+                label: tr('Герой'),
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.dumbbell),
+                label: tr('Тренировка'),
+              ),
+              // Без аккаунта — с замком: дуэли и рейтинг после регистрации.
+              NavigationDestination(
+                icon: _Locked(locked: !signedIn, icon: LucideIcons.swords),
+                label: tr('Дуэли'),
+              ),
+              NavigationDestination(
+                icon: _Locked(locked: !signedIn, icon: LucideIcons.trophy),
+                label: tr('Рейтинг'),
+              ),
+              NavigationDestination(
+                icon: Icon(LucideIcons.circleUser),
+                label: tr('Профиль'),
+              ),
+            ],
           ),
         ],
       ),
     );
   }
+}
+
+/// Плашка «нет связи»: по нажатию — проверить снова.
+class _Offline extends ConsumerWidget {
+  const _Offline();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) => Material(
+    color: AppColors.surface,
+    child: InkWell(
+      onTap: () => ref.read(connectionProvider.notifier).retry(),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            const Icon(
+              LucideIcons.wifiOff,
+              size: 16,
+              color: AppColors.textSecondary,
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                tr('Нет связи с сервером — показаны сохранённые данные'),
+                style: const TextStyle(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
+                ),
+              ),
+            ),
+            Text(
+              tr('Повторить'),
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ),
+  );
 }
 
 /// Значок вкладки с маленьким замком: раздел откроется после регистрации.

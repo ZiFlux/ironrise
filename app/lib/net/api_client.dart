@@ -116,6 +116,8 @@ class ApiClient {
     final body = await _send(
       'GET',
       path,
+      // Данные вкладок: дольше 8 с не ждём — покажем сохранённое.
+      timeout: const Duration(seconds: 8),
       headers: {'if-none-match': ?etag},
       onHeaders: (h) => fresh = h['etag'],
     );
@@ -134,6 +136,7 @@ class ApiClient {
     bool retried = false,
     Map<String, String> headers = const {},
     void Function(Map<String, String> headers)? onHeaders,
+    Duration timeout = _timeout,
   }) async {
     if (auth && tokens.access == null) await _refresh();
     final http.Response res;
@@ -147,19 +150,23 @@ class ApiClient {
         });
       if (body != null) request.body = jsonEncode(body);
       res = await http.Response.fromStream(
-        await _http.send(request).timeout(_timeout),
+        await _http.send(request).timeout(timeout),
       );
     } on SocketException catch (e) {
+      onReachable?.call(false);
       _logFailure(method, path, 'нет связи: ${e.message}');
       throw const ApiException(0, 'Сервер недоступен');
     } on http.ClientException catch (e) {
+      onReachable?.call(false);
       _logFailure(method, path, 'нет связи: ${e.message}');
       throw const ApiException(0, 'Сервер недоступен');
     } on TimeoutException {
+      onReachable?.call(false);
       _logFailure(method, path, 'таймаут');
       throw const ApiException(0, 'Сервер не отвечает');
     }
 
+    onReachable?.call(true);
     if (res.statusCode == 401 && auth && !retried) {
       await _refresh();
       return _send(
@@ -170,6 +177,7 @@ class ApiClient {
         retried: true,
         headers: headers,
         onHeaders: onHeaders,
+        timeout: timeout,
       );
     }
     if (res.statusCode == 304) return _notModified;
@@ -198,6 +206,24 @@ class ApiClient {
 
   /// Вызывается после каждого успешного изменения на сервере (см. AccountNotifier).
   static void Function(String path)? onServerWrite;
+
+  /// Сервер ответил (true) или до него не достучаться (false) — для режима
+  /// «нет связи» (state/connection.dart).
+  static void Function(bool reachable)? onReachable;
+
+  /// Проверка связи: короткий запрос без входа. true — сервер отвечает.
+  Future<bool> ping() async {
+    try {
+      final res = await _http
+          .get(Uri.parse('$baseUrl/health'))
+          .timeout(const Duration(seconds: 6));
+      onReachable?.call(true);
+      return res.statusCode < 500;
+    } catch (_) {
+      onReachable?.call(false);
+      return false;
+    }
+  }
 
   /// В журнал тестера. Запросы самого журнала не пишем: без сети он забился бы
   /// записями о том, что не смог отправиться.

@@ -12,6 +12,8 @@ const en = <String, String>{
   'Синхронизация — с аккаунтом. Войди в профиле':
       'Sync needs an account. Sign in from Profile',
   'Синхронизировано': 'Synced',
+  'Нет связи с сервером — показаны сохранённые данные': 'No connection to the server — showing saved data',
+  'Повторить': 'Retry',
   'Аккаунт': 'Account',
   'Синхронизация…': 'Syncing…',
   'Ещё не синхронизировано': 'Not synced yet',

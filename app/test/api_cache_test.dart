@@ -142,4 +142,50 @@ void main() {
     expect(cache.read('me@x', '/p0'), isNull);
     expect(cache.read('me@x', '/p${ApiCache.maxEntries + 2}'), isNotNull);
   });
+
+  test(
+    'связи нет — сохранённое без запроса, без сохранённого — пробуем',
+    () async {
+      final cache = ApiCache(prefs);
+      await cache.write('me@x', '/v1/league', {'n': 1}, null);
+      var calls = 0;
+      final client = api((_) {
+        calls++;
+        return http.Response('{"n":2}', 200);
+      });
+      final values = await cachedStream(
+        cache,
+        client,
+        'me@x',
+        '/v1/league',
+        parse,
+        offline: true,
+      ).toList();
+      expect(values, [1]);
+      expect(calls, 0);
+      // Сохранённого нет — «Повторить» должен дойти до сервера.
+      final fresh = await cachedStream(
+        cache,
+        client,
+        'me@x',
+        '/v1/friends',
+        parse,
+        offline: true,
+      ).toList();
+      expect(fresh, [2]);
+      expect(calls, 1);
+    },
+  );
+
+  test('ответ сервера и обрыв — сообщают о связи', () async {
+    final seen = <bool>[];
+    ApiClient.onReachable = seen.add;
+    addTearDown(() => ApiClient.onReachable = null);
+    await api((_) => http.Response('{"n":1}', 200)).get('/v1/league');
+    await expectLater(
+      api((_) => throw const SocketException('нет сети')).get('/v1/league'),
+      throwsA(isA<ApiException>()),
+    );
+    expect(seen, [true, false]);
+  });
 }

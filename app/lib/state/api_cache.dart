@@ -6,6 +6,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../net/api_client.dart';
 import 'account_state.dart';
+import 'connection.dart';
 import 'providers.dart';
 
 /// Последние ответы сервера для вкладок (дуэли, лига, друзья, сезон…): вкладка
@@ -89,12 +90,16 @@ Stream<T> cachedGet<T>(Ref ref, String path, T Function(Object? json) parse) {
   // Вошли в другой аккаунт или вышли — данные загрузятся заново. Всё из ref —
   // сразу, в сборке провайдера, а не внутри потока.
   final owner = ref.watch(accountProvider.select((a) => a.email)) ?? '';
+  // Связи нет — сохранённое без запроса: не ждём таймаута на каждой вкладке.
+  // Связь вернётся — connection.dart сам обновит вкладки.
+  final offline = !ref.read(connectionProvider);
   return cachedStream(
     ref.read(apiCacheProvider),
     ref.read(apiProvider),
     owner,
     path,
     parse,
+    offline: offline,
   );
 }
 
@@ -105,8 +110,9 @@ Stream<T> cachedStream<T>(
   ApiClient api,
   String owner,
   String path,
-  T Function(Object? json) parse,
-) async* {
+  T Function(Object? json) parse, {
+  bool offline = false,
+}) async* {
   final hit = cache.read(owner, path);
   var shown = false;
   if (hit != null) {
@@ -118,6 +124,9 @@ Stream<T> cachedStream<T>(
       // Старый формат ответа — просто ждём свежий.
     }
   }
+  // Без связи и с сохранённым — на этом всё; без сохранённого — пробуем
+  // (иначе «Повторить» никогда не дошёл бы до сервера).
+  if (offline && shown) return;
   final ({Object? body, String? etag})? fresh;
   try {
     fresh = await api.getIfChanged(path, shown ? hit?.etag : null);

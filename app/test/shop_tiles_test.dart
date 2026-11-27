@@ -75,9 +75,19 @@ void main() {
           await t.tap(ink);
           await t.pump();
           expect(find.text('Примерка'), findsOneWidget);
-          expect(find.text(item), findsOneWidget);
-          await t.pump(const Duration(seconds: 3));
+          // Название само не всплывает — только по нажатию в колонке.
           expect(find.text(item), findsNothing);
+          await t.tap(
+            find
+                .descendant(
+                  of: find.byType(Stack),
+                  matching: find.bySemanticsLabel(item),
+                )
+                .last,
+            warnIfMissed: false,
+          );
+          await t.pump();
+          expect(find.text(item), findsOneWidget);
         } finally {
           FlutterError.onError = previous;
           await t.pumpWidget(const SizedBox.shrink());

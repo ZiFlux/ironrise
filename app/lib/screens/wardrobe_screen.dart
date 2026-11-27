@@ -66,9 +66,12 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     final next = takeOff != null && item.isWorn(current)
         ? takeOff(current)
         : item.apply(current);
-    setState(() => _preview = next);
-    // Надели — название на миг всплывает в колонке примерки.
-    _name(item.isWorn(next) ? item.id : null, brief: true);
+    // Название само не всплывает — только по нажатию на вещь в колонке
+    // примерки. Сняли вещь с открытым названием — закрываем его.
+    setState(() {
+      _preview = next;
+      if (_named == item.id && !item.isWorn(next)) _named = null;
+    });
   }
 
   Future<void> _confirm(List<ShopItem> cart, AvatarLook look) async {
