@@ -74,6 +74,9 @@ class CardioScoring {
     int restingHeartRate = GameConfig.defaultRestingHeartRate,
     int maxHeartRate = GameConfig.defaultMaxHeartRate,
     double unverified = GameConfig.unverifiedValidity,
+
+    /// Личная норма вида (с сервера); нет — общий порог зоны 2.
+    int? zoneBound,
   }) {
     final duration = finishedAt.difference(session.startedAt);
     final totalMin = min(
@@ -85,7 +88,11 @@ class CardioScoring {
         ? min(
             timeInZone(
                   pulse,
-                  zoneLowerBound(resting: restingHeartRate, max: maxHeartRate),
+                  zoneBound ??
+                      zoneLowerBound(
+                        resting: restingHeartRate,
+                        max: maxHeartRate,
+                      ),
                 ).inSeconds /
                 60,
             totalMin,

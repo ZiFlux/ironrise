@@ -4,6 +4,7 @@ import { localDay } from '../common/day';
 import { PulseSample, strengthValidity } from '../game/anti-fraud';
 import { summarizePulse } from '../game/pulse-summary';
 import { CardioSummary, scoreCardio } from '../game/cardio';
+import { CALIBRATION_SESSIONS, CARDIO_ACTIVITIES, cardioNorm, historyByActivity } from '../game/cardio-norm';
 import { currentStreak, restLimit, streakAfterActivity } from '../game/streak';
 import { StreakReward, readBoosters, streakReward, withCoinBoost, withXpBoost } from '../game/streak-rewards';
 import { BodyPart } from '../game/body-part';
@@ -126,17 +127,49 @@ export class WorkoutsService {
   }
 
   submitCardio(userId: string, input: z.infer<typeof CardioSchema>): Promise<WorkoutResult> {
-    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age, isTester, pulse) =>
-      scoreCardio({
+    return this.submit(userId, input, 'cardio', { activity: input.activity }, false, async (xpBefore, restingHr, age, isTester, pulse) => {
+      const resting = restingHr ?? undefined;
+      const max = age ? 220 - age : undefined;
+      // Личная норма вида по прошлым кардио (калибровка — первые сессии).
+      const norm = cardioNorm((await this.cardioHistory(userId))[input.activity], resting, max);
+      return scoreCardio({
         startedAt: input.startedAt,
         finishedAt: input.finishedAt,
         pulse,
         xpBefore,
-        restingHeartRate: restingHr ?? undefined,
-        maxHeartRate: age ? 220 - age : undefined,
+        restingHeartRate: resting,
+        maxHeartRate: max,
         unverified: unverifiedValidityFor(isTester),
-      }),
-    );
+        zoneBound: norm.bound,
+        calibrating: norm.calibrating,
+      });
+    });
+  }
+
+  /** Рабочий пульс прошлых принятых кардио по видам — для личной нормы. */
+  private async cardioHistory(userId: string) {
+    const past = await this.db.workout.findMany({
+      where: { userId, type: 'cardio', status: 'accepted' },
+      orderBy: { startedAt: 'desc' },
+      take: 60,
+      select: { payload: true, pulse: true },
+    });
+    return historyByActivity(past);
+  }
+
+  /** Нормы пульса кардио по видам — экран кардио показывает, к чему стремиться. */
+  async cardioNorms(userId: string) {
+    const profile = await this.db.profile.findUniqueOrThrow({
+      where: { userId },
+      select: { restingHr: true, age: true },
+    });
+    const resting = profile.restingHr ?? undefined;
+    const max = profile.age ? 220 - profile.age : undefined;
+    const history = await this.cardioHistory(userId);
+    return {
+      calibrationSessions: CALIBRATION_SESSIONS,
+      norms: Object.fromEntries(CARDIO_ACTIVITIES.map((a) => [a, cardioNorm(history[a], resting, max)])),
+    };
   }
 
   /**

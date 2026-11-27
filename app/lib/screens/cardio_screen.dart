@@ -8,6 +8,7 @@ import 'package:lucide_icons_flutter/lucide_icons.dart';
 import '../game/body_part.dart';
 import '../game/cardio.dart';
 import '../game/game_config.dart';
+import '../state/cardio_norms.dart';
 import '../state/cardio_state.dart';
 import '../state/heart_rate_state.dart';
 import '../state/providers.dart';
@@ -45,7 +46,14 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
   @override
   Widget build(BuildContext context) {
     final pulse = ref.watch(heartRateProvider);
-    final zone = _zoneFor(ref);
+    final zone = _zoneFor(ref, _activity);
+    final norm = _activity == null
+        ? null
+        : cardioNormOf(ref.watch(cardioNormsProvider).value, _activity!);
+    final calibration = ref
+        .watch(cardioNormsProvider)
+        .value
+        ?.calibrationSessions;
     final done = doneToday(
       ref.watch(trainingLogProvider),
       WorkoutKind.cardio,
@@ -92,8 +100,21 @@ class _ChooseActivityState extends ConsumerState<_ChooseActivity> {
                 ),
                 const SizedBox(height: 12),
                 Text(
-                  'Опыт идёт за минуты с пульсом от $zone уд/мин (зона 2). '
-                  'Без датчика засчитывается половина времени',
+                  switch (norm) {
+                    // Первые сессии вида — узнаём свой обычный пульс на нём.
+                    final n? when n.calibrating =>
+                      'Калибровка «${_activity!.label}»: тренировка '
+                          '${n.sessions + 1} из ${calibration ?? 2}. Засчитываются '
+                          'минуты от $zone уд/мин — так узнаем твой обычный пульс, '
+                          'и норма станет своей',
+                    final _? =>
+                      'Твоя норма для «${_activity!.label}» — от $zone уд/мин: '
+                          'по твоим прошлым тренировкам. '
+                          'Без датчика засчитывается половина времени',
+                    null =>
+                      'Опыт идёт за минуты с пульсом от $zone уд/мин (зона 2). '
+                          'Без датчика засчитывается половина времени',
+                  },
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 14,
@@ -211,7 +232,7 @@ class _ActiveCardioState extends ConsumerState<_ActiveCardio> {
     final now = DateTime.now();
     final elapsed = now.difference(session.startedAt);
     final pulse = ref.watch(heartRateProvider);
-    final zone = _zoneFor(ref);
+    final zone = _zoneFor(ref, session.activity);
     final samples = ref
         .read(heartRateProvider.notifier)
         .samplesBetween(session.startedAt, now);
@@ -339,8 +360,13 @@ class _Stat extends StatelessWidget {
   );
 }
 
-/// Нижняя граница зоны 2 с учётом возраста и пульса покоя из профиля.
-int _zoneFor(WidgetRef ref) {
+/// С какого пульса минуты идут полностью: своя норма вида (с сервера), иначе
+/// нижняя граница зоны 2 с учётом возраста и пульса покоя из профиля.
+int _zoneFor(WidgetRef ref, [CardioActivity? activity]) {
+  if (activity != null) {
+    final norm = cardioNormOf(ref.watch(cardioNormsProvider).value, activity);
+    if (norm != null) return norm.bound;
+  }
   final hero = ref.watch(heroProvider);
   return hero == null
       ? CardioScoring.zoneLowerBound()

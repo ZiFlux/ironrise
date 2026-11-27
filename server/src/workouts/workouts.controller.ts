@@ -24,6 +24,12 @@ export class WorkoutsController {
     return this.workouts.submitStrength(userId, body);
   }
 
+  /** Личные нормы пульса кардио по видам (калибровка, затем своя норма). */
+  @Get('cardio/norms')
+  cardioNorms(@UserId() userId: string) {
+    return this.workouts.cardioNorms(userId);
+  }
+
   @Post('workouts/cardio')
   cardio(@UserId() userId: string, @Body(new ZodPipe(CardioSchema)) body: z.infer<typeof CardioSchema>) {
     return this.workouts.submitCardio(userId, body);

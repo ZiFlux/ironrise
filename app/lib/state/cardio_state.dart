@@ -6,6 +6,7 @@ import '../game/game_config.dart';
 import '../game/cardio.dart';
 import '../game/streak_rewards.dart';
 import '../game/workout.dart';
+import 'cardio_norms.dart';
 import 'account_state.dart';
 import 'consent_state.dart';
 import 'health_state.dart';
@@ -79,6 +80,11 @@ class CardioNotifier extends Notifier<CardioSession?> {
       restingHeartRate: hero.restingHeartRate,
       maxHeartRate: hero.maxHeartRate,
       unverified: hero.unverifiedValidity,
+      // Предварительный подсчёт — по своей норме вида, как посчитает сервер.
+      zoneBound: cardioNormOf(
+        ref.read(cardioNormsProvider).value,
+        session.activity,
+      )?.bound,
     );
     // Бустеры и возвращение — как у силовой и на сервере.
     final summary = boostedSummary(

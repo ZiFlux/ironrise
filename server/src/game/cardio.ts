@@ -22,6 +22,10 @@ export const secondsInZone = (pulse: PulseSample[], lowerBound: number): number 
 
 export interface CardioSummary extends WorkoutSummary {
   zoneMinutes: number;
+  /** С какого пульса минуты шли полностью (личная норма или общий порог). */
+  zoneBound?: number;
+  /** Норма вида ещё калибруется (src/game/cardio-norm.ts). */
+  calibrating?: boolean;
 }
 
 /**
@@ -37,12 +41,15 @@ export const scoreCardio = (args: {
   maxHeartRate?: number;
   /** V без часов: 0,5 по умолчанию, у тестеров 1 (src/game/premium.ts). */
   unverified?: number;
+  /** Личная норма вида (cardio-norm.ts); нет — общий порог зоны 2. */
+  zoneBound?: number;
+  calibrating?: boolean;
 }): CardioSummary => {
   const unverified = args.unverified ?? C.unverifiedValidity;
   const durationSec = Math.round((args.finishedAt.getTime() - args.startedAt.getTime()) / 1000);
   const totalMin = Math.min(durationSec / 60, C.cardioMaxMinutes);
   const verified = hasEnoughPulse(args.pulse, durationSec);
-  const zone = zoneLowerBound(args.restingHeartRate, args.maxHeartRate);
+  const zone = args.zoneBound ?? zoneLowerBound(args.restingHeartRate, args.maxHeartRate);
   const zoneMin = verified ? Math.min(secondsInZone(args.pulse, zone) / 60, totalMin) : 0;
   const effectiveMin = verified
     ? zoneMin + (totalMin - zoneMin) * C.unverifiedValidity
@@ -56,5 +63,10 @@ export const scoreCardio = (args: {
     totalSets: 0,
     validity: verified ? 1 : unverified,
   });
-  return { ...summary, zoneMinutes: Math.round(zoneMin) };
+  return {
+    ...summary,
+    zoneMinutes: Math.round(zoneMin),
+    zoneBound: zone,
+    ...(args.calibrating !== undefined && { calibrating: args.calibrating }),
+  };
 };

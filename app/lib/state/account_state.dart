@@ -17,6 +17,7 @@ import '../net/push.dart';
 import 'health_state.dart';
 import 'api_cache.dart';
 import 'aura_state.dart';
+import 'cardio_norms.dart';
 import 'consent_state.dart';
 import 'goals_state.dart';
 import 'local_data.dart';
@@ -706,6 +707,8 @@ class AccountNotifier extends Notifier<AccountState> {
         ref.invalidate(serverLeagueProvider);
         ref.invalidate(auraProvider);
         ref.invalidate(seasonProvider);
+        // Новое кардио — норма пульса вида могла сдвинуться (калибровка).
+        ref.invalidate(cardioNormsProvider);
       }
       ref.invalidate(notificationsProvider);
       await ref.read(goalsSyncProvider).push();
