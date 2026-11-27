@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/material.dart';
@@ -33,16 +34,41 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
   ShopSlot _slot = ShopSlot.top;
   AvatarLook? _preview;
 
+  /// Фильтр аксессуаров по частям тела; null — все.
+  AccessoryZone? _zone;
+
+  /// Вещь примерки, у которой открыто название.
+  String? _named;
+  Timer? _nameTimer;
+
+  @override
+  void dispose() {
+    _nameTimer?.cancel();
+    super.dispose();
+  }
+
+  /// Показать название вещи в колонке примерки; [brief] — само скроется.
+  void _name(String? id, {bool brief = false}) {
+    _nameTimer?.cancel();
+    setState(() => _named = id);
+    if (brief && id != null) {
+      _nameTimer = Timer(const Duration(seconds: 2), () {
+        if (mounted && _named == id) setState(() => _named = null);
+      });
+    }
+  }
+
   static bool _same(AvatarLook a, AvatarLook b) =>
       jsonEncode(a.toJson()) == jsonEncode(b.toJson());
 
   void _tap(ShopItem item, AvatarLook current) {
     final takeOff = item.takeOff;
-    setState(() {
-      _preview = takeOff != null && item.isWorn(current)
-          ? takeOff(current)
-          : item.apply(current);
-    });
+    final next = takeOff != null && item.isWorn(current)
+        ? takeOff(current)
+        : item.apply(current);
+    setState(() => _preview = next);
+    // Надели — название на миг всплывает в колонке примерки.
+    _name(item.isWorn(next) ? item.id : null, brief: true);
   }
 
   Future<void> _confirm(List<ShopItem> cart, AvatarLook look) async {
@@ -114,7 +140,19 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
     // В магазине — то, что продаётся (и эксклюзивы как витрина), в инвентаре — своё.
     final items = [
       for (final i in ShopCatalog.forSlot(_slot, look.sex))
-        if (shop ? !i.isFree : owns(i)) i,
+        if ((shop ? !i.isFree : owns(i)) &&
+            (_slot != ShopSlot.accessory ||
+                _zone == null ||
+                AccessoryZone.of(i) == _zone))
+          i,
+    ];
+    // Примерка: что надето сейчас, но не в сохранённом образе.
+    final trying = [
+      for (final i in ShopCatalog.all)
+        if ((i.onlyFor == null || i.onlyFor == look.sex) &&
+            i.isWorn(look) &&
+            !i.isWorn(hero.look))
+          i,
     ];
     final needsPremium = cart.any((i) => i.premium) && !hero.premium.active;
     final testerLocked = cart.any((i) => i.testerOnly);
@@ -158,11 +196,30 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 child: PremiumBanner(compact: true),
               ),
             Expanded(
-              child: AvatarView(
-                levels: hero.avatarLevels,
-                look: look,
-                muscles: hero.muscles,
-                withLamp: true,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: AvatarView(
+                      levels: hero.avatarLevels,
+                      look: look,
+                      muscles: hero.muscles,
+                      withLamp: true,
+                    ),
+                  ),
+                  if (trying.isNotEmpty)
+                    Positioned(
+                      right: 12,
+                      top: 0,
+                      bottom: 0,
+                      child: _TryOn(
+                        items: trying,
+                        base: look,
+                        named: _named,
+                        owns: owns,
+                        onTap: (i) => _name(_named == i.id ? null : i.id),
+                      ),
+                    ),
+                ],
               ),
             ),
             const SizedBox(height: 8),
@@ -186,10 +243,40 @@ class _WardrobeScreenState extends ConsumerState<WardrobeScreen> {
                 ],
               ),
             ),
+            // Аксессуаров много — по частям тела.
+            if (_slot == ShopSlot.accessory) ...[
+              const SizedBox(height: 8),
+              SizedBox(
+                height: 32,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  children: [
+                    for (final zone in <AccessoryZone?>[
+                      null,
+                      ...AccessoryZone.values,
+                    ])
+                      Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: ChoiceChip(
+                          label: Text(
+                            zone?.label ?? 'Все',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                          visualDensity: VisualDensity.compact,
+                          selected: zone == _zone,
+                          showCheckmark: false,
+                          onSelected: (_) => setState(() => _zone = zone),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            ],
             const SizedBox(height: 12),
             SizedBox(
               // Крупный системный шрифт — плитки выше, иначе подпись не влезет.
-              height: MediaQuery.textScalerOf(context).scale(120),
+              height: MediaQuery.textScalerOf(context).scale(92),
               child: items.isEmpty
                   ? Center(
                       child: Text(
@@ -319,8 +406,8 @@ class _ItemTile extends StatelessWidget {
         onTap: onTap,
         borderRadius: BorderRadius.circular(12),
         child: Container(
-          width: 84,
-          padding: const EdgeInsets.fromLTRB(6, 10, 6, 8),
+          width: 68,
+          padding: const EdgeInsets.fromLTRB(6, 8, 6, 6),
           decoration: BoxDecoration(
             color: AppColors.surface,
             borderRadius: BorderRadius.circular(12),
@@ -340,14 +427,6 @@ class _ItemTile extends StatelessWidget {
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: ItemPreview(item: item, base: base, size: 52),
-              ),
-              const SizedBox(height: 6),
-              Text(
-                item.name,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 12),
               ),
               const Spacer(),
               if (owned)
@@ -419,4 +498,118 @@ class _ItemTile extends StatelessWidget {
       ),
     );
   }
+}
+
+/// Колонка примерки сбоку от героя: вещи, надетые сейчас, но не в сохранённом
+/// образе. Нажатие — название (и цена, если вещи ещё нет) рядом с иконкой.
+class _TryOn extends StatelessWidget {
+  const _TryOn({
+    required this.items,
+    required this.base,
+    required this.named,
+    required this.owns,
+    required this.onTap,
+  });
+
+  final List<ShopItem> items;
+  final AvatarLook base;
+  final String? named;
+  final bool Function(ShopItem) owns;
+  final void Function(ShopItem) onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = Theme.of(context).colorScheme.primary;
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          const Padding(
+            padding: EdgeInsets.only(bottom: 6),
+            child: Text(
+              'Примерка',
+              style: TextStyle(fontSize: 11, color: AppColors.textMuted),
+            ),
+          ),
+          for (final item in items)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (named == item.id) ...[
+                    _NameBubble(item: item, owned: owns(item)),
+                    const SizedBox(width: 6),
+                  ],
+                  Semantics(
+                    button: true,
+                    label: item.name,
+                    excludeSemantics: true,
+                    child: GestureDetector(
+                      onTap: () => onTap(item),
+                      child: Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.raised,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: named == item.id
+                                ? accent
+                                : owns(item)
+                                ? Colors.transparent
+                                : _gold.withValues(alpha: 0.6),
+                          ),
+                        ),
+                        child: ItemPreview(item: item, base: base, size: 42),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NameBubble extends StatelessWidget {
+  const _NameBubble({required this.item, required this.owned});
+
+  final ShopItem item;
+  final bool owned;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    constraints: const BoxConstraints(maxWidth: 170),
+    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+    decoration: BoxDecoration(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(10),
+      boxShadow: const [BoxShadow(color: Color(0x66000000), blurRadius: 8)],
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.end,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          item.name,
+          textAlign: TextAlign.right,
+          style: const TextStyle(fontSize: 13),
+        ),
+        if (!owned && !item.testerOnly)
+          Text(
+            '${item.price} монет',
+            style: figureStyle(size: 12, color: AppColors.textSecondary),
+          )
+        else if (!owned)
+          Text(
+            item.exclusiveLabel ?? 'тестерам',
+            style: const TextStyle(fontSize: 11, color: AppColors.textMuted),
+          ),
+      ],
+    ),
+  );
 }

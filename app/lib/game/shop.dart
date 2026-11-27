@@ -19,6 +19,43 @@ enum ShopSlot {
   final String label;
 }
 
+/// Где на теле аксессуар: фильтр в магазине и инвентаре.
+enum AccessoryZone {
+  head('Голова'),
+  neck('Шея'),
+  arms('Руки'),
+  waist('Пояс и ноги');
+
+  const AccessoryZone(this.label);
+  final String label;
+
+  static const _byId = {
+    'acc_headband': head,
+    'acc_cap': head,
+    'acc_glasses': head,
+    'acc_headphones': head,
+    'acc_beta_cap': head,
+    'acc_clown_nose': head,
+    'acc_crown': head,
+    'acc_bandana': head,
+    'acc_bucket': head,
+    'acc_round_shades': head,
+    'acc_blindfold': head,
+    'acc_straw_hat': head,
+    'acc_gold_chain': neck,
+    'acc_silver_chain': neck,
+    'acc_scarf': neck,
+    'acc_wristbands': arms,
+    'acc_smartwatch': arms,
+    'acc_belt': waist,
+    'acc_knee_sleeves': waist,
+    'acc_sash': waist,
+  };
+
+  /// Зона аксессуара; null — не аксессуар или зона не задана.
+  static AccessoryZone? of(ShopItem item) => _byId[item.id];
+}
+
 /// Косметика за монеты (ТЗ: магазин, PLAN 5.3 — 10–15 предметов на старте).
 /// Цена 0 — есть у всех с начала. На силу косметика не влияет.
 class ShopItem {

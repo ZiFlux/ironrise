@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:ironrise/avatar/avatar_look.dart';
+import 'package:ironrise/game/shop.dart';
 import 'package:ironrise/game/training_format.dart';
 import 'package:ironrise/main.dart';
 import 'package:ironrise/router.dart';
@@ -38,6 +39,9 @@ void main() {
           'hero_v1': hero.encode(),
           'health_consent_v1': '{"granted":true}',
           for (final id in ['home', 'shop', 'wardrobe']) 'hint_seen_$id': true,
+          // Обучение вкладок пройдено — подсказка не перекрывает магазин.
+          for (final t in ['home', 'workout', 'duels', 'rating', 'profile'])
+            'guide_done_$t': true,
         });
         final prefs = await SharedPreferences.getInstance();
         final c = ProviderContainer(
@@ -57,8 +61,23 @@ void main() {
           await t.pump();
           await t.tap(find.text(slot));
           await t.pump(const Duration(milliseconds: 500));
-          expect(find.text(item), findsWidgets);
-          await t.pump(const Duration(milliseconds: 300));
+          // Названий на плитках нет — только иконка и цена; вещь узнаём по
+          // подписи для экранного диктора.
+          final tile = find.bySemanticsLabel(RegExp('^$item,'));
+          expect(tile, findsWidgets);
+          // Надели — вещь в колонке примерки, её название всплывает рядом.
+          final ink = find.descendant(
+            of: tile.first,
+            matching: find.byType(InkWell),
+          );
+          await t.ensureVisible(ink);
+          await t.pump();
+          await t.tap(ink);
+          await t.pump();
+          expect(find.text('Примерка'), findsOneWidget);
+          expect(find.text(item), findsOneWidget);
+          await t.pump(const Duration(seconds: 3));
+          expect(find.text(item), findsNothing);
         } finally {
           FlutterError.onError = previous;
           await t.pumpWidget(const SizedBox.shrink());
@@ -69,4 +88,12 @@ void main() {
       });
     }
   }
+
+  test('у каждого аксессуара есть часть тела для фильтра', () {
+    final missing = [
+      for (final i in ShopCatalog.all)
+        if (i.slot == ShopSlot.accessory && AccessoryZone.of(i) == null) i.id,
+    ];
+    expect(missing, isEmpty);
+  });
 }
