@@ -72,7 +72,7 @@ class PremiumScreen extends ConsumerWidget {
                 const SizedBox(height: 6),
                 Text(
                   tester
-                      ? 'Навсегда — спасибо, что тестируете IronRise'
+                      ? 'Навсегда — спасибо, что тестируешь IronRise'
                       : active && premium?.until != null
                       ? 'До ${_date(premium!.until!)}'
                       : 'Косметика и монеты. На силу героя не влияет',

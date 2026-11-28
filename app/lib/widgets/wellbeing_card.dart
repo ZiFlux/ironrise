@@ -113,7 +113,7 @@ class _WellbeingCardState extends ConsumerState<WellbeingCard> {
                 const SizedBox(height: 12),
                 const Text(
                   'Помочь улучшить подбор упражнений? Ответы о самочувствии и боли — '
-                  'данные о здоровье, отправляем их только с вашего согласия. '
+                  'данные о здоровье, отправляем их только с твоего согласия. '
                   'Отозвать можно в настройках',
                   style: TextStyle(fontSize: 12, color: AppColors.textMuted),
                 ),
@@ -187,8 +187,8 @@ class _WellbeingCardState extends ConsumerState<WellbeingCard> {
     final doctor = (r.kind?.alarming ?? false)
         ? ' ${r.kind == PainKind.numb ? 'Онемение' : 'Острая боль'} — повод показаться врачу до того, как нагружать эту зону снова.'
         : r.repeatedPain
-        ? ' Боль повторяется — покажитесь врачу, прежде чем нагружать эту зону снова.'
-        : ' Если боль острая или не проходит за пару дней, покажитесь врачу.';
+        ? ' Боль повторяется — покажись врачу, прежде чем нагружать эту зону снова.'
+        : ' Если боль острая или не проходит за пару дней, покажись врачу.';
     return zone == PainZone.other ? 'Запомнили.$doctor' : '$plan$doctor';
   }
 

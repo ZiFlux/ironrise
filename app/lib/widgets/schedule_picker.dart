@@ -134,12 +134,12 @@ class SchedulePicker extends StatelessWidget {
               ? minimum
                     ? 'Выбери 2 дня загрузки не подряд — после каждого будет день восстановления'
                     : days.length > maxTrainingDaysPerWeek
-                    ? 'Оставьте хотя бы день отдыха в неделю'
+                    ? 'Оставь хотя бы день отдыха в неделю'
                     : 'Выбери минимум $minTrainingDaysPerWeek дня'
               : minimum
               ? 'Загрузка: ${load.map((d) => weekdayShort[d]).join(', ')}, восстановление: '
                     '${recovery.map((d) => weekdayShort[d]).join(', ')}. '
-                    'Восстановление — по желанию: без него серия держится до '
+                    'Восстановление — по желанию: без него серия держится '
                     'до ${daysWord(maxRestDaysInRow(load.toList()))} отдыха подряд.'
               : 'Тренировок в неделю: ${days.length}. Отдыхать подряд можно до ${daysWord(maxRestDaysInRow(days.toList()))}.'
                     '${format == TrainingFormat.fullBody && hasAdjacentDays(days) ? ' Всё тело в соседние дни перекрыло бы мышцы — в такие недели программа даст верх/низ.' : ''}',

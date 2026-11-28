@@ -17,6 +17,13 @@ class ConnectionNotifier extends Notifier<bool> {
 
   Timer? _probe;
 
+  /// Когда вкладки последний раз обновлялись из-за вернувшейся связи.
+  DateTime? _refreshedAt;
+
+  /// Связь «мигает» (слабый VPN, плохая сеть) — вкладки обновляются не чаще
+  /// раза в минуту, иначе они перезагружались бы по кругу.
+  static const refreshEvery = Duration(minutes: 1);
+
   @override
   bool build() {
     ApiClient.onReachable = _report;
@@ -48,6 +55,10 @@ class ConnectionNotifier extends Notifier<bool> {
   Future<bool> retry() => ref.read(apiProvider).ping();
 
   void _refreshTabs() {
+    final now = DateTime.now();
+    final last = _refreshedAt;
+    if (last != null && now.difference(last) < refreshEvery) return;
+    _refreshedAt = now;
     for (final p in [
       serverBotsProvider,
       serverLeagueProvider,

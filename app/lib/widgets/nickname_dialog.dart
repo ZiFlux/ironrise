@@ -99,7 +99,7 @@ class _NicknameDialogState extends ConsumerState<_NicknameDialog> {
                 ? 'Бесплатно — с ${formatDate(next)}. '
                       'Сейчас — за $nicknameChangeCoins монет (у тебя ${hero.coins}).'
                 : 'Менять ник можно раз в $nicknameChangeDays дней. '
-                      'Прежний ник ещё $nicknameChangeDays дней останется за вами.',
+                      'Прежний ник ещё $nicknameChangeDays дней останется за тобой.',
             style: const TextStyle(
               fontSize: 13,
               color: AppColors.textSecondary,

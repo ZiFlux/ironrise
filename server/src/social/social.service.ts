@@ -51,7 +51,8 @@ export class SocialService {
   /** Поиск по нику (без учёта регистра), себя не показываем. */
   async search(userId: string, query: string) {
     const q = query.trim();
-    if (q.length < 2) return [];
+    // Ник — до 32 символов: длиннее искать нечего (и не гоняем базу длинными строками).
+    if (q.length < 2 || q.length > 32) return [];
     const found = await this.db.profile.findMany({
       where: { nickname: { contains: q, mode: 'insensitive' }, userId: { not: userId } },
       select: { userId: true, nickname: true },
