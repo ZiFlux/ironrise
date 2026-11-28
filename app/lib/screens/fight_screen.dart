@@ -21,7 +21,7 @@ import '../widgets/aura_flame.dart';
 import '../widgets/info_bubble.dart';
 import '../widgets/status_toast.dart';
 
-/// Бой по раундам (docs/COMBAT.md): перед раундом — цепочка из 5 действий,
+/// Бой по раундам (docs/COMBAT.md): перед раундом — цепочка из 4 действий,
 /// потом шаги проигрываются по очереди. Считает всё сервер.
 class FightScreen extends ConsumerStatefulWidget {
   const FightScreen({super.key});
@@ -47,13 +47,14 @@ class _FightScreenState extends ConsumerState<FightScreen> {
     super.dispose();
   }
 
-  Future<void> _go() async {
+  /// [auto] — цепочку выбирает ИИ («Авто»).
+  Future<void> _go({bool auto = false}) async {
     if (_sending) return;
     setState(() => _sending = true);
     try {
       final next = await ref
           .read(fightProvider.notifier)
-          .playRound(List.of(_chain));
+          .playRound(auto ? null : List.of(_chain));
       if (!mounted) return;
       setState(() {
         _chain.clear();
@@ -208,6 +209,8 @@ class _FightScreenState extends ConsumerState<FightScreen> {
               else
                 _Planner(
                   rules: fight.rules,
+                  winChance: fight.winChance,
+                  onAuto: () => _go(auto: true),
                   chain: _chain,
                   sending: _sending,
                   onAdd: (a) => setState(() => _chain.add(a)),
@@ -427,6 +430,8 @@ IconData _icon(CombatAction a) => switch (a) {
 class _Planner extends StatelessWidget {
   const _Planner({
     required this.rules,
+    required this.winChance,
+    required this.onAuto,
     required this.chain,
     required this.sending,
     required this.onAdd,
@@ -436,6 +441,8 @@ class _Planner extends StatelessWidget {
   });
 
   final CombatRules rules;
+  final double? winChance;
+  final VoidCallback onAuto;
   final List<CombatAction> chain;
   final bool sending;
   final ValueChanged<CombatAction> onAdd;
@@ -450,8 +457,19 @@ class _Planner extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Шанс победы: видно, когда выбор решает, а когда всё решила сила.
+        if (winChance case final p?)
+          Text(
+            'Шанс победы ≈ ${(p * 100).round()} %',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w600,
+              color: p >= 0.5 ? accent : AppColors.textSecondary,
+            ),
+          ),
         Text(
-          'Твои ${rules.steps} действий на раунд — соперник выбирает свои одновременно',
+          'Выбери ${rules.steps} ${_actionsWord(rules.steps)} на раунд — соперник выбирает свои одновременно',
           textAlign: TextAlign.center,
           style: const TextStyle(fontSize: 12, color: AppColors.textMuted),
         ),
@@ -491,10 +509,11 @@ class _Planner extends StatelessWidget {
         Row(
           children: [
             Expanded(
+              // Цепочка пустая — «Авто»: за тебя выбирает ИИ; начата — «Сбросить».
               child: TextButton(
-                onPressed: chain.isEmpty || sending ? null : onClear,
-                child: const Text(
-                  'Сбросить',
+                onPressed: sending ? null : (chain.isEmpty ? onAuto : onClear),
+                child: Text(
+                  chain.isEmpty ? 'Авто' : 'Сбросить',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                 ),
@@ -767,4 +786,12 @@ class _DamagePop extends StatelessWidget {
       ),
     ),
   );
+}
+
+/// «1 действие», «4 действия», «5 действий».
+String _actionsWord(int n) {
+  final d10 = n % 10, d100 = n % 100;
+  if (d10 == 1 && d100 != 11) return 'действие';
+  if (d10 >= 2 && d10 <= 4 && (d100 < 12 || d100 > 14)) return 'действия';
+  return 'действий';
 }

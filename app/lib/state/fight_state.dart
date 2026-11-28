@@ -28,6 +28,7 @@ class FightView {
     this.won,
     this.coins,
     this.ladderNote,
+    this.winChance,
   });
 
   final String id;
@@ -54,6 +55,9 @@ class FightView {
   final int? coins;
   final String? ladderNote;
 
+  /// Шанс победы из текущего состояния (0…1), его считает сервер; null — старый сервер.
+  final double? winChance;
+
   FightView afterRound(Map<String, dynamic> j) => FightView(
     id: id,
     friend: friend,
@@ -73,6 +77,7 @@ class FightView {
     won: j['attackerWon'] as bool?,
     coins: (j['coins'] as num?)?.toInt(),
     ladderNote: ladderNoteOf(j),
+    winChance: (j['winChance'] as num?)?.toDouble(),
   );
 
   static FightView fromJson(Map<String, dynamic> j) => FightView(
@@ -86,6 +91,7 @@ class FightView {
     hpD: (j['hpD'] as num).toInt(),
     round: (j['round'] as num).toInt(),
     rules: CombatRules.fromJson(Map<String, dynamic>.from(j['rules'] as Map)),
+    winChance: (j['winChance'] as num?)?.toDouble(),
   );
 }
 
@@ -126,13 +132,21 @@ class FightNotifier extends Notifier<FightView?> {
     }
   }
 
-  /// Раунд: цепочка из 5 действий. На последнем — герой, лестница, сезон.
-  Future<FightView> playRound(List<CombatAction> chain) async {
+  /// Раунд: цепочка действий; null — «Авто», за игрока выбирает ИИ.
+  /// На последнем раунде — герой, лестница, сезон.
+  Future<FightView> playRound(List<CombatAction>? chain) async {
     final fight = state;
     if (fight == null) throw StateError('No fight');
-    final j = await ref.read(apiProvider).post('/v1/fights/${fight.id}/round', {
-      'actions': [for (final a in chain) a.name],
-    });
+    final j = await ref
+        .read(apiProvider)
+        .post(
+          '/v1/fights/${fight.id}/round',
+          chain == null
+              ? {'auto': true}
+              : {
+                  'actions': [for (final a in chain) a.name],
+                },
+        );
     final next = fight.afterRound(j);
     if (next.finished) {
       if (j['hero'] case final Map hero) {

@@ -1,5 +1,5 @@
 /**
- * Боёвка с выбором действий (docs/COMBAT.md). Раунд — 5 шагов: бойцы заранее
+ * Боёвка с выбором действий (docs/COMBAT.md). Бой — 3 раунда по 4 шага: бойцы заранее
  * выбирают цепочку действий, шаги разыгрываются попарно. Здоровье и урон — от силы
  * и уровней частей тела, выбор даёт перевес, но сила главнее.
  * Чистая логика: один seed и одни и те же цепочки — один и тот же бой.
@@ -11,8 +11,9 @@ import { FighterSnapshot, seededRandom } from './duel';
 import { pickDuelEvent } from './duel-flavor';
 import { averageLevel, power } from './progression';
 
-export const COMBAT_ROUNDS = 6;
-export const COMBAT_STEPS = 5;
+/** Бой короче (28.11.2026, docs/DUELS_2.md): было 6 × 5 — до 30 решений, рутина. */
+export const COMBAT_ROUNDS = 3;
+export const COMBAT_STEPS = 4;
 /** Мощный удар — не больше стольких за раунд. */
 export const MAX_HEAVY_PER_ROUND = 2;
 /** Одно действие — не больше стольких подряд. */
@@ -27,8 +28,8 @@ export type StepAction = CombatAction | 'none';
 
 const ATTACKS: ReadonlySet<StepAction> = new Set(['body', 'legs', 'heavy', 'grab']);
 const DAMAGE_MUL: Record<'body' | 'legs' | 'heavy' | 'grab', number> = { body: 1, legs: 0.85, heavy: 1.35, grab: 0.7 };
-/** Урон шага от силы: при равных бойцах нокаут обычно к 4–6 раунду. */
-const DAMAGE_DIVISOR = 11;
+/** Урон шага от силы: при равных бойцах нокаут обычно к концу 3-го раунда. */
+export const DAMAGE_DIVISOR = 6;
 const CRIT_CHANCE = 0.1;
 /** Блок: доля погашенного урона = BASE + SCALE · (защита / (защита + атака)), не больше MAX. */
 const BLOCK_BASE = 0.15;
@@ -50,7 +51,7 @@ const EVADE_COUNTER = 0.7;
 const CRIT_MUL = 1.7;
 const EVENT_CHANCE = 0.15;
 
-/** Цепочка раунда: ровно 5 действий, мощных не больше 2, одинаковых подряд не больше 3. */
+/** Цепочка раунда: ровно COMBAT_STEPS действий, мощных не больше 2, одинаковых подряд не больше 3. */
 export const chainProblem = (chain: readonly string[]): string | null => {
   if (chain.length !== COMBAT_STEPS) return `Нужно ${COMBAT_STEPS} действий`;
   if (!chain.every((a) => (COMBAT_ACTIONS as readonly string[]).includes(a))) return 'Неизвестное действие';
@@ -246,6 +247,8 @@ export interface CombatState {
   attackerWon: boolean | null;
   /** Что игрок выбирал в этом бою — по этому ИИ угадывает следующие ходы. */
   habits: ActionHabits;
+  /** Оба упали в одном шаге: кто устоял «меньше в минус» (иначе ничью брал атакующий). */
+  doubleKoWinner?: boolean;
 }
 
 export interface CombatAuraMark {
@@ -390,8 +393,15 @@ export const playRound = (
     counter(actsD[i], strikeA, D, strikeD);
     const toD = finish(strikeA, mul.a, incoming.d, focusA, s.a.aura?.level ?? 0, hasteA, s.a.aura?.level ?? 0, A.lv, A.pw);
     const toA = finish(strikeD, mul.d, incoming.a, focusD, s.d.aura?.level ?? 0, hasteD, s.d.aura?.level ?? 0, D.lv, D.pw);
-    s.d.hp = Math.max(0, s.d.hp - toD);
-    s.a.hp = Math.max(0, s.a.hp - toA);
+    const rawA = s.a.hp - toA;
+    const rawD = s.d.hp - toD;
+    if (rawA <= 0 && rawD <= 0) {
+      const shareA = rawA / Math.max(1, s.powerA);
+      const shareD = rawD / Math.max(1, s.powerD);
+      s.doubleKoWinner = shareA !== shareD ? shareA > shareD : rnd() < 0.5;
+    }
+    s.d.hp = Math.max(0, rawD);
+    s.a.hp = Math.max(0, rawA);
     // Захват сбивает следующий шаг (или первый шаг следующего раунда).
     if (strikeA.stun) i + 1 < COMBAT_STEPS ? (actsD[i + 1] = 'none') : (s.d.stunned = true);
     if (strikeD.stun) i + 1 < COMBAT_STEPS ? (actsA[i + 1] = 'none') : (s.a.stunned = true);
@@ -421,6 +431,7 @@ export const playRound = (
 
 /** Победитель: кто устоял; оба или никто — по доле здоровья, при равенстве — кто сильнее. */
 const winner = (s: CombatState): boolean => {
+  if (s.a.hp === 0 && s.d.hp === 0 && s.doubleKoWinner !== undefined) return s.doubleKoWinner;
   if (s.d.hp === 0 && s.a.hp > 0) return true;
   if (s.a.hp === 0 && s.d.hp > 0) return false;
   const shareA = s.a.hp / Math.max(1, s.powerA);
@@ -437,3 +448,32 @@ export const randomChain = (rnd: () => number): CombatAction[] => {
   }
   return chain;
 };
+
+/**
+ * Шанс победы атакующего из текущего состояния: [n] быстрых боёв, где обе
+ * стороны играют «толково» (как ИИ: лучший ответ с шансом 60 %, иначе наугад).
+ * Для экрана: понятно, когда выбор решает, а когда всё решила сила.
+ */
+export const winChance = (state: CombatState, fa: FighterSnapshot, fd: FighterSnapshot, n = 150): number => {
+  if (state.finished) return state.attackerWon ? 1 : 0;
+  let wins = 0;
+  for (let i = 0; i < n; i++) {
+    const rnd = seededRandom((state.seed ^ Math.imul(i + 1, 2654435761)) >>> 0);
+    let s: CombatState = { ...state, seed: (state.seed + Math.imul(i + 1, 40503)) >>> 0 };
+    while (!s.finished) {
+      const chain = aiChain(emptyHabits(), { lv: fa.levels, pw: s.powerA }, { lv: fd.levels, pw: s.powerD }, rnd);
+      s = playRound(s, fa, fd, chain).state;
+    }
+    if (s.attackerWon) wins++;
+  }
+  return Math.round((wins / n) * 100) / 100;
+};
+
+/** Цепочка «Авто»: за игрока выбирает тот же ИИ, что и за соперника. */
+export const autoChain = (state: CombatState, fa: FighterSnapshot, fd: FighterSnapshot): CombatAction[] =>
+  aiChain(
+    emptyHabits(),
+    { lv: fa.levels, pw: state.powerA },
+    { lv: fd.levels, pw: state.powerD },
+    seededRandom((state.seed ^ Math.imul(state.round + 11, 2246822519)) >>> 0),
+  );

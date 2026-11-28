@@ -1,6 +1,6 @@
 /**
  * Бой по раундам (п. 149, docs/COMBAT.md). Бой — запись Duel с finished = false:
- * игрок присылает цепочку из 5 действий на раунд, сервер разыгрывает раунд против ИИ
+ * игрок присылает цепочку из 4 действий на раунд (или «Авто»), сервер разыгрывает раунд против ИИ
  * соперника и пишет шаги в лог. На последнем раунде — итог и награды (как в автобое).
  * Одновременно идёт не больше одного боя; брошенный дольше [FIGHT_STALE_MS] бой
  * доигрывается случайными действиями при следующем запросе игрока.
@@ -17,9 +17,11 @@ import {
   CombatStep,
   MAX_HEAVY_PER_ROUND,
   MAX_SAME_IN_ROW,
+  autoChain,
   playRound,
   randomChain,
   startCombat,
+  winChance,
 } from '../game/combat';
 import { FighterSnapshot, seededRandom } from '../game/duel';
 import { EconomyService, lockProfile } from '../economy/economy.service';
@@ -28,7 +30,11 @@ import { HeroService } from '../hero/hero.service';
 import { PrismaService } from '../prisma.service';
 import { SocialService } from '../social/social.service';
 
-export const RoundSchema = z.object({ actions: ChainSchema });
+/** Цепочка на раунд или «Авто» — за игрока выбирает ИИ. */
+export const RoundSchema = z.union([
+  z.object({ actions: ChainSchema }),
+  z.object({ auto: z.literal(true) }),
+]);
 
 /** Бой без хода дольше этого — доигрывается сам. */
 export const FIGHT_STALE_MS = 10 * 60 * 1000;
@@ -89,7 +95,10 @@ export class FightsService {
       const duel = await tx.duel.findFirst({ where: { id: fightId, attackerId: userId } });
       if (!duel) throw new NotFoundException('No such fight');
       if (duel.finished || !duel.state) throw new ConflictException('Fight is finished');
-      const { steps, chainD, state } = this.play(duel, input.actions);
+      const fa = duel.snapshotA as unknown as FighterSnapshot;
+      const fd = duel.snapshotD as unknown as FighterSnapshot;
+      const actions = 'actions' in input ? input.actions : autoChain(duel.state as unknown as CombatState, fa, fd);
+      const { steps, chainD, state } = this.play(duel, actions);
       const settled = await this.save(tx, userId, duel, state, steps);
       return {
         fightId: duel.id,
@@ -100,6 +109,8 @@ export class FightsService {
         hpD: state.d.hp,
         finished: state.finished,
         attackerWon: state.finished ? state.attackerWon : null,
+        chainA: actions,
+        winChance: winChance(state, fa, fd),
         ...(settled ?? {}),
         ...(state.finished ? { hero: await this.hero.state(userId, tx) } : {}),
       };
@@ -151,6 +162,9 @@ export class FightsService {
       round: state?.round ?? 0,
       log: duel.log,
       rules: FightsService.rules,
+      winChance: state
+        ? winChance(state, duel.snapshotA as unknown as FighterSnapshot, duel.snapshotD as unknown as FighterSnapshot)
+        : null,
     };
   }
 

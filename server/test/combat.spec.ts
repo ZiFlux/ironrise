@@ -1,4 +1,4 @@
-import { CombatAction, aiChain, chainProblem, emptyHabits, playRound, randomChain, startCombat } from '../src/game/combat';
+import { CombatAction, aiChain, autoChain, chainProblem, emptyHabits, playRound, randomChain, startCombat, winChance } from '../src/game/combat';
 import { FighterSnapshot, seededRandom } from '../src/game/duel';
 import { PartMap } from '../src/game/body-part';
 
@@ -28,24 +28,24 @@ const winRate = (a: FighterSnapshot, d: FighterSnapshot, policy: Policy, n = 600
 };
 
 describe('боёвка с выбором действий (docs/COMBAT.md)', () => {
-  it('цепочка: 5 действий, мощных ≤ 2, одинаковых подряд ≤ 3', () => {
-    expect(chainProblem(['body', 'legs', 'block', 'evade', 'grab'])).toBeNull();
+  it('цепочка: 4 действия, мощных ≤ 2, одинаковых подряд ≤ 3', () => {
+    expect(chainProblem(['body', 'legs', 'block', 'evade'])).toBeNull();
     expect(chainProblem(['body', 'legs'])).not.toBeNull();
-    expect(chainProblem(['heavy', 'body', 'heavy', 'block', 'heavy'])).not.toBeNull();
-    expect(chainProblem(['block', 'block', 'block', 'block', 'body'])).not.toBeNull();
-    expect(chainProblem(['body', 'kick', 'body', 'body', 'body'])).not.toBeNull();
+    expect(chainProblem(['heavy', 'body', 'heavy', 'heavy'])).not.toBeNull();
+    expect(chainProblem(['block', 'block', 'block', 'block'])).not.toBeNull();
+    expect(chainProblem(['body', 'kick', 'body', 'body'])).not.toBeNull();
   });
 
   it('один seed и одни цепочки — один и тот же раунд', () => {
     const a = fighter('a', 10);
     const d = fighter('d', 10);
-    const chain: CombatAction[] = ['body', 'block', 'heavy', 'evade', 'grab'];
+    const chain: CombatAction[] = ['body', 'block', 'heavy', 'grab'];
     const r1 = playRound(startCombat(a, d, 42), a, d, chain);
     const r2 = playRound(startCombat(a, d, 42), a, d, chain);
     expect(r1).toEqual(r2);
   });
 
-  it('бой кончается: нокаут или 6 раундов', () => {
+  it('бой кончается: нокаут или 3 раунда', () => {
     const a = fighter('a', 10);
     const d = fighter('d', 10);
     let st = startCombat(a, d, 7);
@@ -54,7 +54,7 @@ describe('боёвка с выбором действий (docs/COMBAT.md)', () 
       st = playRound(st, a, d, randomChain(seededRandom(rounds + 1))).state;
       rounds++;
     }
-    expect(rounds).toBeLessThanOrEqual(6);
+    expect(rounds).toBeLessThanOrEqual(3);
     expect(st.attackerWon).not.toBeNull();
   });
 
@@ -69,13 +69,29 @@ describe('боёвка с выбором действий (docs/COMBAT.md)', () 
     // Равные, игрок наугад против ИИ (60 % лучший ответ на его привычки) — ИИ чаще побеждает.
     expect(equalRandom).toBeGreaterThan(0.08);
     expect(equalRandom).toBeLessThan(0.4);
-    // На 30 % сильнее и наугад — почти всегда побеждает: сила главнее выбора.
-    expect(strongerRandom).toBeGreaterThan(0.75);
+    // На 30 % сильнее и наугад — в основном побеждает: сила главнее выбора
+    // (короткий бой 3 × 4 даёт выбору чуть больше веса, чем было в 6 × 5).
+    expect(strongerRandom).toBeGreaterThan(0.7);
     // Слабее на 10 %: наугад — почти без шансов, с толковым выбором — шанс есть, но не гарантия.
     expect(weakerSmart).toBeGreaterThan(0.1);
     expect(weakerSmart).toBeLessThan(0.5);
     expect(weakerSmart).toBeGreaterThan(weakerRandom * 3);
     // Толковый выбор при равных — решающий перевес.
     expect(equalSmart).toBeGreaterThan(0.6);
+  });
+
+  it('шанс победы: равные — около половины, сильнее — выше, бой кончен — 0 или 1', () => {
+    const a = fighter('a', 10);
+    const even = winChance(startCombat(a, fighter('d', 10), 5), a, fighter('d', 10));
+    const strong = winChance(startCombat(fighter('s', 13), fighter('d', 10), 5), fighter('s', 13), fighter('d', 10));
+    expect(even).toBeGreaterThan(0.3);
+    expect(even).toBeLessThan(0.7);
+    expect(strong).toBeGreaterThan(even);
+    expect(winChance({ ...startCombat(a, a, 1), finished: true, attackerWon: true }, a, a)).toBe(1);
+  });
+
+  it('«Авто» — допустимая цепочка', () => {
+    const a = fighter('a', 10);
+    expect(chainProblem(autoChain(startCombat(a, a, 3), a, a))).toBeNull();
   });
 });
